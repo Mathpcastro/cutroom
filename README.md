@@ -4,6 +4,8 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 
 **Open source · Windows x64 · versão inicial em desenvolvimento**
 
+[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.1.0)
+
 ## O que funciona
 
 - Chat à esquerda e workspace de vídeo à direita, com player, mídia, transcrição e timeline.
@@ -19,7 +21,7 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 
 ## Instalar e conectar
 
-Os instaladores de prévia serão publicados em [Releases](https://github.com/Mathpcastro/cutroom/releases). Esta versão é para **Windows x64**. Não é necessário instalar Python ou FFmpeg para usar o instalador.
+O instalador de prévia está em [Releases](https://github.com/Mathpcastro/cutroom/releases). Esta versão é para **Windows x64**. Não é necessário instalar Python ou FFmpeg para usar o instalador.
 
 O app não tem autenticação própria. Para usar o plano ChatGPT, primeiro conecte o CLI oficial do Codex no seu computador:
 

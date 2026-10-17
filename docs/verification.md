@@ -9,6 +9,8 @@ Data: 17 de outubro de 2026. Plataforma verificada: Windows x64.
 - Auditoria npm de dependências de produção: zero vulnerabilidades reportadas no momento da execução.
 - Revisão visual independente: aprovada em Electron a 1440×900 e 1120×720, sem overflow ou erros de renderer.
 - `node tools/check-desktop.mjs --packaged --ai`: fluxo real aprovado com o executável empacotado, sem erros de renderer.
+- Instalador NSIS executado em diretório de teste isolado: código de saída 0. O aplicativo instalado abriu com bridge real, catálogo do pacote local e conexão Codex existente com sete modelos, sem erros. O teste não reutilizou `node_modules` do projeto para executar o aplicativo instalado.
+- Instalador Windows x64: 335.586.881 bytes. SHA256: `af9eeffd0bf8666d0fc4fda53b3885f33e9e32c15f48abd72385ccf88cbc8767`.
 
 ## Fluxo real no aplicativo empacotado
 

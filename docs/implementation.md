@@ -24,7 +24,7 @@ User direction: a new public open-source desktop editor with chat on the left, v
 - [x] Install Faster Whisper runtime/model without requiring a user Python installation and cache it outside application files.
 - [x] Package Windows app with FFmpeg/ffprobe and documentation of installation/runtime needs.
 - [x] Verify domain behavior, real FFmpeg export, Electron UI and real Codex connection. See verification.md for actual inference and packaged app evidence.
-- [ ] Review security, correctness and user requirements, fix findings, commit and push only project files.
+- [x] Review security, correctness and user requirements, fix findings, commit and push only project files.
 
 ## Verification
 
