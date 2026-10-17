@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-electron/
+release/
+.env*
+!.env.example
+.worktrees/
+test-results/
+playwright-report/
+artifacts/
+*.cutroom.json
+__pycache__/
+.venv/
+*.log

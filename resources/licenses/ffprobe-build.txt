@@ -1,0 +1,12 @@
+ffprobe version 4.0.2 Copyright (c) 2007-2018 the FFmpeg developers
+built with gcc 7.3.1 (GCC) 20180722
+configuration: --enable-gpl --enable-version3 --enable-sdl2 --enable-bzlib --enable-fontconfig --enable-gnutls --enable-iconv --enable-libass --enable-libbluray --enable-libfreetype --enable-libmp3lame --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libtheora --enable-libtwolame --enable-libvpx --enable-libwavpack --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libzimg --enable-lzma --enable-zlib --enable-gmp --enable-libvidstab --enable-libvorbis --enable-libvo-amrwbenc --enable-libmysofa --enable-libspeex --enable-libxvid --enable-libaom --enable-libmfx --enable-amf --enable-ffnvcodec --enable-cuvid --enable-d3d11va --enable-nvenc --enable-nvdec --enable-dxva2 --enable-avisynth
+libavutil      56. 14.100 / 56. 14.100
+libavcodec     58. 18.100 / 58. 18.100
+libavformat    58. 12.100 / 58. 12.100
+libavdevice    58.  3.100 / 58.  3.100
+libavfilter     7. 16.100 /  7. 16.100
+libswscale      5.  1.100 /  5.  1.100
+libswresample   3.  1.100 /  3.  1.100
+libpostproc    55.  1.100 / 55.  1.100
+

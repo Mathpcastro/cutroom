@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.ttf binary
+resources/licenses/** whitespace=-trailing-space,-blank-at-eof
+resources/fonts/OFL.txt whitespace=-trailing-space,-blank-at-eof
