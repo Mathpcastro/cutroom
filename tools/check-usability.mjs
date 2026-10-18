@@ -241,33 +241,31 @@ try {
     throw new Error("Existing Codex session could not connect.");
   await page.getByRole("button", { name: "Modelo", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Buscar modelo" })
-    .fill(state.connection.models[0].name);
+    .getByRole("listbox", { name: "Modelo", exact: true })
+    .press("Home");
   await page
-    .getByRole("combobox", { name: "Buscar modelo" })
-    .press("ArrowDown");
-  await page.getByRole("combobox", { name: "Buscar modelo" }).press("Enter");
+    .getByRole("listbox", { name: "Modelo", exact: true })
+    .press("Enter");
   const selected = state.connection.models[0];
   if (selected.reasoningEfforts?.length) {
     await page.getByRole("button", { name: "Raciocínio", exact: true }).click();
-    const values = await page
-      .getByRole("listbox", { name: "Raciocínio", exact: true })
-      .getByRole("option")
-      .count();
+    const effortSlider = page.getByRole("slider", {
+      name: "Nível de raciocínio",
+      exact: true,
+    });
+    const values = Number(await effortSlider.getAttribute("max")) + 1;
     if (values !== selected.reasoningEfforts.length)
       throw new Error("Effort selector disagrees with actual model support.");
-    await page
-      .getByRole("listbox", { name: "Raciocínio", exact: true })
-      .press("End");
-    await page
-      .getByRole("listbox", { name: "Raciocínio", exact: true })
-      .press("Enter");
+    await effortSlider.press("End");
+    await effortSlider.press("Enter");
   }
   await page.getByRole("button", { name: "Modelo", exact: true }).click();
   await page.screenshot({ path: "artifacts/usability-models.png" });
-  await page.getByRole("combobox", { name: "Buscar modelo" }).press("Escape");
+  await page
+    .getByRole("listbox", { name: "Modelo", exact: true })
+    .press("Escape");
   checks.push(
-    "real Codex catalog appears in searchable dark keyboard selector; reasoning options equal model-supported values",
+    "real Codex catalog appears in compact keyboard selector; reasoning slider matches model-supported values",
   );
   if (process.argv.includes("--ai")) {
     if (selected.reasoningEfforts?.length) {
@@ -275,10 +273,10 @@ try {
         .getByRole("button", { name: "Raciocínio", exact: true })
         .click();
       await page
-        .getByRole("listbox", { name: "Raciocínio", exact: true })
+        .getByRole("slider", { name: "Nível de raciocínio", exact: true })
         .press("Home");
       await page
-        .getByRole("listbox", { name: "Raciocínio", exact: true })
+        .getByRole("slider", { name: "Nível de raciocínio", exact: true })
         .press("Enter");
     }
     await page
@@ -311,6 +309,18 @@ try {
         { timeout: 120000, intervals: [500, 1000, 2000] },
       )
       .toBeTruthy();
+    const sentState = await request("getState");
+    if (
+      sentState.connection.model !== selected.id ||
+      (selected.reasoningEfforts?.length &&
+        sentState.connection.reasoningEffort !== selected.reasoningEfforts[0])
+    )
+      throw new Error(
+        "Actual Codex turn did not receive the selected model and effort.",
+      );
+    checks.push(
+      "actual composer sends selected model and slider effort to Codex",
+    );
     await request("executeCommand", {
       name: "trim",
       args: { clipId: "missing-fixture-clip", start: 0, end: 1 },

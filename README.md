@@ -4,18 +4,22 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 
 **Open source · Windows x64 · versão inicial em desenvolvimento**
 
-[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.3.0)
+[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.3.1)
 
 | Grafite | Claro |
 | --- | --- |
 | ![CutRoom no tema Grafite](docs/screenshots/graphite.png) | ![CutRoom no tema Claro](docs/screenshots/light.png) |
+
+| Modelo | Raciocínio |
+| --- | --- |
+| ![Menu compacto de modelos](docs/screenshots/model-picker.png) | ![Barra de raciocínio e cápsulas da conversa](docs/screenshots/effort-picker.png) |
 
 ## O que funciona
 
 - Chat à esquerda e workspace de vídeo à direita, com player, mídia, transcrição e timeline.
 - Interface minimalista com ações agrupadas em menus e painéis sob demanda. Seis temas: Grafite, Claro, Dark+, Light+, Nord e Tokyo Night, com a escolha salva em **Configurações → Aparência**.
 - Codex App Server empacotado: reutiliza a sessão local do Codex, sem conta ou cadastro CutRoom.
-- Seletor pesquisável de modelos e nível de raciocínio conforme as opções da conta.
+- Seletores compactos no estilo Codex: modelos em linhas simples e nível de raciocínio em uma barra deslizante, conforme as opções da conta. Navegação por teclado e botão para restaurar o esforço padrão do modelo.
 - Progresso ao vivo no chat: etapas do agente, ferramentas, processamento local, conclusão, falhas e cancelamento.
 - Opção de chave OpenAI própria, mantida somente na memória da conexão local.
 - Cortar/dividir trechos, desfazer/refazer, ajustar zoom/foco, velocidade e áudio.

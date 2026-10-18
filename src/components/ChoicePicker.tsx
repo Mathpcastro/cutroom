@@ -1,42 +1,38 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 interface Choice {
   value: string;
   label: string;
-  detail?: string;
 }
+
+/** Compact model selector. Type while open to jump to a real catalog entry. */
 export function ChoicePicker({
   label,
   value,
   options,
   onChange,
   disabled,
-  searchable = false,
+  open,
+  onOpenChange,
 }: {
   label: string;
   value: string;
   options: Choice[];
   onChange: (value: string) => void;
   disabled?: boolean;
-  searchable?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const typeahead = useRef({ text: "", at: 0 });
   const id = useId();
-  const filtered = options.filter((option) =>
-    `${option.label} ${option.value}`
-      .toLocaleLowerCase()
-      .includes(query.toLocaleLowerCase()),
-  );
   const selected = options.find((option) => option.value === value);
   const close = () => {
-    setOpen(false);
+    onOpenChange(false);
     trigger.current?.focus();
   };
   const choose = (choice: Choice) => {
@@ -45,21 +41,22 @@ export function ChoicePicker({
   };
   useEffect(() => {
     if (!open) return;
-    setQuery("");
+    typeahead.current = { text: "", at: 0 };
     setActive(
       Math.max(
         0,
         options.findIndex((option) => option.value === value),
       ),
     );
-    const handle = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    const outside = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) onOpenChange(false);
     };
-    document.addEventListener("pointerdown", handle);
-    requestAnimationFrame(() =>
-      searchable ? search.current?.focus() : list.current?.focus(),
-    );
-    return () => document.removeEventListener("pointerdown", handle);
+    document.addEventListener("pointerdown", outside);
+    const frame = requestAnimationFrame(() => list.current?.focus());
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      cancelAnimationFrame(frame);
+    };
   }, [open]);
   useEffect(() => {
     root.current
@@ -73,23 +70,23 @@ export function ChoicePicker({
         type="button"
         className="choice-trigger"
         aria-label={label}
+        title={selected?.label || "Conecte o Codex para escolher um modelo"}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${id}-list`}
         disabled={disabled || !options.length}
-        onClick={() => setOpen(!open)}
+        onClick={() => onOpenChange(!open)}
         onKeyDown={(event) => {
           if (["ArrowDown", "ArrowUp"].includes(event.key)) {
             event.preventDefault();
-            setOpen(true);
+            onOpenChange(true);
           }
         }}
       >
         <span className="choice-trigger-copy">
-          <small>{label}</small>
-          <strong>{selected?.label || "Indisponível"}</strong>
+          {selected?.label || "Modelo"}
         </span>
-        <ChevronDown size={13} />
+        <ChevronDown size={11} />
       </button>
       {open && (
         <div
@@ -100,69 +97,66 @@ export function ChoicePicker({
               event.stopPropagation();
               close();
             }
-            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-              event.preventDefault();
-              setActive((index) =>
-                Math.max(
-                  0,
-                  Math.min(
-                    filtered.length - 1,
-                    index + (event.key === "ArrowDown" ? 1 : -1),
-                  ),
-                ),
-              );
-            }
-            if (event.key === "Home" && !searchable) {
-              event.preventDefault();
-              setActive(0);
-            }
-            if (event.key === "End" && !searchable) {
-              event.preventDefault();
-              setActive(filtered.length - 1);
-            }
-            if (event.key === "Enter") {
+            if (event.key === "Tab") close();
+            if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
               event.preventDefault();
               event.stopPropagation();
-              if (filtered[active]) choose(filtered[active]);
+              setActive((index) =>
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? options.length - 1
+                    : Math.max(
+                        0,
+                        Math.min(
+                          options.length - 1,
+                          index + (event.key === "ArrowDown" ? 1 : -1),
+                        ),
+                      ),
+              );
             }
-            if (event.key === "Tab") setOpen(false);
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              event.stopPropagation();
+              if (options[active]) choose(options[active]);
+            }
+            if (
+              event.key.length === 1 &&
+              event.key !== " " &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              !event.altKey
+            ) {
+              event.preventDefault();
+              event.stopPropagation();
+              const now = Date.now();
+              const query =
+                now - typeahead.current.at > 900
+                  ? event.key
+                  : typeahead.current.text + event.key;
+              typeahead.current = { text: query.toLocaleLowerCase(), at: now };
+              const index = options.findIndex((option) =>
+                `${option.label} ${option.value}`
+                  .toLocaleLowerCase()
+                  .includes(typeahead.current.text),
+              );
+              if (index >= 0) setActive(index);
+            }
           }}
         >
-          <div className="choice-heading">{label}</div>
-          {searchable && (
-            <label className="choice-search">
-              <Search size={14} />
-              <input
-                ref={search}
-                aria-label={`Buscar ${label.toLocaleLowerCase()}`}
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={open}
-                aria-controls={`${id}-list`}
-                aria-activedescendant={
-                  filtered[active] ? `${id}-${active}` : undefined
-                }
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setActive(0);
-                }}
-                placeholder="Buscar modelo…"
-              />
-            </label>
-          )}
+          <div className="choice-heading">Selecionar modelo</div>
           <div
             id={`${id}-list`}
             className="choice-list"
             role="listbox"
             aria-label={label}
-            tabIndex={searchable ? -1 : 0}
+            tabIndex={0}
             ref={list}
             aria-activedescendant={
-              filtered[active] ? `${id}-${active}` : undefined
+              options[active] ? `${id}-${active}` : undefined
             }
           >
-            {filtered.map((option, index) => (
+            {options.map((option, index) => (
               <button
                 key={option.value}
                 id={`${id}-${index}`}
@@ -175,16 +169,12 @@ export function ChoicePicker({
                 onMouseMove={() => setActive(index)}
                 onClick={() => choose(option)}
               >
-                <span>
-                  <strong>{option.label}</strong>
-                  {option.detail && <small>{option.detail}</small>}
-                </span>
-                {option.value === value && <Check size={15} />}
+                <span>{option.label}</span>
+                {option.value === value && (
+                  <Check size={15} strokeWidth={1.6} />
+                )}
               </button>
             ))}
-            {!filtered.length && (
-              <p className="choice-empty">Nenhum modelo encontrado.</p>
-            )}
           </div>
         </div>
       )}

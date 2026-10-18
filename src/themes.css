@@ -1136,3 +1136,301 @@ button:disabled {
     max-height: 115px;
   }
 }
+/* Compact composer controls follow the supplied Codex pill and slider references. */
+.composer-controls {
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px 10px;
+}
+.assistant-selectors {
+  position: relative;
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 0;
+  flex: 0 1 auto;
+  max-width: calc(100% - 35px);
+  min-width: 0;
+  padding: 0 2px;
+  border-radius: 999px;
+  background: var(--raised);
+}
+.choice-picker {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.choice-trigger {
+  width: auto;
+  max-width: 154px;
+  min-height: 29px;
+  height: 29px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+.choice-trigger:hover:not(:disabled),
+.choice-trigger[aria-expanded="true"] {
+  background: var(--hover);
+  border-color: transparent;
+}
+.choice-trigger > svg {
+  color: var(--muted);
+}
+.choice-trigger-copy {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.choice-trigger:disabled {
+  opacity: 0.55;
+}
+.choice-popover {
+  width: 260px;
+  bottom: calc(100% + 10px);
+  left: -2px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--raised);
+  box-shadow: 0 8px 28px var(--shadow);
+}
+.choice-heading {
+  padding: 6px 5px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+.choice-list {
+  padding: 0;
+  max-height: min(330px, 48vh);
+  overflow-y: auto;
+}
+.choice-list:focus {
+  outline: none;
+}
+.choice-option {
+  min-height: 30px;
+  height: 30px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 400;
+}
+.choice-option > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.choice-option.highlighted {
+  background: var(--hover);
+  border-color: transparent;
+}
+.choice-option[aria-selected="true"] svg {
+  color: var(--text);
+}
+.send-button {
+  width: 29px;
+  height: 29px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--bg);
+}
+.send-button:disabled {
+  background: var(--raised);
+  color: var(--muted);
+}
+.send-button.stop {
+  background: var(--hover);
+  color: var(--text);
+  border-radius: 50%;
+}
+.effort-picker {
+  position: static;
+  flex-shrink: 0;
+}
+.effort-trigger {
+  padding-left: 5px;
+  color: var(--muted);
+}
+.effort-popover {
+  --effort-blue: #429fff;
+  --effort-track-bg: #484848;
+  position: absolute;
+  z-index: 90;
+  bottom: calc(100% + 10px);
+  left: -2px;
+  width: 254px;
+  padding: 10px 12px 12px;
+  background: var(--raised);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: 17px;
+  box-shadow: 0 8px 28px var(--shadow);
+}
+:root[data-theme="light"] .effort-popover,
+:root[data-theme="light-plus"] .effort-popover {
+  --effort-blue: #0067c7;
+  --effort-track-bg: #d1d1d1;
+}
+:root[data-theme="nord"] .effort-popover {
+  --effort-blue: #6ab6ff;
+  --effort-track-bg: #59667b;
+}
+:root[data-theme="tokyo-night"] .effort-popover {
+  --effort-track-bg: #444e70;
+}
+.effort-popover-heading {
+  display: grid;
+  grid-template-columns: 20px 1fr 20px;
+  align-items: start;
+  gap: 6px;
+}
+.effort-lightning {
+  color: var(--muted);
+  margin-top: 3px;
+}
+.effort-popover-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  text-align: center;
+}
+.effort-popover-copy strong {
+  color: var(--effort-blue);
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 500;
+}
+.effort-popover-copy > span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.effort-reset {
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--muted);
+  border-radius: 50%;
+}
+.effort-reset:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.effort-slider {
+  position: relative;
+  height: 26px;
+  margin-top: 13px;
+}
+.effort-track {
+  position: absolute;
+  inset: 1px 0;
+  background: var(--effort-track-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.effort-track > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--effort-fill);
+  background: var(--effort-blue);
+  border-radius: inherit;
+}
+.effort-ticks {
+  position: absolute;
+  inset: 0 13px;
+}
+.effort-ticks > i {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  background: #ffffff63;
+  border-radius: 50%;
+}
+:root[data-theme="light"] .effort-ticks > i,
+:root[data-theme="light-plus"] .effort-ticks > i {
+  background: #ffffffa3;
+}
+.effort-slider > input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 26px;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+.effort-slider > input[type="range"]::-webkit-slider-runnable-track {
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+}
+.effort-slider > input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px #0002;
+}
+.effort-slider > input[type="range"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--raised),
+    0 0 0 3px var(--effort-blue);
+}
+@media (max-width: 1250px) {
+  .choice-popover {
+    width: 260px;
+  }
+  .choice-trigger {
+    padding: 0 7px;
+    font-size: 12px;
+  }
+  .effort-trigger {
+    padding-left: 4px;
+  }
+}

@@ -16,6 +16,7 @@ import {
 import type { AppSnapshot, ReasoningEffort } from "../shared/types";
 import { Menu } from "./Menu";
 import { ChoicePicker } from "./ChoicePicker";
+import { EffortPicker } from "./EffortPicker";
 import { ActivityFeed } from "./ActivityFeed";
 import { useDialogKeyboard } from "../lib/useDialogKeyboard";
 
@@ -29,12 +30,17 @@ export function Assistant({ state, run, desktop }: ActionProps) {
   const [tab, setTab] = useState<"chat" | "packages">("chat");
   const [text, setText] = useState("");
   const [model, setModel] = useState("");
+  const [activePicker, setActivePicker] = useState<"model" | "effort" | null>(
+    null,
+  );
   const [efforts, setEfforts] = useState<Record<string, ReasoningEffort>>({});
   const selectedModel =
     state.connection.models.find(
       (item) => item.id === (model || state.connection.model),
     ) || state.connection.models[0];
   const supportedEfforts = selectedModel?.reasoningEfforts || [];
+  const modelDisplayName = (name: string) =>
+    name.replace(/^(GPT-\d+(?:\.\d+)?)-/i, "$1 ");
   const selectedEffort =
     selectedModel &&
     efforts[selectedModel.id] &&
@@ -59,6 +65,10 @@ export function Assistant({ state, run, desktop }: ActionProps) {
   };
   const activeWork =
     state.busy || state.jobs.some((job) => job.status === "running");
+  useEffect(() => {
+    if (activeWork || state.connection.status !== "connected")
+      setActivePicker(null);
+  }, [activeWork, state.connection.status]);
   const transcription = state.packages.find(
     (item) => item.id === "faster-whisper-base",
   );
@@ -297,16 +307,23 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                     value={selectedModel?.id || ""}
                     options={state.connection.models.map((item) => ({
                       value: item.id,
-                      label: item.name,
-                      detail: item.id,
+                      label: modelDisplayName(item.name),
                     }))}
                     onChange={setModel}
                     disabled={!connected || activeWork}
-                    searchable
+                    open={activePicker === "model"}
+                    onOpenChange={(open) =>
+                      setActivePicker((current) =>
+                        open ? "model" : current === "model" ? null : current,
+                      )
+                    }
                   />
-                  <ChoicePicker
-                    label="Raciocínio"
-                    value={selectedEffort || ""}
+                  <EffortPicker
+                    value={selectedEffort}
+                    modelName={
+                      selectedModel ? modelDisplayName(selectedModel.name) : ""
+                    }
+                    defaultValue={selectedModel?.defaultReasoningEffort}
                     options={supportedEfforts.map((effort) => ({
                       value: effort,
                       label: effortLabels[effort],
@@ -315,10 +332,16 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                       selectedModel &&
                       setEfforts((current) => ({
                         ...current,
-                        [selectedModel.id]: effort as ReasoningEffort,
+                        [selectedModel.id]: effort,
                       }))
                     }
                     disabled={!connected || activeWork}
+                    open={activePicker === "effort"}
+                    onOpenChange={(open) =>
+                      setActivePicker((current) =>
+                        open ? "effort" : current === "effort" ? null : current,
+                      )
+                    }
                   />
                 </div>
                 {activeWork ? (
