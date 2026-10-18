@@ -2,16 +2,13 @@ import { useState } from "react";
 import {
   ChevronDown,
   Film,
-  Magnet,
-  Maximize2,
-  Minus,
-  Plus,
   Redo2,
   Scissors,
   Trash2,
   Undo2,
   Volume2,
 } from "lucide-react";
+import { Menu } from "./Menu";
 import type { AppSnapshot, EditCommand } from "../shared/types";
 import {
   clipDuration,
@@ -63,84 +60,71 @@ export function Timeline({
     <section className="timeline-section" aria-label="Timeline de edição">
       <div className="timeline-toolbar">
         <div className="timeline-title">
-          <span>TIMELINE</span>
+          <span>Timeline</span>
           <span className="timeline-counter">
             {project.clips.length}{" "}
             {project.clips.length === 1 ? "clipe" : "clipes"}
           </span>
         </div>
         <div className="timeline-actions">
-          <button
-            className="icon-button"
-            title="Desfazer (Ctrl+Z)"
-            aria-label="Desfazer"
-            disabled={!state.canUndo || state.busy}
-            onClick={() => void run("undo")}
-          >
-            <Undo2 size={15} />
-          </button>
-          <button
-            className="icon-button"
-            title="Refazer (Ctrl+Shift+Z)"
-            aria-label="Refazer"
-            disabled={!state.canRedo || state.busy}
-            onClick={() => void run("redo")}
-          >
-            <Redo2 size={15} />
-          </button>
-          <span className="separator" />
-          <button
-            className="icon-button"
-            title="Dividir na posição atual"
-            aria-label="Dividir na posição atual"
-            disabled={!total || state.busy}
-            onClick={split}
-          >
-            <Scissors size={15} />
-          </button>
-          <button
-            className="icon-button"
-            title="Excluir clipe selecionado"
-            aria-label="Excluir clipe selecionado"
-            disabled={!selected || state.busy}
-            onClick={() =>
-              selected &&
-              command({ name: "delete_clip", args: { clipId: selected.id } })
-            }
-          >
-            <Trash2 size={14} />
-          </button>
-          <span className="separator" />
-          <Magnet size={14} className="muted" />
-          <button
-            className="icon-button"
-            title="Ajustar timeline ao projeto"
-            aria-label="Ajustar timeline ao projeto"
-            onClick={() => setScale(1)}
-          >
-            <Maximize2 size={13} />
-          </button>
-          <span className="zoom-controls">
+          <Menu label="Editar">
             <button
-              className="icon-button"
-              title="Diminuir timeline"
-              aria-label="Diminuir timeline"
+              role="menuitem"
+              disabled={!state.canUndo || state.busy}
+              onClick={() => void run("undo")}
+            >
+              <Undo2 size={14} />
+              Desfazer<kbd>Ctrl Z</kbd>
+            </button>
+            <button
+              role="menuitem"
+              disabled={!state.canRedo || state.busy}
+              onClick={() => void run("redo")}
+            >
+              <Redo2 size={14} />
+              Refazer<kbd>Ctrl Shift Z</kbd>
+            </button>
+            <div role="separator" />
+            <button
+              role="menuitem"
+              disabled={!total || state.busy}
+              onClick={split}
+            >
+              <Scissors size={14} />
+              Dividir na posição atual
+            </button>
+            <button
+              role="menuitem"
+              disabled={!selected || state.busy}
+              onClick={() =>
+                selected &&
+                command({ name: "delete_clip", args: { clipId: selected.id } })
+              }
+            >
+              <Trash2 size={14} />
+              Excluir clipe selecionado
+            </button>
+          </Menu>
+          <Menu label="Zoom da timeline" className="timeline-zoom-menu">
+            <div className="menu-caption">{Math.round(scale * 100)}%</div>
+            <button role="menuitem" onClick={() => setScale(1)}>
+              Ajustar ao projeto
+            </button>
+            <button
+              role="menuitem"
               disabled={scale <= 1}
               onClick={() => setScale(Math.max(1, scale - 0.5))}
             >
-              <Minus size={13} />
+              Diminuir timeline
             </button>
-            <span>{Math.round(scale * 100)}%</span>
             <button
-              className="icon-button"
-              title="Ampliar timeline"
-              aria-label="Ampliar timeline"
+              role="menuitem"
               disabled={scale >= 5}
               onClick={() => setScale(Math.min(5, scale + 0.5))}
             >
-              <Plus size={13} />
+              Ampliar timeline
             </button>
-          </span>
+          </Menu>
         </div>
       </div>
       <div className="timeline-content">
@@ -204,7 +188,7 @@ export function Timeline({
                         width: `${(clipDuration(clip) / seconds) * 100}%`,
                         ...(media?.thumbnail
                           ? {
-                              backgroundImage: `linear-gradient(0deg,rgba(20,30,15,.8),rgba(20,30,15,.3)),url("${window.cutroom?.mediaUrl(media.thumbnail)}")`,
+                              backgroundImage: `linear-gradient(0deg,rgba(15,15,15,.8),rgba(15,15,15,.3)),url("${window.cutroom?.mediaUrl(media.thumbnail)}")`,
                             }
                           : {}),
                       }}

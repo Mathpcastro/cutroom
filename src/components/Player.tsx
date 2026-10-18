@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Clapperboard,
+  ChevronDown,
   Expand,
   FolderOpen,
   Pause,
@@ -10,6 +11,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
+import { Menu } from "./Menu";
 import type { Project } from "../shared/types";
 import { duration, locateClip, timecode } from "../lib/editor";
 import { OverlayPreview } from "./OverlayPreview";
@@ -167,7 +169,7 @@ export function Player({
     <section className="player-section" aria-label="Prévia do vídeo">
       <div className="player-meta">
         <span>
-          <span className="tiny-square" /> MONITOR DO PROJETO
+          <span className="tiny-square" /> Prévia
         </span>
         <div>
           {media ? (
@@ -269,10 +271,11 @@ export function Player({
               <Clapperboard size={34} strokeWidth={1.15} />
               <span />
             </div>
-            <h2>Um novo corte começa aqui.</h2>
+            <h2>Importe seu vídeo</h2>
             <p>
-              Importe seu vídeo para editar com palavras.
-              <br />O resto fica na sua timeline.
+              Arraste um arquivo para o editor
+              <br />
+              ou escolha um vídeo no computador.
             </p>
             <button
               className="button primary import-hero"
@@ -310,15 +313,6 @@ export function Player({
         </div>
         <div className="transport-center">
           <button
-            className="icon-button"
-            title="Voltar ao início"
-            aria-label="Voltar ao início"
-            disabled={!media}
-            onClick={() => setTime(0)}
-          >
-            <SkipBack size={15} />
-          </button>
-          <button
             className="play-button"
             aria-label={playing ? "Pausar" : "Reproduzir"}
             disabled={!media || total <= 0}
@@ -330,32 +324,44 @@ export function Player({
               <Play size={18} fill="currentColor" />
             )}
           </button>
-          <button
-            className="icon-button"
-            title="Ir ao fim"
-            aria-label="Ir ao fim"
-            disabled={!media}
-            onClick={() => {
-              setTime(total);
-              setPlaying(false);
-            }}
-          >
-            <SkipForward size={15} />
-          </button>
         </div>
         <div className="transport-right">
           <span className="time-display">
             {timecode(time, true)} <span>/ {timecode(total, true)}</span>
           </span>
-          <button
-            className="icon-button"
-            title="Tela cheia"
-            aria-label="Tela cheia"
-            disabled={!media}
-            onClick={() => void viewport.current?.requestFullscreen()}
+          <Menu
+            label="Reprodução"
+            icon={<ChevronDown size={14} />}
+            className="playback-menu"
           >
-            <Expand size={14} />
-          </button>
+            <button
+              role="menuitem"
+              disabled={!media}
+              onClick={() => setTime(0)}
+            >
+              <SkipBack size={14} />
+              Voltar ao início
+            </button>
+            <button
+              role="menuitem"
+              disabled={!media}
+              onClick={() => {
+                setTime(total);
+                setPlaying(false);
+              }}
+            >
+              <SkipForward size={14} />
+              Ir ao fim
+            </button>
+            <button
+              role="menuitem"
+              disabled={!media}
+              onClick={() => void viewport.current?.requestFullscreen()}
+            >
+              <Expand size={14} />
+              Tela cheia
+            </button>
+          </Menu>
         </div>
       </div>
       <input

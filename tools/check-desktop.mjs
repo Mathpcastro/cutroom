@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { workspacePanel } from "./ui-navigation.mjs";
 const require = createRequire(import.meta.url);
 const ffmpeg = require("ffmpeg-static");
 await mkdir("artifacts", { recursive: true });
@@ -54,7 +55,7 @@ try {
   currentPage = page;
   page.on("pageerror", (error) => result.errors.push(error.message));
   await page.waitForFunction(() => !!window.cutroom);
-  await page.getByRole("heading", { name: "Da ideia ao corte." }).waitFor();
+  await page.getByLabel("Assistente de edição", { exact: true }).waitFor();
   await page.screenshot({ path: "artifacts/desktop-empty.png" });
   const request = (method, params) =>
     page.evaluate(([m, p]) => window.cutroom.request(m, p), [method, params]);
@@ -212,7 +213,7 @@ try {
   )
     throw new Error("Saved project did not reopen.");
   result.checks.push("atomic save and reopened project preserve timeline");
-  await page.getByRole("button", { name: "Transcrição", exact: true }).click();
+  await workspacePanel(page, "transcript");
   await page.screenshot({ path: "artifacts/desktop-transcript.png" });
   if (result.errors.length)
     throw new Error(`Renderer errors: ${result.errors.join("; ")}`);

@@ -49,7 +49,7 @@
 }
 .caption-studio {
   padding: 16px 0;
-  border-top: 1px solid var(--border, #28282c);
+  border-top: 1px solid var(--border, var(--line));
 }
 .caption-studio-heading {
   display: flex;
@@ -63,20 +63,20 @@
 }
 .caption-studio-heading > span {
   font-size: 10px;
-  color: var(--muted, #a1a1aa);
+  color: var(--muted, var(--muted));
   white-space: nowrap;
 }
 .caption-studio-intro,
 .caption-studio-note {
   font-size: 11px;
   line-height: 1.6;
-  color: var(--muted, #a1a1aa);
+  color: var(--muted, var(--muted));
   margin: 9px 0 14px;
 }
 .caption-studio-note {
   padding: 8px 10px;
-  background: #ffffff05;
-  border: 1px solid #ffffff0d;
+  background: var(--accent-soft);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
 }
 .caption-category-list {
@@ -86,18 +86,18 @@
   margin-bottom: 12px;
 }
 .caption-category-list button {
-  border: 1px solid #ffffff14;
+  border: 1px solid var(--line-strong);
   padding: 5px 8px;
   font-size: 10px;
-  color: #a1a1aa;
+  color: var(--muted);
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
 }
 .caption-category-list button[aria-pressed="true"] {
-  color: #ff9b59;
-  border-color: #ff6b0b66;
-  background: #ff6b0b12;
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-bg);
 }
 .caption-preset-list {
   display: grid;
@@ -109,22 +109,22 @@
   scrollbar-width: thin;
 }
 .caption-preset {
-  border: 1px solid #ffffff12;
+  border: 1px solid var(--line-strong);
   border-radius: 5px;
-  background: #17171a;
+  background: var(--bg);
   padding: 0;
   text-align: left;
-  color: #eee;
+  color: var(--text);
   overflow: hidden;
   cursor: pointer;
   transition: border-color 0.15s;
 }
 .caption-preset:hover {
-  border-color: #ffffff55;
+  border-color: var(--line-strong);
 }
 .caption-preset.selected {
-  border-color: #ff6b0b;
-  background: #271c16;
+  border-color: var(--danger);
+  background: var(--bg);
 }
 .caption-preset:disabled {
   opacity: 0.45;
@@ -179,23 +179,23 @@
   display: block;
   margin-top: 3px;
   font-size: 9px;
-  color: #a3a1a5;
+  color: var(--muted);
   font-weight: 400;
 }
 .caption-customize {
   margin-top: 12px;
-  border-top: 1px solid #ffffff12;
+  border-top: 1px solid var(--line-strong);
   padding-top: 11px;
 }
 .caption-customize summary {
   cursor: pointer;
-  color: #dbdadd;
+  color: var(--text);
   font-size: 11px;
   font-weight: 600;
 }
 .caption-customize summary > span {
   float: right;
-  color: #85818b;
+  color: var(--muted);
 }
 .caption-controls {
   border: 0;
@@ -206,7 +206,7 @@
 }
 .caption-controls label {
   font-size: 10px;
-  color: #b2afb9;
+  color: var(--text);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -220,9 +220,9 @@
 .caption-controls select,
 .caption-controls input[type="number"],
 .caption-save-style input {
-  border: 1px solid #ffffff19;
-  background: #101013;
-  color: #eceaee;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  color: var(--text);
   padding: 7px 8px;
   font: inherit;
   font-size: 11px;
@@ -232,10 +232,10 @@
 .caption-controls input[type="range"] {
   width: 100%;
   height: 12px;
-  accent-color: #ff6b0b;
+  accent-color: var(--danger);
 }
 .caption-controls output {
-  color: #e7e5e9;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .caption-color-row {
@@ -249,7 +249,7 @@
 .caption-color-row input[type="color"] {
   width: 100%;
   height: 27px;
-  border: 1px solid #ffffff22;
+  border: 1px solid var(--line-strong);
   padding: 2px;
   background: transparent;
   border-radius: 3px;
@@ -260,7 +260,7 @@
   gap: 18px;
 }
 .caption-weight-row input {
-  accent-color: #ff6b0b;
+  accent-color: var(--danger);
 }
 .caption-save-style {
   display: flex;
@@ -271,10 +271,10 @@
   flex: 1;
 }
 .caption-save-style > button {
-  border: 1px solid #ff6b0b55;
+  border: 1px solid var(--danger-line);
   border-radius: 4px;
-  background: #ff6b0b18;
-  color: #ffad76;
+  background: var(--danger-bg);
+  color: var(--danger);
   font-size: 10px;
   padding: 0 9px;
   cursor: pointer;
@@ -282,13 +282,13 @@
 .caption-saved-row {
   display: flex;
   margin-top: 7px;
-  border: 1px solid #ffffff12;
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
 }
 .caption-saved-row > button {
   border: 0;
   background: transparent;
-  color: #e3dfe5;
+  color: var(--text);
   cursor: pointer;
   padding: 8px;
   font-size: 11px;
@@ -299,12 +299,12 @@
 }
 .caption-saved-row small {
   display: block;
-  color: #928d99;
+  color: var(--muted);
   font-size: 9px;
   margin-top: 3px;
 }
 .caption-saved-row > button:last-child {
-  color: #a09ba5;
+  color: var(--muted);
   width: 30px;
 }
 .caption-save-style > button:disabled {
@@ -315,7 +315,7 @@
 .caption-studio input:focus-visible,
 .caption-studio select:focus-visible,
 .caption-studio summary:focus-visible {
-  outline: 2px solid #ff9b59;
+  outline: 2px solid var(--danger-line);
   outline-offset: 2px;
 }
 .caption-ass-preview {
@@ -337,8 +337,8 @@
   bottom: 8px;
   left: 8px;
   right: 8px;
-  background: #39151a;
-  color: #ffc8cd;
+  background: var(--bg);
+  color: var(--text);
   padding: 7px 10px;
   border-radius: 4px;
   font-size: 10px;

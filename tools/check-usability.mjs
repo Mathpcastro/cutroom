@@ -1,6 +1,11 @@
 import { _electron as electron, expect } from "@playwright/test";
 import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import {
+  conversationPanel,
+  workspacePanel,
+  expandGroup,
+} from "./ui-navigation.mjs";
 
 await mkdir("artifacts", { recursive: true });
 const profile = resolve(`artifacts/usability-profile-${Date.now()}`);
@@ -35,7 +40,7 @@ try {
   checks.push(
     "fresh Electron profile shows transcription download guidance and navigates to actual Packages",
   );
-  await page.getByRole("button", { name: "Assistente", exact: true }).click();
+  await conversationPanel(page, "chat");
   await page
     .getByRole("button", { name: "Dispensar primeiros passos" })
     .click();
@@ -52,7 +57,8 @@ try {
   await page.waitForFunction(
     () => document.querySelector("video")?.readyState >= 2,
   );
-  await page.getByRole("button", { name: "Estilo", exact: true }).click();
+  await workspacePanel(page, "style");
+  await expandGroup(page, "Edição");
   await page
     .getByRole("button", { name: "Remover muletas", exact: true })
     .click();
@@ -63,7 +69,7 @@ try {
     .getByRole("button", { name: "Abrir Pacotes", exact: true })
     .last()
     .click();
-  await page.getByRole("button", { name: "Assistente", exact: true }).click();
+  await conversationPanel(page, "chat");
   checks.push(
     "filler button gives actual missing-package error with direct Packages navigation",
   );
@@ -102,9 +108,7 @@ try {
       .getByRole("slider", { name: "Posição no projeto" })
       .fill(String(Number((0.2 + (i % 5) * 0.8).toFixed(2))));
   }
-  await page
-    .getByRole("button", { name: "Voltar ao início", exact: true })
-    .click();
+  await page.getByRole("slider", { name: "Posição no projeto" }).fill("0");
   if (await page.getByRole("button", { name: "Pausar", exact: true }).count())
     await page.getByRole("button", { name: "Pausar", exact: true }).click();
   state = await request("getState");
@@ -186,7 +190,8 @@ try {
     });
   }, fixturePath);
   await request("openProject");
-  await page.getByRole("button", { name: "Estilo", exact: true }).click();
+  await workspacePanel(page, "style");
+  await expandGroup(page, "Edição");
   await page
     .getByRole("button", { name: "Remover muletas", exact: true })
     .click();

@@ -1,4 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  protocol,
+  shell,
+} from "electron";
 import { randomUUID } from "node:crypto";
 import { createReadStream, mkdirSync } from "node:fs";
 import {
@@ -63,6 +71,30 @@ let packages: PackageManager;
 let codex: CodexClient | undefined;
 let cacheDir: string;
 let userDir: string;
+const appearanceSchema = z
+  .object({
+    mode: z.enum(["light", "dark"]),
+    background: z.string().regex(/^#[0-9a-f]{6}$/i),
+    foreground: z.string().regex(/^#[0-9a-f]{6}$/i),
+  })
+  .strict();
+let appearance: z.infer<typeof appearanceSchema> = {
+  mode: "dark",
+  background: "#202020",
+  foreground: "#e8e8e8",
+};
+let appearanceSave: Promise<void> = Promise.resolve();
+function applyWindowAppearance() {
+  nativeTheme.themeSource = appearance.mode;
+  if (!window || window.isDestroyed()) return;
+  window.setBackgroundColor(appearance.background);
+  if (process.platform === "win32")
+    window.setTitleBarOverlay({
+      color: appearance.background,
+      symbolColor: appearance.foreground,
+      height: 40,
+    });
+}
 let chatBusy = false;
 const allowedFiles = new Set<string>();
 const controllers = new Map<string, AbortController>();
@@ -584,6 +616,22 @@ async function connectCodex(value: unknown = {}) {
 
 async function request(method: string, params?: unknown): Promise<unknown> {
   switch (method) {
+    case "setAppearance": {
+      appearance = appearanceSchema.parse(params);
+      applyWindowAppearance();
+      const serialized = JSON.stringify(appearance);
+      appearanceSave = appearanceSave
+        .catch(() => {})
+        .then(async () => {
+          await writeFile(join(userDir, "appearance.json.partial"), serialized);
+          await rename(
+            join(userDir, "appearance.json.partial"),
+            join(userDir, "appearance.json"),
+          );
+        });
+      await appearanceSave;
+      return { ...appearance };
+    }
     case "getState":
       state.packages = await packages.list();
       return emit();
@@ -803,6 +851,14 @@ async function request(method: string, params?: unknown): Promise<unknown> {
 
 app.whenReady().then(async () => {
   userDir = process.env.CUTROOM_USER_DATA || app.getPath("userData");
+  try {
+    appearance = appearanceSchema.parse(
+      JSON.parse(await readFile(join(userDir, "appearance.json"), "utf8")),
+    );
+  } catch {
+    /* First launch uses graphite. */
+  }
+  nativeTheme.themeSource = appearance.mode;
   cacheDir = join(userDir, "cache");
   await mkdir(cacheDir, { recursive: true });
   await mkdir(join(userDir, "agent-workspace"), { recursive: true });
@@ -868,9 +924,19 @@ app.whenReady().then(async () => {
     height: 940,
     minWidth: 1050,
     minHeight: 700,
-    backgroundColor: "#161816",
+    backgroundColor: appearance.background,
     title: "CutRoom",
     autoHideMenuBar: true,
+    ...(process.platform === "win32"
+      ? {
+          titleBarStyle: "hidden" as const,
+          titleBarOverlay: {
+            color: appearance.background,
+            symbolColor: appearance.foreground,
+            height: 40,
+          },
+        }
+      : {}),
     webPreferences: {
       preload: join(here, "preload.cjs"),
       contextIsolation: true,

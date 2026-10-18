@@ -96,12 +96,12 @@ export function ActivityFeed({
     );
   return (
     <section
-      className={`activity-feed ${compact ? "compact" : ""}`}
+      className={`activity-feed ${compact ? "compact" : ""} ${!running && !state.busy && !expanded ? "is-idle" : ""}`}
       aria-label="Atividade em tempo real"
     >
       <div className="activity-feed-heading">
         <strong>
-          {running || state.busy ? "EM EXECUÇÃO" : "ÚLTIMA ATIVIDADE"}
+          {running || state.busy ? "Em execução" : "Última atividade"}
         </strong>
         <button
           type="button"
@@ -163,7 +163,10 @@ export function ActivityFeed({
                     ? ` · ${seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}min ${seconds % 60}s`}`
                     : ""}
                 </small>
-                {activity.detail && <p>{activity.detail}</p>}
+                {activity.detail &&
+                  (expanded ||
+                    activity.status === "running" ||
+                    activity.status === "failed") && <p>{activity.detail}</p>}
               </div>
             </article>
           );
@@ -178,7 +181,7 @@ export function ActivityFeed({
           </article>
         )}
       </div>
-      {summary && !summaryAlreadyVisible && (
+      {expanded && summary && !summaryAlreadyVisible && (
         <div className="activity-result">
           <Check size={13} />
           <p>{summary.text}</p>

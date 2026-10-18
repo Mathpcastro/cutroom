@@ -1,6 +1,7 @@
 import { _electron as electron } from "@playwright/test";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { workspacePanel, expandGroup } from "./ui-navigation.mjs";
 
 await mkdir("artifacts", { recursive: true });
 const project = JSON.parse(
@@ -82,7 +83,8 @@ try {
   evidence.checks.push(
     "five distinct live ASS styles update through native commands at the actual output playhead",
   );
-  await page.getByRole("button", { name: "Estilo", exact: true }).click();
+  await workspacePanel(page, "style");
+  await expandGroup(page, "Legendas");
   await page.locator(".caption-studio").scrollIntoViewIfNeeded();
   await page.screenshot({ path: "artifacts/caption-studio.png" });
   if ((await page.locator(".caption-preset").count()) !== 24)

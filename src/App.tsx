@@ -8,11 +8,8 @@ import {
   Film,
   FolderOpen,
   LoaderCircle,
-  PanelLeftClose,
-  PanelLeftOpen,
   Save,
   Settings2,
-  Terminal,
   X,
 } from "lucide-react";
 import type { AppSnapshot, EditCommand } from "./shared/types";
@@ -21,6 +18,8 @@ import { Assistant } from "./components/Assistant";
 import { Player } from "./components/Player";
 import { Timeline } from "./components/Timeline";
 import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
+import { Menu } from "./components/Menu";
+import { applyTheme, themes, type ThemeId } from "./lib/themes";
 import { useDialogKeyboard } from "./lib/useDialogKeyboard";
 
 export default function App() {
@@ -30,8 +29,11 @@ export default function App() {
   const [pending, setPending] = useState<string[]>([]);
   const [loading, setLoading] = useState(!!window.cutroom);
   const [tab, setTab] = useState<"media" | "transcript" | "style">("media");
-  const [drawerOpen, setDrawerOpen] = useState(true);
-  const [projectMenu, setProjectMenu] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeId>(
+    (document.documentElement.dataset.theme as ThemeId) || "graphite",
+  );
+  const [helpOpen, setHelpOpen] = useState(false);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
@@ -43,13 +45,13 @@ export default function App() {
   useEffect(() => {
     const closeMenus = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setProjectMenu(false);
         setJobsOpen(false);
       }
     };
     window.addEventListener("keydown", closeMenus);
     return () => window.removeEventListener("keydown", closeMenus);
   }, []);
+  useDialogKeyboard(helpOpen, () => setHelpOpen(false));
   const desktop = !!window.cutroom;
   const projectId = useRef(state.project.id);
   const run = useCallback(async (method: string, params?: unknown) => {
@@ -124,10 +126,25 @@ export default function App() {
   }, [state.project]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === ",") {
+        event.preventDefault();
+        window.dispatchEvent(new Event("cutroom:preferences"));
+        return;
+      }
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        ["s", "o"].includes(event.key.toLowerCase())
+      ) {
+        event.preventDefault();
+        void run(
+          event.key.toLowerCase() === "s" ? "saveProject" : "openProject",
+        );
+        return;
+      }
       const target = event.target as HTMLElement;
       if (
         target.closest(
-          "input,textarea,select,[contenteditable=true],[role=listbox],[role=combobox],button[aria-haspopup]",
+          "input,textarea,select,[contenteditable=true],[role=listbox],[role=combobox],[role=menu],button[aria-haspopup]",
         ) ||
         document.querySelector("[role=dialog]")
       )
@@ -142,14 +159,6 @@ export default function App() {
         if (event.shiftKey ? state.canRedo : state.canUndo)
           void run(event.shiftKey ? "redo" : "undo");
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        void run("saveProject");
-      }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "o") {
-        event.preventDefault();
-        void run("openProject");
-      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -160,15 +169,8 @@ export default function App() {
     (total, media) => total + media.duration,
     0,
   );
-  const switchTab = (next: typeof tab) => {
-    if (next === tab) setDrawerOpen(!drawerOpen);
-    else {
-      setTab(next);
-      setDrawerOpen(true);
-    }
-  };
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${desktop ? "is-desktop" : ""}`}>
       <header className="titlebar">
         <a
           className="wordmark"
@@ -176,96 +178,63 @@ export default function App() {
           onClick={(event) => event.preventDefault()}
           aria-label="CutRoom"
         >
-          <span className="brand-icon">
-            <span /> <Film size={15} /> <span />
-          </span>
-          CutRoom<span className="version">BETA</span>
+          <Film size={16} />
+          CutRoom
         </a>
         <span className="titlebar-divider" />
-        <div className="project-menu-wrap">
+        <Menu
+          label={`Projeto: ${state.project.name}`}
+          className="project-file-menu"
+        >
+          <div className="menu-caption">{state.project.name}</div>
           <button
-            className="project-title"
-            onClick={() => setProjectMenu(!projectMenu)}
-            aria-expanded={projectMenu}
+            role="menuitem"
+            disabled={!desktop}
+            onClick={() => void run("newProject")}
           >
-            {state.project.name}
-            <ChevronDown size={13} />
+            <FilePlus2 size={14} />
+            Novo projeto
           </button>
-          {projectMenu && (
-            <>
-              <div
-                className="menu-dismiss"
-                onClick={() => setProjectMenu(false)}
-              />
-              <div className="project-menu">
-                <button
-                  disabled={!desktop}
-                  onClick={() => {
-                    setProjectMenu(false);
-                    void run("newProject");
-                  }}
-                >
-                  <FilePlus2 size={15} /> Novo projeto
-                </button>
-                <button
-                  disabled={!desktop}
-                  onClick={() => {
-                    setProjectMenu(false);
-                    void run("openProject");
-                  }}
-                >
-                  <FolderOpen size={15} /> Abrir projeto <kbd>Ctrl O</kbd>
-                </button>
-                <button
-                  disabled={!desktop}
-                  onClick={() => {
-                    setProjectMenu(false);
-                    void run("saveProject");
-                  }}
-                >
-                  <Save size={15} /> Salvar projeto <kbd>Ctrl S</kbd>
-                </button>
-                <button
-                  disabled={!desktop}
-                  onClick={() => {
-                    setProjectMenu(false);
-                    setProjectName(state.project.name);
-                    setRenameOpen(true);
-                  }}
-                >
-                  <Settings2 size={15} /> Renomear
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-        <span className="project-location">
-          {state.projectPath ? "Salvo localmente" : "Projeto local"}
-        </span>
-        <div className="titlebar-right">
-          <span className="connection-badge">
-            <span className={`connection-dot ${state.connection.status}`} />
-            {state.connection.status === "connected"
-              ? "Codex conectado"
-              : state.connection.status === "connecting"
-                ? "Conectando…"
-                : "Codex desconectado"}
-          </span>
           <button
-            className="icon-button save-action"
+            role="menuitem"
+            disabled={!desktop}
+            onClick={() => void run("openProject")}
+          >
+            <FolderOpen size={14} />
+            Abrir projeto<kbd>Ctrl O</kbd>
+          </button>
+          <button
+            role="menuitem"
             disabled={!desktop || pending.includes("saveProject")}
-            title="Salvar projeto (Ctrl+S)"
-            aria-label="Salvar projeto"
             onClick={() => void run("saveProject")}
           >
-            {pending.includes("saveProject") ? (
-              <LoaderCircle size={15} className="spin" />
-            ) : (
-              <Save size={15} />
-            )}
+            <Save size={14} />
+            Salvar projeto<kbd>Ctrl S</kbd>
           </button>
           <button
-            className="button primary export-button"
+            role="menuitem"
+            disabled={!desktop}
+            onClick={() => {
+              setProjectName(state.project.name);
+              setRenameOpen(true);
+            }}
+          >
+            <Settings2 size={14} />
+            Renomear
+          </button>
+          <div role="separator" />
+          <button
+            role="menuitem"
+            disabled={!desktop}
+            onClick={() => void run("importMedia")}
+          >
+            <FolderOpen size={14} />
+            Importar mídia
+          </button>
+        </Menu>
+        <div className="titlebar-right">
+          <button
+            className="button export-button"
             disabled={
               !desktop ||
               !state.project.clips.length ||
@@ -276,8 +245,41 @@ export default function App() {
               void run("exportVideo");
             }}
           >
-            <ArrowDownToLine size={15} /> Exportar
+            <ArrowDownToLine size={14} />
+            Exportar
           </button>
+          <Menu
+            label="Configurações"
+            icon={<Settings2 size={15} />}
+            className="settings-menu"
+            eventName="cutroom:preferences"
+          >
+            <div className="menu-caption">
+              Aparência<kbd>Ctrl ,</kbd>
+            </div>
+            {themes.map((item) => (
+              <button
+                key={item.id}
+                role="menuitemradio"
+                aria-checked={theme === item.id}
+                onClick={() => setTheme(applyTheme(item.id))}
+              >
+                <span
+                  className="theme-swatch"
+                  style={{ background: item.color, borderColor: item.accent }}
+                />
+                {item.name}
+                {theme === item.id && (
+                  <Check size={14} className="menu-check" />
+                )}
+              </button>
+            ))}
+            <div role="separator" />
+            <button role="menuitem" onClick={() => setHelpOpen(true)}>
+              <CircleHelp size={14} />
+              Atalhos e ajuda
+            </button>
+          </Menu>
         </div>
       </header>
       <div className="main-layout">
@@ -307,47 +309,57 @@ export default function App() {
           }}
         >
           <nav className="workspace-toolbar" aria-label="Painéis do editor">
-            <div className="workspace-tabs">
+            <Menu label="Ferramentas" className="workspace-menu">
+              <div className="menu-caption">Painéis do projeto</div>
+              {(
+                [
+                  ["media", "Mídia"],
+                  ["transcript", "Transcrição"],
+                  ["style", "Estilo e edição"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  role="menuitem"
+                  onClick={() => {
+                    setTab(value);
+                    setDrawerOpen(true);
+                  }}
+                >
+                  {label}
+                  {drawerOpen && tab === value && (
+                    <Check size={14} className="menu-check" />
+                  )}
+                </button>
+              ))}
+              <div role="separator" />
               <button
-                className={tab === "media" && drawerOpen ? "active" : ""}
-                onClick={() => switchTab("media")}
+                role="menuitem"
+                disabled={!drawerOpen}
+                onClick={() => setDrawerOpen(false)}
               >
-                <FolderOpen size={14} /> Mídia
+                Recolher painel
               </button>
-              <button
-                className={tab === "transcript" && drawerOpen ? "active" : ""}
-                onClick={() => switchTab("transcript")}
-              >
-                Transcrição
-              </button>
-              <button
-                className={tab === "style" && drawerOpen ? "active" : ""}
-                onClick={() => switchTab("style")}
-              >
-                Estilo
-              </button>
-            </div>
-            <div className="workspace-tools">
-              <button
-                className="button small"
-                disabled={!desktop}
-                onClick={() => void run("importMedia")}
-              >
-                <FolderOpen size={13} /> Importar
-              </button>
+            </Menu>
+            <span className="workspace-context">
+              {drawerOpen
+                ? tab === "media"
+                  ? "Mídia"
+                  : tab === "transcript"
+                    ? "Transcrição"
+                    : "Estilo e edição"
+                : "Editor"}
+            </span>
+            {drawerOpen && (
               <button
                 className="icon-button"
-                aria-label={drawerOpen ? "Recolher painel" : "Expandir painel"}
-                title={drawerOpen ? "Recolher painel" : "Expandir painel"}
-                onClick={() => setDrawerOpen(!drawerOpen)}
+                aria-label="Recolher painel"
+                title="Recolher painel"
+                onClick={() => setDrawerOpen(false)}
               >
-                {drawerOpen ? (
-                  <PanelLeftClose size={15} />
-                ) : (
-                  <PanelLeftOpen size={15} />
-                )}
+                <X size={14} />
               </button>
-            </div>
+            )}
           </nav>
           <div
             className={`workspace-main ${drawerOpen ? "" : "drawer-closed"} ${tab === "style" ? "style-drawer-open" : ""}`}
@@ -388,24 +400,22 @@ export default function App() {
       <footer className="statusbar">
         <div className="statusbar-left">
           <span className="local-status">
-            <span /> Local por padrão
-          </span>
-          <span className="status-divider" />
-          <span>
-            {desktop
-              ? "Arquivos originais preservados"
-              : "Prévia da interface · requer aplicativo desktop"}
+            <span />
+            {desktop ? "Local" : "Prévia da interface"}
           </span>
         </div>
         <div className="statusbar-right">
           {loading && (
             <span className="job-summary">
-              <LoaderCircle size={12} className="spin" /> Abrindo projeto…
+              <LoaderCircle size={12} className="spin" />
+              Abrindo projeto…
             </span>
           )}
           {recentJob && (
             <button
               className="job-summary"
+              title="Ver atividades do projeto"
+              aria-label="Atividades do projeto"
               onClick={() => setJobsOpen(!jobsOpen)}
             >
               {recentJob.status === "running" ? (
@@ -415,22 +425,67 @@ export default function App() {
               ) : (
                 <CircleHelp size={12} />
               )}
-              <span>{recentJob.label}</span>
-              {recentJob.status === "running" && (
-                <span>{Math.round(recentJob.progress)}%</span>
-              )}
+              <span>
+                {recentJob.status === "running"
+                  ? `${Math.round(recentJob.progress)}% · Em andamento`
+                  : recentJob.status === "completed"
+                    ? "Concluído"
+                    : "Ver atividade"}
+              </span>
             </button>
           )}
           {originalDuration > 0 && (
             <span className="status-duration">
-              {timecode(originalDuration)} original <span>→</span>{" "}
-              {timecode(duration(state.project))} editado
+              {timecode(originalDuration)}
+              <span> → </span>
+              {timecode(duration(state.project))}
             </span>
           )}
-          <Terminal size={12} />
-          <span>v0.2.0</span>
         </div>
       </footer>
+      {helpOpen && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setHelpOpen(false);
+          }}
+        >
+          <section
+            className="modal help-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="help-title"
+          >
+            <button
+              className="icon-button modal-close"
+              aria-label="Fechar ajuda"
+              onClick={() => setHelpOpen(false)}
+            >
+              <X size={17} />
+            </button>
+            <h2 id="help-title">Atalhos e ajuda</h2>
+            <p>
+              Importe um vídeo pelo menu do projeto ou arraste os arquivos para
+              o editor. Use Ferramentas para abrir mídia, transcrição e estilo.
+            </p>
+            <dl className="shortcut-list">
+              <dt>Salvar projeto</dt>
+              <dd>Ctrl S</dd>
+              <dt>Abrir projeto</dt>
+              <dd>Ctrl O</dd>
+              <dt>Desfazer / refazer</dt>
+              <dd>Ctrl Z / Ctrl Shift Z</dd>
+              <dt>Reproduzir / pausar</dt>
+              <dd>Espaço</dd>
+              <dt>Aparência</dt>
+              <dd>Ctrl ,</dd>
+            </dl>
+            <p>
+              Conecte sua sessão e instale a transcrição pelo menu Conversa.
+            </p>
+          </section>
+        </div>
+      )}
       {dragging && (
         <div className="drop-overlay">
           <FolderOpen size={35} />

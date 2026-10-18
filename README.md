@@ -4,11 +4,16 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 
 **Open source · Windows x64 · versão inicial em desenvolvimento**
 
-[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.2.0)
+[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.3.0)
+
+| Grafite | Claro |
+| --- | --- |
+| ![CutRoom no tema Grafite](docs/screenshots/graphite.png) | ![CutRoom no tema Claro](docs/screenshots/light.png) |
 
 ## O que funciona
 
 - Chat à esquerda e workspace de vídeo à direita, com player, mídia, transcrição e timeline.
+- Interface minimalista com ações agrupadas em menus e painéis sob demanda. Seis temas: Grafite, Claro, Dark+, Light+, Nord e Tokyo Night, com a escolha salva em **Configurações → Aparência**.
 - Codex App Server empacotado: reutiliza a sessão local do Codex, sem conta ou cadastro CutRoom.
 - Seletor pesquisável de modelos e nível de raciocínio conforme as opções da conta.
 - Progresso ao vivo no chat: etapas do agente, ferramentas, processamento local, conclusão, falhas e cancelamento.
@@ -35,10 +40,12 @@ codex login
 
 O npm/CLI é necessário somente para preparar uma sessão caso você ainda não tenha Codex conectado. O CutRoom inclui seu próprio motor Codex e reutiliza a autenticação local existente. Alternativamente, em **Conectar Codex → Usar minha chave de API**, informe sua própria chave OpenAI. Ela não é incluída no projeto nem salva pelo CutRoom.
 
-1. Importe um vídeo.
-2. Clique em **Conecte o Codex**.
-3. O aviso da primeira abertura leva à aba **Pacotes**, onde você instala **Transcrição local** para remover muletas, aplicar a edição limpa completa e criar legendas. O download ocupa centenas de MB e exige internet na primeira instalação. Depois, essas ações preparam a transcrição automaticamente quando necessário. Cortes manuais e detecção de pausas funcionam sem esse pacote.
+1. Arraste um vídeo para o editor ou escolha **Projeto → Importar mídia**.
+2. Abra **Conversa → Conexão Codex**.
+3. O aviso da primeira abertura leva a **Pacotes**, também disponível no menu **Conversa**. Instale **Transcrição local** para remover muletas, aplicar a edição limpa completa e criar legendas. O download ocupa centenas de MB e exige internet na primeira instalação. Depois, essas ações preparam a transcrição automaticamente quando necessário. Cortes manuais e detecção de pausas funcionam sem esse pacote.
 4. Peça uma edição no chat, confira o resultado e clique em **Exportar**.
+
+**Ferramentas** abre mídia, transcrição ou estilo e edição. A timeline agrupa cortes e histórico em **Editar**, e ampliação em **Zoom da timeline**. Salve pelo menu do projeto ou `Ctrl+S`; abra um projeto com `Ctrl+O`. `Ctrl+,` abre a aparência.
 
 Exemplos:
 

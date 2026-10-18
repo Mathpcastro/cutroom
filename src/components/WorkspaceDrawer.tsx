@@ -16,7 +16,6 @@ import {
 import type { AppSnapshot, EditCommand, OverlayKind } from "../shared/types";
 import { clipOffset, duration, timecode } from "../lib/editor";
 import { CaptionStudio } from "./CaptionStudio";
-import { ActivityFeed } from "./ActivityFeed";
 import { useDialogKeyboard } from "../lib/useDialogKeyboard";
 
 interface Props {
@@ -102,11 +101,10 @@ export function WorkspaceDrawer({
             : "Ferramentas de estilo"
       }
     >
-      {tab !== "media" && <ActivityFeed state={state} compact />}
       {tab === "media" && (
         <>
           <div className="drawer-heading">
-            <span>ARQUIVOS DO PROJETO</span>
+            <span>Arquivos do projeto</span>
             <span>{project.media.length}</span>
           </div>
           <button
@@ -167,7 +165,7 @@ export function WorkspaceDrawer({
       {tab === "transcript" && (
         <>
           <div className="drawer-heading">
-            <span>TRANSCRIÇÃO</span>
+            <span>Transcrição</span>
             <Languages size={14} />
           </div>
           {project.words.length ? (
@@ -258,11 +256,11 @@ export function WorkspaceDrawer({
       {tab === "style" && (
         <>
           <div className="drawer-heading">
-            <span>ESTILO & EDIÇÃO</span>
+            <span>Estilo e edição</span>
             <Sparkles size={14} />
           </div>
-          <section className="style-group">
-            <label className="tool-label">PONTO DE PARTIDA</label>
+          <details className="style-group" open>
+            <summary>Edição</summary>
             <button
               className="preset-button"
               disabled={disabled}
@@ -277,9 +275,7 @@ export function WorkspaceDrawer({
               </span>
               <ChevronRight size={14} />
             </button>
-          </section>
-          <section className="style-group">
-            <label className="tool-label">RITMO</label>
+
             <button
               className="tool-row"
               disabled={disabled}
@@ -323,9 +319,9 @@ export function WorkspaceDrawer({
               <span>Time-lapse · 4×</span>
               <ChevronRight size={13} />
             </button>
-          </section>
-          <section className="style-group">
-            <label className="tool-label">TEXTO & ÁUDIO</label>
+          </details>
+          <details className="style-group">
+            <summary>Texto e áudio</summary>
             <button
               className="tool-row"
               disabled={disabled}
@@ -361,8 +357,9 @@ export function WorkspaceDrawer({
             <small className="tool-hint">
               Alvo de áudio: {project.settings.targetLufs} LUFS
             </small>
-          </section>
-          <section className="style-group caption-style-group">
+          </details>
+          <details className="style-group caption-style-group" open>
+            <summary>Legendas</summary>
             <button
               className="tool-row toggle-row"
               disabled={disabled}
@@ -398,9 +395,9 @@ export function WorkspaceDrawer({
                 </button>
               </small>
             )}
-          </section>
-          <section className="style-group">
-            <label className="tool-label">FORMATO DE SAÍDA</label>
+          </details>
+          <details className="style-group">
+            <summary>Formato de saída</summary>
             <div className="output-format">
               <span>
                 {project.settings.width} × {project.settings.height}
@@ -410,7 +407,7 @@ export function WorkspaceDrawer({
             <small className="tool-hint">
               Peça ao assistente outros ajustes de edição.
             </small>
-          </section>
+          </details>
         </>
       )}
       {overlayOpen && (

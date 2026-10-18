@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import type { AppSnapshot, ReasoningEffort } from "../shared/types";
+import { Menu } from "./Menu";
 import { ChoicePicker } from "./ChoicePicker";
 import { ActivityFeed } from "./ActivityFeed";
 import { useDialogKeyboard } from "../lib/useDialogKeyboard";
@@ -102,45 +103,62 @@ export function Assistant({ state, run, desktop }: ActionProps) {
   };
   return (
     <aside className="assistant-panel" aria-label="Assistente de edição">
-      <div className="assistant-tabs">
-        <button
-          className={tab === "chat" ? "selected" : ""}
-          onClick={() => setTab("chat")}
+      <div className="assistant-heading">
+        <Menu label="Conversa" icon={<MessageSquare size={14} />}>
+          <button role="menuitem" onClick={() => setTab("chat")}>
+            <MessageSquare size={14} />
+            Assistente
+            {tab === "chat" && <Check size={13} className="menu-check" />}
+          </button>
+          <button role="menuitem" onClick={() => setTab("packages")}>
+            <Package size={14} />
+            Pacotes
+            {tab === "packages" && <Check size={13} className="menu-check" />}
+          </button>
+          <div role="separator" />
+          <button
+            role="menuitem"
+            disabled={!desktop}
+            onClick={() => setConnectionOpen(true)}
+          >
+            <Terminal size={14} />
+            Conexão Codex
+          </button>
+          <div className="menu-caption">Sugestões</div>
+          {[
+            "Remova pausas e muletas",
+            "Adicione legendas",
+            "Aplique a edição limpa",
+          ].map((suggestion) => (
+            <button
+              key={suggestion}
+              role="menuitem"
+              onClick={() => {
+                setTab("chat");
+                setText(suggestion);
+                requestAnimationFrame(() => input.current?.focus());
+              }}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </Menu>
+        <span
+          className="assistant-connection"
+          title={connected ? "Codex conectado" : "Codex desconectado"}
         >
-          <MessageSquare size={14} /> Assistente
-        </button>
-        <button
-          className={tab === "packages" ? "selected" : ""}
-          onClick={() => setTab("packages")}
-        >
-          <Package size={14} /> Pacotes{" "}
-          <span className="count">
-            {state.packages.filter((p) => p.installed).length}
-          </span>
-        </button>
+          <span className={`connection-dot ${state.connection.status}`} />
+          {connected ? "Conectado" : "Desconectado"}
+        </span>
       </div>
       {tab === "chat" ? (
         <>
-          <div className="conversation-label">
-            <span>SEU PARCEIRO DE EDIÇÃO</span>
-            <button
-              className="icon-button"
-              title={connected ? "Gerenciar conexão Codex" : "Conectar Codex"}
-              aria-label={
-                connected ? "Gerenciar conexão Codex" : "Conectar Codex"
-              }
-              disabled={!desktop}
-              onClick={() => setConnectionOpen(true)}
-            >
-              <Terminal size={15} />
-            </button>
-          </div>
           <div className="conversation-scroll">
             {!state.onboarding?.dismissed && desktop && (
               <section className="setup-guide" aria-label="Primeiros passos">
                 <div className="setup-guide-heading">
                   <Package size={17} />
-                  <strong>Prepare sua primeira edição</strong>
+                  <strong>Transcrição local</strong>
                   <button
                     className="icon-button"
                     aria-label="Dispensar primeiros passos"
@@ -150,12 +168,8 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                   </button>
                 </div>
                 <p>
-                  Importe um vídeo. Para legendas e remoção de muletas, instale
-                  a transcrição local em <strong>Pacotes</strong>.
-                </p>
-                <p className="setup-guide-note">
-                  Download de centenas de MB no primeiro uso. Cortes, zoom,
-                  exportação e remoção de pausas já funcionam sem transcrever.
+                  Instale a transcrição local para gerar legendas e remover
+                  muletas. O primeiro download tem centenas de MB.
                 </p>
                 <button
                   className="button primary full-width"
@@ -191,43 +205,20 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                 <Download size={14} />
                 <span>
                   Legendas e muletas precisam da transcrição.
-                  <strong>Abrir Pacotes →</strong>
+                  <strong>Abrir Pacotes</strong>
                 </span>
               </button>
             )}
             {state.messages.length === 0 ? (
               <div className="assistant-welcome">
-                <div className="assistant-mark">
-                  <Sparkles size={23} strokeWidth={1.5} />
-                </div>
-                <h1>Da ideia ao corte.</h1>
+                <h1>Como quer editar?</h1>
                 <p>
-                  Descreva a edição. Acompanhe cada mudança e ajuste os detalhes
-                  na timeline.
+                  Importe um vídeo e descreva a edição. Os ajustes aparecem na
+                  timeline.
                 </p>
-                <div className="suggestions">
-                  {[
-                    "Remova pausas e muletas",
-                    "Adicione legendas",
-                    "Aplique a edição limpa",
-                  ].map((suggestion, i) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => {
-                        setText(suggestion);
-                        input.current?.focus();
-                      }}
-                    >
-                      <span>{String(i + 1).padStart(2, "0")}</span>
-                      {suggestion}
-                      <ArrowUp size={13} />
-                    </button>
-                  ))}
-                </div>
-                <div className="local-note">
-                  <Terminal size={13} />
-                  <span>Seu Codex. Seus arquivos. Seu computador.</span>
-                </div>
+                <span className="welcome-hint">
+                  Cortes, legendas, ritmo e áudio.
+                </span>
               </div>
             ) : (
               <div className="messages">
@@ -360,12 +351,7 @@ export function Assistant({ state, run, desktop }: ActionProps) {
         </>
       ) : (
         <div className="packages-panel">
-          <div className="panel-eyebrow">SUA CAIXA DE FERRAMENTAS</div>
-          <h2>
-            Mais possibilidades.
-            <br />
-            No seu computador.
-          </h2>
+          <h2>Pacotes locais</h2>
           <p>
             Instale a transcrição para entender as falas, remover muletas e
             criar legendas. O download acontece aqui; não é preciso abrir o
