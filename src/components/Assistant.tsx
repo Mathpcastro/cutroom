@@ -13,7 +13,9 @@ import {
   Terminal,
   X,
 } from "lucide-react";
-import type { AppSnapshot } from "../shared/types";
+import type { AppSnapshot, ReasoningEffort } from "../shared/types";
+import { ChoicePicker } from "./ChoicePicker";
+import { ActivityFeed } from "./ActivityFeed";
 import { useDialogKeyboard } from "../lib/useDialogKeyboard";
 
 export interface ActionProps {
@@ -26,6 +28,46 @@ export function Assistant({ state, run, desktop }: ActionProps) {
   const [tab, setTab] = useState<"chat" | "packages">("chat");
   const [text, setText] = useState("");
   const [model, setModel] = useState("");
+  const [efforts, setEfforts] = useState<Record<string, ReasoningEffort>>({});
+  const selectedModel =
+    state.connection.models.find(
+      (item) => item.id === (model || state.connection.model),
+    ) || state.connection.models[0];
+  const supportedEfforts = selectedModel?.reasoningEfforts || [];
+  const selectedEffort =
+    selectedModel &&
+    efforts[selectedModel.id] &&
+    supportedEfforts.includes(efforts[selectedModel.id])
+      ? efforts[selectedModel.id]
+      : state.connection.model === selectedModel?.id &&
+          state.connection.reasoningEffort &&
+          supportedEfforts.includes(state.connection.reasoningEffort)
+        ? state.connection.reasoningEffort
+        : selectedModel?.defaultReasoningEffort &&
+            supportedEfforts.includes(selectedModel.defaultReasoningEffort)
+          ? selectedModel.defaultReasoningEffort
+          : supportedEfforts[0];
+  const effortLabels: Record<ReasoningEffort, string> = {
+    none: "Sem",
+    minimal: "Mínimo",
+    low: "Baixo",
+    medium: "Médio",
+    high: "Alto",
+    xhigh: "Muito alto",
+    max: "Máximo",
+  };
+  const activeWork =
+    state.busy || state.jobs.some((job) => job.status === "running");
+  const transcription = state.packages.find(
+    (item) => item.id === "faster-whisper-base",
+  );
+  const transcriptionReady =
+    state.onboarding?.transcriptionReady ?? !!transcription?.installed;
+  useEffect(() => {
+    const openPackages = () => setTab("packages");
+    window.addEventListener("cutroom:packages", openPackages);
+    return () => window.removeEventListener("cutroom:packages", openPackages);
+  }, []);
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -45,7 +87,7 @@ export function Assistant({ state, run, desktop }: ActionProps) {
     }
   }, [state.connection.status]);
   const submit = async () => {
-    if (!text.trim() || state.busy || !desktop) return;
+    if (!text.trim() || activeWork || !desktop) return;
     if (!connected) {
       setConnectionOpen(true);
       return;
@@ -54,7 +96,8 @@ export function Assistant({ state, run, desktop }: ActionProps) {
     setText("");
     await run("sendChat", {
       text: message,
-      model: model || state.connection.model,
+      model: selectedModel?.id,
+      reasoningEffort: selectedEffort,
     });
   };
   return (
@@ -93,6 +136,65 @@ export function Assistant({ state, run, desktop }: ActionProps) {
             </button>
           </div>
           <div className="conversation-scroll">
+            {!state.onboarding?.dismissed && desktop && (
+              <section className="setup-guide" aria-label="Primeiros passos">
+                <div className="setup-guide-heading">
+                  <Package size={17} />
+                  <strong>Prepare sua primeira edição</strong>
+                  <button
+                    className="icon-button"
+                    aria-label="Dispensar primeiros passos"
+                    onClick={() => void run("dismissOnboarding")}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <p>
+                  Importe um vídeo. Para legendas e remoção de muletas, instale
+                  a transcrição local em <strong>Pacotes</strong>.
+                </p>
+                <p className="setup-guide-note">
+                  Download de centenas de MB no primeiro uso. Cortes, zoom,
+                  exportação e remoção de pausas já funcionam sem transcrever.
+                </p>
+                <button
+                  className="button primary full-width"
+                  disabled={
+                    transcriptionReady || transcription?.status === "installing"
+                  }
+                  onClick={() => setTab("packages")}
+                >
+                  {transcriptionReady
+                    ? "Transcrição instalada"
+                    : transcription?.status === "installing"
+                      ? "Instalação em andamento…"
+                      : "Instalar transcrição"}
+                </button>
+                {transcriptionReady &&
+                  state.project.media.length > 0 &&
+                  !state.project.words.length && (
+                    <button
+                      className="button full-width"
+                      disabled={activeWork}
+                      onClick={() => void run("transcribe")}
+                    >
+                      Transcrever vídeos importados
+                    </button>
+                  )}
+              </section>
+            )}
+            {state.onboarding?.dismissed && !transcriptionReady && desktop && (
+              <button
+                className="setup-reminder"
+                onClick={() => setTab("packages")}
+              >
+                <Download size={14} />
+                <span>
+                  Legendas e muletas precisam da transcrição.
+                  <strong>Abrir Pacotes →</strong>
+                </span>
+              </button>
+            )}
             {state.messages.length === 0 ? (
               <div className="assistant-welcome">
                 <div className="assistant-mark">
@@ -129,39 +231,37 @@ export function Assistant({ state, run, desktop }: ActionProps) {
               </div>
             ) : (
               <div className="messages">
-                {state.messages.map((message) => (
-                  <article
-                    key={message.id}
-                    className={`message ${message.role}`}
-                  >
-                    <div className="message-heading">
-                      {message.role === "user" ? (
-                        <>
-                          <span className="user-dot" /> Você
-                        </>
-                      ) : message.role === "system" ? (
-                        <>
-                          <Terminal size={12} /> Atividade
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={12} /> CutRoom
-                        </>
-                      )}
-                    </div>
-                    <div className="message-text">{message.text}</div>
-                  </article>
-                ))}
+                {state.messages
+                  .filter((message) => message.text.trim())
+                  .map((message) => (
+                    <article
+                      key={message.id}
+                      className={`message ${message.role}`}
+                    >
+                      <div className="message-heading">
+                        {message.role === "user" ? (
+                          <>
+                            <span className="user-dot" /> Você
+                          </>
+                        ) : message.role === "system" ? (
+                          <>
+                            <Terminal size={12} /> Atividade
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={12} /> CutRoom
+                          </>
+                        )}
+                      </div>
+                      <div className="message-text">{message.text}</div>
+                    </article>
+                  ))}
                 <div ref={end} />
-              </div>
-            )}
-            {state.busy && (
-              <div className="thinking">
-                <span className="spinner" /> Trabalhando no projeto…
               </div>
             )}
           </div>
           <div className="composer-area">
+            <ActivityFeed state={state} />
             {!connected && (
               <button
                 className="connect-callout"
@@ -200,29 +300,42 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                 rows={3}
               />
               <div className="composer-controls">
-                <label className="model-select">
-                  <Sparkles size={12} />
-                  <select
-                    aria-label="Modelo do Codex"
-                    value={model || state.connection.model || ""}
-                    onChange={(event) => setModel(event.target.value)}
-                    disabled={!connected}
-                  >
-                    <option value="">Codex</option>
-                    {state.connection.models.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={11} />
-                </label>
-                {state.busy ? (
+                <div className="assistant-selectors">
+                  <ChoicePicker
+                    label="Modelo"
+                    value={selectedModel?.id || ""}
+                    options={state.connection.models.map((item) => ({
+                      value: item.id,
+                      label: item.name,
+                      detail: item.id,
+                    }))}
+                    onChange={setModel}
+                    disabled={!connected || activeWork}
+                    searchable
+                  />
+                  <ChoicePicker
+                    label="Raciocínio"
+                    value={selectedEffort || ""}
+                    options={supportedEfforts.map((effort) => ({
+                      value: effort,
+                      label: effortLabels[effort],
+                    }))}
+                    onChange={(effort) =>
+                      selectedModel &&
+                      setEfforts((current) => ({
+                        ...current,
+                        [selectedModel.id]: effort as ReasoningEffort,
+                      }))
+                    }
+                    disabled={!connected || activeWork}
+                  />
+                </div>
+                {activeWork ? (
                   <button
                     className="send-button stop"
                     type="button"
                     title="Interromper"
-                    aria-label="Interromper resposta"
+                    aria-label="Interromper todo o trabalho"
                     onClick={() => void run("cancelChat")}
                   >
                     <CircleStop size={18} />
@@ -253,7 +366,34 @@ export function Assistant({ state, run, desktop }: ActionProps) {
             <br />
             No seu computador.
           </h2>
-          <p>Pacotes adicionam recursos reutilizáveis ao editor.</p>
+          <p>
+            Instale a transcrição para entender as falas, remover muletas e
+            criar legendas. O download acontece aqui; não é preciso abrir o
+            terminal.
+          </p>
+          <ActivityFeed state={state} compact />
+          {transcriptionReady &&
+            state.project.media.length > 0 &&
+            !state.project.words.length && (
+              <div className="package-ready">
+                <Check size={17} />
+                <strong>Pronto para transcrever</strong>
+                <p>
+                  O pacote está instalado. Gere as palavras dos vídeos
+                  importados para editar falas e legendas.
+                </p>
+                <button
+                  className="button primary full-width"
+                  disabled={activeWork}
+                  onClick={() => {
+                    setTab("chat");
+                    void run("transcribe");
+                  }}
+                >
+                  Transcrever vídeos importados
+                </button>
+              </div>
+            )}
           {state.packages.length === 0 && (
             <div className="small-empty">
               <Package size={25} />
@@ -284,7 +424,10 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                 <button
                   className="button small"
                   disabled={
-                    !desktop || item.installed || item.status === "installing"
+                    !desktop ||
+                    activeWork ||
+                    item.installed ||
+                    item.status === "installing"
                   }
                   onClick={() => void run("installPackage", { id: item.id })}
                 >

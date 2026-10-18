@@ -1,4 +1,9 @@
 import { randomUUID } from "node:crypto";
+import {
+  captionTimelineWords,
+  resolveCaptionSettings,
+} from "../../src/shared/captions";
+import type { CaptionSettings } from "../../src/shared/captions";
 import type {
   Clip,
   EditCommand,
@@ -72,22 +77,7 @@ export const projectDuration = (project: Project) =>
 
 /** Source seconds stay authoritative. Duplicate clips (including hooks) map a word more than once. */
 export function timelineWords(project: Project): Word[] {
-  let offset = 0;
-  const words: Word[] = [];
-  for (const clip of project.clips) {
-    for (const word of project.words) {
-      const start = Math.max(word.start, clip.start),
-        end = Math.min(word.end, clip.end);
-      if (word.mediaId === clip.mediaId && end > start + eps && !clip.muted)
-        words.push({
-          ...word,
-          start: offset + (start - clip.start) / clip.speed,
-          end: offset + (end - clip.start) / clip.speed,
-        });
-    }
-    offset += clipDuration(clip);
-  }
-  return words.sort((a, b) => a.start - b.start);
+  return captionTimelineWords(project);
 }
 
 export function validateProject(value: unknown): Project {
@@ -175,6 +165,8 @@ export function validateProject(value: unknown): Project {
   num(s.fps, "FPS", 1, 120);
   if (typeof s.accent !== "string" || !/^#[a-f\d]{6}$/i.test(s.accent))
     fail("Cor de destaque inválida.");
+  if (s.captionStyle !== undefined)
+    resolveCaptionSettings(s.captionStyle as Partial<CaptionSettings>);
   return structuredClone(value) as Project;
 }
 
@@ -398,6 +390,18 @@ export function applyCommand(project: Project, command: EditCommand): Project {
       break;
     case "captions":
       p.settings.captions = bool(a.enabled, "Legendas");
+      if (a.style !== undefined) {
+        const change = obj(a.style) as Partial<CaptionSettings>;
+        const base =
+          change.presetId &&
+          change.presetId !== p.settings.captionStyle?.presetId
+            ? resolveCaptionSettings({ presetId: change.presetId })
+            : resolveCaptionSettings(p.settings.captionStyle);
+        p.settings.captionStyle = resolveCaptionSettings({
+          ...base,
+          ...change,
+        });
+      }
       break;
     case "normalize":
       p.settings.normalize = bool(a.enabled, "Normalização");

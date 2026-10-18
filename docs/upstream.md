@@ -53,7 +53,7 @@ Todos recebem `{name, args}` e retornam um novo projeto validado, sem mutar o an
 | `delete_clip` | `{clipId}` |
 | `zoom` | `{clipId?,factor,focusX?,focusY?}`, fator 1–4 e focos normalizados 0–1 |
 | `speed` | `{clipId?,factor,muted?}`, fator 0,1–16 |
-| `captions` | `{enabled}` booleano |
+| `captions` | `{enabled,style?}`; preset e ajustes validados pelo gerador compartilhado em [captions.md](captions.md) |
 | `normalize` | `{enabled,targetLufs?}`, alvo de −30 a −5 |
 | `overlay` | `{kind,text,start,end}` em segundos da saída; tipos `title`, `statement`, `callout`, `flow`, `promo`, `cover` |
 | `remove_silence` | `{ranges:[{mediaId,start,end}]}` em segundos de origem, após análise assíncrona |

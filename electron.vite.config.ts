@@ -23,6 +23,7 @@ export default defineConfig({
   },
   renderer: {
     root: ".",
+    worker: { format: "es" },
     plugins: [react()],
     build: { outDir: "dist", rollupOptions: { input: resolve("index.html") } },
   },

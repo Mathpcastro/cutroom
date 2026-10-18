@@ -1,3 +1,16 @@
+import type { CaptionSettings } from "./captions";
+export type ReasoningEffort =
+  "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+export interface AgentActivity {
+  id: string;
+  kind: "turn" | "reasoning" | "tool" | "message" | "analysis" | "edit";
+  label: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  startedAt: string;
+  finishedAt?: string;
+  detail?: string;
+  tool?: string;
+}
 export interface Media {
   id: string;
   name: string;
@@ -54,6 +67,7 @@ export interface Project {
     height: number;
     fps: number;
     accent: string;
+    captionStyle?: CaptionSettings;
   };
 }
 export interface ChatMessage {
@@ -64,6 +78,8 @@ export interface ChatMessage {
 }
 export interface Job {
   id: string;
+  startedAt?: string;
+  finishedAt?: string;
   kind: string;
   label: string;
   progress: number;
@@ -86,7 +102,13 @@ export interface Connection {
   status: "disconnected" | "connecting" | "connected" | "error";
   account?: string;
   model?: string;
-  models: { id: string; name: string }[];
+  models: {
+    id: string;
+    name: string;
+    reasoningEfforts?: ReasoningEffort[];
+    defaultReasoningEffort?: ReasoningEffort;
+  }[];
+  reasoningEffort?: ReasoningEffort;
   error?: string;
 }
 export interface AppSnapshot {
@@ -99,6 +121,8 @@ export interface AppSnapshot {
   canUndo: boolean;
   canRedo: boolean;
   projectPath?: string;
+  activities?: AgentActivity[];
+  onboarding?: { dismissed: boolean; transcriptionReady: boolean };
 }
 export type CommandName =
   | "remove_range"

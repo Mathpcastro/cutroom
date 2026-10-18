@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import type { AppSnapshot, EditCommand, OverlayKind } from "../shared/types";
 import { clipOffset, duration, timecode } from "../lib/editor";
+import { CaptionStudio } from "./CaptionStudio";
+import { ActivityFeed } from "./ActivityFeed";
 import { useDialogKeyboard } from "../lib/useDialogKeyboard";
 
 interface Props {
@@ -44,7 +46,10 @@ export function WorkspaceDrawer({
   const [transcriptSearch, setTranscriptSearch] = useState("");
   const project = state.project;
   const hasMedia = project.media.length > 0;
-  const disabled = !desktop || !hasMedia || state.busy;
+  const busy = state.busy || state.jobs.some((job) => job.status === "running");
+  const disabled = !desktop || !hasMedia || busy;
+  const openPackages = () =>
+    window.dispatchEvent(new Event("cutroom:packages"));
   const transcriptionPackage = state.packages.find(
     (item) =>
       item.capabilities.some((cap) =>
@@ -97,6 +102,7 @@ export function WorkspaceDrawer({
             : "Ferramentas de estilo"
       }
     >
+      {tab !== "media" && <ActivityFeed state={state} compact />}
       {tab === "media" && (
         <>
           <div className="drawer-heading">
@@ -225,25 +231,24 @@ export function WorkspaceDrawer({
               </p>
               <button
                 className="button primary full-width"
-                disabled={disabled}
+                disabled={
+                  !desktop ||
+                  busy ||
+                  (!!transcriptionPackage?.installed && !hasMedia)
+                }
                 onClick={() =>
-                  void run(
-                    transcriptionPackage && !transcriptionPackage.installed
-                      ? "installPackage"
-                      : "transcribe",
-                    transcriptionPackage && !transcriptionPackage.installed
-                      ? { id: transcriptionPackage.id }
-                      : undefined,
-                  )
+                  transcriptionPackage?.installed
+                    ? void run("transcribe")
+                    : openPackages()
                 }
               >
-                {transcriptionPackage && !transcriptionPackage.installed
-                  ? "Instalar transcrição local"
+                {!transcriptionPackage?.installed
+                  ? "Instalar em Pacotes"
                   : "Transcrever vídeo"}
               </button>
               <small>
                 {hasMedia
-                  ? "O primeiro uso pode exigir a instalação do pacote local."
+                  ? "Transcrição, muletas e legendas usam o pacote local; pausas não precisam dele."
                   : "Importe um vídeo para começar."}
               </small>
             </div>
@@ -286,7 +291,7 @@ export function WorkspaceDrawer({
             </button>
             <button
               className="tool-row"
-              disabled={disabled || !project.words.length}
+              disabled={disabled}
               onClick={() => command({ name: "remove_fillers", args: {} })}
             >
               <MessageSquareText size={15} />
@@ -295,7 +300,16 @@ export function WorkspaceDrawer({
             </button>
             {!project.words.length && (
               <small className="tool-hint">
-                Transcreva o vídeo para encontrar muletas.
+                {transcriptionPackage?.installed ? (
+                  "A transcrição será gerada antes da remoção."
+                ) : (
+                  <>
+                    Instale a transcrição para encontrar muletas.{" "}
+                    <button className="text-link" onClick={openPackages}>
+                      Abrir Pacotes
+                    </button>
+                  </>
+                )}
               </small>
             )}
             <button
@@ -327,23 +341,6 @@ export function WorkspaceDrawer({
             <button
               className="tool-row toggle-row"
               disabled={disabled}
-              aria-pressed={project.settings.captions}
-              onClick={() =>
-                command({
-                  name: "captions",
-                  args: { enabled: !project.settings.captions },
-                })
-              }
-            >
-              <Languages size={15} />
-              <span>Legendas</span>
-              <span
-                className={`switch ${project.settings.captions ? "on" : ""}`}
-              />
-            </button>
-            <button
-              className="tool-row toggle-row"
-              disabled={disabled}
               aria-pressed={project.settings.normalize}
               onClick={() =>
                 command({
@@ -364,6 +361,43 @@ export function WorkspaceDrawer({
             <small className="tool-hint">
               Alvo de áudio: {project.settings.targetLufs} LUFS
             </small>
+          </section>
+          <section className="style-group caption-style-group">
+            <button
+              className="tool-row toggle-row"
+              disabled={disabled}
+              aria-pressed={project.settings.captions}
+              onClick={() =>
+                command({
+                  name: "captions",
+                  args: { enabled: !project.settings.captions },
+                })
+              }
+            >
+              <Languages size={15} />
+              <span>
+                Legendas{" "}
+                {project.settings.captions ? "ativadas" : "desativadas"}
+              </span>
+              <span
+                className={`switch ${project.settings.captions ? "on" : ""}`}
+              />
+            </button>
+            <CaptionStudio
+              project={project}
+              disabled={disabled}
+              onChange={(style) =>
+                command({ name: "captions", args: { enabled: true, style } })
+              }
+            />
+            {!transcriptionPackage?.installed && (
+              <small className="tool-hint">
+                Legendas precisam da transcrição local.{" "}
+                <button className="text-link" onClick={openPackages}>
+                  Instalar em Pacotes
+                </button>
+              </small>
+            )}
           </section>
           <section className="style-group">
             <label className="tool-label">FORMATO DE SAÍDA</label>

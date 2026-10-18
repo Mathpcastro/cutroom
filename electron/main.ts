@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from "electron";
 import { randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, mkdirSync } from "node:fs";
 import {
   access,
   mkdir,
@@ -20,8 +20,14 @@ import type {
   EditCommand,
   Job,
   Project,
+  AgentActivity,
 } from "../src/shared/types";
-import { createProject, validateProject, applyCommand } from "./core/project";
+import {
+  createProject,
+  validateProject,
+  applyCommand,
+  projectDuration,
+} from "./core/project";
 import {
   probeMedia,
   detectSilences,
@@ -29,10 +35,15 @@ import {
   ffmpegPath,
 } from "./core/media";
 import { PackageManager } from "./core/packages";
-import { CodexClient } from "./core/codex";
+import { CodexClient, toolActivityLabel } from "./core/codex";
 import { runProcess } from "./core/process";
 
 const here = dirname(fileURLToPath(import.meta.url));
+if (process.env.CUTROOM_USER_DATA) {
+  const profile = resolve(process.env.CUTROOM_USER_DATA);
+  mkdirSync(profile, { recursive: true });
+  app.setPath("userData", profile);
+}
 const resources = app.isPackaged
   ? join(process.resourcesPath, "resources")
   : resolve(here, "../resources");
@@ -61,6 +72,8 @@ let state: AppSnapshot = {
   project: createProject(),
   messages: [],
   jobs: [],
+  activities: [],
+  onboarding: { dismissed: false, transcriptionReady: false },
   packages: [],
   connection: { status: "disconnected", models: [] },
   busy: false,
@@ -69,6 +82,10 @@ let state: AppSnapshot = {
 };
 
 function emit() {
+  if (state.onboarding)
+    state.onboarding.transcriptionReady = state.packages.some(
+      (item) => item.id === "faster-whisper-base" && item.installed,
+    );
   state = {
     ...state,
     busy: chatBusy || controllers.size > 0,
@@ -78,6 +95,44 @@ function emit() {
   if (window && !window.isDestroyed())
     window.webContents.send("editor:event", { type: "state", state });
   return structuredClone(state);
+}
+function activity(entry: AgentActivity) {
+  state.activities = [
+    ...(state.activities || []).filter((item) => item.id !== entry.id),
+    entry,
+  ].slice(-200);
+  emit();
+}
+async function requireTranscription(signal?: AbortSignal) {
+  const missing = state.project.media.some(
+    (media) =>
+      media.hasAudio &&
+      !state.project.words.some((word) => word.mediaId === media.id),
+  );
+  if (!missing && state.project.words.length) return;
+  if (!state.project.media.some((media) => media.hasAudio))
+    throw new Error("Este vídeo não tem áudio para transcrever.");
+  state.packages = await packages.list();
+  if (
+    !state.packages.some(
+      (item) => item.id === "faster-whisper-base" && item.installed,
+    )
+  ) {
+    state.onboarding = {
+      dismissed: !!state.onboarding?.dismissed,
+      transcriptionReady: false,
+    };
+    emit();
+    throw new Error(
+      "Instale o pacote Transcrição local na aba Pacotes. Depois, a fala será transcrita no seu computador para remover muletas e criar legendas.",
+    );
+  }
+  signal?.throwIfAborted();
+  if (missing) await transcribe(false, signal);
+  if (!state.project.words.length)
+    throw new Error(
+      "Não foi encontrada fala no vídeo. Você ainda pode cortar e remover pausas manualmente.",
+    );
 }
 function message(role: ChatMessage["role"], text: string) {
   state.messages.push({
@@ -123,9 +178,11 @@ async function job<T>(
     signal: AbortSignal,
     progress: (percent: number, label?: string) => void,
   ) => Promise<T>,
+  parentSignal?: AbortSignal,
 ): Promise<T> {
   const entry: Job = {
     id: randomUUID(),
+    startedAt: new Date().toISOString(),
     kind,
     label,
     status: "running",
@@ -133,9 +190,13 @@ async function job<T>(
   };
   state.jobs = [...state.jobs.slice(-19), entry];
   const controller = new AbortController();
+  const abortFromParent = () => controller.abort();
+  if (parentSignal?.aborted) controller.abort();
+  parentSignal?.addEventListener("abort", abortFromParent, { once: true });
   controllers.set(entry.id, controller);
   emit();
   try {
+    controller.signal.throwIfAborted();
     const result = await run(controller.signal, (percent, text) => {
       entry.progress = Math.min(100, Math.max(0, percent));
       if (text) entry.label = text;
@@ -154,6 +215,8 @@ async function job<T>(
     entry.error = error instanceof Error ? error.message : String(error);
     throw error;
   } finally {
+    parentSignal?.removeEventListener("abort", abortFromParent);
+    entry.finishedAt = new Date().toISOString();
     controllers.delete(entry.id);
     emit();
   }
@@ -223,7 +286,7 @@ async function importPaths(value: unknown) {
   replaceProject(project);
   return emit();
 }
-async function transcribe(force = false) {
+async function transcribe(force = false, parentSignal?: AbortSignal) {
   const sourceProjectId = state.project.id;
   const sources = state.project.media.filter(
     (media) =>
@@ -251,7 +314,9 @@ async function transcribe(force = false) {
         );
       return results;
     },
+    parentSignal,
   );
+  parentSignal?.throwIfAborted();
   if (state.project.id !== sourceProjectId)
     throw new Error("O projeto mudou durante a transcrição.");
   replaceProject({
@@ -294,36 +359,81 @@ async function executeCommand(value: unknown) {
     .parse(value) as EditCommand;
   if (!state.project.media.length && command.name !== "rename")
     throw new Error("Importe um vídeo primeiro.");
-  if (command.name === "remove_fillers" && !state.project.words.length)
-    throw new Error("Transcreva o vídeo antes de remover muletas.");
-  if (command.name === "remove_silence" || command.name === "preset") {
-    const ranges = await job(
-      "analysis",
-      "Analisando pausas…",
+  try {
+    await job(
+      "edit",
+      toolActivityLabel(
+        "edit_project",
+        command as unknown as Record<string, unknown>,
+      ),
       async (signal, progress) => {
-        const ranges = [];
-        for (let i = 0; i < state.project.media.length; i++) {
-          const media = state.project.media[i];
-          if (media.hasAudio)
-            ranges.push(
-              ...(await detectSilences(media, { signal })).map((range) => ({
-                ...range,
-                mediaId: media.id,
-              })),
-            );
-          progress(((i + 1) / state.project.media.length) * 100);
+        if (
+          command.name === "remove_fillers" ||
+          command.name === "preset" ||
+          (command.name === "captions" && command.args.enabled === true)
+        )
+          await requireTranscription(signal);
+        const before = state.project;
+        if (command.name === "remove_silence" || command.name === "preset") {
+          const ranges = [];
+          for (let i = 0; i < before.media.length; i++) {
+            const media = before.media[i];
+            if (media.hasAudio)
+              ranges.push(
+                ...(
+                  await detectSilences(media, {
+                    signal,
+                    onProgress: (value) =>
+                      progress(
+                        ((i * 100 + value) / before.media.length) * 0.9,
+                        `Analisando pausas: ${media.name}`,
+                      ),
+                  })
+                ).map((range) => ({
+                  ...range,
+                  mediaId: media.id,
+                })),
+              );
+            progress(((i + 1) / before.media.length) * 90);
+          }
+          command.args = { ...command.args, ranges };
         }
-        return ranges;
+        signal.throwIfAborted();
+        progress(95, "Aplicando edição à timeline…");
+        const after = applyCommand(before, command);
+        signal.throwIfAborted();
+        if (state.project !== before)
+          throw new Error("O projeto mudou durante a edição.");
+        replaceProject(after);
+        const removed = Math.max(
+          0,
+          projectDuration(before) - projectDuration(after),
+        );
+        const summaries: Partial<Record<EditCommand["name"], string>> = {
+          remove_silence:
+            removed > 0.001
+              ? `Pausas removidas: ${removed.toFixed(2)} s. A timeline já foi atualizada.`
+              : "Análise concluída: nenhuma pausa removível de pelo menos 0,32 s foi encontrada nos trechos atuais.",
+          remove_fillers:
+            removed > 0.001
+              ? `Muletas removidas: ${removed.toFixed(2)} s. A timeline já foi atualizada.`
+              : "Análise concluída: nenhuma muleta reconhecida foi encontrada nos trechos atuais da transcrição.",
+          preset: `Edição limpa aplicada: ${removed.toFixed(2)} s removidos; zooms e normalização de áudio configurados.`,
+          captions: command.args.enabled
+            ? "Legendas atualizadas. O estilo aparece na prévia e será usado na exportação."
+            : "Legendas desativadas.",
+        };
+        const summary =
+          summaries[command.name] ||
+          `${toolActivityLabel("edit_project", command as unknown as Record<string, unknown>)}: concluído.`;
+        progress(100, summary);
+        message("system", summary);
       },
     );
-    command.args = { ...command.args, ranges };
+  } catch (error) {
+    message("system", error instanceof Error ? error.message : String(error));
+    throw error;
   }
-  replaceProject(applyCommand(state.project, command));
-  if (command.name === "preset" && !state.project.words.length)
-    message(
-      "system",
-      "Preset aplicado às pausas, zoom e áudio. Transcreva para identificar muletas pela fala.",
-    );
   return emit();
 }
 async function exportVideo() {
@@ -378,6 +488,13 @@ async function connectCodex(value: unknown = {}) {
   codex = new CodexClient({
     workspace: join(userDir, "agent-workspace"),
     instructions,
+    onActivity: activity,
+    onStatus: (info) => {
+      if (state.connection.status !== "disconnected") {
+        state.connection = { status: "connected", ...info };
+        emit();
+      }
+    },
     onText: (text) => {
       const last = state.messages.at(-1);
       if (last?.role === "assistant") last.text += text;
@@ -410,21 +527,31 @@ async function connectCodex(value: unknown = {}) {
         if (!media || time >= media.duration)
           throw new Error("Quadro fora da fonte selecionada.");
         const frame = join(cacheDir, `inspect-${randomUUID()}.jpg`);
-        await runProcess(ffmpegPath, [
-          "-hide_banner",
-          "-loglevel",
-          "error",
-          "-ss",
-          String(time),
-          "-i",
-          media.path,
-          "-frames:v",
-          "1",
-          "-vf",
-          "scale=960:-2",
-          "-y",
-          frame,
-        ]);
+        await job(
+          "inspection",
+          "Inspecionando quadro do vídeo…",
+          async (signal) => {
+            await runProcess(
+              ffmpegPath,
+              [
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                String(time),
+                "-i",
+                media.path,
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=960:-2",
+                "-y",
+                frame,
+              ],
+              { signal },
+            );
+          },
+        );
         return {
           imageUrl: `data:image/jpeg;base64,${(await readFile(frame)).toString("base64")}`,
           text: `Frame real de ${media.name}, tempo na fonte ${time}s.`,
@@ -440,6 +567,7 @@ async function connectCodex(value: unknown = {}) {
       models: info.models,
       account: info.account,
       model: info.model,
+      reasoningEffort: info.reasoningEffort,
     };
     return emit();
   } catch (error) {
@@ -458,6 +586,20 @@ async function request(method: string, params?: unknown): Promise<unknown> {
   switch (method) {
     case "getState":
       state.packages = await packages.list();
+      return emit();
+    case "dismissOnboarding":
+      state.onboarding = {
+        dismissed: true,
+        transcriptionReady: !!state.onboarding?.transcriptionReady,
+      };
+      await writeFile(
+        join(userDir, "preferences.json.partial"),
+        JSON.stringify({ onboardingDismissed: true }),
+      );
+      await rename(
+        join(userDir, "preferences.json.partial"),
+        join(userDir, "preferences.json"),
+      );
       return emit();
     case "importMedia": {
       const result = await dialog.showOpenDialog(window!, {
@@ -482,6 +624,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       state.projectPath = undefined;
       state.messages = [];
       state.jobs = [];
+      state.activities = [];
       past = [];
       future = [];
       codex?.disconnect();
@@ -538,6 +681,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       state.project = project;
       state.messages = chat;
       state.jobs = [];
+      state.activities = [];
       state.projectPath = result.filePaths[0];
       past = [];
       future = [];
@@ -570,10 +714,13 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       state.connection = { status: "disconnected", models: [] };
       return emit();
     case "sendChat": {
-      const { text, model } = z
+      const { text, model, reasoningEffort } = z
         .object({
           text: z.string().trim().min(1).max(25_000),
           model: z.string().max(200).optional(),
+          reasoningEffort: z
+            .enum(["none", "minimal", "low", "medium", "high", "xhigh", "max"])
+            .optional(),
         })
         .parse(params);
       if (!codex || state.connection.status !== "connected")
@@ -583,7 +730,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       message("user", text);
       message("assistant", "");
       try {
-        await codex.send(text, model);
+        await codex.send(text, model, reasoningEffort);
         if (model) state.connection.model = model;
       } catch (error) {
         message(
@@ -661,6 +808,17 @@ app.whenReady().then(async () => {
   await mkdir(join(userDir, "agent-workspace"), { recursive: true });
   packages = new PackageManager(join(userDir, "packages"), resources);
   state.packages = await packages.list();
+  try {
+    const preferences = JSON.parse(
+      await readFile(join(userDir, "preferences.json"), "utf8"),
+    );
+    state.onboarding = {
+      dismissed: preferences.onboardingDismissed === true,
+      transcriptionReady: false,
+    };
+  } catch {
+    /* A new installation shows the welcome guidance. */
+  }
   protocol.handle("cutroom", async (req) => {
     try {
       const url = new URL(req.url);

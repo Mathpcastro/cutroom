@@ -6,6 +6,8 @@ import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "ffprobe-static";
 import type { Media, Project, Word } from "../../src/shared/types";
 import { clipDuration, projectDuration, validateProject } from "./project";
+import { captionAssParts } from "../../src/shared/captions";
+import type { CaptionWord } from "../../src/shared/captions";
 
 const unpack = (p: string) =>
   p.replace(/([\\/])app\.asar([\\/])/, "$1app.asar.unpacked$2");
@@ -280,7 +282,10 @@ export async function probeMedia(
 
 export async function detectSilences(
   media: Media,
-  options: { signal?: AbortSignal } = {},
+  options: {
+    signal?: AbortSignal;
+    onProgress?: (percent: number) => void;
+  } = {},
 ): Promise<{ start: number; end: number }[]> {
   checkAbort(options.signal);
   if (!media.hasAudio) return [];
@@ -289,6 +294,8 @@ export async function detectSilences(
     [
       "-hide_banner",
       "-nostats",
+      "-progress",
+      "pipe:1",
       "-i",
       media.path,
       "-vn",
@@ -298,7 +305,7 @@ export async function detectSilences(
       "null",
       "-",
     ],
-    options,
+    { ...options, duration: media.duration },
   );
   const ranges: { start: number; end: number }[] = [];
   let start: number | undefined;
@@ -361,6 +368,7 @@ function wrap(text: string, max: number): string {
 
 /** ASS carries Unicode text in a file, so user text never becomes FFmpeg filter syntax. */
 export function createAss(project: Project, words: Word[] = []): string {
+  const captions = captionAssParts(project, words);
   const { width: w, height: h, accent } = project.settings,
     unit = Math.min(w / 1920, h / 1080);
   const orange = `&H00${accent.slice(5, 7)}${accent.slice(3, 5)}${accent.slice(1, 3)}&`;
@@ -375,6 +383,7 @@ export function createAss(project: Project, words: Word[] = []): string {
     "[V4+ Styles]",
     "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding",
     `Style: Default,Barlow,${Math.round(64 * unit)},&H00FFFFFF,${orange},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,1,${Math.max(2, Math.round(3 * unit))},0,2,${Math.round(w * 0.08)},${Math.round(w * 0.08)},${Math.round(h * 0.12)},1`,
+    captions.style,
     "",
     "[Events]",
     "Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text",
@@ -478,14 +487,7 @@ export function createAss(project: Project, words: Word[] = []): string {
       );
     offset = end;
   }
-  if (project.settings.captions)
-    for (const word of words)
-      event(
-        3,
-        word.start,
-        word.end,
-        `{\\1c${orange}\\fad(20,20)}${assText(word.text)}`,
-      );
+  lines.push(...captions.events);
   return lines.join("\n") + "\n";
 }
 
@@ -518,7 +520,7 @@ export async function exportProject(
   );
   const { width, height, fps, normalize, targetLufs } = project.settings;
   const clips: string[] = [],
-    words: Word[] = [];
+    words: CaptionWord[] = [];
   let elapsed = 0;
   options.onProgress?.(0);
   try {
@@ -608,6 +610,7 @@ export async function exportProject(
           if (end > start)
             words.push({
               ...word,
+              clipId: clip.id,
               start: elapsed + (start - clip.start) / clip.speed,
               end:
                 elapsed + Math.min(duration, (end - clip.start) / clip.speed),
@@ -676,10 +679,14 @@ export async function exportProject(
       videoFilter = "ass=filename=motions.ass";
       if (options.fontPath) {
         await fs.mkdir(path.join(temp, "fonts"));
-        await fs.copyFile(
-          options.fontPath,
-          path.join(temp, "fonts", "Barlow-Regular.ttf"),
-        );
+        // The application supplies its trusted bundled font directory; filenames are never filter syntax.
+        const fontDir = path.dirname(options.fontPath);
+        for (const entry of await fs.readdir(fontDir, { withFileTypes: true }))
+          if (entry.isFile() && /\.(ttf|otf|woff2?)$/i.test(entry.name))
+            await fs.copyFile(
+              path.join(fontDir, entry.name),
+              path.join(temp, "fonts", entry.name),
+            );
         videoFilter += ":fontsdir=fonts";
       }
     }

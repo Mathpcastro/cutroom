@@ -13,6 +13,7 @@ import {
 import type { Project } from "../shared/types";
 import { duration, locateClip, timecode } from "../lib/editor";
 import { OverlayPreview } from "./OverlayPreview";
+import { CaptionPreview } from "./CaptionPreview";
 
 interface Props {
   project: Project;
@@ -33,6 +34,8 @@ export function Player({
   desktop,
 }: Props) {
   const video = useRef<HTMLVideoElement>(null);
+  const playRequest = useRef(0);
+  const mounted = useRef(true);
   const viewport = useRef<HTMLDivElement>(null);
   const composition = useRef<HTMLDivElement>(null);
   const [previewWidth, setPreviewWidth] = useState(640);
@@ -52,20 +55,53 @@ export function Player({
     if (element && Math.abs(element.currentTime - sourceTime) > 0.15)
       element.currentTime = sourceTime;
   };
+  const requestPlayback = () => {
+    const element = video.current;
+    if (
+      !element ||
+      !state.current.playing ||
+      !state.current.active ||
+      state.current.total <= 0
+    )
+      return;
+    const request = ++playRequest.current;
+    void element.play().catch((error: unknown) => {
+      // A seek, pause or source transition legitimately interrupts play().
+      if (
+        !mounted.current ||
+        request !== playRequest.current ||
+        !state.current.playing ||
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error as { name?: string })?.name === "AbortError"
+      )
+        return;
+      setMediaError(
+        `Não foi possível reproduzir: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      setPlaying(false);
+    });
+  };
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      ++playRequest.current;
+    };
+  }, []);
   useEffect(() => {
     setMediaError("");
   }, [source]);
   useEffect(() => {
+    ++playRequest.current;
     const element = video.current;
     if (!element || !active) return;
     seekVideo();
     element.playbackRate = active.clip.speed;
-    if (playing && total > 0)
-      void element.play().catch((error) => {
-        setMediaError(`Não foi possível reproduzir: ${error.message}`);
-        setPlaying(false);
-      });
+    if (playing && total > 0) requestPlayback();
     else element.pause();
+    return () => {
+      ++playRequest.current;
+    };
   }, [source, active?.clip.id, active?.clip.speed, playing]);
   useEffect(() => {
     const element = video.current;
@@ -105,18 +141,6 @@ export function Player({
     if (time >= total - 0.03) setTime(0);
     setPlaying(!playing);
   };
-  const captions =
-    project.settings.captions && media
-      ? project.words
-          .filter(
-            (word) =>
-              word.mediaId === media.id &&
-              sourceTime >= word.start &&
-              sourceTime <= word.end,
-          )
-          .map((word) => word.text)
-          .join(" ")
-      : "";
   const overlays = project.overlays.filter(
     (item) => time >= item.start && time < item.end,
   );
@@ -181,7 +205,14 @@ export function Player({
                 transformOrigin: "0 0",
                 transform: `translate(${-cropX * 100}%, ${-cropY * 100}%) scale(${zoom})`,
               }}
-              onLoadedMetadata={seekVideo}
+              onLoadedMetadata={() => {
+                seekVideo();
+                requestPlayback();
+              }}
+              onCanPlay={() => {
+                if (state.current.playing && video.current?.paused)
+                  requestPlayback();
+              }}
               onEnded={() => {
                 const current = state.current;
                 if (!current.active) return;
@@ -227,22 +258,8 @@ export function Player({
                 &gt;&gt; {active.clip.speed}x
               </div>
             )}
-            {captions && !active?.clip.muted && (
-              <div
-                className="caption-preview faithful-caption"
-                style={{
-                  color: project.settings.accent,
-                  fontSize:
-                    64 *
-                    Math.min(
-                      project.settings.width / 1920,
-                      project.settings.height / 1080,
-                    ) *
-                    renderScale,
-                }}
-              >
-                {captions}
-              </div>
+            {!active?.clip.muted && (
+              <CaptionPreview project={project} time={time} />
             )}
           </div>
         ) : (

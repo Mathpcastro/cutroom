@@ -3,6 +3,7 @@ import { PassThrough, Writable } from "node:stream";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AgentActivity } from "../src/shared/types";
 
 const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));
@@ -35,6 +36,7 @@ class FakeServer extends EventEmitter {
   });
   autoComplete = true;
   authenticated = true;
+  efforts = false;
   kill = vi.fn(() => {
     this.exitCode = 0;
     this.emit("exit", 0);
@@ -66,6 +68,15 @@ class FakeServer extends EventEmitter {
               model: "gpt-editor",
               displayName: "Editor",
               isDefault: true,
+              ...(this.efforts
+                ? {
+                    supportedReasoningEfforts: [
+                      { reasoningEffort: "low", description: "Fast" },
+                      { reasoningEffort: "high", description: "Careful" },
+                    ],
+                    defaultReasoningEffort: "low",
+                  }
+                : {}),
             },
           ],
           nextCursor: null,
@@ -134,11 +145,13 @@ const client = (
     args: Record<string, unknown>,
   ) => Promise<unknown> = vi.fn(async () => ({ ok: true })),
   onText = vi.fn(),
+  onActivity?: (activity: AgentActivity) => void,
 ) => {
   const result = new CodexClient({
     workspace: join(tmpdir(), "cutroom-codex-unit"),
     onTool,
     onText,
+    onActivity,
   });
   clients.push(result);
   return result;
@@ -158,6 +171,179 @@ afterEach(() => {
 });
 
 describe("local Codex transport", () => {
+  it("refuses queued tool calls as soon as interruption starts", async () => {
+    const onTool = vi.fn(async () => ({ applied: true }));
+    const c = client(onTool);
+    await c.connect();
+    const server = servers[1];
+    server.autoComplete = false;
+    const done = c.send("Edite");
+    const stopped = expect(done).rejects.toThrow("cancelada");
+    await vi.waitFor(() =>
+      expect(
+        server.messages.some((message) => message.method === "turn/start"),
+      ).toBe(true),
+    );
+    const handle = server.handle.bind(server);
+    server.handle = (message) =>
+      message.method === "turn/interrupt"
+        ? server.emitMessage({ id: message.id, result: {} })
+        : handle(message);
+    await c.interrupt();
+    server.emitMessage({
+      id: 400,
+      method: "item/tool/call",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        callId: "late",
+        tool: "edit_project",
+        arguments: { name: "remove_silence", args: {} },
+      },
+    });
+    await vi.waitFor(() =>
+      expect(
+        server.messages.find((message) => message.id === 400)?.result.success,
+      ).toBe(false),
+    );
+    expect(onTool).not.toHaveBeenCalled();
+    server.emitMessage({
+      method: "turn/completed",
+      params: {
+        threadId: "thread-1",
+        turn: { id: "turn-1", status: "interrupted" },
+      },
+    });
+    await stopped;
+  });
+  it("does not leave progress running when thread startup fails", async () => {
+    const activities: AgentActivity[] = [];
+    const c = client(undefined, undefined, (entry) =>
+      activities.push(structuredClone(entry)),
+    );
+    await c.connect();
+    const server = servers[1];
+    const handle = server.handle.bind(server);
+    server.handle = (message) =>
+      message.method === "thread/start"
+        ? server.emitMessage({
+            id: message.id,
+            error: { code: -1, message: "startup failed" },
+          })
+        : handle(message);
+    await expect(c.send("Edite")).rejects.toThrow("startup failed");
+    const latest = new Map(activities.map((entry) => [entry.id, entry]));
+    expect([...latest.values()].map((entry) => entry.status)).toEqual([
+      "failed",
+    ]);
+  });
+  it("maps supported reasoning efforts and sends the selected effort", async () => {
+    mocks.spawn.mockImplementation(() => {
+      const server = new FakeServer();
+      server.efforts = true;
+      servers.push(server);
+      return server;
+    });
+    const c = client();
+    const status = await c.connect();
+    expect(status.models[0].reasoningEfforts).toEqual(["low", "high"]);
+    expect(status.models[0].defaultReasoningEffort).toBe("low");
+    await c.send("Edite", "gpt-editor", "high");
+    expect(
+      servers[1].messages.find((message) => message.method === "turn/start")
+        ?.params.effort,
+    ).toBe("high");
+    await expect(c.send("Edite", "gpt-editor", "xhigh")).rejects.toThrow(
+      "não é suportado",
+    );
+  });
+
+  it("publishes tool start before work completes and terminal progress on cancellation", async () => {
+    const activities: AgentActivity[] = [];
+    let resolveTool!: (result: unknown) => void;
+    const c = client(
+      () =>
+        new Promise((resolve) => {
+          resolveTool = resolve;
+        }),
+      undefined,
+      (entry) => activities.push(structuredClone(entry)),
+    );
+    await c.connect();
+    servers[1].autoComplete = false;
+    const turn = c.send("Edite");
+    const stopped = expect(turn).rejects.toThrow("cancelada");
+    await vi.waitFor(() =>
+      expect(
+        servers[1].messages.some((message) => message.method === "turn/start"),
+      ).toBe(true),
+    );
+    servers[1].emitMessage({
+      id: 300,
+      method: "item/tool/call",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        callId: "cut",
+        tool: "edit_project",
+        arguments: { name: "remove_silence", args: {} },
+      },
+    });
+    await vi.waitFor(() =>
+      expect(
+        activities.some(
+          (entry) => entry.id === "tool:cut" && entry.status === "running",
+        ),
+      ).toBe(true),
+    );
+    expect(servers[1].messages.some((message) => message.id === 300)).toBe(
+      false,
+    );
+    resolveTool({ applied: true });
+    await vi.waitFor(() =>
+      expect(
+        activities.some(
+          (entry) => entry.id === "tool:cut" && entry.status === "completed",
+        ),
+      ).toBe(true),
+    );
+    servers[1].emitMessage({
+      method: "item/reasoning/summaryTextDelta",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "summary",
+        delta: "Vou verificar os trechos.",
+      },
+    });
+    servers[1].emitMessage({
+      method: "turn/plan/updated",
+      params: {
+        turnId: "turn-1",
+        plan: [{ step: "Revisar a timeline", status: "inProgress" }],
+      },
+    });
+    expect(
+      activities.some((entry) => entry.detail === "Vou verificar os trechos."),
+    ).toBe(true);
+    expect(
+      activities.some(
+        (entry) =>
+          entry.label === "Revisar a timeline" && entry.status === "running",
+      ),
+    ).toBe(true);
+    await c.interrupt();
+    await stopped;
+    const latest = new Map(activities.map((entry) => [entry.id, entry]));
+    expect(
+      [...latest.values()].some((entry) => entry.status === "running"),
+    ).toBe(false);
+    expect(
+      [...latest.values()].some(
+        (entry) => entry.kind === "turn" && entry.status === "cancelled",
+      ),
+    ).toBe(true);
+  });
   it("reuses local auth, strips private account/config data, and explicitly disables inherited servers", async () => {
     const c = client();
     const status = await c.connect();

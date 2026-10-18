@@ -108,9 +108,29 @@ try {
     "real bundled Codex App Server existing-session connection",
   );
   if (process.argv.includes("--ai")) {
+    await page.evaluate(() => {
+      window.__activityEvidence = { running: false, tool: false };
+      window.cutroom.onEvent(({ state }) => {
+        if (state.activities?.some((item) => item.status === "running"))
+          window.__activityEvidence.running = true;
+        if (
+          state.activities?.some(
+            (item) => item.kind === "tool" && item.status === "running",
+          )
+        )
+          window.__activityEvidence.tool = true;
+      });
+    });
+    const selected = account.connection.models.find(
+      (item) => item.id === account.connection.model,
+    );
+    const effort = selected?.reasoningEfforts?.includes("low")
+      ? "low"
+      : selected?.defaultReasoningEffort;
     state = await request("sendChat", {
-      text: "Consulte o projeto e renomeie-o para Teste real CutRoom. Ative as legendas com a ferramenta do editor. Não exporte nem transcreva agora. Responda em uma frase curta.",
+      text: "Consulte o projeto e renomeie-o para Teste real CutRoom. Ative as legendas com a ferramenta do editor; prepare a transcrição se necessário. Não exporte agora. Responda em uma frase curta.",
       model: account.connection.model,
+      reasoningEffort: effort,
     });
     if (
       state.project.name !== "Teste real CutRoom" ||
@@ -121,6 +141,21 @@ try {
       );
     result.checks.push(
       "real natural-language turn called project tools and changed editor state",
+    );
+    const activityEvidence = await page.evaluate(
+      () => window.__activityEvidence,
+    );
+    if (
+      !activityEvidence.running ||
+      !activityEvidence.tool ||
+      state.activities.some((item) => item.status === "running")
+    )
+      throw new Error("Live agent/tool progress or final state missing.");
+    if (effort && state.connection.reasoningEffort !== effort)
+      throw new Error("Selected reasoning effort not preserved.");
+    result.reasoningEffort = state.connection.reasoningEffort;
+    result.checks.push(
+      "real running tool events before completion, terminal agent state and chosen reasoning effort",
     );
     result.assistant = state.messages
       .filter((message) => message.role === "assistant")

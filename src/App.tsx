@@ -26,6 +26,8 @@ import { useDialogKeyboard } from "./lib/useDialogKeyboard";
 export default function App() {
   const [state, setState] = useState<AppSnapshot>(emptySnapshot);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [pending, setPending] = useState<string[]>([]);
   const [loading, setLoading] = useState(!!window.cutroom);
   const [tab, setTab] = useState<"media" | "transcript" | "style">("media");
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -55,14 +57,28 @@ export default function App() {
       setError("Este recurso precisa do aplicativo CutRoom desktop.");
       return;
     }
+    setPending((current) => [...current, method]);
     try {
       setError("");
+      setNotice("");
       const next = await window.cutroom.request<AppSnapshot>(method, params);
       if (next?.project) setState(next);
+      if (method === "saveProject" && next?.projectPath)
+        setNotice("Projeto salvo no computador.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setPending((current) => {
+        const index = current.indexOf(method);
+        return current.filter((_, i) => i !== index);
+      });
     }
   }, []);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   const command = useCallback(
     (edit: EditCommand) => {
       setPlaying(false);
@@ -110,7 +126,9 @@ export default function App() {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (
-        target.closest("input,textarea,select,[contenteditable=true]") ||
+        target.closest(
+          "input,textarea,select,[contenteditable=true],[role=listbox],[role=combobox],button[aria-haspopup]",
+        ) ||
         document.querySelector("[role=dialog]")
       )
         return;
@@ -235,12 +253,16 @@ export default function App() {
           </span>
           <button
             className="icon-button save-action"
-            disabled={!desktop}
+            disabled={!desktop || pending.includes("saveProject")}
             title="Salvar projeto (Ctrl+S)"
             aria-label="Salvar projeto"
             onClick={() => void run("saveProject")}
           >
-            <Save size={15} />
+            {pending.includes("saveProject") ? (
+              <LoaderCircle size={15} className="spin" />
+            ) : (
+              <Save size={15} />
+            )}
           </button>
           <button
             className="button primary export-button"
@@ -328,7 +350,7 @@ export default function App() {
             </div>
           </nav>
           <div
-            className={`workspace-main ${drawerOpen ? "" : "drawer-closed"}`}
+            className={`workspace-main ${drawerOpen ? "" : "drawer-closed"} ${tab === "style" ? "style-drawer-open" : ""}`}
           >
             {drawerOpen && (
               <WorkspaceDrawer
@@ -406,7 +428,7 @@ export default function App() {
             </span>
           )}
           <Terminal size={12} />
-          <span>v0.1.0</span>
+          <span>v0.2.0</span>
         </div>
       </footer>
       {dragging && (
@@ -466,10 +488,34 @@ export default function App() {
           </form>
         </div>
       )}
+      {notice && (
+        <div className="notice-toast" role="status">
+          <Check size={16} />
+          {notice}
+          <button
+            className="icon-button"
+            aria-label="Fechar confirmação"
+            onClick={() => setNotice("")}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
       {error && (
         <div className="error-toast" role="alert">
           <CircleHelp size={17} />
           <span>{error}</span>
+          {/transcri|pacote|whisper/i.test(error) && (
+            <button
+              className="button small"
+              onClick={() => {
+                window.dispatchEvent(new Event("cutroom:packages"));
+                setError("");
+              }}
+            >
+              Abrir Pacotes
+            </button>
+          )}
           <button
             className="icon-button"
             aria-label="Fechar erro"
