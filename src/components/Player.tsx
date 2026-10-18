@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Clapperboard,
   ChevronDown,
@@ -51,7 +51,11 @@ export function Player({
     : undefined;
   const sourceTime = active?.sourceTime ?? 0;
   const state = useRef({ active, time, playing, total });
-  state.current = { active, time, playing, total };
+  // Commit the playhead and any source seek together before the next paint.
+  // Otherwise RAF can read a new clip with the previous clip's video time.
+  useLayoutEffect(() => {
+    state.current = { active, time, playing, total };
+  });
   const seekVideo = () => {
     const element = video.current;
     if (element && Math.abs(element.currentTime - sourceTime) > 0.15)
@@ -93,7 +97,7 @@ export function Player({
   useEffect(() => {
     setMediaError("");
   }, [source]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     ++playRequest.current;
     const element = video.current;
     if (!element || !active) return;
@@ -105,7 +109,7 @@ export function Player({
       ++playRequest.current;
     };
   }, [source, active?.clip.id, active?.clip.speed, playing]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = video.current;
     if (
       element &&
@@ -119,7 +123,13 @@ export function Player({
     const tick = () => {
       const current = state.current;
       const element = video.current;
-      if (element && current.active && !element.paused) {
+      if (
+        element &&
+        current.active &&
+        !element.paused &&
+        !element.seeking &&
+        element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
         const clip = current.active.clip;
         const nextTime =
           current.active.offset +

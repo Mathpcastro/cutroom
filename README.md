@@ -4,7 +4,7 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 
 **Open source · Windows x64 · versão inicial em desenvolvimento**
 
-[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.3.2)
+[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.3.3)
 
 | Grafite | Claro |
 | --- | --- |

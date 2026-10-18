@@ -83,7 +83,7 @@ export default function App() {
   }, [notice]);
   const command = useCallback(
     (edit: EditCommand) => {
-      setPlaying(false);
+      if (edit.name !== "captions") setPlaying(false);
       void run("executeCommand", edit);
     },
     [run],

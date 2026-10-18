@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import JASSUB from "jassub";
-import workerUrl from "jassub/dist/worker/worker.js?worker&url";
+import workerUrl from "../workers/captions.worker.ts?worker&url";
 import wasmUrl from "jassub/dist/wasm/jassub-worker.wasm?url";
 import modernWasmUrl from "jassub/dist/wasm/jassub-worker-modern.wasm?url";
 import type { Project } from "../shared/types";
