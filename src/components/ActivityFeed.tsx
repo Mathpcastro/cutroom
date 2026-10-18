@@ -47,18 +47,19 @@ export function ActivityFeed({
   const latestRunningActivity = activities
     .filter((activity) => activity.status === "running")
     .at(-1);
+  const runningJobs = state.jobs.filter((job) => job.status === "running");
+  const currentJob = runningJobs.at(-1);
   const activityRows = expanded
     ? activities.slice(-12).reverse()
-    : latestRunningActivity
+    : !currentJob && latestRunningActivity
       ? [latestRunningActivity]
       : !running && !state.busy && newest?.type === "activity"
         ? [newest.item]
         : [];
-  const runningJobs = state.jobs.filter((job) => job.status === "running");
   const jobRows = expanded
     ? [...state.jobs].reverse().slice(0, 8)
-    : runningJobs.length
-      ? runningJobs
+    : currentJob
+      ? [currentJob]
       : !running && !state.busy && newest?.type === "job"
         ? [newest.item]
         : [];
@@ -83,7 +84,22 @@ export function ActivityFeed({
           activity.label.trim() === summary.text.trim() ||
           activity.detail?.trim() === summary.text.trim(),
       ));
-  if (!jobRows.length && !activityRows.length && !state.busy) return null;
+  const rows = [
+    ...jobRows.map((item) => ({ type: "job" as const, item })),
+    ...activityRows.map((item) => ({ type: "activity" as const, item })),
+  ];
+  if (!rows.length && !state.busy) return null;
+  if (!rows.length)
+    rows.push({
+      type: "activity",
+      item: {
+        id: "preparing",
+        kind: "turn",
+        label: "Preparando solicitação…",
+        status: "running",
+        startedAt: "",
+      },
+    });
   const icon = (status: string) =>
     status === "running" ? (
       <LoaderCircle size={14} className="spin" />
@@ -96,7 +112,7 @@ export function ActivityFeed({
     );
   return (
     <section
-      className={`activity-feed ${compact ? "compact" : ""} ${!running && !state.busy && !expanded ? "is-idle" : ""}`}
+      className={`activity-feed ${compact ? "compact" : ""} ${!expanded ? (running || state.busy ? "is-live" : "is-idle") : ""}`}
       aria-label="Atividade em tempo real"
     >
       <div className="activity-feed-heading">
@@ -118,68 +134,56 @@ export function ActivityFeed({
         aria-live="polite"
         aria-relevant="additions text"
       >
-        {jobRows.map((job) => (
-          <article className={`activity-row ${job.status}`} key={job.id}>
-            <div className="activity-icon">{icon(job.status)}</div>
-            <div className="activity-copy">
-              <strong>{job.label}</strong>
-              <small>
-                {labels[job.status]}
-                {job.status === "running" && job.progress > 0
-                  ? ` · ${Math.round(job.progress)}%`
-                  : ""}
-              </small>
-              {job.status === "running" && (
-                <progress
-                  max={100}
-                  value={job.progress > 0 ? job.progress : undefined}
-                  aria-label={job.label}
-                />
-              )}
-              {job.error && <p>{job.error}</p>}
-            </div>
-          </article>
-        ))}
-        {activityRows.map((activity) => {
+        {rows.map((row) => {
+          const item = row.item;
+          const progress = row.type === "job" ? row.item.progress : undefined;
+          const detail = row.type === "job" ? row.item.error : row.item.detail;
           const seconds = Math.max(
             0,
             Math.floor(
-              ((activity.finishedAt ? Date.parse(activity.finishedAt) : now) -
-                Date.parse(activity.startedAt)) /
+              ((item.finishedAt ? Date.parse(item.finishedAt) : now) -
+                Date.parse(item.startedAt || "")) /
                 1000,
             ),
           );
           return (
             <article
-              className={`activity-row ${activity.status}`}
-              key={activity.id}
+              className={`activity-row ${item.status}`}
+              key={expanded ? `${row.type}:${item.id}` : "current"}
             >
-              <div className="activity-icon">{icon(activity.status)}</div>
+              <div className="activity-icon">{icon(item.status)}</div>
               <div className="activity-copy">
-                <strong>{activity.label}</strong>
+                <strong title={item.label}>{item.label}</strong>
                 <small>
-                  {labels[activity.status]}
-                  {Number.isFinite(seconds)
-                    ? ` · ${seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}min ${seconds % 60}s`}`
-                    : ""}
+                  {labels[item.status]}
+                  {item.status === "running" &&
+                  progress !== undefined &&
+                  progress > 0
+                    ? ` · ${Math.round(progress)}%`
+                    : row.type === "activity" && Number.isFinite(seconds)
+                      ? ` · ${seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}min ${seconds % 60}s`}`
+                      : ""}
                 </small>
-                {activity.detail &&
+                {item.status === "running" &&
+                  (!expanded || row.type === "job") && (
+                    <progress
+                      max={100}
+                      value={
+                        progress !== undefined && progress > 0
+                          ? progress
+                          : undefined
+                      }
+                      aria-label={item.label}
+                    />
+                  )}
+                {detail &&
                   (expanded ||
-                    activity.status === "running" ||
-                    activity.status === "failed") && <p>{activity.detail}</p>}
+                    item.status === "failed" ||
+                    row.type === "job") && <p>{detail}</p>}
               </div>
             </article>
           );
         })}
-        {!jobRows.length && !activityRows.length && state.busy && (
-          <article className="activity-row running">
-            <LoaderCircle size={14} className="spin" />
-            <div className="activity-copy">
-              <strong>Preparando solicitação…</strong>
-              <small>Aguardando evento do processo local</small>
-            </div>
-          </article>
-        )}
       </div>
       {expanded && summary && !summaryAlreadyVisible && (
         <div className="activity-result">

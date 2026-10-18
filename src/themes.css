@@ -420,6 +420,14 @@ button:disabled {
 .activity-row {
   color: var(--muted);
 }
+.activity-feed.is-live .activity-row {
+  min-height: 64px;
+}
+.activity-feed.is-live .activity-copy > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .activity-copy strong,
 .activity-copy p {
   color: var(--text);

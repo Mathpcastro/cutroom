@@ -89,9 +89,10 @@ export function Assistant({ state, run, desktop }: ActionProps) {
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const connected = state.connection.status === "connected";
+  const lastMessage = state.messages.at(-1);
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth" });
-  }, [state.messages]);
+  }, [state.messages.length, lastMessage?.id, lastMessage?.text]);
   useEffect(() => {
     if (state.connection.status === "connected") {
       setApiKey("");
