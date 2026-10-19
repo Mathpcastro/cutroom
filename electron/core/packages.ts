@@ -5,6 +5,7 @@ import { unzipSync } from "fflate";
 import type { Media, PackageInfo, Word } from "../../src/shared/types";
 import { runProcess } from "./process";
 import manifest from "../../resources/packages/transcription-base.json";
+import { MOTION_PACKAGE, motionPackageInfo, installMotionPackage } from "./motion-package";
 
 const UV_VERSION = "0.11.21";
 const UV_SHA256 =
@@ -85,6 +86,7 @@ export class PackageManager {
         status: installed ? "installed" : "available",
         capabilities: manifest.capabilities,
       },
+      await motionPackageInfo(this.root),
     ];
   }
   async install(
@@ -92,6 +94,7 @@ export class PackageManager {
     onProgress: (progress: number, label: string) => void,
     signal?: AbortSignal,
   ) {
+    if (id === MOTION_PACKAGE) return installMotionPackage(this.root, onProgress, signal);
     if (id !== TRANSCRIPTION_PACKAGE) throw new Error("Pacote desconhecido.");
     if (process.platform !== "win32" || process.arch !== "x64")
       throw new Error("O pacote desta versão requer Windows x64.");

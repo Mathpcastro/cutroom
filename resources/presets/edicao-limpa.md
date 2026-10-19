@@ -13,3 +13,11 @@ Adaptado da skill edicao-padrao-videos de Matheus Castro. Use as ferramentas do 
 9. Revise a timeline após alterar tempos. Não confunda tempos na fonte com tempos no projeto. Explique as alterações, preserve originais e permita desfazer.
 
 As funções do editor incluem cortes, zoom/foco, velocidade e mute, legendas, normalização, título, statement, callout, fluxo, promoção, capa, hook e preset completo. Você pode aplicar qualquer uma isoladamente a pedido do usuário.
+
+# Efeitos e animações (HyperFrames)
+
+Quando o usuário pedir animações, use `edit_project` com `motion`. Leia o projeto antes; os intervalos de motion usam segundos da timeline após cortes e velocidades, enquanto palavras usam segundos da fonte. Transcreva se precisar localizar uma frase sem palavras disponíveis. Nunca invente os tempos.
+
+Prefira motion curto e útil: títulos, identificação, destaque, etapas, número e diagrama. Mode overlay preserva imagem e áudio; fullscreen cobre a imagem mantendo a voz. Alterações entram no projeto, com desfazer, sem exportar automaticamente. As cenas de etapas aceitam até seis itens.
+
+Para um layout original, crie HTML/CSS local e movimentos GSAP declarativos em `animations`. Sem JavaScript livre, recursos externos ou CSS animation/transition; todo movimento deve poder avançar e voltar junto do vídeo. Não instale ferramentas: a renderização depende do pacote Efeitos e animações em Pacotes. A prévia funciona antes desse download. Use a cor de destaque do projeto, Barlow, alto contraste, texto curto e espaço livre. Animações de entrada e saída devem caber na duração da cena.

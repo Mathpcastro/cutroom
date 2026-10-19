@@ -83,7 +83,8 @@ export default function App() {
   }, [notice]);
   const command = useCallback(
     (edit: EditCommand) => {
-      if (edit.name !== "captions") setPlaying(false);
+      if (!["captions", "motion", "delete_motion"].includes(edit.name))
+        setPlaying(false);
       void run("executeCommand", edit);
     },
     [run],
@@ -120,10 +121,19 @@ export default function App() {
     setTime((current) => Math.min(current, duration(state.project)));
     if (
       selectedId &&
-      !state.project.clips.some((clip) => clip.id === selectedId)
+      !state.project.clips.some((clip) => clip.id === selectedId) &&
+      !state.project.motions?.some((scene) => scene.id === selectedId)
     )
       setSelectedId(undefined);
   }, [state.project]);
+  useEffect(() => {
+    const edit = () => {
+      setTab("style");
+      setDrawerOpen(true);
+    };
+    window.addEventListener("cutroom:motion-edit", edit);
+    return () => window.removeEventListener("cutroom:motion-edit", edit);
+  }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === ",") {
@@ -371,6 +381,8 @@ export default function App() {
                 run={run}
                 command={command}
                 desktop={desktop}
+                time={time}
+                selectedId={selectedId}
                 setTime={setTime}
                 setSelectedId={setSelectedId}
               />

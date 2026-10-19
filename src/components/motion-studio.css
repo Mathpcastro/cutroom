@@ -1,0 +1,285 @@
+.motion-studio {
+  padding: 6px 0 12px;
+}
+.motion-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+.motion-intro > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--muted);
+}
+.motion-intro strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.motion-intro p,
+.motion-package-note p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.motion-package-note {
+  padding: 9px 10px;
+  border-left: 2px solid var(--line-strong);
+  background: var(--bg);
+  margin-bottom: 13px;
+}
+.motion-package-note p {
+  margin: 0 0 6px;
+}
+.motion-package-note .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.motion-add {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+.motion-scene-list {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.motion-scene-row {
+  display: flex;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+}
+.motion-scene-row.selected {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+}
+.motion-scene-row > button:first-child {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  padding: 9px;
+  cursor: pointer;
+}
+.motion-scene-row strong {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.motion-scene-row small {
+  display: block;
+  font: 9px var(--mono);
+  color: var(--muted);
+  margin-top: 5px;
+}
+.motion-scene-row .icon-button {
+  align-self: center;
+  width: 27px;
+  min-width: 27px;
+  height: 28px;
+  margin-right: 3px;
+}
+.motion-form {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.motion-form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  font-size: 11px;
+}
+.motion-form .field {
+  gap: 5px;
+  font-size: 10px;
+  min-width: 0;
+  margin: 0;
+}
+.motion-form :is(input, textarea, select) {
+  max-width: 100%;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  padding: 7px 8px;
+}
+.motion-form textarea {
+  resize: vertical;
+  width: 100%;
+  line-height: 1.5;
+}
+.motion-form .field-pair {
+  gap: 8px;
+}
+.motion-form .field-pair input {
+  width: 100%;
+}
+.motion-optional {
+  color: var(--muted);
+  font-weight: 400;
+}
+.motion-options > summary {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 2px 0 8px;
+  cursor: pointer;
+}
+.motion-options > .field {
+  margin-top: 8px;
+}
+.motion-color-fields {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0;
+}
+.motion-color-fields label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.motion-color-fields input {
+  width: 26px;
+  height: 24px;
+  padding: 2px;
+  cursor: pointer;
+}
+.motion-form .motion-code {
+  font: 10px/1.5 var(--mono);
+  tab-size: 2;
+}
+.motion-studio > .tool-hint {
+  display: block;
+  padding-top: 10px;
+}
+.motion-studio :is(button, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.motion-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+}
+.motion-preview-host,
+.motion-preview-host > hyperframes-player {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  pointer-events: none;
+}
+.motion-preview-error {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.motion-lane {
+  position: relative;
+  height: 32px;
+  border-top: 1px solid var(--line);
+}
+.motion-block {
+  position: absolute;
+  top: 5px;
+  height: 23px;
+  min-width: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  color: var(--text);
+  background: var(--raised);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+}
+.motion-block > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.motion-block > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+}
+.motion-block:is(:hover, .active) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.motion-block:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.timeline-section.has-motions .track-labels > div:nth-of-type(2) {
+  height: 43px;
+  flex-shrink: 0;
+}
+.timeline-section.has-motions .track-labels > div.motion-track-label {
+  height: 32px;
+  flex-shrink: 0;
+}
+.timeline-section.has-motions .timeline-content {
+  min-height: 172px;
+}
+.motion-inspector-name {
+  color: var(--text);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+@media (max-height: 800px) {
+  .timeline-section.has-motions .track-labels > div:nth-of-type(2) {
+    height: 38px;
+  }
+  .timeline-section.has-motions .timeline-content {
+    min-height: 160px;
+  }
+}
+
+/* A third lane needs real height rather than overflowing the clip inspector. */
+.timeline-section.has-motions {
+  height: 262px;
+}
+.motion-preview:not([data-status="ready"]) .motion-preview-host {
+  visibility: hidden;
+}
+@media (max-height: 800px) {
+  .timeline-section.has-motions {
+    height: 238px;
+  }
+}

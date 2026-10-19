@@ -8,6 +8,7 @@ import type { Media, Project, Word } from "../../src/shared/types";
 import { clipDuration, projectDuration, validateProject } from "./project";
 import { captionAssParts } from "../../src/shared/captions";
 import type { CaptionWord } from "../../src/shared/captions";
+import { motionExportSegments } from "../../src/shared/motions";
 
 const unpack = (p: string) =>
   p.replace(/([\\/])app\.asar([\\/])/, "$1app.asar.unpacked$2");
@@ -107,7 +108,7 @@ async function run(
 export async function probeMedia(
   sourcePath: string,
   cacheDir: string,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; forceProxy?: boolean } = {},
 ): Promise<Media> {
   checkAbort(options.signal);
   const absolute = path.resolve(sourcePath),
@@ -125,6 +126,7 @@ export async function probeMedia(
     streams: {
       codec_type: string;
       codec_name?: string;
+      pix_fmt?: string;
       width?: number;
       height?: number;
       avg_frame_rate?: string;
@@ -203,14 +205,18 @@ export async function probeMedia(
   const mp4Compatible =
     [".mp4", ".m4v"].includes(extension) &&
     video.codec_name === "h264" &&
+    ["yuv420p", "yuvj420p"].includes(video.pix_fmt ?? "") &&
     (!audio || ["aac", "mp3"].includes(audio.codec_name ?? ""));
   const webmCompatible =
     extension === ".webm" &&
     ["vp8", "vp9", "av1"].includes(video.codec_name ?? "") &&
     (!audio || ["opus", "vorbis"].includes(audio.codec_name ?? ""));
   let proxy: string | undefined;
-  if (!mp4Compatible && !webmCompatible) {
-    proxy = path.join(path.resolve(cacheDir), `${mediaId}-preview.mp4`);
+  if (options.forceProxy || (!mp4Compatible && !webmCompatible)) {
+    proxy = path.join(
+      path.resolve(cacheDir),
+      `${mediaId}-preview${options.forceProxy ? `-recovery-${Date.now()}` : ""}.mp4`,
+    );
     try {
       await fs.access(proxy);
     } catch {
@@ -498,9 +504,18 @@ export async function exportProject(
     onProgress?: (percent: number) => void;
     signal?: AbortSignal;
     fontPath?: string;
+    motions?: { id: string; path: string }[];
   } = {},
 ): Promise<void> {
   const project = validateProject(value);
+  if (
+    (project.motions ?? []).some(
+      (s) => !options.motions?.some((m) => m.id === s.id),
+    )
+  )
+    throw new Error(
+      "As animações precisam ser renderizadas antes da exportação.",
+    );
   if (!project.clips.length)
     throw new Error("Adicione ao menos um trecho antes de exportar.");
   if (path.extname(outputPath).toLowerCase() !== ".mp4")
@@ -692,9 +707,33 @@ export async function exportProject(
     }
     const finalScript = path.join(temp, "final.ffgraph"),
       staged = path.join(temp, "final.mp4");
+    const motionInputs: string[] = [],
+      motionGraph: string[] = [];
+    let base = "0:v:0";
+    for (const [i, motion] of (project.motions ?? []).entries()) {
+      const rendered = options.motions!.find((m) => m.id === motion.id)!;
+      motionInputs.push("-i", rendered.path);
+      const parts = motionExportSegments(motion, project);
+      motionGraph.push(
+        `[${i + 1}:v:0]split=${parts.length}${parts.map((_, j) => `[part${i}_${j}]`).join("")}`,
+      );
+      for (const [j, part] of parts.entries()) {
+        motionGraph.push(
+          `[part${i}_${j}]trim=start=${n(part.sourceOffset)}:duration=${n((part.end - part.start) * part.playbackRate)},setpts=(PTS-STARTPTS)/${n(part.playbackRate)}+${n(part.start)}/TB[scene${i}_${j}]`,
+        );
+        motionGraph.push(
+          `[${base}][scene${i}_${j}]overlay=0:0:eof_action=pass:enable='gte(t,${n(part.start)})*lt(t,${n(part.end)})'[motion${i}_${j}]`,
+        );
+        base = `motion${i}_${j}`;
+      }
+    }
     await fs.writeFile(
       finalScript,
-      `[0:v:0]${videoFilter}[v];\n[0:a:0]${audioFilter},aresample=48000[a]`,
+      [
+        ...motionGraph,
+        `[${base}]${videoFilter}[v]`,
+        `[0:a:0]${audioFilter},aresample=48000[a]`,
+      ].join(";\n"),
       "utf8",
     );
     await run(
@@ -705,6 +744,7 @@ export async function exportProject(
         "error",
         "-y",
         ...concatInput,
+        ...motionInputs,
         "-filter_complex_script",
         finalScript,
         "-map",

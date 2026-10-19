@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AudioLines,
   Check,
@@ -16,10 +16,13 @@ import {
 import type { AppSnapshot, EditCommand, OverlayKind } from "../shared/types";
 import { clipOffset, duration, timecode } from "../lib/editor";
 import { CaptionStudio } from "./CaptionStudio";
+import { MotionStudio } from "./MotionStudio";
 import { useDialogKeyboard } from "../lib/useDialogKeyboard";
 
 interface Props {
   tab: "media" | "transcript" | "style";
+  time?: number;
+  selectedId?: string;
   state: AppSnapshot;
   run: (method: string, params?: unknown) => Promise<void>;
   command: (command: EditCommand) => void;
@@ -35,7 +38,19 @@ export function WorkspaceDrawer({
   desktop,
   setTime,
   setSelectedId,
+  time,
+  selectedId,
 }: Props) {
+  const [motionOpen, setMotionOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setMotionOpen(true);
+    window.addEventListener("cutroom:motion-edit", open);
+    return () => window.removeEventListener("cutroom:motion-edit", open);
+  }, []);
+  useEffect(() => {
+    if (state.project.motions?.some((scene) => scene.id === selectedId))
+      setMotionOpen(true);
+  }, [selectedId, state.project.motions]);
   const [overlayOpen, setOverlayOpen] = useState(false);
   useDialogKeyboard(overlayOpen, () => setOverlayOpen(false));
   const [overlayText, setOverlayText] = useState("");
@@ -357,6 +372,26 @@ export function WorkspaceDrawer({
             <small className="tool-hint">
               Alvo de áudio: {project.settings.targetLufs} LUFS
             </small>
+          </details>
+          <details
+            className="style-group motion-style-group"
+            open={motionOpen}
+            onToggle={(event) => setMotionOpen(event.currentTarget.open)}
+          >
+            <summary>Efeitos e animações</summary>
+            <MotionStudio
+              project={project}
+              disabled={disabled}
+              packageReady={
+                !!state.packages.find(
+                  (item) => item.id === "hyperframes-motion",
+                )?.installed
+              }
+              time={time}
+              selectedId={selectedId}
+              command={command}
+              openPackages={openPackages}
+            />
           </details>
           <details className="style-group caption-style-group" open>
             <summary>Legendas</summary>

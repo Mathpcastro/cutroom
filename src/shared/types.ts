@@ -49,6 +49,33 @@ export interface Overlay {
   start: number;
   end: number;
 }
+export type MotionPresetId = "title" | "lower-third" | "highlight" | "steps" | "stat" | "explainer";
+export interface MotionTween {
+  selector: string;
+  start: number;
+  duration: number;
+  from?: Record<string, string | number>;
+  to: Record<string, string | number>;
+  ease?: string;
+}
+export interface MotionScene {
+  id: string;
+  name: string;
+  start: number;
+  end: number;
+  mode: "overlay" | "fullscreen";
+  duration: number;
+  sourceOffset?: number;
+  playbackRate?: number;
+  html: string;
+  animations: MotionTween[];
+  presetId?: MotionPresetId;
+  text?: string;
+  subtitle?: string;
+  items?: string[];
+  accent?: string;
+  background?: string;
+}
 export interface Project {
   version: 1;
   id: string;
@@ -59,6 +86,7 @@ export interface Project {
   clips: Clip[];
   words: Word[];
   overlays: Overlay[];
+  motions?: MotionScene[];
   settings: {
     captions: boolean;
     normalize: boolean;
@@ -134,6 +162,8 @@ export type CommandName =
   | "captions"
   | "normalize"
   | "overlay"
+  | "motion"
+  | "delete_motion"
   | "remove_silence"
   | "remove_fillers"
   | "preset"

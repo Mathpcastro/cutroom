@@ -45,6 +45,8 @@ import {
 import { PackageManager } from "./core/packages";
 import { CodexClient, toolActivityLabel } from "./core/codex";
 import { runProcess } from "./core/process";
+import { motionCacheKey, motionDocument } from "./core/motion-document";
+import { renderMotions } from "./core/motion-render";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -56,6 +58,10 @@ const resources = app.isPackaged
   ? join(process.resourcesPath, "resources")
   : resolve(here, "../resources");
 protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "cutroom-motion",
+    privileges: { standard: true, secure: true, supportFetchAPI: true },
+  },
   {
     scheme: "cutroom",
     privileges: {
@@ -70,6 +76,7 @@ let window: BrowserWindow | undefined;
 let packages: PackageManager;
 let codex: CodexClient | undefined;
 let cacheDir: string;
+const motionDocuments = new Map<string, string>();
 let userDir: string;
 const appearanceSchema = z
   .object({
@@ -192,16 +199,19 @@ function idle() {
     );
 }
 async function allowProjectFiles() {
-  allowedFiles.clear();
+  const nextFiles = new Set<string>();
   for (const media of state.project.media)
     for (const path of [media.path, media.thumbnail, media.proxy])
       if (path) {
         try {
-          allowedFiles.add(await realpath(path));
+          nextFiles.add(await realpath(path));
         } catch {
           /* Missing source is shown on opening, never silently substituted. */
         }
       }
+  // Replace the allowlist atomically so existing range requests never see an empty list.
+  allowedFiles.clear();
+  for (const path of nextFiles) allowedFiles.add(path);
 }
 async function job<T>(
   kind: string,
@@ -379,6 +389,8 @@ async function executeCommand(value: unknown) {
         "captions",
         "normalize",
         "overlay",
+        "motion",
+        "delete_motion",
         "remove_silence",
         "remove_fillers",
         "preset",
@@ -494,9 +506,18 @@ async function exportVideo() {
     "export",
     "Exportando no seu computador…",
     async (signal, onProgress) => {
+      const motions = await renderMotions(snapshot, {
+        cache: join(cacheDir, "motions"),
+        packages: packages.root,
+        resources,
+        worker: join(here, "render-motion.js"),
+        signal,
+        onProgress: (p, label) => onProgress(p * 0.35, label),
+      });
       await exportProject(snapshot, output, {
         signal,
-        onProgress,
+        onProgress: (p) => onProgress(motions.length ? 35 + p * 0.65 : p),
+        motions,
         fontPath: join(resources, "fonts", "Barlow-Regular.ttf"),
       });
       return output;
@@ -812,7 +833,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       try {
         await job(
           "package",
-          "Instalando transcrição local…",
+          `Instalando ${state.packages.find((p) => p.id === id)?.name ?? "pacote"}…`,
           (signal, progress) => packages.install(id, progress, signal),
         );
       } catch (error) {
@@ -829,6 +850,47 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         throw error;
       }
       state.packages = await packages.list();
+      return emit();
+    }
+    case "getMotionPreview": {
+      const { id } = z.object({ id: z.string() }).parse(params);
+      const scene = state.project.motions?.find((s) => s.id === id);
+      if (!scene) throw new Error("Animação não encontrada.");
+      const key = motionCacheKey(scene, state.project.settings);
+      if (!motionDocuments.has(key)) {
+        const html = await motionDocument(
+          scene,
+          state.project.settings,
+          resources,
+        );
+        if (motionDocuments.size >= 100)
+          motionDocuments.delete(motionDocuments.keys().next().value!);
+        motionDocuments.set(key, html);
+      }
+      return { url: `cutroom-motion://scene/${key}` };
+    }
+    case "repairPreview": {
+      const { id } = z.object({ id: z.string() }).parse(params);
+      const original = state.project.media.find((m) => m.id === id);
+      if (!original) throw new Error("Arquivo não encontrado.");
+      await job(
+        "preview",
+        "Preparando uma prévia compatível…",
+        async (signal) => {
+          const prepared = await probeMedia(original.path, cacheDir, {
+            signal,
+            forceProxy: true,
+          });
+          state.project = {
+            ...state.project,
+            media: state.project.media.map((m) =>
+              m.id === id ? { ...m, proxy: prepared.proxy } : m,
+            ),
+          };
+          await allowProjectFiles();
+          emit();
+        },
+      );
       return emit();
     }
     case "cancelJob": {
@@ -918,6 +980,20 @@ app.whenReady().then(async () => {
     } catch {
       return new Response("Not found", { status: 404 });
     }
+  });
+  protocol.handle("cutroom-motion", (req) => {
+    const url = new URL(req.url);
+    const html =
+      url.hostname === "scene"
+        ? motionDocuments.get(url.pathname.slice(1))
+        : undefined;
+    return new Response(html ?? "Not found", {
+      status: html ? 200 : 404,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
   });
   window = new BrowserWindow({
     width: 1480,

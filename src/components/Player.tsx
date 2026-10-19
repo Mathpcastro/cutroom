@@ -16,6 +16,7 @@ import type { Project } from "../shared/types";
 import { duration, locateClip, timecode } from "../lib/editor";
 import { OverlayPreview } from "./OverlayPreview";
 import { CaptionPreview } from "./CaptionPreview";
+import { MotionPreview } from "./MotionPreview";
 
 interface Props {
   project: Project;
@@ -43,6 +44,8 @@ export function Player({
   const [previewWidth, setPreviewWidth] = useState(640);
   const [volumeMuted, setVolumeMuted] = useState(false);
   const [mediaError, setMediaError] = useState("");
+  const repairAttempt = useRef(new Set<string>());
+  const [repairing, setRepairing] = useState(false);
   const total = duration(project);
   const active = locateClip(project, time);
   const media = project.media.find((item) => item.id === active?.clip.mediaId);
@@ -50,15 +53,45 @@ export function Player({
     ? window.cutroom?.mediaUrl(media.proxy || media.path)
     : undefined;
   const sourceTime = active?.sourceTime ?? 0;
+  const recoverPreview = async () => {
+    if (
+      !media ||
+      !window.cutroom ||
+      repairAttempt.current.has(media.id) ||
+      repairing
+    )
+      return;
+    repairAttempt.current.add(media.id);
+    setPlaying(false);
+    setRepairing(true);
+    setMediaError("Preparando uma prévia compatível no seu computador…");
+    try {
+      await window.cutroom.request("repairPreview", { id: media.id });
+      if (mounted.current) {
+        video.current?.load();
+        setMediaError("");
+      }
+    } catch (error) {
+      if (mounted.current)
+        setMediaError(
+          `Não foi possível preparar a prévia: ${error instanceof Error ? error.message : String(error)}`,
+        );
+    } finally {
+      if (mounted.current) setRepairing(false);
+    }
+  };
   const state = useRef({ active, time, playing, total });
   // Commit the playhead and any source seek together before the next paint.
   // Otherwise RAF can read a new clip with the previous clip's video time.
   useLayoutEffect(() => {
     state.current = { active, time, playing, total };
   });
-  const seekVideo = () => {
+  const seekVideo = (transition = false) => {
     const element = video.current;
-    if (element && Math.abs(element.currentTime - sourceTime) > 0.15)
+    if (
+      element &&
+      Math.abs(element.currentTime - sourceTime) > (transition ? 0.015 : 0.15)
+    )
       element.currentTime = sourceTime;
   };
   const requestPlayback = () => {
@@ -101,7 +134,9 @@ export function Player({
     ++playRequest.current;
     const element = video.current;
     if (!element || !active) return;
-    seekVideo();
+    // Even a 50–100 ms removed pause must seek at a cut boundary. The normal
+    // drift tolerance is intentionally larger and cannot be reused here.
+    seekVideo(true);
     element.playbackRate = active.clip.speed;
     if (playing && total > 0) requestPlayback();
     else element.pause();
@@ -222,6 +257,7 @@ export function Player({
                 requestPlayback();
               }}
               onCanPlay={() => {
+                setMediaError("");
                 if (state.current.playing && video.current?.paused)
                   requestPlayback();
               }}
@@ -238,11 +274,18 @@ export function Player({
                   setPlaying(false);
                 }
               }}
-              onError={() =>
-                setMediaError(
-                  "Este formato não pode ser reproduzido no monitor. Use um arquivo H.264/MP4 compatível.",
-                )
-              }
+              onError={() => {
+                const error = video.current?.error;
+                if (!error || error.code === MediaError.MEDIA_ERR_ABORTED)
+                  return;
+                if (!repairAttempt.current.has(media.id)) void recoverPreview();
+                else {
+                  setMediaError(
+                    `A prévia não pôde ser reproduzida (erro ${error.code}). ${error.message || "Reabra o projeto para tentar novamente."}`,
+                  );
+                  setPlaying(false);
+                }
+              }}
             />
             {overlays.map((overlay) => (
               <OverlayPreview
@@ -270,6 +313,7 @@ export function Player({
                 &gt;&gt; {active.clip.speed}x
               </div>
             )}
+            <MotionPreview project={project} time={time} />
             {!active?.clip.muted && (
               <CaptionPreview project={project} time={time} />
             )}
@@ -325,7 +369,7 @@ export function Player({
           <button
             className="play-button"
             aria-label={playing ? "Pausar" : "Reproduzir"}
-            disabled={!media || total <= 0}
+            disabled={!media || total <= 0 || repairing}
             onClick={togglePlay}
           >
             {playing ? (

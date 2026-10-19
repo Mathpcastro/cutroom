@@ -59,6 +59,8 @@ const editNames = [
   "captions",
   "normalize",
   "overlay",
+  "motion",
+  "delete_motion",
   "remove_silence",
   "remove_fillers",
   "preset",
@@ -79,7 +81,7 @@ export const EDITOR_TOOLS = [
       CAPTION_PRESETS.map((p) => `${p.id} (${p.name}: ${p.description})`).join(
         "; ",
       ) +
-      ". Preserve unrelated edits. Never invent speech or timing.",
+      ". HyperFrames animation commands use TIMELINE seconds: motion{id? (edit existing),name?,start,end,mode:overlay|fullscreen,presetId:title|lower-third|highlight|steps|stat|explainer,text,subtitle?,items?:string[],accent?:#RRGGBB,background?:#RRGGBB}; delete_motion{id}. For custom scenes omit presetId and supply html (HTML/CSS fragment, no scripts, external assets, media, CSS animation/transition/url/import) and animations:[{selector,start,duration,from?:{...},to:{...},ease?}]. Tween times are LOCAL scene seconds. Supported GSAP properties x,y,xPercent,yPercent,scale,scaleX,scaleY,rotation,opacity,autoAlpha,color,backgroundColor,borderColor,borderRadius,width,height,letterSpacing,fontSize,clipPath,filter,transformOrigin. Eases none,linear,power1.out,power2.out,power3.out,power4.out,sine.inOut etc. Author design at width1920, height according to project aspect; CSS position:absolute;inset:0. Max120 seconds/scene, six items,100 tweens. Fullscreen keeps source audio. Preset animations handle entry and exit. Custom animations must include both. Preview works immediately; export requires optional Efeitos e animações package in Pacotes. No terminal required. Use transcript and clip speeds/cuts to map speech to actual timeline time. Preserve unrelated edits. Never invent speech or timing.",
     inputSchema: objectSchema(
       {
         name: { type: "string", enum: editNames },
@@ -839,6 +841,8 @@ export function toolActivityLabel(
     zoom: "Ajustando o enquadramento",
     speed: "Ajustando a velocidade",
     overlay: "Adicionando texto ao vídeo",
+    motion: "Criando animação na timeline",
+    delete_motion: "Removendo animação",
     trim: "Ajustando os cortes",
     split: "Dividindo um trecho",
     remove_range: "Cortando um intervalo",

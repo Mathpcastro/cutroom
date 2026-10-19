@@ -7,7 +7,12 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       outDir: "dist-electron",
-      rollupOptions: { input: "electron/main.ts" },
+      rollupOptions: {
+        input: {
+          main: "electron/main.ts",
+          "render-motion": "electron/render-motion.ts",
+        },
+      },
     },
   },
   preload: {

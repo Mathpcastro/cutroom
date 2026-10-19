@@ -140,6 +140,7 @@ export function Assistant({ state, run, desktop }: ActionProps) {
             "Remova pausas e muletas",
             "Adicione legendas",
             "Aplique a edição limpa",
+            "Crie uma animação para explicar as etapas do vídeo",
           ].map((suggestion) => (
             <button
               key={suggestion}
@@ -377,9 +378,8 @@ export function Assistant({ state, run, desktop }: ActionProps) {
         <div className="packages-panel">
           <h2>Pacotes locais</h2>
           <p>
-            Instale a transcrição para entender as falas, remover muletas e
-            criar legendas. O download acontece aqui; não é preciso abrir o
-            terminal.
+            Adicione transcrição, legendas e efeitos ao editor. Os pacotes rodam
+            no seu computador; instale o que precisar, sem abrir o terminal.
           </p>
           <ActivityFeed state={state} compact />
           {transcriptionReady &&

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { makeMotion, validateMotion } from "./motion-definition";
 import {
   captionTimelineWords,
   resolveCaptionSettings,
@@ -58,6 +59,7 @@ export function createProject(): Project {
     clips: [],
     words: [],
     overlays: [],
+    motions: [],
     settings: {
       captions: false,
       normalize: true,
@@ -153,6 +155,18 @@ export function validateProject(value: unknown): Project {
       fail("Tempo de motion inválido.");
   }
   unique(p.overlays as Project["overlays"]);
+  if (
+    p.motions !== undefined &&
+    (!Array.isArray(p.motions) || p.motions.length > 100)
+  )
+    fail("Lista de animações inválida. Use até 100 cenas.");
+  const motions = (p.motions ?? []) as NonNullable<Project["motions"]>;
+  for (const scene of motions) {
+    validateMotion(scene);
+    if (scene.end > clips.reduce((sum, c) => sum + clipDuration(c), 0) + eps)
+      fail("Animação fora da timeline.");
+  }
+  unique(motions);
   const s = obj(p.settings);
   bool(s.captions, "Legendas");
   bool(s.normalize, "Normalização");
@@ -167,7 +181,10 @@ export function validateProject(value: unknown): Project {
     fail("Cor de destaque inválida.");
   if (s.captionStyle !== undefined)
     resolveCaptionSettings(s.captionStyle as Partial<CaptionSettings>);
-  return structuredClone(value) as Project;
+  return {
+    ...(structuredClone(value) as Project),
+    motions: structuredClone(motions),
+  };
 }
 
 type Range = { mediaId: string; start: number; end: number };
@@ -269,6 +286,38 @@ function remapOverlays(
         ]
       : [];
   });
+  after.motions = (before.motions ?? []).flatMap((scene) => {
+    const parts: NonNullable<Project["motions"]> = [];
+    let offset = 0;
+    for (const clip of after.clips) {
+      const original = before.clips.find((c) => c.id === lineage.get(clip.id));
+      if (original) {
+        const from = oldOffsets.get(original.id)!;
+        const sourceStart =
+          original.start + Math.max(0, scene.start - from) * original.speed;
+        const sourceEnd =
+          original.start +
+          Math.min(clipDuration(original), scene.end - from) * original.speed;
+        const start = Math.max(clip.start, sourceStart),
+          end = Math.min(clip.end, sourceEnd);
+        if (end > start + eps)
+          parts.push({
+            ...scene,
+            id: parts.length ? id() : scene.id,
+            start: offset + (start - clip.start) / clip.speed,
+            end: offset + (end - clip.start) / clip.speed,
+            sourceOffset:
+              (scene.sourceOffset ?? 0) +
+              (from + (start - original.start) / original.speed - scene.start) *
+                (scene.playbackRate ?? 1),
+            playbackRate:
+              ((scene.playbackRate ?? 1) * clip.speed) / original.speed,
+          });
+      }
+      offset += clipDuration(clip);
+    }
+    return parts;
+  });
 }
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 function fillerRanges(project: Project): Range[] {
@@ -329,6 +378,20 @@ export function applyCommand(project: Project, command: EditCommand): Project {
     p.clips.find((c) => c.id === a.clipId) ?? fail("Trecho não encontrado.");
   const selected = () => (a.clipId === undefined ? p.clips : [clip()]);
   switch (command.name) {
+    case "motion": {
+      const scene = makeMotion(p, a, id());
+      p.motions = [
+        ...(p.motions ?? []).filter((s) => s.id !== scene.id),
+        scene,
+      ];
+      break;
+    }
+    case "delete_motion": {
+      if (!p.motions?.some((s) => s.id === a.id))
+        fail("Animação não encontrada.");
+      p.motions = (p.motions ?? []).filter((s) => s.id !== a.id);
+      break;
+    }
     case "rename":
       p.name = str(a.name, "Nome", 300).trim() || fail("O nome está vazio.");
       break;
@@ -515,6 +578,7 @@ export function applyCommand(project: Project, command: EditCommand): Project {
         muted: false,
       }));
       p.overlays = [];
+      p.motions = [];
       p.settings = createProject().settings;
       const source = p.media[0];
       if (source) {

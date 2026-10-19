@@ -4,7 +4,7 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 
 **Open source · Windows x64 · versão inicial em desenvolvimento**
 
-[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.3.3)
+[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.4.0)
 
 | Grafite | Claro |
 | --- | --- |
@@ -27,6 +27,8 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 - Preset **Edição limpa**, adaptado da skill de edição de Matheus Castro.
 - Estúdio de legendas com 24 presets, seis famílias de fontes offline, karaokê, destaque por palavra, frases progressivas, animações e estilos personalizados. A prévia usa JASSUB/libass; veja [docs/captions.md](docs/captions.md).
 - Títulos, frases em tela cheia, callouts, fluxos, promoção, capa e hook.
+- Efeitos HyperFrames por texto: seis modelos e cenas originais em HTML/CSS com movimentos GSAP; prévia sincronizada, faixa Efeitos, desfazer/refazer e renderização local com cache. Veja [como usar](docs/motion.md).
+- Recuperação automática de erros do monitor com uma prévia H.264 local, sem alterar o arquivo original.
 - Normalização de áudio em duas passagens e exportação local H.264/AAC MP4.
 - Salvar/reabrir projetos; os vídeos originais são preservados.
 - Pacote instalável de transcrição local Faster Whisper, com Python privado e modelo multilíngue. Depois da instalação, transcreve offline.
@@ -48,6 +50,8 @@ O npm/CLI é necessário somente para preparar uma sessão caso você ainda não
 2. Abra **Conversa → Conexão Codex**.
 3. O aviso da primeira abertura leva a **Pacotes**, também disponível no menu **Conversa**. Instale **Transcrição local** para remover muletas, aplicar a edição limpa completa e criar legendas. O download ocupa centenas de MB e exige internet na primeira instalação. Depois, essas ações preparam a transcrição automaticamente quando necessário. Cortes manuais e detecção de pausas funcionam sem esse pacote.
 4. Peça uma edição no chat, confira o resultado e clique em **Exportar**.
+
+Para títulos animados, diagramas e cenas explicativas, instale **Efeitos e animações** em Pacotes. A prévia já funciona antes do download; o pacote é necessário para exportar cenas. Os controles ficam em **Ferramentas → Estilo e edição → Efeitos e animações**. Exemplo: “Anime estas três etapas em tela cheia quando eu começar a explicação, mantendo minha voz”.
 
 **Ferramentas** abre mídia, transcrição ou estilo e edição. A timeline agrupa cortes e histórico em **Editar**, e ampliação em **Zoom da timeline**. Salve pelo menu do projeto ou `Ctrl+S`; abra um projeto com `Ctrl+O`. `Ctrl+,` abre a aparência.
 

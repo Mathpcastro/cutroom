@@ -4,6 +4,7 @@ import {
   Film,
   Redo2,
   Scissors,
+  Sparkles,
   Trash2,
   Undo2,
   Volume2,
@@ -41,6 +42,10 @@ export function Timeline({
   const [scale, setScale] = useState(1);
   const project = state.project;
   const total = duration(project);
+  const motions = project.motions ?? [];
+  const selectedMotion = motions.find((scene) => scene.id === selectedId);
+  const editMotion = () =>
+    window.dispatchEvent(new Event("cutroom:motion-edit"));
   const selected = project.clips.find((clip) => clip.id === selectedId);
   const selectedMedia = project.media.find(
     (media) => media.id === selected?.mediaId,
@@ -57,7 +62,10 @@ export function Timeline({
   const divisions = 8;
   const timelineWidth = `${scale * 100}%`;
   return (
-    <section className="timeline-section" aria-label="Timeline de edição">
+    <section
+      className={`timeline-section ${motions.length ? "has-motions" : ""}`}
+      aria-label="Timeline de edição"
+    >
       <div className="timeline-toolbar">
         <div className="timeline-title">
           <span>Timeline</span>
@@ -95,14 +103,24 @@ export function Timeline({
             </button>
             <button
               role="menuitem"
-              disabled={!selected || state.busy}
+              disabled={(!selected && !selectedMotion) || state.busy}
               onClick={() =>
-                selected &&
-                command({ name: "delete_clip", args: { clipId: selected.id } })
+                selectedMotion
+                  ? command({
+                      name: "delete_motion",
+                      args: { id: selectedMotion.id },
+                    })
+                  : selected &&
+                    command({
+                      name: "delete_clip",
+                      args: { clipId: selected.id },
+                    })
               }
             >
               <Trash2 size={14} />
-              Excluir clipe selecionado
+              {selectedMotion
+                ? "Excluir animação selecionada"
+                : "Excluir clipe selecionado"}
             </button>
           </Menu>
           <Menu label="Zoom da timeline" className="timeline-zoom-menu">
@@ -139,6 +157,12 @@ export function Timeline({
             <Volume2 size={14} />
             <span>Áudio</span>
           </div>
+          {motions.length > 0 && (
+            <div className="motion-track-label">
+              <Sparkles size={13} />
+              <span>Efeitos</span>
+            </div>
+          )}
         </div>
         <div className="timeline-scroll">
           <div className="timeline-canvas" style={{ width: timelineWidth }}>
@@ -248,6 +272,33 @@ export function Timeline({
                   );
                 })}
               </div>
+              {motions.length > 0 && (
+                <div
+                  className="motion-lane"
+                  aria-label="Trilha de efeitos e animações"
+                >
+                  {motions.map((scene) => (
+                    <button
+                      key={scene.id}
+                      className={`motion-block ${scene.id === selectedId ? "active" : ""}`}
+                      style={{
+                        left: `${(scene.start / seconds) * 100}%`,
+                        width: `${((scene.end - scene.start) / seconds) * 100}%`,
+                      }}
+                      title={`${scene.name} · ${timecode(scene.start, true)} → ${timecode(scene.end, true)}`}
+                      aria-label={`Animação ${scene.name}`}
+                      onClick={() => {
+                        setSelectedId(scene.id);
+                        setTime(scene.start);
+                        editMotion();
+                      }}
+                    >
+                      <Sparkles size={11} />
+                      <span>{scene.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div
               className="playhead"
@@ -260,7 +311,34 @@ export function Timeline({
         </div>
       </div>
       <div className="clip-inspector">
-        {selected ? (
+        {selectedMotion ? (
+          <>
+            <span className="inspector-label">
+              <Sparkles size={12} /> Animação
+            </span>
+            <span className="motion-inspector-name">{selectedMotion.name}</span>
+            <button
+              className="button small"
+              disabled={state.busy}
+              onClick={editMotion}
+            >
+              Editar animação
+            </button>
+            <button
+              className="icon-button"
+              disabled={state.busy}
+              aria-label="Excluir animação selecionada"
+              onClick={() =>
+                command({
+                  name: "delete_motion",
+                  args: { id: selectedMotion.id },
+                })
+              }
+            >
+              <Trash2 size={13} />
+            </button>
+          </>
+        ) : selected ? (
           <>
             <span className="inspector-label">
               <Film size={12} /> Clipe selecionado
