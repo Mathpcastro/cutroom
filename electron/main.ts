@@ -47,6 +47,11 @@ import { CodexClient, toolActivityLabel } from "./core/codex";
 import { runProcess } from "./core/process";
 import { motionCacheKey, motionDocument } from "./core/motion-document";
 import { renderMotions } from "./core/motion-render";
+import {
+  chatCommandRequest,
+  resolveChatCommand,
+  applyNativeChatCommand,
+} from "./core/chat-commands";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -386,6 +391,7 @@ async function executeCommand(value: unknown) {
         "delete_clip",
         "zoom",
         "speed",
+        "clip_style",
         "captions",
         "normalize",
         "overlay",
@@ -479,6 +485,100 @@ async function executeCommand(value: unknown) {
     throw error;
   }
   return emit();
+}
+async function runChatCommand(value: unknown) {
+  idle();
+  const input = chatCommandRequest.parse(value);
+  const { definition, options } = resolveChatCommand(
+    input.id,
+    state.project,
+    input.options,
+    input.context,
+  );
+  const id = definition.id;
+  if (!["desfazer", "refazer"].includes(id) && !state.project.media.length)
+    throw new Error("Importe um vídeo antes de aplicar comandos.");
+  const display = `/${id}${options.text ? ` ${options.text}` : options.items?.length ? ` ${options.items.join(" | ")}` : ""}${definition.range ? ` · ${options.start!.toFixed(2)}–${options.end!.toFixed(2)} s` : ""}`;
+  if (id === "animar")
+    return request("sendChat", {
+      text: `Crie uma animação original no projeto usando a ferramenta motion. Pedido do usuário: ${options.text}. Intervalo EXATO na timeline editada: ${options.start} a ${options.end} segundos. Preserve vídeo, voz e demais ajustes; use HTML/CSS e GSAP declarativo se necessário. Leia o projeto antes. Não exporte automaticamente.`,
+      displayText: display,
+      model: input.model,
+      reasoningEffort: input.reasoningEffort,
+    });
+  message("user", display);
+  try {
+    if (id === "desfazer" || id === "refazer") {
+      if (!(id === "desfazer" ? past.length : future.length))
+        throw new Error(`Não há alterações para ${id}.`);
+      await request(id === "desfazer" ? "undo" : "redo");
+      message(
+        "system",
+        id === "desfazer" ? "Última edição desfeita." : "Edição refeita.",
+      );
+      return emit();
+    }
+    if (id === "transcrever") return await transcribe(false);
+    if (id === "exportar") return await exportVideo();
+    const primitive: Record<string, EditCommand> = {
+      "edicao-limpa": { name: "preset", args: {} },
+      "remover-pausas": { name: "remove_silence", args: {} },
+      "remover-muletas": { name: "remove_fillers", args: {} },
+      normalizar: {
+        name: "normalize",
+        args: { enabled: true, targetLufs: -14 },
+      },
+      legendar: {
+        name: "captions",
+        args: { enabled: true, style: { presetId: "clean-phrase" } },
+      },
+      "legenda-karaoke": {
+        name: "captions",
+        args: { enabled: true, style: { presetId: "karaoke" } },
+      },
+      "legenda-palavra": {
+        name: "captions",
+        args: { enabled: true, style: { presetId: "word-pop" } },
+      },
+      "sem-legendas": { name: "captions", args: { enabled: false } },
+    };
+    if (primitive[id]) return await executeCommand(primitive[id]);
+    await job(
+      "command",
+      `Aplicando ${definition.label}…`,
+      async (signal, progress) => {
+        if (!state.project.clips.length)
+          throw new Error(
+            "Adicione um clipe à timeline antes de aplicar este comando.",
+          );
+        const before = state.project;
+        progress(20, `Preparando ${definition.label}…`);
+        const after = applyNativeChatCommand(
+          before,
+          id,
+          options,
+          input.context,
+        );
+        signal.throwIfAborted();
+        if (state.project !== before)
+          throw new Error("O projeto mudou durante o comando.");
+        replaceProject(after);
+        const duration = projectDuration(after);
+        progress(100, `${definition.label} aplicado à timeline.`);
+        message(
+          "system",
+          `${definition.label} aplicado. ${definition.range ? `Intervalo original ${options.start!.toFixed(2)}–${options.end!.toFixed(2)} s. ` : ""}${["timelapse", "camera-lenta"].includes(id) ? `Nova duração: ${duration.toFixed(2)} s. ` : ""}Você pode ajustar ou desfazer. O vídeo ainda não foi exportado.`,
+        );
+      },
+    );
+    return emit();
+  } catch (error) {
+    // Primitive edit/transcription/export functions already report their own progress;
+    // command validation/render failures must still be visible in conversation.
+    const text = error instanceof Error ? error.message : String(error);
+    if (state.messages.at(-1)?.text !== text) message("system", text);
+    throw error;
+  }
 }
 async function exportVideo() {
   if (!state.project.clips.length) throw new Error("A timeline está vazia.");
@@ -637,6 +737,8 @@ async function connectCodex(value: unknown = {}) {
 
 async function request(method: string, params?: unknown): Promise<unknown> {
   switch (method) {
+    case "runChatCommand":
+      return runChatCommand(params);
     case "setAppearance": {
       appearance = appearanceSchema.parse(params);
       applyWindowAppearance();
@@ -783,9 +885,10 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       state.connection = { status: "disconnected", models: [] };
       return emit();
     case "sendChat": {
-      const { text, model, reasoningEffort } = z
+      const { text, displayText, model, reasoningEffort } = z
         .object({
           text: z.string().trim().min(1).max(25_000),
+          displayText: z.string().max(2000).optional(),
           model: z.string().max(200).optional(),
           reasoningEffort: z
             .enum(["none", "minimal", "low", "medium", "high", "xhigh", "max"])
@@ -796,7 +899,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         throw new Error("Conecte o Codex antes de enviar.");
       if (state.busy) throw new Error("Aguarde ou cancele a operação atual.");
       chatBusy = true;
-      message("user", text);
+      message("user", displayText || text);
       message("assistant", "");
       try {
         await codex.send(text, model, reasoningEffort);

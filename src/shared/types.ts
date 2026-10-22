@@ -39,6 +39,10 @@ export interface Clip {
   muted: boolean;
   focusX?: number;
   focusY?: number;
+  look?: "none" | "monochrome" | "cinema" | "vivid" | "blur" | "vignette" | "color-wipe";
+  mirrored?: boolean;
+  lookStart?: number;
+  lookEnd?: number;
 }
 export type OverlayKind =
   "title" | "statement" | "callout" | "flow" | "promo" | "cover";
@@ -159,6 +163,7 @@ export type CommandName =
   | "delete_clip"
   | "zoom"
   | "speed"
+  | "clip_style"
   | "captions"
   | "normalize"
   | "overlay"

@@ -56,6 +56,7 @@ const editNames = [
   "remove_range",
   "zoom",
   "speed",
+  "clip_style",
   "captions",
   "normalize",
   "overlay",
@@ -81,6 +82,7 @@ export const EDITOR_TOOLS = [
       CAPTION_PRESETS.map((p) => `${p.id} (${p.name}: ${p.description})`).join(
         "; ",
       ) +
+      ". Image/interval command uses TIMELINE seconds: clip_style{start,end,look?:none|monochrome|cinema|vivid|blur|vignette|color-wipe,factor?:zoom1to4,speed?:0.1to16,muted?:boolean,mirrored?:boolean}. Splits only interval boundaries; unrelated content is preserved. color-wipe reveals vivid color left-to-right over grayscale. cinema adds letterbox bars and desaturation. none removes color look. Native chat slash commands execute locally without Codex; don't claim they require a model connection. " +
       ". HyperFrames animation commands use TIMELINE seconds: motion{id? (edit existing),name?,start,end,mode:overlay|fullscreen,presetId:title|lower-third|highlight|steps|stat|explainer,text,subtitle?,items?:string[],accent?:#RRGGBB,background?:#RRGGBB}; delete_motion{id}. For custom scenes omit presetId and supply html (HTML/CSS fragment, no scripts, external assets, media, CSS animation/transition/url/import) and animations:[{selector,start,duration,from?:{...},to:{...},ease?}]. Tween times are LOCAL scene seconds. Supported GSAP properties x,y,xPercent,yPercent,scale,scaleX,scaleY,rotation,opacity,autoAlpha,color,backgroundColor,borderColor,borderRadius,width,height,letterSpacing,fontSize,clipPath,filter,transformOrigin. Eases none,linear,power1.out,power2.out,power3.out,power4.out,sine.inOut etc. Author design at width1920, height according to project aspect; CSS position:absolute;inset:0. Max120 seconds/scene, six items,100 tweens. Fullscreen keeps source audio. Preset animations handle entry and exit. Custom animations must include both. Preview works immediately; export requires optional Efeitos e animações package in Pacotes. No terminal required. Use transcript and clip speeds/cuts to map speech to actual timeline time. Preserve unrelated edits. Never invent speech or timing.",
     inputSchema: objectSchema(
       {
@@ -840,6 +842,7 @@ export function toolActivityLabel(
     captions: "Configurando legendas",
     zoom: "Ajustando o enquadramento",
     speed: "Ajustando a velocidade",
+    clip_style: "Ajustando imagem e intervalo",
     overlay: "Adicionando texto ao vídeo",
     motion: "Criando animação na timeline",
     delete_motion: "Removendo animação",

@@ -22,11 +22,23 @@ try {
     connection.connection.models.find((m) => /luna/i.test(m.id)) ??
     connection.connection.models[0];
   report.model = model.id;
-  await request("sendChat", {
-    text: 'Leia o projeto e crie uma animação ORIGINAL HyperFrames sobre o vídeo, com HTML/CSS personalizado e GSAP declarativo: um diagrama minimalista de três cartões conectados "Ideia", "Movimento", "Vídeo". De 1 a 4 segundos da timeline, com entrada e saída, usando laranja e branco. Use edit_project com motion, sem presetId; não transcreva nem exporte. Responda brevemente ao terminar.',
-    model: model.id,
-    reasoningEffort: model.reasoningEfforts?.[0],
-  });
+  const text =
+    "Crie um diagrama ORIGINAL de três cartões conectados: Ideia, Movimento, Vídeo. Use HTML/CSS personalizado e GSAP declarativo, sem presetId, com entrada e saída, laranja e branco. Não transcreva nem exporte. Responda brevemente ao terminar.";
+  await request(
+    process.argv.includes("--command") ? "runChatCommand" : "sendChat",
+    process.argv.includes("--command")
+      ? {
+          id: "animar",
+          options: { text, start: 1, end: 4 },
+          model: model.id,
+          reasoningEffort: model.reasoningEfforts?.[0],
+        }
+      : {
+          text: 'Leia o projeto e crie uma animação ORIGINAL HyperFrames sobre o vídeo, com HTML/CSS personalizado e GSAP declarativo: um diagrama minimalista de três cartões conectados "Ideia", "Movimento", "Vídeo". De 1 a 4 segundos da timeline, com entrada e saída, usando laranja e branco. Use edit_project com motion, sem presetId; não transcreva nem exporte. Responda brevemente ao terminar.',
+          model: model.id,
+          reasoningEffort: model.reasoningEfforts?.[0],
+        },
+  );
   await expect
     .poll(async () => !(await request("getState")).busy, {
       timeout: 180000,

@@ -1,0 +1,357 @@
+.composer:has(.command-access) {
+  position: relative;
+}
+.command-access {
+  display: contents;
+}
+.command-trigger {
+  flex: 0 0 27px;
+  width: 27px;
+  height: 29px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+.command-trigger:hover,
+.command-trigger[aria-expanded="true"] {
+  color: var(--text);
+  background: var(--hover);
+}
+.command-trigger:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.command-popover {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  min-width: 0;
+  max-height: min(485px, calc(100vh - 190px));
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px #0003;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-align: left;
+}
+.command-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 9px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.command-search > svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.command-search input {
+  min-width: 0;
+  width: 100%;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  box-shadow: none;
+}
+.command-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.command-search input::placeholder {
+  color: var(--muted);
+}
+.command-popover kbd {
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font: 10px var(--mono);
+  padding: 1px 3px;
+  background: transparent;
+}
+.command-search > kbd {
+  margin-left: auto;
+}
+.command-search .icon-button {
+  width: 19px;
+  min-width: 19px;
+  height: 20px;
+}
+.command-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: min(232px, calc(100vh - 375px));
+  min-height: 44px;
+  flex: 1 1 auto;
+  padding: 4px;
+  scrollbar-width: thin;
+}
+.command-category {
+  padding: 10px 7px 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.command-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 6px;
+  min-height: 33px;
+  padding: 7px;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text);
+  cursor: pointer;
+}
+.command-option.is-active {
+  background: var(--hover);
+}
+.command-option-name {
+  font-size: 12px;
+  font-weight: 400;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.command-option-code {
+  color: var(--muted);
+  font: 9px var(--mono);
+  white-space: nowrap;
+}
+.command-option > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.command-description {
+  flex-shrink: 0;
+  border-top: 1px solid var(--line);
+  padding: 10px 11px;
+  min-height: 83px;
+}
+.command-description p,
+.command-config-description p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.command-requirement {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.command-requirement button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  font: inherit;
+}
+.command-keyboard-help {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 9px;
+}
+.command-keyboard-help > span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.command-keyboard-help kbd {
+  border: 0;
+  padding: 0;
+}
+.command-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 25px 10px;
+  color: var(--muted);
+  text-align: center;
+}
+.command-no-results strong {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+}
+.command-no-results span {
+  font-size: 10px;
+}
+.command-config-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 9px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+}
+.command-config-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.command-config-heading strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+}
+.command-config-heading span {
+  display: block;
+  margin-top: 2px;
+  font: 9px var(--mono);
+  color: var(--muted);
+}
+.command-config-heading .icon-button {
+  width: 22px;
+  min-width: 22px;
+  height: 25px;
+}
+.command-config-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+.command-config-description {
+  padding-bottom: 1px;
+}
+.command-time-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.command-time-fields label,
+.command-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  min-width: 0;
+}
+.command-config-body :is(input, textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.command-config-body textarea {
+  resize: vertical;
+}
+.command-extra summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 10px;
+}
+.command-extra .command-field {
+  padding-top: 9px;
+}
+.command-scope {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+}
+.command-error {
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 0;
+}
+.command-config-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding: 10px 11px;
+}
+.command-config-actions .text-link {
+  font-size: 11px;
+}
+.command-apply {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  min-height: 30px;
+}
+.command-popover :is(button, input, textarea, summary):focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: 2px;
+}
+.command-popover .command-search input:focus-visible {
+  outline: 0;
+}
+.command-trigger:focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: 2px;
+}
+.composer-command-error {
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 0 5px 7px;
+  margin: 0;
+}
+@media (max-width: 1250px) {
+  .command-option-code {
+    font-size: 8px;
+    max-width: 103px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .command-option-name {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .command-popover {
+    scroll-behavior: auto;
+  }
+}

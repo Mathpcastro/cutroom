@@ -17,6 +17,7 @@ import { duration, locateClip, timecode } from "../lib/editor";
 import { OverlayPreview } from "./OverlayPreview";
 import { CaptionPreview } from "./CaptionPreview";
 import { MotionPreview } from "./MotionPreview";
+import { videoLookCss, wipeProgress } from "../shared/video-looks";
 
 interface Props {
   project: Project;
@@ -250,7 +251,8 @@ export function Player({
               style={{
                 objectFit: cover ? "cover" : "contain",
                 transformOrigin: "0 0",
-                transform: `translate(${-cropX * 100}%, ${-cropY * 100}%) scale(${zoom})`,
+                filter: videoLookCss(active?.clip, previewWidth),
+                transform: `${active?.clip.mirrored ? "translateX(100%) scaleX(-1) " : ""}translate(${-cropX * 100}%, ${-cropY * 100}%) scale(${zoom})`,
               }}
               onLoadedMetadata={() => {
                 seekVideo();
@@ -287,6 +289,49 @@ export function Player({
                 }
               }}
             />
+            {active?.clip.look === "cinema" && (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  zIndex: 2,
+                  background:
+                    "linear-gradient(to bottom,#000 0%,#000 11%,transparent 11%,transparent 89%,#000 89%,#000 100%)",
+                }}
+              />
+            )}
+            {active?.clip.look === "vignette" && (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  zIndex: 2,
+                  background:
+                    "radial-gradient(ellipse at center,transparent 38%,rgba(0,0,0,.65) 100%)",
+                }}
+              />
+            )}
+            {active?.clip.look === "color-wipe" && (
+              <div
+                aria-hidden="true"
+                data-video-wipe
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  width: `${(1 - wipeProgress(active.clip, sourceTime)) * 100}%`,
+                  pointerEvents: "none",
+                  zIndex: 2,
+                  backdropFilter: "grayscale(1) contrast(1.132075)",
+                  background: "rgba(0,0,0,.001)",
+                }}
+              />
+            )}
             {overlays.map((overlay) => (
               <OverlayPreview
                 key={overlay.id}

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { makeMotion, validateMotion } from "./motion-definition";
+import { VIDEO_LOOKS } from "../../src/shared/video-looks";
 import {
   captionTimelineWords,
   resolveCaptionSettings,
@@ -131,6 +132,18 @@ export function validateProject(value: unknown): Project {
     bool(c.muted, "Mudo");
     if (c.focusX !== undefined) num(c.focusX, "Foco X", 0, 1);
     if (c.focusY !== undefined) num(c.focusY, "Foco Y", 0, 1);
+    if (
+      c.look !== undefined &&
+      !VIDEO_LOOKS.includes(c.look as (typeof VIDEO_LOOKS)[number])
+    )
+      fail("Estilo de imagem inválido.");
+    if (c.mirrored !== undefined) bool(c.mirrored, "Espelhamento");
+    if (c.look === "color-wipe") {
+      num(c.lookStart, "Início do efeito", -Number.MAX_SAFE_INTEGER);
+      num(c.lookEnd, "Fim do efeito", -Number.MAX_SAFE_INTEGER);
+      if ((c.lookEnd as number) <= (c.lookStart as number))
+        fail("Intervalo do efeito inválido.");
+    }
   }
   unique(clips);
   for (const raw of p.words as Word[]) {
@@ -378,6 +391,66 @@ export function applyCommand(project: Project, command: EditCommand): Project {
     p.clips.find((c) => c.id === a.clipId) ?? fail("Trecho não encontrado.");
   const selected = () => (a.clipId === undefined ? p.clips : [clip()]);
   switch (command.name) {
+    case "clip_style": {
+      const start = num(a.start, "Início do intervalo", 0, projectDuration(p));
+      const end = num(
+        a.end,
+        "Fim do intervalo",
+        start + eps,
+        projectDuration(p),
+      );
+      if (
+        a.look !== undefined &&
+        !VIDEO_LOOKS.includes(a.look as (typeof VIDEO_LOOKS)[number])
+      )
+        fail("Estilo de imagem inválido.");
+      if (a.factor !== undefined) num(a.factor, "Zoom", 1, 4);
+      if (a.speed !== undefined) num(a.speed, "Velocidade", 0.1, 16);
+      if (a.muted !== undefined) bool(a.muted, "Áudio");
+      if (a.mirrored !== undefined) bool(a.mirrored, "Espelhamento");
+      let offset = 0;
+      p.clips = p.clips.flatMap((clip) => {
+        const from = offset,
+          length = clipDuration(clip);
+        offset += length;
+        const localStart = Math.max(0, start - from),
+          localEnd = Math.min(length, end - from);
+        if (localEnd <= localStart + eps) return [clip];
+        const points = [0, localStart, localEnd, length].filter(
+          (v, i, all) => i === 0 || v - all[i - 1] > eps,
+        );
+        return points.slice(0, -1).map((point, i) => {
+          const next = points[i + 1],
+            changed = point >= localStart - eps && next <= localEnd + eps;
+          const part = {
+            ...clip,
+            id: i ? id() : clip.id,
+            start: clip.start + point * clip.speed,
+            end: clip.start + next * clip.speed,
+          };
+          lineage.set(part.id, clip.id);
+          if (changed) {
+            if (a.factor !== undefined) part.zoom = a.factor as number;
+            if (a.speed !== undefined) part.speed = a.speed as number;
+            if (a.muted !== undefined) part.muted = a.muted as boolean;
+            if (a.mirrored !== undefined) part.mirrored = a.mirrored as boolean;
+            if (a.look !== undefined) {
+              part.look = a.look as Clip["look"];
+              if (a.look === "color-wipe") {
+                part.lookStart = clip.start + (start - from) * clip.speed;
+                part.lookEnd = clip.start + (end - from) * clip.speed;
+              } else {
+                delete part.lookStart;
+                delete part.lookEnd;
+              }
+            }
+          }
+          return part;
+        });
+      });
+      if (a.speed !== undefined) remapOverlays(before, p, lineage);
+      break;
+    }
     case "motion": {
       const scene = makeMotion(p, a, id());
       p.motions = [

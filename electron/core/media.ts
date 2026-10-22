@@ -9,6 +9,7 @@ import { clipDuration, projectDuration, validateProject } from "./project";
 import { captionAssParts } from "../../src/shared/captions";
 import type { CaptionWord } from "../../src/shared/captions";
 import { motionExportSegments } from "../../src/shared/motions";
+import { videoLookFilters } from "../../src/shared/video-looks";
 
 const unpack = (p: string) =>
   p.replace(/([\\/])app\.asar([\\/])/, "$1app.asar.unpacked$2");
@@ -564,7 +565,14 @@ export async function exportProject(
         framing = `[0:v:0]setpts=(PTS-STARTPTS)/${n(clip.speed)},split=2[contain][fill];[contain]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1[base];[fill]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1[full];[base][full]overlay=enable='${enable}'[framed];[framed]`;
       } else
         framing = `[0:v:0]setpts=(PTS-STARTPTS)/${n(clip.speed)},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,`;
-      const video = `${framing}scale=${scaledW}:${scaledH},crop=${width}:${height}:${Math.round(Math.max(0, Math.min(scaledW - width, scaledW * focusX - width / 2)))}:${Math.round(Math.max(0, Math.min(scaledH - height, scaledH * focusY - height / 2)))},fps=${fps},tpad=stop_mode=clone:stop_duration=1,trim=end_frame=${frames},setpts=N/(${fps}*TB),format=yuv420p[v]`;
+      let look = videoLookFilters(clip, width).join(",");
+      if (look) look += ",";
+      if (clip.look === "color-wipe") {
+        const start = clip.lookStart ?? clip.start,
+          end = clip.lookEnd ?? clip.end;
+        look += `split=2[gray-source][color-source];[gray-source]hue=s=0,eq=contrast=1.2[gray-look];[color-source]eq=saturation=1.35:contrast=1.06[color-look];[gray-look][color-look]blend=all_expr='if(lte(X,W*min(1,max(0,(T*${n(clip.speed)}+${n(clip.start - start)})/${n(end - start)}))),B,A)',`;
+      }
+      const video = `${framing}scale=${scaledW}:${scaledH},crop=${width}:${height}:${Math.round(Math.max(0, Math.min(scaledW - width, scaledW * focusX - width / 2)))}:${Math.round(Math.max(0, Math.min(scaledH - height, scaledH * focusY - height / 2)))},${look}fps=${fps},tpad=stop_mode=clone:stop_duration=1,trim=end_frame=${frames},setpts=N/(${fps}*TB),format=yuv420p[v]`;
       const fade = Math.min(0.03, duration / 2),
         audio =
           media.hasAudio && !clip.muted

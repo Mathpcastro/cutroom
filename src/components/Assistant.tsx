@@ -19,16 +19,34 @@ import { ChoicePicker } from "./ChoicePicker";
 import { EffortPicker } from "./EffortPicker";
 import { ActivityFeed } from "./ActivityFeed";
 import { useDialogKeyboard } from "../lib/useDialogKeyboard";
+import { CommandPalette, type CommandPaletteHandle } from "./CommandPalette";
+import {
+  findChatCommand,
+  parseSlashCommand,
+  prepareChatCommand,
+  type ChatCommandDefinition,
+  type ChatCommandOptions,
+} from "../shared/chat-commands";
 
 export interface ActionProps {
   state: AppSnapshot;
   run: (method: string, params?: unknown) => Promise<void>;
   desktop: boolean;
+  time?: number;
+  selectedId?: string;
 }
 
-export function Assistant({ state, run, desktop }: ActionProps) {
+export function Assistant({
+  state,
+  run,
+  desktop,
+  time = 0,
+  selectedId,
+}: ActionProps) {
   const [tab, setTab] = useState<"chat" | "packages">("chat");
   const [text, setText] = useState("");
+  const [commandError, setCommandError] = useState("");
+  const commands = useRef<CommandPaletteHandle>(null);
   const [model, setModel] = useState("");
   const [activePicker, setActivePicker] = useState<"model" | "effort" | null>(
     null,
@@ -98,13 +116,63 @@ export function Assistant({ state, run, desktop }: ActionProps) {
       setApiKey("");
     }
   }, [state.connection.status]);
+  const execute = async (
+    command: ChatCommandDefinition,
+    options: ChatCommandOptions,
+  ) => {
+    if (activeWork || !desktop) return;
+    try {
+      prepareChatCommand(command.id, state.project, options, {
+        time,
+        selectedId,
+      });
+    } catch (reason) {
+      setCommandError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+      return;
+    }
+    if (command.kind === "ai" && !connected) {
+      setText(
+        `/${command.id} ${JSON.stringify(options.text ?? command.defaultText ?? "")}`,
+      );
+      setConnectionOpen(true);
+      return;
+    }
+    setCommandError("");
+    commands.current?.close(false);
+    setText("");
+    await run("runChatCommand", {
+      id: command.id,
+      options,
+      context: { time, selectedId },
+      ...(command.kind === "ai"
+        ? { model: selectedModel?.id, reasoningEffort: selectedEffort }
+        : {}),
+    });
+  };
   const submit = async () => {
     if (!text.trim() || activeWork || !desktop) return;
+    try {
+      const parsed = parseSlashCommand(text);
+      if (parsed) {
+        const command = findChatCommand(parsed.id);
+        if (command) await execute(command, parsed.options);
+        return;
+      }
+    } catch (reason) {
+      setCommandError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+      commands.current?.close(false);
+      return;
+    }
     if (!connected) {
       setConnectionOpen(true);
       return;
     }
     const message = text.trim();
+    setCommandError("");
     setText("");
     await run("sendChat", {
       text: message,
@@ -229,7 +297,7 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                   timeline.
                 </p>
                 <span className="welcome-hint">
-                  Cortes, legendas, ritmo e áudio.
+                  Use + ou digite / para ações prontas.
                 </span>
               </div>
             ) : (
@@ -275,7 +343,7 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                 <span>
                   {state.connection.status === "connecting"
                     ? "Conectando ao Codex…"
-                    : "Conecte o Codex para começar"}
+                    : "Conecte o Codex para editar com IA"}
                 </span>
                 <Plus size={14} />
               </button>
@@ -292,8 +360,12 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                 aria-label="Descreva sua edição"
                 placeholder="O que vamos editar?"
                 value={text}
-                onChange={(event) => setText(event.target.value)}
+                onChange={(event) => {
+                  setText(event.target.value);
+                  setCommandError("");
+                }}
                 onKeyDown={(event) => {
+                  if (commands.current?.handleComposerKeyDown(event)) return;
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
                     void submit();
@@ -302,7 +374,29 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                 disabled={!desktop}
                 rows={3}
               />
+              {commandError && (
+                <p className="composer-command-error" role="alert">
+                  {commandError}
+                </p>
+              )}
               <div className="composer-controls">
+                <CommandPalette
+                  ref={commands}
+                  state={state}
+                  text={text}
+                  setText={(value) => {
+                    setText(value);
+                    setCommandError("");
+                  }}
+                  input={input}
+                  time={time}
+                  selectedId={selectedId}
+                  disabled={!desktop || activeWork}
+                  onOpen={() => setActivePicker(null)}
+                  onExecute={(definition, options) =>
+                    void execute(definition, options)
+                  }
+                />
                 <div className="assistant-selectors">
                   <ChoicePicker
                     label="Modelo"
@@ -314,11 +408,12 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                     onChange={setModel}
                     disabled={!connected || activeWork}
                     open={activePicker === "model"}
-                    onOpenChange={(open) =>
+                    onOpenChange={(open) => {
+                      if (open) commands.current?.close(false);
                       setActivePicker((current) =>
                         open ? "model" : current === "model" ? null : current,
-                      )
-                    }
+                      );
+                    }}
                   />
                   <EffortPicker
                     value={selectedEffort}
@@ -339,11 +434,12 @@ export function Assistant({ state, run, desktop }: ActionProps) {
                     }
                     disabled={!connected || activeWork}
                     open={activePicker === "effort"}
-                    onOpenChange={(open) =>
+                    onOpenChange={(open) => {
+                      if (open) commands.current?.close(false);
                       setActivePicker((current) =>
                         open ? "effort" : current === "effort" ? null : current,
-                      )
-                    }
+                      );
+                    }}
                   />
                 </div>
                 {activeWork ? (
@@ -370,7 +466,8 @@ export function Assistant({ state, run, desktop }: ActionProps) {
               </div>
             </form>
             <div className="composer-help">
-              Enter envia <span>·</span> Shift + Enter quebra a linha
+              / comandos <span>·</span> Enter envia <span>·</span> Shift + Enter
+              nova linha
             </div>
           </div>
         </>

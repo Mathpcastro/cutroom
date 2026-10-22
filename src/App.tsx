@@ -59,6 +59,21 @@ export default function App() {
       setError("Este recurso precisa do aplicativo CutRoom desktop.");
       return;
     }
+    if (
+      method === "runChatCommand" &&
+      [
+        "edicao-limpa",
+        "remover-pausas",
+        "remover-muletas",
+        "timelapse",
+        "camera-lenta",
+        "dividir",
+        "desfazer",
+        "refazer",
+        "exportar",
+      ].includes(String((params as { id?: string })?.id))
+    )
+      setPlaying(false);
     setPending((current) => [...current, method]);
     try {
       setError("");
@@ -293,7 +308,13 @@ export default function App() {
         </div>
       </header>
       <div className="main-layout">
-        <Assistant state={state} run={run} desktop={desktop} />
+        <Assistant
+          state={state}
+          run={run}
+          desktop={desktop}
+          time={time}
+          selectedId={selectedId}
+        />
         <main
           className={`workspace ${dragging ? "is-dragging" : ""}`}
           onDragOver={(event) => {
