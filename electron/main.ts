@@ -1105,6 +1105,7 @@ app.whenReady().then(async () => {
     minHeight: 700,
     backgroundColor: appearance.background,
     title: "CutRoom",
+    icon: join(resources, "branding", "icon-256.png"),
     autoHideMenuBar: true,
     ...(process.platform === "win32"
       ? {

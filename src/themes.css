@@ -163,12 +163,12 @@ button:disabled {
 }
 .wordmark {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 750;
   letter-spacing: -0.4px;
   gap: 7px;
 }
 .wordmark > svg {
-  color: var(--muted);
+  color: var(--text);
 }
 .titlebar-divider {
   height: 17px;

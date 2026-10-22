@@ -1,3 +1,9 @@
+@font-face {
+  font-family: "CutRoom Brand";
+  src: url("./assets/manrope-variable.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
 :root {
   font-family: "Segoe UI", system-ui, sans-serif;
   font-synthesis: none;
@@ -103,6 +109,7 @@ svg {
   border-bottom: 1px solid var(--line);
 }
 .wordmark {
+  font-family: "CutRoom Brand", "Segoe UI", sans-serif;
   display: flex;
   align-items: center;
   text-decoration: none;
@@ -110,6 +117,11 @@ svg {
   letter-spacing: -0.9px;
   font-weight: 650;
   gap: 8px;
+}
+.cutroom-mark {
+  flex-shrink: 0;
+  display: block;
+  overflow: visible;
 }
 .brand-icon {
   display: flex;

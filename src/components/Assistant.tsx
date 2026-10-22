@@ -9,12 +9,12 @@ import {
   MessageSquare,
   Package,
   Plus,
-  Sparkles,
   Terminal,
   X,
 } from "lucide-react";
 import type { AppSnapshot, ReasoningEffort } from "../shared/types";
 import { Menu } from "./Menu";
+import { BrandMark } from "./BrandMark";
 import { ChoicePicker } from "./ChoicePicker";
 import { EffortPicker } from "./EffortPicker";
 import { ActivityFeed } from "./ActivityFeed";
@@ -320,7 +320,7 @@ export function Assistant({
                           </>
                         ) : (
                           <>
-                            <Sparkles size={12} /> CutRoom
+                            <BrandMark size={12} /> CutRoom
                           </>
                         )}
                       </div>

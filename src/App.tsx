@@ -5,7 +5,6 @@ import {
   ChevronDown,
   CircleHelp,
   FilePlus2,
-  Film,
   FolderOpen,
   LoaderCircle,
   Save,
@@ -15,6 +14,7 @@ import {
 import type { AppSnapshot, EditCommand } from "./shared/types";
 import { duration, emptySnapshot, timecode } from "./lib/editor";
 import { Assistant } from "./components/Assistant";
+import { BrandMark } from "./components/BrandMark";
 import { Player } from "./components/Player";
 import { Timeline } from "./components/Timeline";
 import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
@@ -203,7 +203,7 @@ export default function App() {
           onClick={(event) => event.preventDefault()}
           aria-label="CutRoom"
         >
-          <Film size={16} />
+          <BrandMark size={16} />
           CutRoom
         </a>
         <span className="titlebar-divider" />

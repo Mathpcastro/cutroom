@@ -1,10 +1,12 @@
 # CutRoom
 
+<img src="resources/branding/icon-128.png" alt="Logo CutRoom" width="64" />
+
 Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompanhe a edição no player e ajuste os detalhes na timeline. Os arquivos e a renderização ficam no seu computador.
 
 **Open source · Windows x64 · versão inicial em desenvolvimento**
 
-[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.5.0)
+[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.5.1)
 
 | Grafite | Claro |
 | --- | --- |
