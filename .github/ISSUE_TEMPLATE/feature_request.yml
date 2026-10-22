@@ -1,0 +1,22 @@
+name: Sugerir uma melhoria
+description: Proponha uma mudança e explique onde ela ajuda na edição.
+title: "[Ideia] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema você quer resolver?
+      description: Descreva uma situação concreta ao editar um vídeo.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Como você gostaria que funcionasse?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Referências e alternativas
+      description: Links ou exemplos são bem-vindos; não envie material privado.

@@ -113,6 +113,10 @@ A aba Pacotes é a primeira base para um catálogo gratuito de motores locais. O
 - A exportação inicial usa CPU. Pode ocupar espaço temporário considerável e levar tempo em vídeos longos.
 - Instaladores iniciais não têm assinatura de código. Não há promessa de suporte comercial.
 
+## Contribuir
+
+Quer ajudar com código, bugs, interface, documentação ou testes? Veja o [guia de contribuição](CONTRIBUTING.md), abra uma [issue](https://github.com/Mathpcastro/cutroom/issues/new/choose) ou envie um pull request a partir do seu fork. Para ajudar com versões macOS e Linux, consulte o [estado da portabilidade](docs/portability.md).
+
 ## Licenças
 
 O código original do CutRoom é [MIT](LICENSE). Dependências e binários conservam suas próprias licenças, incluindo Codex Apache-2.0, Barlow OFL e FFmpeg GPLv3. Consulte [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) e os avisos distribuídos em `resources/licenses/`.

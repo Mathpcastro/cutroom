@@ -1,0 +1,39 @@
+name: Relatar um problema
+description: Conte o que aconteceu e como reproduzir no CutRoom.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Procure uma issue semelhante antes de enviar. Remova tokens, chaves e dados privados de capturas e logs."
+  - type: input
+    id: version
+    attributes:
+      label: Versão do CutRoom
+      placeholder: "Ex.: 0.5.1"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Sistema e arquitetura
+      placeholder: "Ex.: Windows 11 x64, instalador oficial"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Passos para reproduzir
+      description: Inclua o comando ou a ação, configurações relevantes e tipo de mídia, se aplicável.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Resultado esperado e o que aconteceu
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Capturas, logs ou exemplo mínimo
+      description: Anexe somente material que você possa compartilhar publicamente.
