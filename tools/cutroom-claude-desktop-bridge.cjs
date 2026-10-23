@@ -167,6 +167,49 @@ const EDITOR_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "create_blank_canvas",
+    description:
+      "Create a clean solid background video canvas in CutRoom (e.g. for motion graphics from scratch, title sequences, or animations when no video footage has been imported). Sets up the timeline so motion scenes and animations can be created.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        duration: {
+          type: "number",
+          description: "Duration in seconds (e.g. 10, 15, 30). Defaults to 15.",
+          minimum: 1,
+          maximum: 600,
+        },
+        color: {
+          type: "string",
+          description:
+            "Hex color for background (e.g. #151515, #000000, #FF6B0B). Defaults to #151515.",
+        },
+        name: {
+          type: "string",
+          description: "Name for the canvas project. Defaults to 'Canvas Motion'.",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "import_media",
+    description:
+      "Import one or more local video or media files into CutRoom by their absolute file paths. This adds the media to the project and places clips on the timeline.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        paths: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of absolute file paths to import into CutRoom",
+        },
+      },
+      required: ["paths"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 function send(msg) {

@@ -690,6 +690,72 @@ async function executeTool(
       text: `Frame real de ${media.name}, tempo na fonte ${time}s.`,
     };
   }
+  if (name === "create_blank_canvas") {
+    const {
+      duration = 15,
+      color = "#151515",
+      name: canvasName = "Canvas Motion",
+    } = z
+      .object({
+        duration: z.number().min(1).max(600).default(15),
+        color: z.string().regex(/^#[0-9a-f]{6}$/i).default("#151515"),
+        name: z.string().max(100).default("Canvas Motion"),
+      })
+      .parse(args);
+    const canvasColorHex = color.replace("#", "0x");
+    const canvasFile = join(cacheDir, `canvas-${randomUUID()}.mp4`);
+    await runProcess(
+      ffmpegPath,
+      [
+        "-f",
+        "lavfi",
+        "-i",
+        `color=c=${canvasColorHex}:s=1920x1080:d=${duration}`,
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=channel_layout=stereo:sample_rate=48000",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-shortest",
+        "-y",
+        canvasFile,
+      ],
+      { signal: new AbortController().signal },
+    );
+    await importPaths({ paths: [canvasFile] });
+    if (
+      state.project.name === "Novo projeto" ||
+      state.project.name.startsWith("canvas-")
+    ) {
+      state.project.name = canvasName;
+      emit();
+    }
+    return {
+      success: true,
+      duration,
+      color,
+      project: state.project,
+      message: `Canvas de ${duration}s criado com sucesso. Agora você pode adicionar motions, títulos e efeitos no intervalo de 0 a ${duration}s!`,
+    };
+  }
+  if (name === "import_media") {
+    const { paths } = z
+      .object({
+        paths: z.array(z.string().min(1)).min(1).max(50),
+      })
+      .parse(args);
+    await importPaths({ paths });
+    return {
+      success: true,
+      imported: paths.length,
+      project: state.project,
+    };
+  }
   throw new Error("Ferramenta não autorizada.");
 }
 

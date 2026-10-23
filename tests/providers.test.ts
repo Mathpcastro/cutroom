@@ -404,6 +404,8 @@ describe("Claude loopback bridge", () => {
       "transcribe",
       "export_video",
       "inspect_frame",
+      "create_blank_canvas",
+      "import_media",
     ]);
     expect(
       (await (await rpc("tools/call", { name: "shell", arguments: {} })).json())
