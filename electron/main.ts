@@ -57,6 +57,7 @@ import {
   resolveChatCommand,
   applyNativeChatCommand,
 } from "./core/chat-commands";
+import { startWindowsAutoUpdate } from "./core/updater";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -1264,6 +1265,7 @@ app.whenReady().then(async () => {
   if (process.env.ELECTRON_RENDERER_URL)
     await window.loadURL(process.env.ELECTRON_RENDERER_URL);
   else await window.loadFile(join(here, "../dist/index.html"));
+  startWindowsAutoUpdate(window);
 
   desktopMcp = new DesktopMcpServer(executeTool, userDir);
   await desktopMcp.start().catch((err) => {
