@@ -12,11 +12,11 @@ O CutRoom usa Electron, React e TypeScript, mas **somente Windows x64 está vali
 
 | Área | Estado atual | Trabalho necessário |
 | --- | --- | --- |
-| Transcrição local | `electron/core/packages.ts` bloqueia plataformas além de Windows x64; baixa uv Windows e usa `Scripts/python.exe`. | Selecionar runtime, arquivo, hash, extração e caminho Python por plataforma/arquitetura. Validar wheels do lock, modelo, permissões de execução e cancelamento. |
-| Efeitos e animações | `electron/core/motion-package.ts` baixa Chrome Headless Shell win64 e usa `.exe`. | Selecionar navegador e hash corretos, tratar permissões e dependências do sistema e validar renderização/cache. |
+| Transcrição local | `electron/core/packages.ts` seleciona uv, hash, extração, caminho do Python e lock com hashes por alvo (Windows x64, macOS x64 e arm64). | Validar num Mac real: instalação das wheels, modelo, permissões de execução e cancelamento. Linux ainda não tem alvo. |
+| Efeitos e animações | `electron/core/motion-package.ts` baixa o Chrome Headless Shell de cada alvo com hash próprio e marca o binário como executável no macOS. | Validar renderização e cache num Mac real. |
 | Binários npm | FFmpeg, ffprobe e Codex são distribuídos pelas dependências. | Conferir disponibilidade e empacotamento por alvo; testar codecs, áudio, legendas e processo auxiliar no app empacotado. |
-| Instaladores | `package.json` configura NSIS Windows; `npm run dist` usa `--win`. | Adicionar alvos macOS e Linux, ícones apropriados e scripts explícitos. |
-| CI | `.github/workflows/check.yml` roda no Windows. | Adicionar jobs nos sistemas de destino e reter artefatos de teste, sem publicar plataformas ainda não validadas. |
+| Instaladores | `npm run dist` gera NSIS Windows; `npm run dist:mac` gera `.dmg` com ícone `.icns` (precisa rodar num Mac, na arquitetura da máquina). | Gerar e testar os `.dmg` Intel e Apple Silicon; decidir assinatura/notarização; adicionar Linux. |
+| CI | `.github/workflows/check.yml` roda no Windows; `.github/workflows/macos.yml` testa e gera os `.dmg` em macOS arm64 e Intel. | Adicionar jobs nos sistemas de destino e reter artefatos de teste, sem publicar plataformas ainda não validadas. |
 
 ## Ordem sugerida
 
