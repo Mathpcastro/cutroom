@@ -39,7 +39,7 @@ https://github.com/user-attachments/assets/dbfbcb2e-656b-4866-ae57-004bb3d46c15
 </details>
 
 <p align="center">
-  <sub>Gravações reais do CutRoom 0.5.0, montadas com Remotion. Prévia acima acelerada em 2×. O download atual é a versão 0.6.0.</sub>
+  <sub>Gravações reais do CutRoom 0.5.0, montadas com Remotion. Prévia acima acelerada em 2×. O download atual é a versão 0.6.1.</sub>
 </p>
 
 ## Do pedido ao arquivo final

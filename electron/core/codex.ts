@@ -16,6 +16,7 @@ export type CodexStatus = {
   models: Connection["models"];
   model?: string;
   reasoningEffort?: ReasoningEffort;
+  activeModel?: string;
 };
 export type AgentClientOptions = {
   workspace: string;
