@@ -209,7 +209,7 @@ npm run dist   # instalador Windows NSIS em release/
 npm run dist:mac  # .dmg macOS em release/ (rodar num Mac; gera a arquitetura da máquina)
 ```
 
-Os `.dmg` publicados saem do workflow **macOS installers** (`.github/workflows/macos.yml`), que testa e gera as duas arquiteturas em Macs do GitHub Actions. Rodando-o manualmente com a tag de um release, os instaladores e o `SHA256SUMS.txt` são anexados a ele.
+Os `.dmg` publicados saem do workflow **macOS installers** (`.github/workflows/macos.yml`), que testa e gera as duas arquiteturas em Macs do GitHub Actions. Ao publicar um release, os instaladores e o `SHA256SUMS.txt` atualizado são anexados a ele automaticamente; para um release já existente, rode o workflow à mão informando a tag.
 
 Os binários FFmpeg, ffprobe e Codex vêm das dependências npm. A transcrição instala um runtime privado nos dados do aplicativo, sem modificar seu Python global.
 
