@@ -16,7 +16,7 @@ O CutRoom usa Electron, React e TypeScript, mas **somente Windows x64 está vali
 | Efeitos e animações | `electron/core/motion-package.ts` baixa o Chrome Headless Shell de cada alvo com hash próprio e marca o binário como executável no macOS. | Validar renderização e cache num Mac real. |
 | Binários npm | FFmpeg, ffprobe e Codex são distribuídos pelas dependências. | Conferir disponibilidade e empacotamento por alvo; testar codecs, áudio, legendas e processo auxiliar no app empacotado. |
 | Instaladores | `npm run dist` gera NSIS Windows; `npm run dist:mac` gera `.dmg` com ícone `.icns` (precisa rodar num Mac, na arquitetura da máquina). | Gerar e testar os `.dmg` Intel e Apple Silicon; decidir assinatura/notarização; adicionar Linux. |
-| CI | `.github/workflows/check.yml` roda no Windows. | Adicionar jobs nos sistemas de destino e reter artefatos de teste, sem publicar plataformas ainda não validadas. |
+| CI | `.github/workflows/check.yml` roda no Windows; `.github/workflows/macos.yml` testa e gera os `.dmg` em macOS arm64 e Intel. | Adicionar jobs nos sistemas de destino e reter artefatos de teste, sem publicar plataformas ainda não validadas. |
 
 ## Ordem sugerida
 

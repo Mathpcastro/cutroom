@@ -1,0 +1,75 @@
+name: macOS installers
+# Builds the .dmg on native runners (Apple Silicon and Intel). On pull requests it only tests and
+# keeps the installers as artifacts; a manual run with a release tag attaches them to that release.
+on:
+  pull_request:
+    paths:
+      - "electron/**"
+      - "src/**"
+      - "resources/**"
+      - "tools/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/macos.yml"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag do release que recebe os .dmg (ex.: v0.6.1). Vazio = só gera os artefatos."
+        required: false
+        default: ""
+permissions:
+  contents: read
+jobs:
+  dmg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Build .dmg (ad-hoc signed, not notarized)
+        run: npx electron-builder --mac dmg --${{ matrix.arch }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Check the app bundle signature
+        run: codesign --verify --deep --strict release/mac*/CutRoom.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cutroom-macos-${{ matrix.arch }}
+          path: release/*.dmg
+          if-no-files-found: error
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    needs: dmg
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cutroom-macos-*
+          merge-multiple: true
+          path: dmg
+      - name: Attach installers and update SHA256SUMS.txt
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt -O SHA256SUMS.txt || touch SHA256SUMS.txt
+          grep -v -- "-mac-.*\.dmg$" SHA256SUMS.txt > sums.txt || true
+          (cd dmg && sha256sum *.dmg) >> sums.txt
+          mv sums.txt SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber dmg/*.dmg SHA256SUMS.txt

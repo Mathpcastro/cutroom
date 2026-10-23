@@ -45,7 +45,10 @@
     "mac": {
       "target": "dmg",
       "icon": "resources/branding/icon.icns",
-      "category": "public.app-category.video"
+      "category": "public.app-category.video",
+      "artifactName": "CutRoom-${version}-mac-${arch}.${ext}",
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "dmg": {
       "icon": "resources/branding/icon.icns"
