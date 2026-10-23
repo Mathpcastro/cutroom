@@ -170,7 +170,7 @@ Os instaladores ainda não têm assinatura de código. Use os [releases oficiais
 
 **Windows x64** é a plataforma validada. A versão **macOS** (Apple Silicon e Intel) é uma **prévia**: os instaladores são gerados e testados automaticamente em Macs da nuvem, mas ainda não houve validação completa com uso real. Relate o que encontrar nas [issues](https://github.com/Mathpcastro/cutroom/issues/new/choose). Linux ainda não é suportado. [Veja o estado da portabilidade](docs/portability.md).
 
-Não há atualização automática nesta prévia. Feche o CutRoom antes de instalar uma nova versão.
+No Windows, as versões que já incluem o atualizador avisam quando há uma novidade e só baixam com sua autorização. Você pode reiniciar para instalar ou deixar para fechar o app. A primeira versão com esse recurso precisa ser instalada manualmente; o macOS continua sem atualização automática. [Como funcionam as atualizações](docs/auto-update.md).
 
 </details>
 

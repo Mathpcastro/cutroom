@@ -25,4 +25,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           name: cutroom-windows-x64
-          path: release/*.exe
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
