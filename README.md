@@ -31,7 +31,7 @@
 <details>
 <summary><strong>▶ Assistir à demonstração completa · 43 segundos</strong></summary>
 
-<!-- CUTROOM_NATIVE_VIDEO -->
+https://github.com/user-attachments/assets/dbfbcb2e-656b-4866-ae57-004bb3d46c15
 
 [Baixar o vídeo em MP4](https://raw.githubusercontent.com/Mathpcastro/cutroom/main/docs/media/cutroom-demo.mp4)
 

@@ -19,4 +19,4 @@ node tools/build-readme-media.mjs ../cutroom-landing/public/assets
 
 O script usa FFmpeg da dependência instalada, gera as prévias GIF com paleta reduzida e prepara o MP4 em H.264/yuv420p, BT.709 e sem áudio, para reprodução no navegador. Não instala Remotion no aplicativo nem altera gravações originais.
 
-O vídeo completo é ligado pelo visualizador de arquivos do GitHub. Os GIFs ficam incorporados ao README; não dependem de uma landing privada, de iframes ou de um player HTML externo.
+O vídeo completo usa um anexo de mídia do próprio GitHub, publicado no [PR de documentação #1](https://github.com/Mathpcastro/cutroom/pull/1), para ser reproduzido no player nativo do README. Uma cópia MP4 também está disponível para download nesta pasta. Os GIFs ficam incorporados ao README; não dependem de uma landing privada, de iframes ou de um player HTML externo.
