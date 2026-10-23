@@ -224,23 +224,24 @@ export class PackageManager {
       );
     }
     onProgress(30, "Instalando o motor de transcrição…");
+    const reqFile =
+      process.platform === "win32"
+        ? join(this.resources, "workers", "requirements.lock")
+        : join(this.resources, "workers", "requirements.in");
     try {
-      await runProcess(
-        uv,
-        [
-          "--no-config",
-          "pip",
-          "install",
-          "--python",
-          this.python(),
-          "--link-mode",
-          "copy",
-          "--require-hashes",
-          "-r",
-          join(this.resources, "workers", "requirements.lock"),
-        ],
-        { env, signal },
-      );
+      const pipArgs = [
+        "--no-config",
+        "pip",
+        "install",
+        "--python",
+        this.python(),
+        "--link-mode",
+        "copy",
+        ...(process.platform === "win32" ? ["--require-hashes"] : []),
+        "-r",
+        reqFile,
+      ];
+      await runProcess(uv, pipArgs, { env, signal });
     } catch (error) {
       if (signal?.aborted) throw error;
       // Windows antivirus can retain extracted DLLs and prevent uv's atomic cache rename.
@@ -258,9 +259,9 @@ export class PackageManager {
           "install",
           "--disable-pip-version-check",
           "--no-warn-script-location",
-          "--require-hashes",
+          ...(process.platform === "win32" ? ["--require-hashes"] : []),
           "-r",
-          join(this.resources, "workers", "requirements.lock"),
+          reqFile,
         ],
         { env, signal },
       );
