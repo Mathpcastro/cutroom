@@ -43,6 +43,8 @@ jobs:
         run: npx electron-builder --mac dmg --${{ matrix.arch }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          # electron-builder skips signing on PR builds; without the ad-hoc signature Apple Silicon reports the app as damaged.
+          CSC_FOR_PULL_REQUEST: "true"
       - name: Check the app bundle signature
         run: codesign --verify --deep --strict release/mac*/CutRoom.app
       - uses: actions/upload-artifact@v4
