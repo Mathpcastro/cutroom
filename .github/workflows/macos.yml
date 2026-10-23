@@ -1,6 +1,7 @@
 name: macOS installers
 # Builds the .dmg on native runners (Apple Silicon and Intel). On pull requests it only tests and
-# keeps the installers as artifacts; a manual run with a release tag attaches them to that release.
+# keeps the installers as artifacts. Publishing a release attaches them to it automatically; a manual
+# run with a release tag does the same for an existing release.
 on:
   pull_request:
     paths:
@@ -11,6 +12,8 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/macos.yml"
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -53,14 +56,14 @@ jobs:
           path: release/*.dmg
           if-no-files-found: error
   publish:
-    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: dmg
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ inputs.release_tag }}
+      TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
     steps:
       - uses: actions/download-artifact@v4
         with:
