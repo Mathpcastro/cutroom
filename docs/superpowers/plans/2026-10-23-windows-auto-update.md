@@ -27,6 +27,7 @@
 ### Task 1: Restabelecer e validar a base isolada
 
 **Files:**
+
 - Nenhum arquivo versionado.
 
 - [ ] **Step 1: Confirmar a branch e o ponto de partida**
@@ -83,6 +84,7 @@ Expected: TypeScript e electron-vite concluem sem erro.
 ### Task 2: Configurar dependência e publicação GitHub
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
@@ -149,6 +151,7 @@ git commit -m "build: configure GitHub app updates"
 ### Task 3: Implementar o fluxo de consentimento com TDD
 
 **Files:**
+
 - Create: `tests/updater.test.ts`
 - Create: `electron/core/updater.ts`
 
@@ -241,7 +244,9 @@ describe("Windows app updates", () => {
     client.emit("update-available", { version: "0.7.0" });
     client.emit("update-available", { version: "0.7.0" });
 
-    await vi.waitFor(() => expect(client.downloadUpdate).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() =>
+      expect(client.downloadUpdate).toHaveBeenCalledTimes(1),
+    );
     expect(dialogs.offer).toHaveBeenCalledTimes(1);
   });
 
@@ -299,7 +304,9 @@ describe("Windows app updates", () => {
   });
 
   it("does not prompt or download after the window is gone", async () => {
-    const { client, dialogs, controller } = setup({ isWindowAlive: () => false });
+    const { client, dialogs, controller } = setup({
+      isWindowAlive: () => false,
+    });
     controller.start();
     client.emit("update-available", { version: "0.7.0" });
     await flush();
@@ -331,7 +338,10 @@ import { autoUpdater } from "electron-updater";
 export interface UpdateClient {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
-  on(event: "update-available", listener: (info: { version: string }) => void): this;
+  on(
+    event: "update-available",
+    listener: (info: { version: string }) => void,
+  ): this;
   on(event: "update-downloaded", listener: () => void): this;
   on(event: "error", listener: (error: Error) => void): this;
   checkForUpdates(): Promise<unknown>;
@@ -380,9 +390,11 @@ export class UpdateController {
     client.on("error", (error) =>
       this.log("Falha no atualizador do CutRoom:", error),
     );
-    void client.checkForUpdates().catch((error) =>
-      this.log("Falha ao verificar atualizações do CutRoom:", error),
-    );
+    void client
+      .checkForUpdates()
+      .catch((error) =>
+        this.log("Falha ao verificar atualizações do CutRoom:", error),
+      );
   }
 
   private async offer(version: string): Promise<void> {
@@ -504,6 +516,7 @@ Expected: toda a suíte passa antes do commit.
 ### Task 4: Ligar o atualizador ao ciclo de vida do app
 
 **Files:**
+
 - Modify: `electron/main.ts:55-60`
 - Modify: `electron/main.ts:1264-1268`
 
@@ -520,15 +533,15 @@ import { startWindowsAutoUpdate } from "./core/updater";
 Imediatamente depois deste bloco existente:
 
 ```ts
-  if (process.env.ELECTRON_RENDERER_URL)
-    await window.loadURL(process.env.ELECTRON_RENDERER_URL);
-  else await window.loadFile(join(here, "../dist/index.html"));
+if (process.env.ELECTRON_RENDERER_URL)
+  await window.loadURL(process.env.ELECTRON_RENDERER_URL);
+else await window.loadFile(join(here, "../dist/index.html"));
 ```
 
 adicionar:
 
 ```ts
-  startWindowsAutoUpdate(window);
+startWindowsAutoUpdate(window);
 ```
 
 Não adicionar IPC, handler no renderer ou timer.
@@ -552,6 +565,7 @@ git commit -m "feat: check for updates when Windows app opens"
 ### Task 5: Publicar artefatos e documentar a migração
 
 **Files:**
+
 - Modify: `.github/workflows/check.yml:24-28`
 - Create: `docs/auto-update.md`
 - Modify: `README.md:164-175`
@@ -562,13 +576,13 @@ git commit -m "feat: check for updates when Windows app opens"
 Substituir o último `with` por:
 
 ```yaml
-        with:
-          name: cutroom-windows-x64
-          if-no-files-found: error
-          path: |
-            release/*.exe
-            release/*.exe.blockmap
-            release/latest.yml
+with:
+  name: cutroom-windows-x64
+  if-no-files-found: error
+  path: |
+    release/*.exe
+    release/*.exe.blockmap
+    release/latest.yml
 ```
 
 - [ ] **Step 2: Criar o guia de atualização e release**
@@ -643,6 +657,7 @@ git commit -m "docs: document Windows update releases"
 ### Task 6: Verificar o pacote e preparar a entrega
 
 **Files:**
+
 - Modify somente se uma verificação revelar um defeito no escopo: arquivos das Tasks 2–5.
 
 - [ ] **Step 1: Rodar formatação somente nos arquivos tocados**

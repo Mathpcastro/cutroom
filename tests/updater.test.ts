@@ -82,7 +82,9 @@ describe("Windows app updates", () => {
     client.emit("update-available", { version: "0.7.0" });
     client.emit("update-available", { version: "0.7.0" });
 
-    await vi.waitFor(() => expect(client.downloadUpdate).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() =>
+      expect(client.downloadUpdate).toHaveBeenCalledTimes(1),
+    );
     expect(dialogs.offer).toHaveBeenCalledTimes(1);
   });
 
@@ -140,7 +142,9 @@ describe("Windows app updates", () => {
   });
 
   it("does not prompt or download after the window is gone", async () => {
-    const { client, dialogs, controller } = setup({ isWindowAlive: () => false });
+    const { client, dialogs, controller } = setup({
+      isWindowAlive: () => false,
+    });
     controller.start();
     client.emit("update-available", { version: "0.7.0" });
     await flush();

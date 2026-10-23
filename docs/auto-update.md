@@ -22,6 +22,7 @@ O macOS continua fora desse fluxo. O app ainda não possui assinatura de código
    ```
 
    Isso grava uma linha no formato `<sha256>  <nome-do-installer>` em `release/SHA256SUMS.txt`, sem caminho de diretório e com o hash em minúsculas. A gravação é ASCII, sem CRLF nem BOM; o `` `n `` entre crases garante LF para compatibilidade com verificadores Unix e com o workflow macOS.
+
 2. Crie o release como rascunho e envie todos esses arquivos antes de publicá-lo. Não substitua `latest.yml` por um arquivo escrito manualmente.
 3. Publique como release estável, não como prerelease. O `latest.yml` precisa apontar para o mesmo instalador e a mesma versão anexados.
 4. Aguarde o workflow de macOS terminar antes de considerar o release completo; ele acrescenta os DMGs e suas entradas ao `SHA256SUMS.txt`.

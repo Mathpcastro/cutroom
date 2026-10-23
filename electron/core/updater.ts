@@ -4,7 +4,10 @@ import { autoUpdater } from "electron-updater";
 export interface UpdateClient {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
-  on(event: "update-available", listener: (info: { version: string }) => void): this;
+  on(
+    event: "update-available",
+    listener: (info: { version: string }) => void,
+  ): this;
   on(event: "update-downloaded", listener: () => void): this;
   on(event: "error", listener: (error: Error) => void): this;
   checkForUpdates(): Promise<unknown>;
@@ -53,9 +56,11 @@ export class UpdateController {
     client.on("error", (error) =>
       this.log("Falha no atualizador do CutRoom:", error),
     );
-    void client.checkForUpdates().catch((error) =>
-      this.log("Falha ao verificar atualizações do CutRoom:", error),
-    );
+    void client
+      .checkForUpdates()
+      .catch((error) =>
+        this.log("Falha ao verificar atualizações do CutRoom:", error),
+      );
   }
 
   private async offer(version: string): Promise<void> {

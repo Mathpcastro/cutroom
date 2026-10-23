@@ -699,7 +699,10 @@ async function executeTool(
     } = z
       .object({
         duration: z.number().min(1).max(600).default(15),
-        color: z.string().regex(/^#[0-9a-f]{6}$/i).default("#151515"),
+        color: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/i)
+          .default("#151515"),
         name: z.string().max(100).default("Canvas Motion"),
       })
       .parse(args);
