@@ -575,6 +575,8 @@ git commit -m "feat: check for updates when Windows app opens"
 
 Substituir o último `with` por:
 
+Ao inserir o bloco, mantenha a indentação contextual do step `actions/upload-artifact@v4`.
+
 ```yaml
 with:
   name: cutroom-windows-x64
