@@ -28,6 +28,28 @@ O CutRoom chama a CLI oficial instalada pelo usuário, sem modificar ou empacota
 
 Os nomes Sonnet, Opus e Haiku são aliases da CLI, não uma confirmação de que seu plano libera todos eles. Confira sua conta se a solicitação for recusada. [Regras oficiais para integrações com Claude Code](https://code.claude.com/docs/en/legal-and-compliance).
 
+## Claude Desktop (integração MCP externa)
+
+O CutRoom inclui um servidor MCP local que permite ao aplicativo oficial **Claude Desktop** inspecionar a timeline e aplicar comandos de edição diretamente no editor em tempo real.
+
+Para conectar o Claude Desktop:
+
+1. No arquivo `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) ou `%APPDATA%\Claude\claude_desktop_config.json` (Windows), adicione em `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "cutroom": {
+      "command": "node",
+      "args": ["/caminho/para/cutroom/tools/cutroom-claude-desktop-bridge.cjs"]
+    }
+  }
+}
+```
+
+2. Abra o CutRoom e reinicie o Claude Desktop. O Claude Desktop detectará as ferramentas do CutRoom (`get_project`, `edit_project`, `create_blank_canvas`, `import_media`, `inspect_frame`, `transcribe`, `export_video`).
+3. Você pode conversar diretamente com o Claude no Claude Desktop (por exemplo: *"Claude, crie um canvas de 15 segundos e adicione uma animação de título"* ou *"Remova os silêncios do vídeo aberto no CutRoom"*) e a timeline responderá ao vivo.
+
 ## Servidor local ou outro serviço compatível
 
 Informe a URL **base** da API de Chat Completions, por exemplo `http://localhost:11434/v1` para um Ollama configurado, e o identificador de um modelo já instalado que suporte ferramentas. O CutRoom não instala esses modelos automaticamente. Para serviços remotos use HTTPS e a chave do serviço; HTTP e chave vazia são aceitos apenas em loopback local.

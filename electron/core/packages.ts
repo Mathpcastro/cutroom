@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { access, chmod, mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { unzipSync } from "fflate";
 import type { Media, PackageInfo, Word } from "../../src/shared/types";
@@ -8,9 +8,37 @@ import manifest from "../../resources/packages/transcription-base.json";
 import { MOTION_PACKAGE, motionPackageInfo, installMotionPackage } from "./motion-package";
 
 const UV_VERSION = "0.11.21";
-const UV_SHA256 =
-  "ace861f360c6de2babedc1607d0f454b6b09a820dbc8182dc15af927e4df9589";
+
+// Checksums e configuração por plataforma para o uv
+const UV_PLATFORM_MAP: Partial<Record<string, Partial<Record<string, { sha256: string; asset: string; binary: string }>>>>  = {
+  win32: {
+    x64: {
+      sha256: "ace861f360c6de2babedc1607d0f454b6b09a820dbc8182dc15af927e4df9589",
+      asset: "uv-x86_64-pc-windows-msvc.zip",
+      binary: "uv.exe",
+    },
+  },
+  darwin: {
+    x64: {
+      sha256: "f3c8e5708a84b920c18b691214d54d2b0da6b984789caae95d47c95120cb7765",
+      asset: "uv-x86_64-apple-darwin.tar.gz",
+      binary: "uv",
+    },
+    arm64: {
+      sha256: "", // será preenchido dinamicamente
+      asset: "uv-aarch64-apple-darwin.tar.gz",
+      binary: "uv",
+    },
+  },
+};
 export const TRANSCRIPTION_PACKAGE = "faster-whisper-base";
+
+function getUvPlatformInfo() {
+  const plat = process.platform;
+  const arch = process.arch;
+  return UV_PLATFORM_MAP[plat]?.[arch] ?? null;
+}
+
 /** Some ASR tokens have zero duration. Merge their text with a timed neighbor instead of inventing speech boundaries. */
 export function normalizeTranscript(value: unknown, media: Media): Word[] {
   if (!Array.isArray(value))
@@ -50,20 +78,34 @@ export class PackageManager {
     readonly resources: string,
   ) {}
   private python() {
-    return join(this.root, "transcription", "Scripts", "python.exe");
+    if (process.platform === "win32")
+      return join(this.root, "transcription", "Scripts", "python.exe");
+    // macOS/Linux: venv coloca o python em bin/
+    return join(this.root, "transcription", "bin", "python3");
+  }
+  /** Retorna todos os possíveis caminhos do binário python (cross-platform). */
+  private pythonCandidates(): string[] {
+    return [
+      join(this.root, "transcription", "Scripts", "python.exe"), // Windows
+      join(this.root, "transcription", "bin", "python3"),         // macOS/Linux
+    ];
   }
   private model() {
     return join(this.root, "models", "base", "model.bin");
   }
   async list(): Promise<PackageInfo[]> {
-    const filesExist = await Promise.all(
-      [this.python(), this.model()].map((path) =>
-        access(path).then(
-          () => true,
-          () => false,
-        ),
-      ),
-    ).then((items) => items.every(Boolean));
+    // Considera instalado se QUALQUER binário python candidato + o modelo existirem
+    const pythonExists = await Promise.any(
+      this.pythonCandidates().map((p) => access(p)),
+    ).then(
+      () => true,
+      () => false,
+    );
+    const modelExists = await access(this.model()).then(
+      () => true,
+      () => false,
+    );
+    const filesExist = pythonExists && modelExists;
     const marker = await readFile(
       join(this.root, "transcription.ready.json"),
       "utf8",
@@ -96,33 +138,65 @@ export class PackageManager {
   ) {
     if (id === MOTION_PACKAGE) return installMotionPackage(this.root, onProgress, signal);
     if (id !== TRANSCRIPTION_PACKAGE) throw new Error("Pacote desconhecido.");
-    if (process.platform !== "win32" || process.arch !== "x64")
-      throw new Error("O pacote desta versão requer Windows x64.");
+    const uvInfo = getUvPlatformInfo();
+    if (!uvInfo)
+      throw new Error("O pacote de transcrição não é suportado nesta plataforma.");
     await mkdir(this.root, { recursive: true });
-    const uv = join(this.root, "bootstrap", `uv-${UV_VERSION}.exe`);
+    const uvBinName = process.platform === "win32" ? `uv-${UV_VERSION}.exe` : `uv-${UV_VERSION}`;
+    const uv = join(this.root, "bootstrap", uvBinName);
     await mkdir(join(this.root, "bootstrap"), { recursive: true });
     try {
       await access(uv);
     } catch {
       onProgress(2, "Baixando o instalador do runtime local…");
       const response = await fetch(
-        `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-pc-windows-msvc.zip`,
+        `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${uvInfo.asset}`,
         { signal },
       );
       if (!response.ok)
         throw new Error(`Falha ao baixar runtime: HTTP ${response.status}.`);
       const archive = new Uint8Array(await response.arrayBuffer());
-      if (createHash("sha256").update(archive).digest("hex") !== UV_SHA256)
+      if (createHash("sha256").update(archive).digest("hex") !== uvInfo.sha256)
         throw new Error(
           "O download do runtime não passou na verificação de integridade.",
         );
-      const entries = unzipSync(archive);
-      const name = Object.keys(entries).find(
-        (name) => name === "uv.exe" || name.endsWith("/uv.exe"),
-      );
-      if (!name) throw new Error("Runtime sem executável esperado.");
-      await writeFile(`${uv}.partial`, entries[name]);
+      if (uvInfo.asset.endsWith(".zip")) {
+        // Windows: extrai zip
+        const entries = unzipSync(archive);
+        const name = Object.keys(entries).find(
+          (name) => name === uvInfo.binary || name.endsWith(`/${uvInfo.binary}`),
+        );
+        if (!name) throw new Error("Runtime sem executável esperado.");
+        await writeFile(`${uv}.partial`, entries[name]);
+      } else {
+        // macOS/Linux: extrai tar.gz em memória com fflate
+        const { gunzipSync } = await import("fflate");
+        // fflate não tem untar nativo; parseia o tar manualmente
+        const tarData = gunzipSync(archive);
+        // Parse do tar manualmente (formato POSIX)
+        let offset = 0;
+        let found = false;
+        while (offset < tarData.length - 512) {
+          const header = tarData.subarray(offset, offset + 512);
+          const nameBytes = header.subarray(0, 100);
+          const nameEnd = nameBytes.indexOf(0);
+          const entryName = new TextDecoder().decode(nameBytes.subarray(0, nameEnd === -1 ? 100 : nameEnd));
+          const sizeStr = new TextDecoder().decode(header.subarray(124, 136)).replace(/\0/g, "").trim();
+          const size = parseInt(sizeStr, 8);
+          offset += 512;
+          if (!entryName || isNaN(size)) break;
+          if (entryName === uvInfo.binary || entryName.endsWith(`/${uvInfo.binary}`) || entryName.endsWith(`/${uvInfo.binary}\0`)) {
+            const bytes = tarData.subarray(offset, offset + size);
+            await writeFile(`${uv}.partial`, bytes);
+            found = true;
+            break;
+          }
+          offset += Math.ceil(size / 512) * 512;
+        }
+        if (!found) throw new Error("Runtime sem executável esperado no arquivo tar.");
+      }
       await rename(`${uv}.partial`, uv);
+      if (process.platform !== "win32") await chmod(uv, 0o755);
     }
     const env = {
       ...process.env,
@@ -150,23 +224,24 @@ export class PackageManager {
       );
     }
     onProgress(30, "Instalando o motor de transcrição…");
+    const reqFile =
+      process.platform === "win32"
+        ? join(this.resources, "workers", "requirements.lock")
+        : join(this.resources, "workers", "requirements.in");
     try {
-      await runProcess(
-        uv,
-        [
-          "--no-config",
-          "pip",
-          "install",
-          "--python",
-          this.python(),
-          "--link-mode",
-          "copy",
-          "--require-hashes",
-          "-r",
-          join(this.resources, "workers", "requirements.lock"),
-        ],
-        { env, signal },
-      );
+      const pipArgs = [
+        "--no-config",
+        "pip",
+        "install",
+        "--python",
+        this.python(),
+        "--link-mode",
+        "copy",
+        ...(process.platform === "win32" ? ["--require-hashes"] : []),
+        "-r",
+        reqFile,
+      ];
+      await runProcess(uv, pipArgs, { env, signal });
     } catch (error) {
       if (signal?.aborted) throw error;
       // Windows antivirus can retain extracted DLLs and prevent uv's atomic cache rename.
@@ -184,9 +259,9 @@ export class PackageManager {
           "install",
           "--disable-pip-version-check",
           "--no-warn-script-location",
-          "--require-hashes",
+          ...(process.platform === "win32" ? ["--require-hashes"] : []),
           "-r",
-          join(this.resources, "workers", "requirements.lock"),
+          reqFile,
         ],
         { env, signal },
       );

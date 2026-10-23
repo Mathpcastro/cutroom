@@ -47,6 +47,7 @@ import { CodexClient, toolActivityLabel } from "./core/codex";
 import type { AgentClient } from "./core/agent";
 import { ApiAgentClient } from "./core/api-agent";
 import { ClaudeAgentClient } from "./core/claude-agent";
+import { DesktopMcpServer } from "./core/desktop-mcp";
 import { AGENT_PROVIDERS } from "../src/shared/providers";
 import { runProcess } from "./core/process";
 import { motionCacheKey, motionDocument } from "./core/motion-document";
@@ -84,6 +85,7 @@ protocol.registerSchemesAsPrivileged([
 let window: BrowserWindow | undefined;
 let packages: PackageManager;
 let codex: AgentClient | undefined;
+let desktopMcp: DesktopMcpServer | undefined;
 let connectionGeneration = 0;
 let cacheDir: string;
 const motionDocuments = new Map<string, string>();
@@ -631,6 +633,132 @@ async function exportVideo() {
   message("system", `Exportação concluída: ${output}`);
   return emit();
 }
+async function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  if (name === "get_project") return structuredClone(state.project);
+  if (name === "edit_project") {
+    await executeCommand(args);
+    return { project: state.project, applied: true };
+  }
+  if (name === "transcribe") {
+    await transcribe();
+    return { words: state.project.words };
+  }
+  if (name === "export_video") {
+    await exportVideo();
+    return {
+      jobs: state.jobs.filter((job) => job.kind === "export").slice(-1),
+    };
+  }
+  if (name === "inspect_frame") {
+    const { mediaId, time } = z
+      .object({ mediaId: z.string(), time: z.number().finite().min(0) })
+      .parse(args);
+    const media = state.project.media.find((source) => source.id === mediaId);
+    if (!media || time >= media.duration)
+      throw new Error("Quadro fora da fonte selecionada.");
+    const frame = join(cacheDir, `inspect-${randomUUID()}.jpg`);
+    await job(
+      "inspection",
+      "Inspecionando quadro do vídeo…",
+      async (signal) => {
+        await runProcess(
+          ffmpegPath,
+          [
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-ss",
+            String(time),
+            "-i",
+            media.path,
+            "-frames:v",
+            "1",
+            "-vf",
+            "scale=960:-2",
+            "-y",
+            frame,
+          ],
+          { signal },
+        );
+      },
+    );
+    return {
+      imageUrl: `data:image/jpeg;base64,${(await readFile(frame)).toString("base64")}`,
+      text: `Frame real de ${media.name}, tempo na fonte ${time}s.`,
+    };
+  }
+  if (name === "create_blank_canvas") {
+    const {
+      duration = 15,
+      color = "#151515",
+      name: canvasName = "Canvas Motion",
+    } = z
+      .object({
+        duration: z.number().min(1).max(600).default(15),
+        color: z.string().regex(/^#[0-9a-f]{6}$/i).default("#151515"),
+        name: z.string().max(100).default("Canvas Motion"),
+      })
+      .parse(args);
+    const canvasColorHex = color.replace("#", "0x");
+    const canvasFile = join(cacheDir, `canvas-${randomUUID()}.mp4`);
+    await runProcess(
+      ffmpegPath,
+      [
+        "-f",
+        "lavfi",
+        "-i",
+        `color=c=${canvasColorHex}:s=1920x1080:d=${duration}`,
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=channel_layout=stereo:sample_rate=48000",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-shortest",
+        "-y",
+        canvasFile,
+      ],
+      { signal: new AbortController().signal },
+    );
+    await importPaths({ paths: [canvasFile] });
+    if (
+      state.project.name === "Novo projeto" ||
+      state.project.name.startsWith("canvas-")
+    ) {
+      state.project.name = canvasName;
+      emit();
+    }
+    return {
+      success: true,
+      duration,
+      color,
+      project: state.project,
+      message: `Canvas de ${duration}s criado com sucesso. Agora você pode adicionar motions, títulos e efeitos no intervalo de 0 a ${duration}s!`,
+    };
+  }
+  if (name === "import_media") {
+    const { paths } = z
+      .object({
+        paths: z.array(z.string().min(1)).min(1).max(50),
+      })
+      .parse(args);
+    await importPaths({ paths });
+    return {
+      success: true,
+      imported: paths.length,
+      project: state.project,
+    };
+  }
+  throw new Error("Ferramenta não autorizada.");
+}
+
 async function connectCodex(value: unknown = {}) {
   const config = z
     .object({
@@ -685,62 +813,7 @@ async function connectCodex(value: unknown = {}) {
     onTool: async (name: string, args: Record<string, unknown>) => {
       if (generation !== connectionGeneration)
         throw new Error("Conexão encerrada.");
-      if (name === "get_project") return structuredClone(state.project);
-      if (name === "edit_project") {
-        await executeCommand(args);
-        return { project: state.project, applied: true };
-      }
-      if (name === "transcribe") {
-        await transcribe();
-        return { words: state.project.words };
-      }
-      if (name === "export_video") {
-        await exportVideo();
-        return {
-          jobs: state.jobs.filter((job) => job.kind === "export").slice(-1),
-        };
-      }
-      if (name === "inspect_frame") {
-        const { mediaId, time } = z
-          .object({ mediaId: z.string(), time: z.number().finite().min(0) })
-          .parse(args);
-        const media = state.project.media.find(
-          (source) => source.id === mediaId,
-        );
-        if (!media || time >= media.duration)
-          throw new Error("Quadro fora da fonte selecionada.");
-        const frame = join(cacheDir, `inspect-${randomUUID()}.jpg`);
-        await job(
-          "inspection",
-          "Inspecionando quadro do vídeo…",
-          async (signal) => {
-            await runProcess(
-              ffmpegPath,
-              [
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-ss",
-                String(time),
-                "-i",
-                media.path,
-                "-frames:v",
-                "1",
-                "-vf",
-                "scale=960:-2",
-                "-y",
-                frame,
-              ],
-              { signal },
-            );
-          },
-        );
-        return {
-          imageUrl: `data:image/jpeg;base64,${(await readFile(frame)).toString("base64")}`,
-          text: `Frame real de ${media.name}, tempo na fonte ${time}s.`,
-        };
-      }
-      throw new Error("Ferramenta não autorizada.");
+      return executeTool(name, args);
     },
   };
   let client: AgentClient | undefined;
@@ -1191,8 +1264,14 @@ app.whenReady().then(async () => {
   if (process.env.ELECTRON_RENDERER_URL)
     await window.loadURL(process.env.ELECTRON_RENDERER_URL);
   else await window.loadFile(join(here, "../dist/index.html"));
+
+  desktopMcp = new DesktopMcpServer(executeTool, userDir);
+  await desktopMcp.start().catch((err) => {
+    console.error("Falha ao iniciar servidor Desktop MCP do CutRoom:", err);
+  });
 });
 app.on("before-quit", () => {
+  desktopMcp?.close();
   codex?.disconnect();
   for (const controller of controllers.values()) controller.abort();
 });
