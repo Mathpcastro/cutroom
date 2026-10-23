@@ -50,6 +50,8 @@ https://github.com/user-attachments/assets/dbfbcb2e-656b-4866-ae57-004bb3d46c15
 | **Legendas com identidade** | Oferece **24 estilos**, seis famílias de fontes offline, karaokê, destaque por palavra, frases progressivas e personalização. |
 | **Explicar com movimento** | Cria títulos, destaques, listas, diagramas e cenas originais por texto. A animação entra na faixa **Efeitos**. |
 | **Ajustar os detalhes** | Permite cortar, dividir, enquadrar, mudar velocidade, silenciar trechos e revisar tudo no player e na timeline. |
+| **Animar do zero** | Cria um **canvas** de cor sólida, sem precisar de gravação, para montar vinhetas, títulos e cenas animadas. |
+| **Editar pelo Claude Desktop** | Com o CutRoom aberto, o **Claude Desktop** controla a timeline ao vivo pela integração MCP local: importa vídeos, edita, transcreve e exporta. |
 | **Levar o vídeo pronto** | Exporta **MP4 H.264/AAC** no PC. Salva e reabre projetos, preservando os arquivos originais. |
 
 ### Sua voz ganha presença. Sua ideia ganha movimento.
@@ -110,6 +112,14 @@ Conecte em **Conversa → Conexão de IA**. Escolha o modelo e, quando disponív
 
 As chaves informadas ficam **somente na memória da conexão**. Não são salvas nos projetos.
 
+### Ou converse pelo Claude Desktop
+
+O CutRoom também abre um servidor MCP local, só no seu computador. Aponte o **Claude Desktop** para a ponte `cutroom-claude-desktop-bridge.cjs`, que vem no instalador, e peça direto no chat dele: *“crie um canvas de 15 segundos com um título animado”* ou *“remova os silêncios do vídeo aberto no CutRoom”*. A timeline responde ao vivo.
+
+A conexão só aceita chamadas locais autenticadas por um token salvo na pasta de dados do app. Exportar sempre abre a janela de salvar do CutRoom para você confirmar. Outros clientes que aceitam servidores MCP locais por stdio podem usar a mesma ponte.
+
+[Configurar o Claude Desktop →](docs/providers.md#claude-desktop-integração-mcp-externa)
+
 **O editor é grátis; modelos remotos podem ter custo.** O uso segue os limites do seu plano ou os créditos da sua API. Transcrição e renderização são locais. Metadados, transcrição e quadros solicitados podem ser enviados ao provedor escolhido. Para um modelo no próprio PC, é necessário configurar um servidor local e um modelo com suporte a ferramentas.
 
 [Guia de conexão, privacidade e limites de cada provedor →](docs/providers.md)
@@ -154,7 +164,9 @@ Depois, selecione **Claude via terminal** no CutRoom. O app usa a CLI oficial se
 
 Os instaladores iniciais ainda não têm assinatura de código e podem gerar um aviso do SmartScreen. Use os [releases oficiais](https://github.com/Mathpcastro/cutroom/releases) e confira o arquivo `SHA256SUMS.txt` antes de decidir executar.
 
-Somente **Windows x64** foi validado e tem instalador disponível. macOS e Linux ainda precisam de adaptação e testes dos motores locais. [Veja o estado da portabilidade](docs/portability.md).
+Somente **Windows x64** foi validado e tem instalador disponível.
+
+O código já inclui suporte a **macOS Intel e Apple Silicon**: transcrição e animações baixam os runtimes certos para cada arquitetura, com verificação de integridade. Ainda não há `.dmg` publicado nem validação num Mac real. Quem quiser testar pode gerar o instalador num Mac com `npm run dist:mac`. Linux ainda não é suportado. [Veja o estado da portabilidade](docs/portability.md).
 
 Não há atualização automática nesta prévia. Feche o CutRoom antes de instalar uma nova versão.
 
@@ -192,6 +204,7 @@ npm run dev
 npm test        # testes automatizados
 npm run build  # TypeScript + build de produção
 npm run dist   # instalador Windows NSIS em release/
+npm run dist:mac  # .dmg macOS em release/ (rodar num Mac; gera a arquitetura da máquina)
 ```
 
 Os binários FFmpeg, ffprobe e Codex vêm das dependências npm. A transcrição instala um runtime privado nos dados do aplicativo, sem modificar seu Python global.
@@ -208,12 +221,13 @@ Validação da versão 0.6.0: **106 testes**, build e verificações do app empa
 | Desktop e interface | Electron, React e TypeScript; ponte IPC isolada, sem Node no renderer. |
 | Timeline e histórico | Projeto declarativo compartilhado pelas ações manuais e pelas ferramentas da IA. |
 | Agentes | Codex App Server por stdio; Claude Code externo com MCP local; Anthropic Messages e APIs de Chat Completions compatíveis no processo principal. |
+| Clientes externos | Servidor MCP em `127.0.0.1` com token, usado pelo Claude Desktop por meio de uma ponte stdio. |
 | Vídeo e áudio | FFmpeg/ffprobe, H.264/AAC e normalização em duas passagens. |
 | Transcrição | Faster Whisper, runtime privado e modelo multilíngue instalados sob demanda. |
 | Legendas | JASSUB/libass na prévia, com gerador ASS compartilhado pela exportação. |
 | Animações | HyperFrames, HTML/CSS e movimentos GSAP declarativos; renderização local com cache. |
 
-O agente recebe cinco ferramentas do editor: ler projeto, editar, transcrever, inspecionar quadro e exportar. Não recebe acesso livre a shell, arquivos ou plugins.
+O agente recebe sete ferramentas do editor: ler projeto, editar, transcrever, inspecionar quadro, exportar, criar canvas e importar vídeos. A importação aceita somente arquivos de vídeo. Não recebe acesso livre a shell, arquivos ou plugins.
 
 **Remotion foi usado no filme de apresentação deste README.** O motor de efeitos dentro do aplicativo é HyperFrames. O editor não exige um backend CutRoom hospedado, telemetria própria ou uma conta CutRoom.
 
