@@ -26,12 +26,18 @@
 
 ## Veja acontecer
 
-<a href="docs/media/cutroom-demo.mp4">
-  <img src="docs/media/overview.gif" alt="Demonstração animada real: conversa, comandos, legendas, efeitos, timeline e exportação no CutRoom" width="100%" />
-</a>
+<img src="docs/media/overview.gif" alt="Demonstração animada real: conversa, comandos, legendas, efeitos, timeline e exportação no CutRoom" width="100%" />
+
+<details>
+<summary><strong>▶ Assistir à demonstração completa · 43 segundos</strong></summary>
+
+https://github.com/user-attachments/assets/dbfbcb2e-656b-4866-ae57-004bb3d46c15
+
+[Baixar o vídeo em MP4](https://raw.githubusercontent.com/Mathpcastro/cutroom/main/docs/media/cutroom-demo.mp4)
+
+</details>
 
 <p align="center">
-  <strong><a href="docs/media/cutroom-demo.mp4">▶ Assistir à demonstração completa · 43 segundos</a></strong><br />
   <sub>Gravações reais do CutRoom 0.5.0, montadas com Remotion. Prévia acima acelerada em 2×. O download atual é a versão 0.6.0.</sub>
 </p>
 
