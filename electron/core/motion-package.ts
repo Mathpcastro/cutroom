@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   access,
+  chmod,
   mkdir,
   readFile,
   writeFile,
@@ -13,23 +14,69 @@ import type { PackageInfo } from "../../src/shared/types";
 
 export const MOTION_PACKAGE = "hyperframes-motion";
 export const CHROME_VERSION = "155.0.8059.79";
-const SHA256 =
-  "c4cc49fa7908cf018600b04c95918d336565d90f9c72241fd83dacd9ec41855c";
-export const motionBrowser = (root: string) =>
-  join(
+
+// SHA256 hashes por plataforma/arch
+const SHA256_MAP: Partial<Record<string, Partial<Record<string, string>>>> = {
+  win32: {
+    x64: "c4cc49fa7908cf018600b04c95918d336565d90f9c72241fd83dacd9ec41855c",
+  },
+  darwin: {
+    x64: "36a1da728fc936770a0edc52989b74d8d3a194e8747f490e372a210853ad831c",
+    arm64: "36a1da728fc936770a0edc52989b74d8d3a194e8747f490e372a210853ad831c",
+  },
+};
+
+function getPlatformInfo() {
+  const plat = process.platform;
+  const arch = process.arch;
+  if (plat === "win32" && arch === "x64") {
+    return {
+      chromeDir: "chrome-headless-shell-win64",
+      chromeBin: "chrome-headless-shell.exe",
+      chromeZipPlatform: "win64",
+      sha256: SHA256_MAP.win32!.x64!,
+    };
+  }
+  if (plat === "darwin" && arch === "x64") {
+    return {
+      chromeDir: "chrome-headless-shell-mac-x64",
+      chromeBin: "chrome-headless-shell",
+      chromeZipPlatform: "mac-x64",
+      sha256: SHA256_MAP.darwin!.x64!,
+    };
+  }
+  if (plat === "darwin" && arch === "arm64") {
+    return {
+      chromeDir: "chrome-headless-shell-mac-arm64",
+      chromeBin: "chrome-headless-shell",
+      chromeZipPlatform: "mac-arm64",
+      sha256: SHA256_MAP.darwin!.arm64!,
+    };
+  }
+  return null;
+}
+
+export const motionBrowser = (root: string) => {
+  const info = getPlatformInfo();
+  if (!info) return join(root, `hyperframes-${CHROME_VERSION}`, "chrome-headless-shell");
+  return join(
     root,
     `hyperframes-${CHROME_VERSION}`,
-    "chrome-headless-shell-win64",
-    "chrome-headless-shell.exe",
+    info.chromeDir,
+    info.chromeBin,
   );
+};
+
 export async function motionPackageInfo(root: string): Promise<PackageInfo> {
+  const info = getPlatformInfo();
+  const sha256 = info?.sha256 ?? SHA256_MAP.win32!.x64!;
   const installed = await Promise.all([
     access(motionBrowser(root)),
     readFile(
       join(root, `hyperframes-${CHROME_VERSION}`, "ready.json"),
       "utf8",
     ).then((s) => {
-      if (JSON.parse(s).sha256 !== SHA256) throw new Error();
+      if (JSON.parse(s).sha256 !== sha256) throw new Error();
     }),
   ]).then(
     () => true,
@@ -52,9 +99,11 @@ export async function installMotionPackage(
   progress: (n: number, label: string) => void,
   signal?: AbortSignal,
 ) {
-  if (process.platform !== "win32" || process.arch !== "x64")
-    throw new Error("Este pacote requer Windows x64.");
+  const platformInfo = getPlatformInfo();
+  if (!platformInfo)
+    throw new Error("Este pacote não é suportado nesta plataforma.");
   signal?.throwIfAborted();
+  const { chromeDir, chromeBin, chromeZipPlatform, sha256 } = platformInfo;
   const target = join(root, `hyperframes-${CHROME_VERSION}`),
     staging = `${target}.partial`;
   await mkdir(root, { recursive: true });
@@ -63,8 +112,9 @@ export async function installMotionPackage(
   await mkdir(staging, { recursive: true });
   try {
     progress(1, "Baixando o renderizador local de animações…");
+    const zipName = `chrome-headless-shell-${chromeZipPlatform}.zip`;
     const response = await fetch(
-      `https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/win64/chrome-headless-shell-win64.zip`,
+      `https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/${chromeZipPlatform}/${zipName}`,
       { signal },
     );
     if (!response.ok || !response.body)
@@ -88,7 +138,7 @@ export async function installMotionPackage(
       }
     }
     const archive = Buffer.concat(chunks);
-    if (createHash("sha256").update(archive).digest("hex") !== SHA256)
+    if (createHash("sha256").update(archive).digest("hex") !== sha256)
       throw new Error(
         "O pacote de animações não passou na verificação de integridade.",
       );
@@ -104,18 +154,19 @@ export async function installMotionPackage(
       else {
         await mkdir(resolve(output, ".."), { recursive: true });
         await writeFile(output, bytes);
+        // Tornar executável no macOS/Linux
+        if (process.platform !== "win32" && name.endsWith(chromeBin))
+          await chmod(output, 0o755);
       }
       progress(
         82 + (i / entries.length) * 16,
         "Instalando o renderizador local…",
       );
     }
-    await access(
-      join(staging, "chrome-headless-shell-win64", "chrome-headless-shell.exe"),
-    );
+    await access(join(staging, chromeDir, chromeBin));
     await writeFile(
       join(staging, "ready.json"),
-      JSON.stringify({ sha256: SHA256, installedAt: new Date().toISOString() }),
+      JSON.stringify({ sha256, installedAt: new Date().toISOString() }),
     );
     signal?.throwIfAborted();
     await rm(target, { recursive: true, force: true });
