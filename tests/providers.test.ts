@@ -40,6 +40,126 @@ const options = (
 ) => ({ workspace: ".", onText: vi.fn(), onTool, onActivity: vi.fn() });
 
 describe("provider transport and editing", () => {
+  it("maps actual OpenRouter reasoning metadata and mandatory defaults without inventing high effort", () => {
+    const models = mapApiModels("openrouter", [
+      {
+        id: "anthropic/claude-opus-5.5",
+        name: "Anthropic: Claude Opus 5.5",
+        supported_parameters: ["tools", "reasoning"],
+        reasoning: {
+          supported_efforts: ["max", "xhigh", "high", "medium", "low"],
+          default_effort: "medium",
+          mandatory: true,
+        },
+      },
+      {
+        id: "mandatory",
+        supported_parameters: ["tools"],
+        reasoning: { supported_efforts: null, mandatory: true },
+      },
+      { id: "router", supported_parameters: ["tools"] },
+    ]);
+    expect(models[0]).toMatchObject({
+      modelId: "anthropic/claude-opus-5.5",
+      name: "Anthropic: Claude Opus 5.5",
+      reasoningEfforts: ["low", "medium", "high", "xhigh", "max"],
+      defaultReasoningEffort: "medium",
+    });
+    expect(models[1].reasoningEfforts).not.toContain("none");
+    expect(models[1].defaultReasoningEffort).toBeUndefined();
+    expect(models[2].reasoningEfforts).toEqual([]);
+    expect(models[2].defaultReasoningEffort).toBeUndefined();
+  });
+  it("leaves reasoning untouched by default, sends explicit per-model effort and reports the actual API model", async () => {
+    const bodies: any[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        if (url.endsWith("/auth/key")) return new Response("{}");
+        if (url.endsWith("/models"))
+          return new Response(
+            JSON.stringify({
+              data: [
+                {
+                  id: "requested",
+                  supported_parameters: ["tools"],
+                  reasoning: {
+                    supported_efforts: ["low", "medium"],
+                    default_effort: "medium",
+                  },
+                },
+              ],
+            }),
+          );
+        bodies.push(JSON.parse(String(init.body)));
+        return stream([
+          { ...delta({ content: "ok" }, "stop"), model: "actual-version-123" },
+        ]);
+      }),
+    );
+    const onStatus = vi.fn();
+    const client = new ApiAgentClient(
+      { ...options(), onStatus },
+      { provider: "openrouter" },
+    );
+    const connected = await client.connect("fixture-key");
+    expect(connected.reasoningEffort).toBeUndefined();
+    await client.send("Use provider default");
+    expect(bodies[0]).not.toHaveProperty("reasoning");
+    expect(onStatus.mock.calls.at(-1)?.[0]).toMatchObject({
+      model: "requested",
+      activeModel: "actual-version-123",
+      reasoningEffort: undefined,
+    });
+    await client.send("Use low", "requested", "low");
+    expect(bodies[1].reasoning).toEqual({ effort: "low" });
+    await expect(
+      client.send("Unsupported", "requested", "max"),
+    ).rejects.toThrow("não oferece");
+    client.disconnect();
+  });
+  it("uses adaptive thinking only when the Anthropic model declares it and explicit effort is selected", async () => {
+    const bodies: any[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        if (url.includes("/models"))
+          return new Response(
+            JSON.stringify({
+              data: [
+                {
+                  id: "claude-test",
+                  capabilities: {
+                    effort: { max: { supported: true } },
+                    thinking: { types: { adaptive: { supported: true } } },
+                  },
+                },
+              ],
+            }),
+          );
+        bodies.push(JSON.parse(String(init.body)));
+        return stream([
+          {
+            type: "message_start",
+            message: { model: "claude-concrete-version" },
+          },
+          { type: "message_delta", delta: { stop_reason: "end_turn" } },
+          { type: "message_stop" },
+        ]);
+      }),
+    );
+    const client = new ApiAgentClient(options(), { provider: "anthropic" });
+    await client.connect("key");
+    await client.send("Default");
+    expect(bodies[0]).not.toHaveProperty("output_config");
+    expect(bodies[0]).not.toHaveProperty("thinking");
+    await client.send("Max", "claude-test", "max");
+    expect(bodies[1]).toMatchObject({
+      output_config: { effort: "max" },
+      thinking: { type: "adaptive" },
+    });
+    client.disconnect();
+  });
   it("restricts remote credentials to HTTPS and refuses URL credentials", () => {
     for (const baseUrl of [
       "http://example.com/v1",

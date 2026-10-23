@@ -58,6 +58,8 @@ export function mapApiModels(provider: ApiProvider, data: Json[]): Model[] {
   return data
     .filter(
       (m) =>
+        m &&
+        typeof m === "object" &&
         typeof m.id === "string" &&
         m.id.length <= 200 &&
         m.lifecycle !== "retired",
@@ -74,7 +76,20 @@ export function mapApiModels(provider: ApiProvider, data: Json[]): Model[] {
             )
           : provider === "deepseek"
             ? efforts.filter((e) => m.effort?.supported_levels?.includes(e))
-            : efforts.filter((e) => m.supported_reasoning_efforts?.includes(e));
+            : provider === "openrouter"
+              ? efforts.filter(
+                  (e) =>
+                    (m.reasoning?.supported_efforts === null ||
+                      m.reasoning?.supported_efforts?.includes(e)) &&
+                    !(e === "none" && m.reasoning?.mandatory === true),
+                )
+              : efforts.filter((e) =>
+                  m.supported_reasoning_efforts?.includes(e),
+                );
+      const declaredDefault =
+        provider === "openrouter"
+          ? m.reasoning?.default_effort
+          : (m.effort?.default_level ?? m.default_reasoning_effort);
       const modalities =
         m.input_modalities || m.architecture?.input_modalities || [];
       const price = (v: unknown) =>
@@ -84,15 +99,20 @@ export function mapApiModels(provider: ApiProvider, data: Json[]): Model[] {
       return {
         id: m.id,
         name: String(m.display_name || m.name || m.id),
+        modelId: m.id,
+        description:
+          typeof m.description === "string"
+            ? m.description.slice(0, 1000)
+            : undefined,
         reasoningEfforts: supported,
-        defaultReasoningEffort: supported.includes(m.effort?.default_level)
-          ? m.effort.default_level
-          : supported.includes("high")
-            ? ("high" as const)
-            : supported[0],
+        defaultReasoningEffort: supported.includes(declaredDefault)
+          ? declaredDefault
+          : undefined,
         supportsVision:
           m.capabilities?.image_input?.supported === true ||
           modalities.includes("image"),
+        supportsAdaptiveThinking:
+          m.capabilities?.thinking?.types?.adaptive?.supported === true,
         inputPricePerMillion: price(m.pricing?.prompt),
         outputPricePerMillion: price(m.pricing?.completion),
       };
@@ -154,6 +174,7 @@ export class ApiAgentClient implements AgentClient {
   private controller?: AbortController;
   private connected = false;
   private selected?: string;
+  private activeModel = "";
   private tools: AgentTools;
   private config: AgentConnectConfig;
   constructor(
@@ -182,7 +203,9 @@ export class ApiAgentClient implements AgentClient {
       else headers.authorization = `Bearer ${this.key}`;
     }
     if (this.provider === "anthropic")
-      headers["anthropic-version"] = "2023-06-01";
+      headers["anthropic-version"] = path.startsWith("/models")
+        ? "2026-10-21"
+        : "2023-06-01";
     if (this.provider === "openrouter") headers["X-Title"] = "CutRoom";
     try {
       const response = await fetch(this.base + path, {
@@ -246,7 +269,11 @@ export class ApiAgentClient implements AgentClient {
       this.config.model &&
       !this.models.some((m) => m.id === this.config.model)
     )
-      this.models.unshift({ id: this.config.model, name: this.config.model });
+      this.models.unshift({
+        id: this.config.model,
+        name: this.config.model,
+        modelId: this.config.model,
+      });
     if (!this.models.length)
       throw new Error(
         "Nenhum modelo com suporte a ferramentas foi encontrado para esta conta.",
@@ -269,8 +296,7 @@ export class ApiAgentClient implements AgentClient {
       account: PROVIDER_LABELS[this.provider],
       models: this.models,
       model: this.selected,
-      reasoningEffort: this.models.find((m) => m.id === this.selected)
-        ?.defaultReasoningEffort,
+      reasoningEffort: undefined,
     };
   }
   async send(text: string, model = this.selected, effort?: ReasoningEffort) {
@@ -288,6 +314,14 @@ export class ApiAgentClient implements AgentClient {
       this.selected = model;
     }
     const controller = (this.controller = new AbortController());
+    this.activeModel = "";
+    this.options.onStatus?.({
+      account: PROVIDER_LABELS[this.provider],
+      models: this.models,
+      model,
+      reasoningEffort: effort,
+      activeModel: undefined,
+    });
     const signal = AbortSignal.any([
       controller.signal,
       AbortSignal.timeout(30 * 60_000),
@@ -327,6 +361,23 @@ export class ApiAgentClient implements AgentClient {
   }
   private prompt() {
     return baseInstructions + "\n\n" + (this.options.instructions || "");
+  }
+  private reportModel(value: unknown, model: Model, effort?: ReasoningEffort) {
+    if (
+      typeof value === "string" &&
+      value.length > 0 &&
+      value.length <= 200 &&
+      value !== this.activeModel
+    ) {
+      this.activeModel = value;
+      this.options.onStatus?.({
+        account: PROVIDER_LABELS[this.provider],
+        models: this.models,
+        model: model.id,
+        reasoningEffort: effort,
+        activeModel: value,
+      });
+    }
   }
   private async call(
     name: string,
@@ -390,6 +441,7 @@ export class ApiAgentClient implements AgentClient {
     let stop = "",
       bytes = 0;
     for await (const event of sse(response)) {
+      this.reportModel(event.model, model, effort);
       const choice = event.choices?.[0];
       if (!choice) continue;
       const delta = choice.delta || {};
@@ -501,7 +553,10 @@ export class ApiAgentClient implements AgentClient {
         input_schema: t.inputSchema,
       })),
     };
-    if (effort) body.output_config = { effort };
+    if (effort) {
+      body.output_config = { effort };
+      if (model.supportsAdaptiveThinking) body.thinking = { type: "adaptive" };
+    }
     const response = await this.fetch(
       "/messages",
       { method: "POST", body: JSON.stringify(body) },
@@ -513,6 +568,8 @@ export class ApiAgentClient implements AgentClient {
       reason = "",
       bytes = 0;
     for await (const event of sse(response)) {
+      if (event.type === "message_start")
+        this.reportModel(event.message?.model, model, effort);
       if (event.type === "content_block_start")
         blocks[event.index] = { ...event.content_block };
       if (event.type === "content_block_delta") {

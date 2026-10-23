@@ -147,13 +147,17 @@ export interface Connection {
   models: {
     id: string;
     name: string;
+    modelId?: string;
+    description?: string;
     reasoningEfforts?: ReasoningEffort[];
     defaultReasoningEffort?: ReasoningEffort;
     supportsVision?: boolean;
+    supportsAdaptiveThinking?: boolean;
     inputPricePerMillion?: number;
     outputPricePerMillion?: number;
   }[];
   reasoningEffort?: ReasoningEffort;
+  activeModel?: string;
   error?: string;
 }
 export interface AppSnapshot {
