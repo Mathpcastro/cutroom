@@ -1,4 +1,5 @@
 import type { CaptionSettings } from "./captions";
+import type { AgentProvider } from "./providers";
 export type ReasoningEffort =
   "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export interface AgentActivity {
@@ -39,7 +40,14 @@ export interface Clip {
   muted: boolean;
   focusX?: number;
   focusY?: number;
-  look?: "none" | "monochrome" | "cinema" | "vivid" | "blur" | "vignette" | "color-wipe";
+  look?:
+    | "none"
+    | "monochrome"
+    | "cinema"
+    | "vivid"
+    | "blur"
+    | "vignette"
+    | "color-wipe";
   mirrored?: boolean;
   lookStart?: number;
   lookEnd?: number;
@@ -53,7 +61,8 @@ export interface Overlay {
   start: number;
   end: number;
 }
-export type MotionPresetId = "title" | "lower-third" | "highlight" | "steps" | "stat" | "explainer";
+export type MotionPresetId =
+  "title" | "lower-third" | "highlight" | "steps" | "stat" | "explainer";
 export interface MotionTween {
   selector: string;
   start: number;
@@ -132,6 +141,7 @@ export interface PackageInfo {
 }
 export interface Connection {
   status: "disconnected" | "connecting" | "connected" | "error";
+  provider?: AgentProvider;
   account?: string;
   model?: string;
   models: {
@@ -139,6 +149,9 @@ export interface Connection {
     name: string;
     reasoningEfforts?: ReasoningEffort[];
     defaultReasoningEffort?: ReasoningEffort;
+    supportsVision?: boolean;
+    inputPricePerMillion?: number;
+    outputPricePerMillion?: number;
   }[];
   reasoningEffort?: ReasoningEffort;
   error?: string;

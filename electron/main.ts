@@ -44,6 +44,10 @@ import {
 } from "./core/media";
 import { PackageManager } from "./core/packages";
 import { CodexClient, toolActivityLabel } from "./core/codex";
+import type { AgentClient } from "./core/agent";
+import { ApiAgentClient } from "./core/api-agent";
+import { ClaudeAgentClient } from "./core/claude-agent";
+import { AGENT_PROVIDERS } from "../src/shared/providers";
 import { runProcess } from "./core/process";
 import { motionCacheKey, motionDocument } from "./core/motion-document";
 import { renderMotions } from "./core/motion-render";
@@ -79,7 +83,8 @@ protocol.registerSchemesAsPrivileged([
 ]);
 let window: BrowserWindow | undefined;
 let packages: PackageManager;
-let codex: CodexClient | undefined;
+let codex: AgentClient | undefined;
+let connectionGeneration = 0;
 let cacheDir: string;
 const motionDocuments = new Map<string, string>();
 let userDir: string;
@@ -627,34 +632,59 @@ async function exportVideo() {
   return emit();
 }
 async function connectCodex(value: unknown = {}) {
-  const { apiKey } = z
-    .object({ apiKey: z.string().max(1000).optional() })
+  const config = z
+    .object({
+      provider: z.enum(AGENT_PROVIDERS).default("codex"),
+      apiKey: z.string().trim().max(1000).optional(),
+      baseUrl: z.string().trim().max(2000).optional(),
+      model: z.string().trim().min(1).max(200).optional(),
+      cliPath: z.string().trim().max(2000).optional(),
+    })
     .parse(value);
   if (chatBusy) throw new Error("Cancele a conversa antes de reconectar.");
+  const generation = ++connectionGeneration;
   codex?.disconnect();
-  state.connection = { status: "connecting", models: [] };
+  state.connection = {
+    status: "connecting",
+    provider: config.provider,
+    models: [],
+  };
   emit();
   const instructions = await readFile(
     join(resources, "presets", "edicao-limpa.md"),
     "utf8",
   );
-  codex = new CodexClient({
+  if (generation !== connectionGeneration)
+    throw new Error("Conexão substituída.");
+  const options = {
     workspace: join(userDir, "agent-workspace"),
     instructions,
-    onActivity: activity,
-    onStatus: (info) => {
-      if (state.connection.status !== "disconnected") {
-        state.connection = { status: "connected", ...info };
+    onActivity: (entry: AgentActivity) => {
+      if (generation === connectionGeneration) activity(entry);
+    },
+    onStatus: (info: import("./core/codex").CodexStatus) => {
+      if (
+        generation === connectionGeneration &&
+        state.connection.status !== "disconnected"
+      ) {
+        state.connection = {
+          status: "connected",
+          provider: config.provider,
+          ...info,
+        };
         emit();
       }
     },
-    onText: (text) => {
+    onText: (text: string) => {
+      if (generation !== connectionGeneration) return;
       const last = state.messages.at(-1);
       if (last?.role === "assistant") last.text += text;
       else message("assistant", text);
       emit();
     },
-    onTool: async (name, args) => {
+    onTool: async (name: string, args: Record<string, unknown>) => {
+      if (generation !== connectionGeneration)
+        throw new Error("Conexão encerrada.");
       if (name === "get_project") return structuredClone(state.project);
       if (name === "edit_project") {
         await executeCommand(args);
@@ -712,11 +742,24 @@ async function connectCodex(value: unknown = {}) {
       }
       throw new Error("Ferramenta não autorizada.");
     },
-  });
+  };
+  let client: AgentClient | undefined;
   try {
-    const info = await codex.connect(apiKey);
+    client =
+      config.provider === "codex"
+        ? new CodexClient(options)
+        : config.provider === "claude-code"
+          ? new ClaudeAgentClient(options, config)
+          : new ApiAgentClient(options, config);
+    codex = client;
+    const info = await client.connect(config.apiKey);
+    if (generation !== connectionGeneration) {
+      client.disconnect();
+      throw new Error("Conexão substituída.");
+    }
     state.connection = {
       status: "connected",
+      provider: config.provider,
       models: info.models,
       account: info.account,
       model: info.model,
@@ -724,9 +767,11 @@ async function connectCodex(value: unknown = {}) {
     };
     return emit();
   } catch (error) {
-    codex.disconnect();
+    client?.disconnect();
+    if (generation !== connectionGeneration) throw error;
     state.connection = {
       status: "error",
+      provider: config.provider,
       models: [],
       error: error instanceof Error ? error.message : String(error),
     };
@@ -798,6 +843,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       state.activities = [];
       past = [];
       future = [];
+      ++connectionGeneration;
       codex?.disconnect();
       codex = undefined;
       state.connection = { status: "disconnected", models: [] };
@@ -846,6 +892,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       delete parsed.chat;
       const project = validateProject(parsed);
       for (const media of project.media) await access(media.path);
+      ++connectionGeneration;
       codex?.disconnect();
       codex = undefined;
       state.connection = { status: "disconnected", models: [] };
@@ -876,9 +923,12 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         state.project = future.pop()!;
       }
       return emit();
+    case "connectAgent":
     case "connectCodex":
       return connectCodex(params);
+    case "disconnectAgent":
     case "disconnectCodex":
+      ++connectionGeneration;
       await codex?.interrupt();
       codex?.disconnect();
       codex = undefined;
@@ -896,8 +946,9 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         })
         .parse(params);
       if (!codex || state.connection.status !== "connected")
-        throw new Error("Conecte o Codex antes de enviar.");
-      if (state.busy) throw new Error("Aguarde ou cancele a operação atual.");
+        throw new Error("Conecte uma IA antes de enviar.");
+      if (state.busy || chatBusy)
+        throw new Error("Aguarde ou cancele a operação atual.");
       chatBusy = true;
       message("user", displayText || text);
       message("assistant", "");

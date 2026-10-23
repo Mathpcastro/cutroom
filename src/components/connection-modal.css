@@ -1,0 +1,185 @@
+/* Provider connection reuses the editor's six semantic themes. */
+.modal.connection-modal {
+  width: 430px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 25px;
+}
+.connection-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 25px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.connection-modal .connection-title-row h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.4;
+}
+.connection-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 22px;
+}
+.connection-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1px 2px 0;
+}
+.connection-provider {
+  position: relative;
+  margin-bottom: 13px;
+}
+.connection-provider > span {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.connection-provider-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  width: 100%;
+  min-height: 37px;
+  padding: 8px 11px;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+}
+.connection-provider-trigger:hover:not(:disabled) {
+  background: var(--hover);
+}
+.connection-provider-trigger svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.connection-provider-list {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  z-index: 25;
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--raised);
+  box-shadow: 0 10px 35px var(--shadow);
+  outline: none;
+}
+.connection-provider-list > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  width: 100%;
+  min-height: 34px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+}
+.connection-provider-list > button.highlighted,
+.connection-provider-list > button:hover {
+  background: var(--hover);
+}
+.connection-provider-list > button svg {
+  flex-shrink: 0;
+}
+.connection-provider-help {
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--muted);
+  margin: 0 0 17px;
+}
+.connection-modal .connection-steps {
+  margin: 13px 0 10px;
+  padding-left: 17px;
+  font-size: 10px;
+  line-height: 1.7;
+}
+.connection-modal .connection-steps li {
+  margin-bottom: 10px;
+}
+.connection-modal .connection-steps code {
+  font-size: 10px;
+  line-height: 1.5;
+  padding: 7px 9px;
+  overflow-wrap: anywhere;
+}
+.connection-modal .field {
+  margin-top: 14px;
+  gap: 7px;
+  color: var(--text);
+}
+.connection-modal .field input {
+  min-height: 36px;
+  font-size: 11px;
+  padding: 8px 10px;
+}
+.connection-modal .field small {
+  font-size: 10px;
+  line-height: 1.65;
+}
+.connection-modal .advanced-toggle {
+  width: 100%;
+  padding: 9px 0;
+  font-size: 10px;
+  text-align: left;
+}
+.connection-modal .connection-note {
+  border-top: 1px solid var(--line);
+  padding-top: 13px;
+  margin: 18px 0 0;
+  font-size: 10px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+.connection-modal .connection-field-error {
+  color: var(--danger);
+}
+.connection-modal .error-box {
+  margin-top: 14px;
+}
+.connection-modal .modal-actions {
+  flex-shrink: 0;
+  margin-top: 19px;
+  padding-top: 0;
+}
+.connection-modal .modal-actions .button {
+  min-height: 34px;
+  font-size: 11px;
+}
+.connection-modal .connected-account {
+  margin: 18px 0 0;
+  overflow-wrap: anywhere;
+}
+@media (max-height: 660px) {
+  .modal.connection-modal {
+    padding: 21px;
+    max-height: calc(100vh - 24px);
+  }
+  .connection-form {
+    margin-top: 16px;
+  }
+  .connection-modal .connection-note {
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+  .connection-modal .modal-actions {
+    margin-top: 14px;
+  }
+}

@@ -2,11 +2,11 @@
 
 <img src="resources/branding/icon-128.png" alt="Logo CutRoom" width="64" />
 
-Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompanhe a edição no player e ajuste os detalhes na timeline. Os arquivos e a renderização ficam no seu computador.
+Um editor de vídeo desktop controlado por texto. Converse com sua IA, acompanhe a edição no player e ajuste os detalhes na timeline. Os arquivos e a renderização ficam no seu computador.
 
 **Open source · Windows x64 · versão inicial em desenvolvimento**
 
-[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.5.1)
+[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.6.0)
 
 | Grafite | Claro |
 | --- | --- |
@@ -19,12 +19,12 @@ Um editor de vídeo desktop controlado por texto. Converse com seu Codex, acompa
 ## O que funciona
 
 - Chat à esquerda e workspace de vídeo à direita, com player, mídia, transcrição e timeline.
-- Catálogo de 38 comandos no botão **+** e atalhos `/`, com busca, explicações e parâmetros. São 37 ações prontas sem conexão de IA e `/animar` para cenas originais via Codex. Veja o [catálogo e exemplos](docs/commands.md).
+- Catálogo de 38 comandos no botão **+** e atalhos `/`, com busca, explicações e parâmetros. São 37 ações prontas sem conexão de IA e `/animar` para cenas originais via IA. Veja o [catálogo e exemplos](docs/commands.md).
 - Interface minimalista com ações agrupadas em menus e painéis sob demanda. Seis temas: Grafite, Claro, Dark+, Light+, Nord e Tokyo Night, com a escolha salva em **Configurações → Aparência**.
 - Codex App Server empacotado: reutiliza a sessão local do Codex, sem conta ou cadastro CutRoom.
 - Seletores compactos no estilo Codex: modelos em linhas simples e nível de raciocínio em uma barra deslizante, conforme as opções da conta. Navegação por teclado e botão para restaurar o esforço padrão do modelo.
 - Progresso ao vivo no chat: etapas do agente, ferramentas, processamento local, conclusão, falhas e cancelamento.
-- Opção de chave OpenAI própria, mantida somente na memória da conexão local.
+- Claude via terminal, Claude API, DeepSeek, OpenRouter e APIs compatíveis com OpenAI, incluindo servidores locais. Chaves mantidas somente na memória da conexão. Veja o [guia de provedores](docs/providers.md).
 - Cortar/dividir trechos, desfazer/refazer, ajustar zoom/foco, velocidade e áudio.
 - Detectar pausas e remover muletas a partir da transcrição, preservando expressões como “tipo de” e o verbo “é”.
 - Preset **Edição limpa**, adaptado da skill de edição de Matheus Castro.
@@ -47,10 +47,10 @@ npm install -g @openai/codex
 codex login
 ```
 
-O npm/CLI é necessário somente para preparar uma sessão caso você ainda não tenha Codex conectado. O CutRoom inclui seu próprio motor Codex e reutiliza a autenticação local existente. Alternativamente, em **Conectar Codex → Usar minha chave de API**, informe sua própria chave OpenAI. Ela não é incluída no projeto nem salva pelo CutRoom.
+O npm/CLI é necessário somente para preparar uma sessão caso você ainda não tenha Codex conectado. O CutRoom inclui seu próprio motor Codex e reutiliza a autenticação local existente. Alternativamente, em **Conexão de IA → Codex → Avançado**, informe sua própria chave OpenAI. Ela não é incluída no projeto nem salva pelo CutRoom.
 
 1. Arraste um vídeo para o editor ou escolha **Projeto → Importar mídia**.
-2. Abra **Conversa → Conexão Codex**.
+2. Abra **Conversa → Conexão de IA**.
 3. O aviso da primeira abertura leva a **Pacotes**, também disponível no menu **Conversa**. Instale **Transcrição local** para remover muletas, aplicar a edição limpa completa e criar legendas. O download ocupa centenas de MB e exige internet na primeira instalação. Depois, essas ações preparam a transcrição automaticamente quando necessário. Cortes manuais e detecção de pausas funcionam sem esse pacote.
 4. Peça uma edição no chat, confira o resultado e clique em **Exportar**.
 
@@ -68,7 +68,7 @@ Exemplos:
 
 > Use o trecho de 30 a 33 segundos como teaser no início, mantendo também a versão original no vídeo.
 
-O app é gratuito. A inferência usa os limites do seu plano Codex/ChatGPT ou os créditos da sua API. A transcrição local e a renderização não consomem créditos de IA. Texto da transcrição e frames solicitados pelo agente podem ser enviados ao provedor da IA; “local” não significa que o modelo de chat roda offline.
+O app é gratuito. A inferência usa os limites do seu plano Codex/ChatGPT, sua configuração Claude Code ou os créditos da sua API. A transcrição local e a renderização não consomem créditos de IA. Texto da transcrição e frames solicitados pelo agente podem ser enviados ao provedor da IA; “local” não significa que o modelo de chat roda offline.
 
 ## Desenvolvimento
 
@@ -94,6 +94,8 @@ npm run dist
 - **Electron/React/TypeScript**: interface e ponte isolada, sem Node no renderer.
 - **Projeto declarativo**: as ações manuais e a IA alteram o mesmo modelo, com histórico reversível.
 - **Codex App Server por stdio**: sessão local, ferramentas de edição próprias e streaming. Integrações herdadas, shell e plugins são desativados para a conversa do editor.
+- **Claude Code externo + MCP local**: CLI oficial do usuário, autenticação própria, ferramentas do editor e streaming.
+- **APIs de IA**: Anthropic Messages e OpenAI Chat Completions compatível no processo principal; chaves somente em memória.
 - **FFmpeg/ffprobe**: processamento por subprocessos, com argumentos separados e gráficos em arquivos.
 - **Faster Whisper**: worker Python com dependências fixadas por hash e modelo de revisão fixada, instalado sob demanda.
 - **JASSUB/libass**: renderizador de legendas ASS com worker, WebAssembly e fontes empacotados; gerador compartilhado com a exportação FFmpeg.
@@ -106,7 +108,7 @@ A aba Pacotes é a primeira base para um catálogo gratuito de motores locais. O
 
 ## Limites desta versão
 
-- O modelo de chat depende de internet e da sua conta. Login customizado “Sign in with ChatGPT” e suporte Claude não estão implementados.
+- O modelo de chat depende de internet e da sua conta. Login customizado “Sign in with ChatGPT” ou Claude não existe; use as sessões das CLIs oficiais. As APIs exigem modelos com suporte a ferramentas.
 - Presets não detectam rosto/atividade de tela automaticamente; o agente pode inspecionar frames e comandar foco e velocidade.
 - Tempos ASR podem ser imprecisos, especialmente em hesitações. Revise os cortes. Tokens sem duração são unidos ao texto vizinho sem inventar novos tempos.
 - Player mostra uma composição interativa. As legendas compartilham o gerador ASS com a exportação; cortes com durações fracionárias de frame ainda podem acumular diferenças de tempo entre timeline e MP4. Confira o resultado exportado.

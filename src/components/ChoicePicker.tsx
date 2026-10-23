@@ -70,7 +70,7 @@ export function ChoicePicker({
         type="button"
         className="choice-trigger"
         aria-label={label}
-        title={selected?.label || "Conecte o Codex para escolher um modelo"}
+        title={selected?.label || "Conecte uma IA para escolher um modelo"}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${id}-list`}

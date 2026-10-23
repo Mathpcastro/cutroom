@@ -13,6 +13,13 @@ import {
   X,
 } from "lucide-react";
 import type { AppSnapshot, ReasoningEffort } from "../shared/types";
+import {
+  AGENT_PROVIDERS,
+  PROVIDER_LABELS,
+  type AgentConnectConfig,
+  type AgentProvider,
+} from "../shared/providers";
+import "./connection-modal.css";
 import { Menu } from "./Menu";
 import { BrandMark } from "./BrandMark";
 import { ChoicePicker } from "./ChoicePicker";
@@ -47,23 +54,36 @@ export function Assistant({
   const [text, setText] = useState("");
   const [commandError, setCommandError] = useState("");
   const commands = useRef<CommandPaletteHandle>(null);
-  const [model, setModel] = useState("");
+  const connectedProvider = state.connection.provider || "codex";
+  const [model, setModel] = useState<{
+    provider: AgentProvider;
+    id: string;
+  } | null>(null);
   const [activePicker, setActivePicker] = useState<"model" | "effort" | null>(
     null,
   );
   const [efforts, setEfforts] = useState<Record<string, ReasoningEffort>>({});
   const selectedModel =
     state.connection.models.find(
-      (item) => item.id === (model || state.connection.model),
+      (item) =>
+        item.id ===
+        (model?.provider === connectedProvider
+          ? model.id
+          : state.connection.model),
     ) || state.connection.models[0];
   const supportedEfforts = selectedModel?.reasoningEfforts || [];
   const modelDisplayName = (name: string) =>
-    name.replace(/^(GPT-\d+(?:\.\d+)?)-/i, "$1 ");
+    connectedProvider === "codex"
+      ? name.replace(/^(GPT-\d+(?:\.\d+)?)-/i, "$1 ")
+      : name;
+  const effortKey = selectedModel
+    ? `${connectedProvider}:${selectedModel.id}`
+    : "";
   const selectedEffort =
     selectedModel &&
-    efforts[selectedModel.id] &&
-    supportedEfforts.includes(efforts[selectedModel.id])
-      ? efforts[selectedModel.id]
+    efforts[effortKey] &&
+    supportedEfforts.includes(efforts[effortKey])
+      ? efforts[effortKey]
       : state.connection.model === selectedModel?.id &&
           state.connection.reasoningEffort &&
           supportedEfforts.includes(state.connection.reasoningEffort)
@@ -100,10 +120,145 @@ export function Assistant({
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [apiKey, setApiKey] = useState("");
-  useDialogKeyboard(connectionOpen, () => {
+  const [provider, setProvider] = useState<AgentProvider>(connectedProvider);
+  const [providerPickerOpen, setProviderPickerOpen] = useState(false);
+  const [providerIndex, setProviderIndex] = useState(0);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [customModel, setCustomModel] = useState("");
+  const [cliPath, setCliPath] = useState("");
+  const [urlTouched, setUrlTouched] = useState(false);
+  const [connectingLocal, setConnectingLocal] = useState(false);
+  const [connectionError, setConnectionError] = useState("");
+  const providerRoot = useRef<HTMLDivElement>(null);
+  const providerTrigger = useRef<HTMLButtonElement>(null);
+  const providerList = useRef<HTMLDivElement>(null);
+  const closeConnection = () => {
     setConnectionOpen(false);
     setApiKey("");
+    setProviderPickerOpen(false);
+    setAdvanced(false);
+    setConnectionError("");
+  };
+  const openConnection = () => {
+    setProvider(connectedProvider);
+    setApiKey("");
+    setBaseUrl("");
+    setCustomModel("");
+    setCliPath("");
+    setAdvanced(false);
+    setUrlTouched(false);
+    setConnectionError("");
+    setConnectionOpen(true);
+  };
+  useDialogKeyboard(connectionOpen, () => {
+    if (providerPickerOpen) {
+      setProviderPickerOpen(false);
+      providerTrigger.current?.focus();
+    } else closeConnection();
   });
+  useEffect(() => {
+    if (!providerPickerOpen) return;
+    setProviderIndex(Math.max(0, AGENT_PROVIDERS.indexOf(provider)));
+    const outside = (event: PointerEvent) => {
+      if (!providerRoot.current?.contains(event.target as Node))
+        setProviderPickerOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    const frame = requestAnimationFrame(() => providerList.current?.focus());
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      cancelAnimationFrame(frame);
+    };
+  }, [providerPickerOpen, provider]);
+  const chooseProvider = (next: AgentProvider) => {
+    setProvider(next);
+    setApiKey("");
+    setAdvanced(false);
+    setBaseUrl("");
+    setCustomModel("");
+    setCliPath("");
+    setUrlTouched(false);
+    setConnectionError("");
+    setProviderPickerOpen(false);
+    providerTrigger.current?.focus();
+  };
+  let urlError = "",
+    localApi = false;
+  if (provider === "openai-compatible" && baseUrl.trim()) {
+    try {
+      const url = new URL(baseUrl.trim());
+      localApi = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(
+        url.hostname,
+      );
+      if (
+        url.username ||
+        url.password ||
+        !["https:", "http:"].includes(url.protocol) ||
+        (url.protocol === "http:" && !localApi)
+      )
+        urlError = "Use HTTPS ou HTTP em localhost.";
+    } catch {
+      urlError = "Informe uma URL completa para a API.";
+    }
+  }
+  const needsApiKey =
+    ["anthropic", "deepseek", "openrouter"].includes(provider) ||
+    (provider === "codex" && advanced) ||
+    (provider === "openai-compatible" && !localApi);
+  const connectionPending =
+    connectingLocal || state.connection.status === "connecting";
+  const canConnect =
+    desktop &&
+    !activeWork &&
+    !connectionPending &&
+    (!needsApiKey || !!apiKey.trim()) &&
+    (provider !== "openai-compatible" ||
+      (!!baseUrl.trim() && !!customModel.trim() && !urlError));
+  const providerHelp: Record<AgentProvider, string> = {
+    codex:
+      "O CutRoom inclui o motor do Codex e usa sua sessão local. Você não precisa criar uma conta CutRoom.",
+    "claude-code":
+      "Use o CLI oficial do Claude instalado neste computador e a sua sessão. Ele é instalado separadamente.",
+    anthropic:
+      "Conecte sua chave Anthropic. Os modelos disponíveis são carregados da sua conta ao conectar.",
+    deepseek:
+      "Use sua chave DeepSeek e escolha um modelo do catálogo carregado ao conectar.",
+    openrouter:
+      "Use sua chave OpenRouter para escolher entre os modelos disponíveis na sua conta.",
+    "openai-compatible":
+      "Conecte uma API compatível com OpenAI ou um servidor local, como o Ollama.",
+  };
+  const connect = async () => {
+    if (connected) {
+      if (activeWork || connectionPending) return;
+      await run("disconnectAgent");
+      closeConnection();
+      return;
+    }
+    if (!canConnect) return;
+    const config: AgentConnectConfig = {
+      provider,
+      ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+      ...(provider === "openai-compatible"
+        ? { baseUrl: baseUrl.trim(), model: customModel.trim() }
+        : {}),
+      ...(provider === "claude-code" && cliPath.trim()
+        ? { cliPath: cliPath.trim() }
+        : {}),
+    };
+    setApiKey("");
+    setConnectionError("");
+    setConnectingLocal(true);
+    try {
+      await run("connectAgent", config);
+    } catch {
+      setConnectionError(
+        "Não foi possível conectar. Confira os dados e tente novamente.",
+      );
+    } finally {
+      setConnectingLocal(false);
+    }
+  };
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const connected = state.connection.status === "connected";
@@ -136,7 +291,7 @@ export function Assistant({
       setText(
         `/${command.id} ${JSON.stringify(options.text ?? command.defaultText ?? "")}`,
       );
-      setConnectionOpen(true);
+      openConnection();
       return;
     }
     setCommandError("");
@@ -168,7 +323,7 @@ export function Assistant({
       return;
     }
     if (!connected) {
-      setConnectionOpen(true);
+      openConnection();
       return;
     }
     const message = text.trim();
@@ -195,13 +350,9 @@ export function Assistant({
             {tab === "packages" && <Check size={13} className="menu-check" />}
           </button>
           <div role="separator" />
-          <button
-            role="menuitem"
-            disabled={!desktop}
-            onClick={() => setConnectionOpen(true)}
-          >
+          <button role="menuitem" disabled={!desktop} onClick={openConnection}>
             <Terminal size={14} />
-            Conexão Codex
+            Conexão de IA
           </button>
           <div className="menu-caption">Sugestões</div>
           {[
@@ -225,7 +376,7 @@ export function Assistant({
         </Menu>
         <span
           className="assistant-connection"
-          title={connected ? "Codex conectado" : "Codex desconectado"}
+          title={`${PROVIDER_LABELS[connectedProvider]}: ${connected ? "conectado" : "desconectado"}`}
         >
           <span className={`connection-dot ${state.connection.status}`} />
           {connected ? "Conectado" : "Desconectado"}
@@ -337,13 +488,13 @@ export function Assistant({
               <button
                 className="connect-callout"
                 disabled={!desktop || state.connection.status === "connecting"}
-                onClick={() => setConnectionOpen(true)}
+                onClick={openConnection}
               >
                 <span className={`connection-dot ${state.connection.status}`} />
                 <span>
                   {state.connection.status === "connecting"
-                    ? "Conectando ao Codex…"
-                    : "Conecte o Codex para editar com IA"}
+                    ? `Conectando ${PROVIDER_LABELS[connectedProvider]}…`
+                    : "Conecte uma IA para editar"}
                 </span>
                 <Plus size={14} />
               </button>
@@ -405,7 +556,9 @@ export function Assistant({
                       value: item.id,
                       label: modelDisplayName(item.name),
                     }))}
-                    onChange={setModel}
+                    onChange={(id) =>
+                      setModel({ provider: connectedProvider, id })
+                    }
                     disabled={!connected || activeWork}
                     open={activePicker === "model"}
                     onOpenChange={(open) => {
@@ -415,32 +568,40 @@ export function Assistant({
                       );
                     }}
                   />
-                  <EffortPicker
-                    value={selectedEffort}
-                    modelName={
-                      selectedModel ? modelDisplayName(selectedModel.name) : ""
-                    }
-                    defaultValue={selectedModel?.defaultReasoningEffort}
-                    options={supportedEfforts.map((effort) => ({
-                      value: effort,
-                      label: effortLabels[effort],
-                    }))}
-                    onChange={(effort) =>
-                      selectedModel &&
-                      setEfforts((current) => ({
-                        ...current,
-                        [selectedModel.id]: effort,
-                      }))
-                    }
-                    disabled={!connected || activeWork}
-                    open={activePicker === "effort"}
-                    onOpenChange={(open) => {
-                      if (open) commands.current?.close(false);
-                      setActivePicker((current) =>
-                        open ? "effort" : current === "effort" ? null : current,
-                      );
-                    }}
-                  />
+                  {supportedEfforts.length > 0 && (
+                    <EffortPicker
+                      value={selectedEffort}
+                      modelName={
+                        selectedModel
+                          ? modelDisplayName(selectedModel.name)
+                          : ""
+                      }
+                      defaultValue={selectedModel?.defaultReasoningEffort}
+                      options={supportedEfforts.map((effort) => ({
+                        value: effort,
+                        label: effortLabels[effort],
+                      }))}
+                      onChange={(effort) =>
+                        selectedModel &&
+                        setEfforts((current) => ({
+                          ...current,
+                          [effortKey]: effort,
+                        }))
+                      }
+                      disabled={!connected || activeWork}
+                      open={activePicker === "effort"}
+                      onOpenChange={(open) => {
+                        if (open) commands.current?.close(false);
+                        setActivePicker((current) =>
+                          open
+                            ? "effort"
+                            : current === "effort"
+                              ? null
+                              : current,
+                        );
+                      }}
+                    />
+                  )}
                 </div>
                 {activeWork ? (
                   <button
@@ -560,10 +721,7 @@ export function Assistant({
         <div
           className="modal-backdrop"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setConnectionOpen(false);
-              setApiKey("");
-            }
+            if (event.target === event.currentTarget) closeConnection();
           }}
         >
           <section
@@ -573,102 +731,288 @@ export function Assistant({
             aria-labelledby="connection-title"
           >
             <button
+              type="button"
               className="icon-button modal-close"
               aria-label="Fechar conexão"
-              onClick={() => {
-                setConnectionOpen(false);
-                setApiKey("");
-              }}
+              onClick={closeConnection}
             >
               <X size={18} />
             </button>
-            <div className="modal-symbol">
-              <Terminal size={24} />
+            <div className="connection-title-row">
+              <Terminal size={18} />
+              <h2 id="connection-title">
+                {connected ? "IA conectada." : "Conectar IA."}
+              </h2>
             </div>
-            <h2 id="connection-title">
-              {connected ? "Codex conectado." : "Conecte seu Codex."}
-            </h2>
-            <p>
-              O CutRoom inclui o motor do Codex e usa sua sessão local. Você não
-              precisa criar uma conta CutRoom.
-            </p>
-            {connected ? (
-              <div className="connected-account">
-                <Check size={16} />
-                <span>{state.connection.account || "Sessão local ativa"}</span>
+            <form
+              className="connection-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void connect();
+              }}
+            >
+              <div className="connection-body">
+                <div className="connection-provider" ref={providerRoot}>
+                  <span id="connection-provider-label">Provedor</span>
+                  <button
+                    type="button"
+                    ref={providerTrigger}
+                    autoFocus
+                    className="connection-provider-trigger"
+                    aria-label="Provedor de IA"
+                    aria-haspopup="listbox"
+                    aria-expanded={providerPickerOpen}
+                    aria-controls="connection-provider-list"
+                    disabled={connected || connectionPending || activeWork}
+                    onClick={() => setProviderPickerOpen(!providerPickerOpen)}
+                    onKeyDown={(event) => {
+                      if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+                        event.preventDefault();
+                        setProviderPickerOpen(true);
+                      }
+                    }}
+                  >
+                    <span>{PROVIDER_LABELS[provider]}</span>
+                    <ChevronDown size={13} />
+                  </button>
+                  {providerPickerOpen && (
+                    <div
+                      ref={providerList}
+                      id="connection-provider-list"
+                      className="connection-provider-list"
+                      role="listbox"
+                      aria-label="Provedor de IA"
+                      tabIndex={0}
+                      aria-activedescendant={`connection-provider-${providerIndex}`}
+                      onKeyDown={(event) => {
+                        if (
+                          ["ArrowDown", "ArrowUp", "Home", "End"].includes(
+                            event.key,
+                          )
+                        ) {
+                          event.preventDefault();
+                          setProviderIndex((index) =>
+                            event.key === "Home"
+                              ? 0
+                              : event.key === "End"
+                                ? AGENT_PROVIDERS.length - 1
+                                : (index +
+                                    (event.key === "ArrowDown" ? 1 : -1) +
+                                    AGENT_PROVIDERS.length) %
+                                  AGENT_PROVIDERS.length,
+                          );
+                        }
+                        if (["Enter", " "].includes(event.key)) {
+                          event.preventDefault();
+                          chooseProvider(AGENT_PROVIDERS[providerIndex]);
+                        }
+                        if (event.key === "Tab") setProviderPickerOpen(false);
+                      }}
+                    >
+                      {AGENT_PROVIDERS.map((item, index) => (
+                        <button
+                          key={item}
+                          type="button"
+                          role="option"
+                          id={`connection-provider-${index}`}
+                          aria-selected={provider === item}
+                          tabIndex={-1}
+                          className={
+                            providerIndex === index ? "highlighted" : ""
+                          }
+                          onMouseMove={() => setProviderIndex(index)}
+                          onClick={() => chooseProvider(item)}
+                        >
+                          <span>{PROVIDER_LABELS[item]}</span>
+                          {provider === item && <Check size={14} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="connection-provider-help">
+                  {providerHelp[provider]}
+                </p>
+                {connected ? (
+                  <div className="connected-account">
+                    <Check size={16} />
+                    <span>
+                      {state.connection.account ||
+                        `${PROVIDER_LABELS[connectedProvider]} conectado`}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {provider === "codex" && !advanced && (
+                      <ol className="connection-steps">
+                        <li>
+                          Já usa o Codex neste computador? Clique em conectar.
+                        </li>
+                        <li>
+                          Para entrar na conta pelo terminal:
+                          <code>codex login</code>
+                        </li>
+                        <li>
+                          Se o comando não estiver disponível, instale o CLI
+                          oficial:<code>npm install -g @openai/codex</code>
+                        </li>
+                      </ol>
+                    )}
+                    {provider === "claude-code" && (
+                      <ol className="connection-steps">
+                        <li>Instale o CLI oficial do Claude separadamente.</li>
+                        <li>
+                          Entre na sua conta pelo terminal e volte para
+                          conectar:<code>claude auth login</code>
+                        </li>
+                      </ol>
+                    )}
+                    {provider === "openai-compatible" && (
+                      <>
+                        <label className="field" htmlFor="agent-base-url">
+                          URL da API
+                          <input
+                            id="agent-base-url"
+                            type="url"
+                            autoComplete="off"
+                            spellCheck={false}
+                            value={baseUrl}
+                            placeholder="http://localhost:11434/v1"
+                            onBlur={() => setUrlTouched(true)}
+                            onChange={(event) => setBaseUrl(event.target.value)}
+                            disabled={connectionPending}
+                            aria-invalid={urlTouched && !!urlError}
+                            aria-describedby="agent-base-url-help"
+                          />
+                          <small
+                            id="agent-base-url-help"
+                            className={
+                              urlTouched && urlError
+                                ? "connection-field-error"
+                                : ""
+                            }
+                          >
+                            {urlTouched && urlError
+                              ? urlError
+                              : "HTTPS para serviços externos. HTTP apenas em localhost."}
+                          </small>
+                        </label>
+                        <label className="field" htmlFor="agent-model-id">
+                          ID do modelo
+                          <input
+                            id="agent-model-id"
+                            autoComplete="off"
+                            spellCheck={false}
+                            value={customModel}
+                            onChange={(event) =>
+                              setCustomModel(event.target.value)
+                            }
+                            disabled={connectionPending}
+                            placeholder="Modelo disponível na sua API"
+                          />
+                        </label>
+                      </>
+                    )}
+                    {(["codex", "claude-code"] as AgentProvider[]).includes(
+                      provider,
+                    ) && (
+                      <button
+                        type="button"
+                        className="advanced-toggle"
+                        aria-expanded={advanced}
+                        disabled={connectionPending}
+                        onClick={() => {
+                          setAdvanced(!advanced);
+                          setApiKey("");
+                        }}
+                      >
+                        {provider === "codex" ? (
+                          <KeyRound size={13} />
+                        ) : (
+                          <Terminal size={13} />
+                        )}
+                        {provider === "codex"
+                          ? "Usar minha chave de API"
+                          : "Configurar caminho do CLI"}
+                        <ChevronDown size={13} />
+                      </button>
+                    )}
+                    {(needsApiKey || provider === "openai-compatible") && (
+                      <label className="field" htmlFor="agent-api-key">
+                        {provider === "openai-compatible" && localApi
+                          ? "Chave da API (opcional no servidor local)"
+                          : "Chave da API"}
+                        <input
+                          id="agent-api-key"
+                          type="password"
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={apiKey}
+                          onChange={(event) => setApiKey(event.target.value)}
+                          placeholder="Cole sua chave"
+                          disabled={connectionPending}
+                        />
+                        <small>
+                          Usada apenas na conexão local. Não é salva no projeto
+                          nem pela interface.
+                        </small>
+                      </label>
+                    )}
+                    {provider === "claude-code" && advanced && (
+                      <label className="field" htmlFor="agent-cli-path">
+                        Caminho do executável Claude
+                        <input
+                          id="agent-cli-path"
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={cliPath}
+                          onChange={(event) => setCliPath(event.target.value)}
+                          disabled={connectionPending}
+                          placeholder="Caminho do CLI oficial instalado"
+                        />
+                        <small>
+                          Opcional. Informe o executável, sem comandos ou
+                          argumentos.
+                        </small>
+                      </label>
+                    )}
+                  </>
+                )}
+                {(connectionError ||
+                  ((state.connection.provider || "codex") === provider &&
+                    state.connection.error)) && (
+                  <div className="error-box" role="alert">
+                    {connectionError || state.connection.error}
+                  </div>
+                )}
+                <p className="connection-note">
+                  O editor é grátis. A IA usa os limites ou créditos da sua
+                  conta. Transcrição e renderização continuam no seu PC.
+                </p>
               </div>
-            ) : (
-              <ol className="connection-steps">
-                <li>
-                  Se você já usa o Codex neste computador, clique em conectar.
-                </li>
-                <li>
-                  Para entrar na sua conta pelo terminal:
-                  <code>codex login</code>
-                </li>
-                <li>
-                  Se ainda não tiver o comando disponível, instale o CLI
-                  oficial:<code>npm install -g @openai/codex</code>
-                </li>
-              </ol>
-            )}
-            {state.connection.error && (
-              <div className="error-box">{state.connection.error}</div>
-            )}
-            {!connected && (
-              <button
-                className="advanced-toggle"
-                onClick={() => setAdvanced(!advanced)}
-              >
-                <KeyRound size={13} /> Usar minha chave de API{" "}
-                <ChevronDown size={13} />
-              </button>
-            )}
-            {advanced && !connected && (
-              <label className="field">
-                Chave de API
-                <input
-                  type="password"
-                  autoComplete="off"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder="Chave própria do provedor"
-                />
-                <small>
-                  Enviada somente ao processo local de conexão. Não é salva pela
-                  interface.
-                </small>
-              </label>
-            )}
-            <div className="modal-actions">
-              <button
-                className="button"
-                onClick={() => {
-                  setConnectionOpen(false);
-                  setApiKey("");
-                }}
-              >
-                Agora não
-              </button>
-              <button
-                className="button primary"
-                disabled={state.connection.status === "connecting"}
-                onClick={() => {
-                  const key = apiKey;
-                  setApiKey("");
-                  if (connected) {
-                    void run("disconnectCodex");
-                    setConnectionOpen(false);
-                  } else void run("connectCodex", key ? { apiKey: key } : {});
-                }}
-              >
-                {state.connection.status === "connecting"
-                  ? "Conectando…"
-                  : connected
-                    ? "Desconectar"
-                    : "Conectar Codex"}
-              </button>
-            </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="button"
+                  onClick={closeConnection}
+                >
+                  {connected ? "Fechar" : "Agora não"}
+                </button>
+                <button
+                  type="submit"
+                  className="button primary"
+                  disabled={
+                    connected ? activeWork || connectionPending : !canConnect
+                  }
+                >
+                  {connectionPending
+                    ? "Conectando…"
+                    : connected
+                      ? "Desconectar"
+                      : "Conectar"}
+                </button>
+              </div>
+            </form>
           </section>
         </div>
       )}
