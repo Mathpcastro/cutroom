@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/Mathpcastro/cutroom/releases/latest"><img alt="Baixar para Windows x64" src="https://img.shields.io/badge/BAIXAR-Windows_x64-181918?style=for-the-badge&amp;logo=windows&amp;logoColor=white" /></a>
+  <a href="https://github.com/Mathpcastro/cutroom/releases/latest"><img alt="Baixar para macOS (prévia)" src="https://img.shields.io/badge/BAIXAR-macOS_(pr%C3%A9via)-181918?style=for-the-badge&amp;logo=apple&amp;logoColor=white" /></a>
   <a href="LICENSE"><img alt="Código original sob licença MIT" src="https://img.shields.io/badge/OPEN_SOURCE-MIT-ff6b0b?style=for-the-badge" /></a>
   <a href="https://github.com/Mathpcastro/cutroom/releases"><img alt="Última versão" src="https://img.shields.io/github/v/release/Mathpcastro/cutroom?style=for-the-badge&amp;label=VERS%C3%83O&amp;color=181918" /></a>
 </p>
@@ -128,7 +129,7 @@ A conexão só aceita chamadas locais autenticadas por um token salvo na pasta d
 
 ## Comece em quatro passos
 
-1. **[Baixe o CutRoom para Windows x64](https://github.com/Mathpcastro/cutroom/releases/latest)** e importe seu vídeo. O instalador já inclui FFmpeg; não exige Python global.
+1. **[Baixe o CutRoom](https://github.com/Mathpcastro/cutroom/releases/latest)** e importe seu vídeo. No Windows x64, use o `CutRoom.Setup….exe`. No Mac, o `CutRoom-…-mac-arm64.dmg` (Apple Silicon: M1 em diante) ou o `CutRoom-…-mac-x64.dmg` (Intel), ainda em prévia. O instalador já inclui FFmpeg; não exige Python global.
 2. **Instale os pacotes que precisar** em **Conversa → Pacotes**. **Transcrição local** prepara fala, muletas e legendas. **Efeitos e animações** libera a exportação das cenas animadas.
 3. **Escolha um comando ou conecte sua IA.** Comandos prontos não exigem conta de IA; pedidos livres e `/animar` usam o provedor conectado.
 4. **Confira, ajuste e exporte.** Use a timeline, desfaça o que quiser e salve seu projeto antes de fechar.
@@ -160,13 +161,14 @@ Depois, selecione **Claude via terminal** no CutRoom. O app usa a CLI oficial se
 </details>
 
 <details>
-<summary><strong>O Windows mostrou um aviso? Já existe versão Mac ou Linux?</strong></summary>
+<summary><strong>Apareceu um aviso de segurança? Funciona no Mac ou no Linux?</strong></summary>
 
-Os instaladores iniciais ainda não têm assinatura de código e podem gerar um aviso do SmartScreen. Use os [releases oficiais](https://github.com/Mathpcastro/cutroom/releases) e confira o arquivo `SHA256SUMS.txt` antes de decidir executar.
+Os instaladores ainda não têm assinatura de código. Use os [releases oficiais](https://github.com/Mathpcastro/cutroom/releases) e confira o arquivo `SHA256SUMS.txt` antes de decidir executar.
 
-Somente **Windows x64** foi validado e tem instalador disponível.
+- **Windows:** o SmartScreen pode mostrar um aviso.
+- **Mac:** o app não é notarizado pela Apple, então o macOS bloqueia a primeira abertura. Arraste o CutRoom para **Aplicativos**, tente abrir uma vez e vá em **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
 
-O código já inclui suporte a **macOS Intel e Apple Silicon**: transcrição e animações baixam os runtimes certos para cada arquitetura, com verificação de integridade. Ainda não há `.dmg` publicado nem validação num Mac real. Quem quiser testar pode gerar o instalador num Mac com `npm run dist:mac`. Linux ainda não é suportado. [Veja o estado da portabilidade](docs/portability.md).
+**Windows x64** é a plataforma validada. A versão **macOS** (Apple Silicon e Intel) é uma **prévia**: os instaladores são gerados e testados automaticamente em Macs da nuvem, mas ainda não houve validação completa com uso real. Relate o que encontrar nas [issues](https://github.com/Mathpcastro/cutroom/issues/new/choose). Linux ainda não é suportado. [Veja o estado da portabilidade](docs/portability.md).
 
 Não há atualização automática nesta prévia. Feche o CutRoom antes de instalar uma nova versão.
 
@@ -206,6 +208,8 @@ npm run build  # TypeScript + build de produção
 npm run dist   # instalador Windows NSIS em release/
 npm run dist:mac  # .dmg macOS em release/ (rodar num Mac; gera a arquitetura da máquina)
 ```
+
+Os `.dmg` publicados saem do workflow **macOS installers** (`.github/workflows/macos.yml`), que testa e gera as duas arquiteturas em Macs do GitHub Actions. Rodando-o manualmente com a tag de um release, os instaladores e o `SHA256SUMS.txt` são anexados a ele.
 
 Os binários FFmpeg, ffprobe e Codex vêm das dependências npm. A transcrição instala um runtime privado nos dados do aplicativo, sem modificar seu Python global.
 
