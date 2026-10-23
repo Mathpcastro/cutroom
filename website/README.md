@@ -9,7 +9,7 @@ This folder is the deployable, static copy of the CutRoom landing. It contains t
 - Framework preset: Other
 - Build and install commands: none
 - Output directory: `public`
-- Production and preview environment variable: `CUTROOM_SITES_BYPASS_TOKEN` (sensitive)
+- Production environment variable: `CUTROOM_SITES_BYPASS_TOKEN` (sensitive). Keep it off preview deployments so test registrations cannot reach the production database.
 
 The function forwards only `POST /api/download` to the existing private Sites backend, which continues to validate the form and save contacts to the Pauta.ai Supabase database. The access token belongs in Vercel's encrypted environment settings; never commit it or print it in logs. The backend URL is fixed in `api/download.js`, so the function cannot be used as an open proxy.
 
