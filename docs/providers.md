@@ -40,12 +40,16 @@ Para conectar o Claude Desktop:
 {
   "mcpServers": {
     "cutroom": {
-      "command": "node",
-      "args": ["/caminho/para/cutroom/tools/cutroom-claude-desktop-bridge.cjs"]
+      "command": "/caminho/absoluto/para/node",
+      "args": ["/caminho/para/cutroom-claude-desktop-bridge.cjs"]
     }
   }
 }
 ```
+
+   - **Script da ponte:** no app instalado ele fica em `/Applications/CutRoom.app/Contents/Resources/tools/cutroom-claude-desktop-bridge.cjs` (macOS) ou, na pasta de instalação padrão do Windows, `%LOCALAPPDATA%\Programs\CutRoom\resources\tools\cutroom-claude-desktop-bridge.cjs`; num clone do repositório, em `tools/`.
+   - **Node 18 ou mais novo:** use o caminho absoluto (`which node` no macOS, `where node` no Windows). Apps gráficos do macOS não herdam o PATH do terminal, então `"command": "node"` costuma falhar com Node instalado via Homebrew ou nvm.
+   - A ponte só conversa com o CutRoom aberto neste computador (`127.0.0.1`), autenticada por um token que o app grava em `claude-desktop-mcp.json` na pasta de dados dele, legível só pelo seu usuário. Exportar sempre abre a janela de salvar do CutRoom para você confirmar.
 
 2. Abra o CutRoom e reinicie o Claude Desktop. O Claude Desktop detectará as ferramentas do CutRoom (`get_project`, `edit_project`, `create_blank_canvas`, `import_media`, `inspect_frame`, `transcribe`, `export_video`).
 3. Você pode conversar diretamente com o Claude no Claude Desktop (por exemplo: *"Claude, crie um canvas de 15 segundos e adicione uma animação de título"* ou *"Remova os silêncios do vídeo aberto no CutRoom"*) e a timeline responderá ao vivo.

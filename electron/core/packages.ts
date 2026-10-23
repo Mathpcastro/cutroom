@@ -1,42 +1,55 @@
 import { createHash } from "node:crypto";
 import { access, chmod, mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { unzipSync } from "fflate";
+import { gunzipSync, unzipSync } from "fflate";
 import type { Media, PackageInfo, Word } from "../../src/shared/types";
 import { runProcess } from "./process";
 import manifest from "../../resources/packages/transcription-base.json";
 import { MOTION_PACKAGE, motionPackageInfo, installMotionPackage } from "./motion-package";
 
 const UV_VERSION = "0.11.21";
-
-// Checksums e configuração por plataforma para o uv
-const UV_PLATFORM_MAP: Partial<Record<string, Partial<Record<string, { sha256: string; asset: string; binary: string }>>>>  = {
-  win32: {
-    x64: {
-      sha256: "ace861f360c6de2babedc1607d0f454b6b09a820dbc8182dc15af927e4df9589",
-      asset: "uv-x86_64-pc-windows-msvc.zip",
-      binary: "uv.exe",
-    },
-  },
-  darwin: {
-    x64: {
-      sha256: "f3c8e5708a84b920c18b691214d54d2b0da6b984789caae95d47c95120cb7765",
-      asset: "uv-x86_64-apple-darwin.tar.gz",
-      binary: "uv",
-    },
-    arm64: {
-      sha256: "", // será preenchido dinamicamente
-      asset: "uv-aarch64-apple-darwin.tar.gz",
-      binary: "uv",
-    },
-  },
-};
 export const TRANSCRIPTION_PACKAGE = "faster-whisper-base";
 
-function getUvPlatformInfo() {
-  const plat = process.platform;
-  const arch = process.arch;
-  return UV_PLATFORM_MAP[plat]?.[arch] ?? null;
+type UvRuntime = { sha256: string; asset: string; binary: string; lock: string };
+/** uv release assets (SHA-256 from the official GitHub release digests) and the hash-locked requirements per target. */
+export const UV_RUNTIMES: Record<string, UvRuntime> = {
+  "win32-x64": {
+    sha256: "ace861f360c6de2babedc1607d0f454b6b09a820dbc8182dc15af927e4df9589",
+    asset: "uv-x86_64-pc-windows-msvc.zip",
+    binary: "uv.exe",
+    lock: "requirements.lock",
+  },
+  "darwin-x64": {
+    sha256: "f3c8e5708a84b920c18b691214d54d2b0da6b984789caae95d47c95120cb7765",
+    asset: "uv-x86_64-apple-darwin.tar.gz",
+    binary: "uv",
+    lock: "requirements.macos-x64.lock",
+  },
+  "darwin-arm64": {
+    sha256: "1f921d491ba5ffeea774eb04d6681ecee379101341cbb1500394993b541bf3f4",
+    asset: "uv-aarch64-apple-darwin.tar.gz",
+    binary: "uv",
+    lock: "requirements.macos-arm64.lock",
+  },
+};
+
+/** Extracts one file from a .tar.gz (ustar/GNU headers) by its base name. */
+export function extractFromTarGz(archive: Uint8Array, binary: string): Uint8Array {
+  const tar = gunzipSync(archive);
+  const decoder = new TextDecoder();
+  for (let offset = 0; offset + 512 <= tar.length; ) {
+    const header = tar.subarray(offset, offset + 512);
+    const nameEnd = header.subarray(0, 100).indexOf(0);
+    const name = decoder.decode(header.subarray(0, nameEnd === -1 ? 100 : nameEnd));
+    const size = parseInt(decoder.decode(header.subarray(124, 136)).replace(/\0/g, "").trim() || "0", 8);
+    if (!name || Number.isNaN(size)) break;
+    offset += 512;
+    const type = String.fromCharCode(header[156] || 48);
+    if ((type === "0" || type === "7") && (name === binary || name.endsWith(`/${binary}`)))
+      return tar.slice(offset, offset + size);
+    offset += Math.ceil(size / 512) * 512;
+  }
+  throw new Error("Runtime sem executável esperado.");
 }
 
 /** Some ASR tokens have zero duration. Merge their text with a timed neighbor instead of inventing speech boundaries. */
@@ -138,7 +151,7 @@ export class PackageManager {
   ) {
     if (id === MOTION_PACKAGE) return installMotionPackage(this.root, onProgress, signal);
     if (id !== TRANSCRIPTION_PACKAGE) throw new Error("Pacote desconhecido.");
-    const uvInfo = getUvPlatformInfo();
+    const uvInfo = UV_RUNTIMES[`${process.platform}-${process.arch}`];
     if (!uvInfo)
       throw new Error("O pacote de transcrição não é suportado nesta plataforma.");
     await mkdir(this.root, { recursive: true });
@@ -161,42 +174,15 @@ export class PackageManager {
           "O download do runtime não passou na verificação de integridade.",
         );
       if (uvInfo.asset.endsWith(".zip")) {
-        // Windows: extrai zip
         const entries = unzipSync(archive);
         const name = Object.keys(entries).find(
           (name) => name === uvInfo.binary || name.endsWith(`/${uvInfo.binary}`),
         );
         if (!name) throw new Error("Runtime sem executável esperado.");
         await writeFile(`${uv}.partial`, entries[name]);
-      } else {
-        // macOS/Linux: extrai tar.gz em memória com fflate
-        const { gunzipSync } = await import("fflate");
-        // fflate não tem untar nativo; parseia o tar manualmente
-        const tarData = gunzipSync(archive);
-        // Parse do tar manualmente (formato POSIX)
-        let offset = 0;
-        let found = false;
-        while (offset < tarData.length - 512) {
-          const header = tarData.subarray(offset, offset + 512);
-          const nameBytes = header.subarray(0, 100);
-          const nameEnd = nameBytes.indexOf(0);
-          const entryName = new TextDecoder().decode(nameBytes.subarray(0, nameEnd === -1 ? 100 : nameEnd));
-          const sizeStr = new TextDecoder().decode(header.subarray(124, 136)).replace(/\0/g, "").trim();
-          const size = parseInt(sizeStr, 8);
-          offset += 512;
-          if (!entryName || isNaN(size)) break;
-          if (entryName === uvInfo.binary || entryName.endsWith(`/${uvInfo.binary}`) || entryName.endsWith(`/${uvInfo.binary}\0`)) {
-            const bytes = tarData.subarray(offset, offset + size);
-            await writeFile(`${uv}.partial`, bytes);
-            found = true;
-            break;
-          }
-          offset += Math.ceil(size / 512) * 512;
-        }
-        if (!found) throw new Error("Runtime sem executável esperado no arquivo tar.");
-      }
+      } else await writeFile(`${uv}.partial`, extractFromTarGz(archive, uvInfo.binary));
+      if (process.platform !== "win32") await chmod(`${uv}.partial`, 0o755);
       await rename(`${uv}.partial`, uv);
-      if (process.platform !== "win32") await chmod(uv, 0o755);
     }
     const env = {
       ...process.env,
@@ -224,24 +210,24 @@ export class PackageManager {
       );
     }
     onProgress(30, "Instalando o motor de transcrição…");
-    const reqFile =
-      process.platform === "win32"
-        ? join(this.resources, "workers", "requirements.lock")
-        : join(this.resources, "workers", "requirements.in");
+    const reqFile = join(this.resources, "workers", uvInfo.lock);
     try {
-      const pipArgs = [
-        "--no-config",
-        "pip",
-        "install",
-        "--python",
-        this.python(),
-        "--link-mode",
-        "copy",
-        ...(process.platform === "win32" ? ["--require-hashes"] : []),
-        "-r",
-        reqFile,
-      ];
-      await runProcess(uv, pipArgs, { env, signal });
+      await runProcess(
+        uv,
+        [
+          "--no-config",
+          "pip",
+          "install",
+          "--python",
+          this.python(),
+          "--link-mode",
+          "copy",
+          "--require-hashes",
+          "-r",
+          reqFile,
+        ],
+        { env, signal },
+      );
     } catch (error) {
       if (signal?.aborted) throw error;
       // Windows antivirus can retain extracted DLLs and prevent uv's atomic cache rename.
@@ -259,7 +245,7 @@ export class PackageManager {
           "install",
           "--disable-pip-version-check",
           "--no-warn-script-location",
-          ...(process.platform === "win32" ? ["--require-hashes"] : []),
+          "--require-hashes",
           "-r",
           reqFile,
         ],

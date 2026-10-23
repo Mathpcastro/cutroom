@@ -15,14 +15,14 @@ import type { PackageInfo } from "../../src/shared/types";
 export const MOTION_PACKAGE = "hyperframes-motion";
 export const CHROME_VERSION = "155.0.8059.79";
 
-// SHA256 hashes por plataforma/arch
-const SHA256_MAP: Partial<Record<string, Partial<Record<string, string>>>> = {
+// SHA-256 of each chrome-headless-shell zip (download verified against Google's published MD5).
+export const SHA256_MAP: Partial<Record<string, Partial<Record<string, string>>>> = {
   win32: {
     x64: "c4cc49fa7908cf018600b04c95918d336565d90f9c72241fd83dacd9ec41855c",
   },
   darwin: {
     x64: "36a1da728fc936770a0edc52989b74d8d3a194e8747f490e372a210853ad831c",
-    arm64: "36a1da728fc936770a0edc52989b74d8d3a194e8747f490e372a210853ad831c",
+    arm64: "5f51504ead3d41815111cd73e79c4979df3a4e6aedc7cf6fe2b042ae037363b5",
   },
 };
 

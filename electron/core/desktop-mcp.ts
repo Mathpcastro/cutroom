@@ -1,11 +1,14 @@
 import { createServer, type Server } from "node:http";
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { writeFile, rm } from "node:fs/promises";
+import { rmSync } from "node:fs";
+import { chmod, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { EDITOR_TOOLS, toolResultContent } from "./codex";
 
+/** Loopback MCP server for external desktop clients. Token is shared through a user-only file. */
 export class DesktopMcpServer {
   private server?: Server;
+  private queue = Promise.resolve();
   readonly token = randomBytes(32).toString("hex");
   private infoPath?: string;
 
@@ -50,7 +53,7 @@ export class DesktopMcpServer {
       try {
         for await (const chunk of request) {
           input += chunk.toString("utf8");
-          if (input.length > 10_000_000) {
+          if (input.length > 1_000_000) {
             reply(413);
             return;
           }
@@ -72,11 +75,16 @@ export class DesktopMcpServer {
         } else if (rpc.method === "tools/list") {
           result = { tools: EDITOR_TOOLS };
         } else if (rpc.method === "tools/call") {
+          // One tool at a time: concurrent edits/transcriptions would race on the project state.
+          const task = this.queue.then(() =>
+            this.executeTool(rpc.params?.name, rpc.params?.arguments || {}),
+          );
+          this.queue = task.then(
+            () => {},
+            () => {},
+          );
           try {
-            const value = await this.executeTool(
-              rpc.params?.name,
-              rpc.params?.arguments || {},
-            );
+            const value = await task;
             result = {
               content: toolResultContent(value).map((item) => {
                 if (item.type === "inputText")
@@ -136,8 +144,10 @@ export class DesktopMcpServer {
 
     const url = `http://127.0.0.1:${address.port}/mcp`;
     this.infoPath = join(this.userDir, "claude-desktop-mcp.json");
+    // The token grants full editor control: user-only permissions, and a fresh file so an old mode is never reused.
+    const partial = `${this.infoPath}.${process.pid}.partial`;
     await writeFile(
-      this.infoPath,
+      partial,
       JSON.stringify(
         {
           url,
@@ -148,14 +158,22 @@ export class DesktopMcpServer {
         null,
         2,
       ),
+      { mode: 0o600 },
     );
+    await chmod(partial, 0o600);
+    await rename(partial, this.infoPath);
 
     return url;
   }
 
-  async close() {
+  /** Synchronous so the token file is gone even when called from before-quit. */
+  close() {
     if (this.infoPath) {
-      await rm(this.infoPath, { force: true }).catch(() => {});
+      try {
+        rmSync(this.infoPath, { force: true });
+      } catch {
+        /* Best effort: the bridge also ignores files whose pid is gone. */
+      }
       this.infoPath = undefined;
     }
     this.server?.closeAllConnections();

@@ -9,31 +9,34 @@ const path = require("node:path");
 const os = require("node:os");
 const readline = require("node:readline");
 
-function getCutRoomUserDataDir() {
-  if (process.platform === "darwin") {
-    return path.join(
-      os.homedir(),
-      "Library",
-      "Application Support",
-      "cutroom"
-    );
-  }
-  if (process.platform === "win32") {
-    return path.join(
-      process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"),
-      "cutroom"
-    );
-  }
-  return path.join(os.homedir(), ".config", "cutroom");
+/** Electron's userData: "CutRoom" (productName) when packaged, "cutroom" (package name) in dev. */
+function getCutRoomUserDataDirs() {
+  if (process.env.CUTROOM_USER_DATA) return [process.env.CUTROOM_USER_DATA];
+  const base =
+    process.platform === "darwin"
+      ? path.join(os.homedir(), "Library", "Application Support")
+      : process.platform === "win32"
+        ? process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming")
+        : process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
+  return [path.join(base, "CutRoom"), path.join(base, "cutroom")];
 }
 
 function getCutRoomConnectionInfo() {
-  const infoPath = path.join(getCutRoomUserDataDir(), "claude-desktop-mcp.json");
+  for (const dir of getCutRoomUserDataDirs()) {
+    const info = readConnectionInfo(path.join(dir, "claude-desktop-mcp.json"));
+    if (info) return info;
+  }
+  return null;
+}
+
+function readConnectionInfo(infoPath) {
   try {
     if (!fs.existsSync(infoPath)) return null;
     const raw = fs.readFileSync(infoPath, "utf8");
     const data = JSON.parse(raw);
-    if (!data.url || !data.token) return null;
+    if (typeof data.url !== "string" || typeof data.token !== "string") return null;
+    // Never send the token anywhere but the local CutRoom server.
+    if (!/^http:\/\/127\.0\.0\.1:\d+\/mcp$/.test(data.url)) return null;
     // Check if the process is alive (if pid is provided)
     if (data.pid && typeof data.pid === "number") {
       try {
