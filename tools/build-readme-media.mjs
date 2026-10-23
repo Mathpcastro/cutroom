@@ -1,0 +1,47 @@
+// Reuse the real product recordings. No simulated editor actions or AI responses.
+// Usage: node tools/build-readme-media.mjs [path/to/landing/public/assets]
+import { createRequire } from "node:module";
+import { resolve, join } from "node:path";
+import { mkdir, writeFile, copyFile, stat } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+const require = createRequire(import.meta.url);
+const ffmpeg = require("ffmpeg-static");
+const source = resolve(process.argv[2] || "../cutroom-landing/public/assets");
+const output = resolve("docs/media");
+await mkdir(output, { recursive: true });
+
+const banner = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="428" viewBox="0 0 1280 428" role="img" aria-labelledby="title desc">
+<title id="title">CutRoom — Peça a edição. Veja o vídeo mudar.</title><desc id="desc">Editor de vídeo por texto, gratuito e open source. Transcrição e renderização no seu PC.</desc>
+<defs><pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#e9e7e2" stroke-width="1"/></pattern></defs>
+<rect width="1280" height="428" rx="20" fill="#faf9f6"/><rect x="760" width="520" height="428" fill="url(#grid)"/>
+<g fill="#181918" transform="translate(52 39) scale(1.25)"><g transform="translate(0 2.885) skewY(-13)"><rect y="11" width="11" height="15"/><rect x="14" y="2.5" width="11" height="21"/></g></g>
+<g font-family="Arial,Helvetica,sans-serif" fill="#181918">
+<text x="96" y="71" font-size="28" font-weight="700" letter-spacing="-1">CutRoom</text>
+<text x="52" y="172" font-size="69" font-weight="800" letter-spacing="-3">Peça a edição.</text>
+<text x="52" y="247" font-size="69" font-weight="800" letter-spacing="-3">Veja o vídeo mudar.</text>
+<text x="55" y="301" font-size="22" fill="#64635f">Seu vídeo. Sua IA. Seu editor.</text>
+<rect x="55" y="341" width="238" height="39" rx="7" fill="#181918"/>
+<text x="73" y="367" font-size="14" letter-spacing="1.5" fill="white" font-weight="700">GRÁTIS + OPEN SOURCE</text>
+<text x="316" y="366" font-size="16" fill="#64635f">FEITO PARA O SEU PC</text>
+<g transform="translate(875 78) rotate(6 140 110)"><rect x="7" y="8" width="294" height="228" rx="15" fill="#181918"/><rect width="294" height="228" rx="15" fill="white" stroke="#181918" stroke-width="2"/>
+<circle cx="24" cy="24" r="4" fill="#ff6b0b"/><text x="39" y="29" font-size="12" fill="#73716b">SEU PRÓXIMO VÍDEO</text><path d="M18 44H276" stroke="#e4e2dc"/>
+<rect x="20" y="67" width="254" height="58" rx="9" fill="#f2f1ec"/><text x="34" y="91" font-size="14">Tire as pausas e adicione</text><text x="34" y="111" font-size="14">legendas ao meu vídeo.</text>
+<g transform="translate(20 148)"><rect x="5" y="6" width="254" height="49" rx="7" fill="#181918"/><rect width="254" height="49" rx="7" fill="#ff6b0b" stroke="#181918" stroke-width="2"/><path d="m15 24 5 5 10-11" fill="none" stroke="#181918" stroke-width="2.5"/><text x="41" y="30" font-size="15" font-weight="700">Dê vida à sua ideia.</text></g></g>
+<g fill="#181918" transform="translate(884 347)"><rect width="81" height="15" rx="3"/><rect x="88" width="47" height="15" rx="3" fill="#ff6b0b"/><rect x="142" width="114" height="15" rx="3"/><path d="M127-9v34" stroke="#181918" stroke-width="2"/><circle cx="127" cy="-10" r="4"/></g>
+</g></svg>`;
+await writeFile(join(output, "cover.svg"), banner);
+
+async function gif(name, input, filter, duration) {
+  const graph = `${filter},split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`;
+  execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-i", join(source, input), "-filter_complex", graph, "-t", String(duration), "-loop", "0", "-y", join(output, name)], { stdio: "inherit" });
+  const bytes = (await stat(join(output, name))).size;
+  if (bytes > 9_000_000) throw new Error(`${name} exceeds the README media budget: ${bytes}`);
+  console.log(`${name}: ${(bytes / 1e6).toFixed(2)} MB`);
+}
+await gif("overview.gif", "hero-demo.mp4", "setpts=PTS/2,fps=7,scale=840:-1:flags=lanczos", 20);
+await gif("captions.gif", "demo-captions.mp4", "trim=start=1:duration=8,setpts=PTS-STARTPTS,crop=iw*0.8:ih*0.79:iw*0.2:ih*0.05,fps=8,scale=640:-1:flags=lanczos", 8);
+await gif("motion.gif", "demo-effects.mp4", "trim=start=1:duration=8,setpts=PTS-STARTPTS,crop=iw*0.8:ih*0.79:iw*0.2:ih*0.05,fps=8,scale=640:-1:flags=lanczos", 8);
+execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-i", join(source, "hero-demo.mp4"), "-map", "0:v:0", "-vf", "scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p", "-c:v", "libx264", "-crf", "22", "-preset", "fast", "-color_range", "tv", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-an", "-movflags", "+faststart", "-y", join(output, "cutroom-demo.mp4")], { stdio: "inherit" });
+await copyFile(join(source, "app-dark.webp"), join(output, "workspace-dark.webp"));
+await copyFile(join(source, "app-light.webp"), join(output, "workspace-light.webp"));
+console.log("README media ready.");

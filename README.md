@@ -1,78 +1,179 @@
-# CutRoom
+<p align="center">
+  <img src="docs/media/cover.svg" alt="CutRoom — Peça a edição. Veja o vídeo mudar. Seu vídeo, sua IA, seu editor." width="100%" />
+</p>
 
-<img src="resources/branding/icon-128.png" alt="Logo CutRoom" width="64" />
+<p align="center">
+  <a href="https://github.com/Mathpcastro/cutroom/releases/latest"><img alt="Baixar para Windows x64" src="https://img.shields.io/badge/BAIXAR-Windows_x64-181918?style=for-the-badge&amp;logo=windows&amp;logoColor=white" /></a>
+  <a href="LICENSE"><img alt="Código original sob licença MIT" src="https://img.shields.io/badge/OPEN_SOURCE-MIT-ff6b0b?style=for-the-badge" /></a>
+  <a href="https://github.com/Mathpcastro/cutroom/releases"><img alt="Última versão" src="https://img.shields.io/github/v/release/Mathpcastro/cutroom?style=for-the-badge&amp;label=VERS%C3%83O&amp;color=181918" /></a>
+</p>
 
-Um editor de vídeo desktop controlado por texto. Converse com sua IA, acompanhe a edição no player e ajuste os detalhes na timeline. Os arquivos e a renderização ficam no seu computador.
+<p align="center">
+  Um editor de vídeo desktop controlado por texto.<br />
+  Você pede os cortes, as legendas e os efeitos. O CutRoom aplica na timeline.<br />
+  <strong>Gratuito, open source e com transcrição e renderização no seu computador.</strong>
+</p>
 
-**Open source · Windows x64 · versão inicial em desenvolvimento**
+<p align="center">
+  <a href="#veja-acontecer">Ver em ação</a> ·
+  <a href="#comece-em-quatro-passos">Começar</a> ·
+  <a href="#sua-ia-sua-escolha">Conectar sua IA</a> ·
+  <a href="docs/commands.md">38 comandos</a> ·
+  <a href="CONTRIBUTING.md">Contribuir</a>
+</p>
 
-[Baixar a prévia para Windows](https://github.com/Mathpcastro/cutroom/releases/tag/v0.6.0)
+---
 
-| Grafite | Claro |
-| --- | --- |
-| ![CutRoom no tema Grafite](docs/screenshots/graphite.png) | ![CutRoom no tema Claro](docs/screenshots/light.png) |
+## Veja acontecer
 
-| Modelo | Raciocínio |
-| --- | --- |
-| ![Menu compacto de modelos](docs/screenshots/model-picker.png) | ![Barra de raciocínio e cápsulas da conversa](docs/screenshots/effort-picker.png) |
+<a href="docs/media/cutroom-demo.mp4">
+  <img src="docs/media/overview.gif" alt="Demonstração animada real: conversa, comandos, legendas, efeitos, timeline e exportação no CutRoom" width="100%" />
+</a>
 
-## O que funciona
+<p align="center">
+  <strong><a href="docs/media/cutroom-demo.mp4">▶ Assistir à demonstração completa · 43 segundos</a></strong><br />
+  <sub>Gravações reais do CutRoom 0.5.0, montadas com Remotion. Prévia acima acelerada em 2×. O download atual é a versão 0.6.0.</sub>
+</p>
 
-- Chat à esquerda e workspace de vídeo à direita, com player, mídia, transcrição e timeline.
-- Catálogo de 38 comandos no botão **+** e atalhos `/`, com busca, explicações e parâmetros. São 37 ações prontas sem conexão de IA e `/animar` para cenas originais via IA. Veja o [catálogo e exemplos](docs/commands.md).
-- Interface minimalista com ações agrupadas em menus e painéis sob demanda. Seis temas: Grafite, Claro, Dark+, Light+, Nord e Tokyo Night, com a escolha salva em **Configurações → Aparência**.
-- Codex App Server empacotado: reutiliza a sessão local do Codex, sem conta ou cadastro CutRoom.
-- Seletores compactos no estilo Codex: modelos em linhas simples e nível de raciocínio em uma barra deslizante, conforme as opções da conta. Navegação por teclado e botão para restaurar o esforço padrão do modelo.
-- Progresso ao vivo no chat: etapas do agente, ferramentas, processamento local, conclusão, falhas e cancelamento.
-- Claude via terminal, Claude API, DeepSeek, OpenRouter e APIs compatíveis com OpenAI, incluindo servidores locais. Chaves mantidas somente na memória da conexão. Veja o [guia de provedores](docs/providers.md).
-- Cortar/dividir trechos, desfazer/refazer, ajustar zoom/foco, velocidade e áudio.
-- Detectar pausas e remover muletas a partir da transcrição, preservando expressões como “tipo de” e o verbo “é”.
-- Preset **Edição limpa**, adaptado da skill de edição de Matheus Castro.
-- Estúdio de legendas com 24 presets, seis famílias de fontes offline, karaokê, destaque por palavra, frases progressivas, animações e estilos personalizados. A prévia usa JASSUB/libass; veja [docs/captions.md](docs/captions.md).
-- Títulos, frases em tela cheia, callouts, fluxos, promoção, capa e hook.
-- Efeitos HyperFrames por texto: seis modelos e cenas originais em HTML/CSS com movimentos GSAP; prévia sincronizada, faixa Efeitos, desfazer/refazer e renderização local com cache. Veja [como usar](docs/motion.md).
-- Recuperação automática de erros do monitor com uma prévia H.264 local, sem alterar o arquivo original.
-- Normalização de áudio em duas passagens e exportação local H.264/AAC MP4.
-- Salvar/reabrir projetos; os vídeos originais são preservados.
-- Pacote instalável de transcrição local Faster Whisper, com Python privado e modelo multilíngue. Depois da instalação, transcreve offline.
+## Do pedido ao arquivo final
 
-## Instalar e conectar
+| Você quer… | O CutRoom faz |
+| :--- | :--- |
+| **Editar conversando** | Usa as ferramentas do editor para aplicar seus pedidos. Mostra texto e etapas em tempo real; você pode cancelar e desfazer. |
+| **Dar ritmo à gravação** | Detecta pausas, remove muletas pela transcrição e aplica a **Edição limpa**, com cortes, zooms discretos e normalização da voz. |
+| **Legendas com identidade** | Oferece **24 estilos**, seis famílias de fontes offline, karaokê, destaque por palavra, frases progressivas e personalização. |
+| **Explicar com movimento** | Cria títulos, destaques, listas, diagramas e cenas originais por texto. A animação entra na faixa **Efeitos**. |
+| **Ajustar os detalhes** | Permite cortar, dividir, enquadrar, mudar velocidade, silenciar trechos e revisar tudo no player e na timeline. |
+| **Levar o vídeo pronto** | Exporta **MP4 H.264/AAC** no PC. Salva e reabre projetos, preservando os arquivos originais. |
 
-O instalador de prévia está em [Releases](https://github.com/Mathpcastro/cutroom/releases). Esta versão é para **Windows x64**. Não é necessário instalar Python ou FFmpeg para usar o instalador.
+### Sua voz ganha presença. Sua ideia ganha movimento.
 
-O app não tem autenticação própria. Para usar o plano ChatGPT, primeiro conecte o CLI oficial do Codex no seu computador:
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/captions.gif" alt="Gravação real do estúdio de legendas, alternando estilos no vídeo" width="100%" />
+      <h3>24 estilos de legenda</h3>
+      <p>Escolha um preset, ajuste fonte, cor, posição e animação. Confira o resultado no player.</p>
+      <a href="docs/captions.md">Conheça o estúdio de legendas →</a>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/motion.gif" alt="Gravação real de efeitos animados sobre um vídeo e na faixa Efeitos da timeline" width="100%" />
+      <h3>Efeitos na mesma timeline</h3>
+      <p>Títulos sobre a gravação ou uma explicação em tela cheia, mantendo sua voz. Prévia e exportação sincronizadas.</p>
+      <a href="docs/motion.md">Explore as animações HyperFrames →</a>
+    </td>
+  </tr>
+</table>
+
+## Escreva como você fala
+
+> “Remova as pausas e os ‘né’, sem cortar palavras. Use poucos zooms.”
+
+> “Quando eu explicar as três etapas, mostre um diagrama em tela cheia, mantendo minha voz.”
+
+> “Use o trecho de 30 a 33 segundos como abertura e mantenha também a versão original.”
+
+O agente consulta o projeto, a transcrição e, quando necessário e suportado pelo modelo, quadros reais do vídeo. Cada edição usa o mesmo histórico dos controles manuais.
+
+### Ou use um comando pronto
+
+```text
+/edicao-limpa
+/legenda-karaoke
+/soco-pb PARE AGORA --inicio 2 --fim 4
+/lista-check Planejar | Gravar | Publicar --inicio 12 --fim 16
+/zoom 1.4 --inicio 2 --fim 5
+```
+
+**38 comandos no chat ou no botão +.** São **37 ações prontas sem conectar uma IA** e `/animar` para pedir uma cena original ao agente. Algumas ações exigem os pacotes locais de transcrição ou animação.
+
+[Ver os comandos, parâmetros e exemplos →](docs/commands.md)
+
+## Sua IA, sua escolha
+
+Conecte em **Conversa → Conexão de IA**. Escolha o modelo e, quando disponível, o nível de raciocínio.
+
+| Conexão | O que você usa |
+| :--- | :--- |
+| **Codex / ChatGPT** | Sessão local do Codex ou chave OpenAI própria. O motor Codex já vem no CutRoom. |
+| **Claude via terminal** | CLI oficial do Claude Code instalada separadamente, com a configuração e autenticação do usuário. |
+| **Claude API** | Sua chave Anthropic. |
+| **DeepSeek** | Sua chave e os modelos disponíveis na conta. |
+| **OpenRouter** | Sua chave e um modelo que declare suporte a ferramentas. |
+| **API compatível com OpenAI** | URL base, modelo e chave do seu serviço. Servidores locais compatíveis, como Ollama, também podem ser usados. |
+
+As chaves informadas ficam **somente na memória da conexão**. Não são salvas nos projetos.
+
+**O editor é grátis; modelos remotos podem ter custo.** O uso segue os limites do seu plano ou os créditos da sua API. Transcrição e renderização são locais. Metadados, transcrição e quadros solicitados podem ser enviados ao provedor escolhido. Para um modelo no próprio PC, é necessário configurar um servidor local e um modelo com suporte a ferramentas.
+
+[Guia de conexão, privacidade e limites de cada provedor →](docs/providers.md)
+
+<a name="instalar-e-conectar"></a>
+
+## Comece em quatro passos
+
+1. **[Baixe o CutRoom para Windows x64](https://github.com/Mathpcastro/cutroom/releases/latest)** e importe seu vídeo. O instalador já inclui FFmpeg; não exige Python global.
+2. **Instale os pacotes que precisar** em **Conversa → Pacotes**. **Transcrição local** prepara fala, muletas e legendas. **Efeitos e animações** libera a exportação das cenas animadas.
+3. **Escolha um comando ou conecte sua IA.** Comandos prontos não exigem conta de IA; pedidos livres e `/animar` usam o provedor conectado.
+4. **Confira, ajuste e exporte.** Use a timeline, desfaça o que quiser e salve seu projeto antes de fechar.
+
+> **Primeira instalação:** os pacotes opcionais baixam centenas de MB. Depois de instalados, a transcrição e a renderização rodam no computador. Cortes manuais e detecção de pausas funcionam sem o pacote de transcrição.
+
+<details>
+<summary><strong>Como conectar minha conta ChatGPT ou Claude?</strong></summary>
+
+Para usar a sessão do Codex, caso ainda não esteja conectada no computador:
 
 ```powershell
 npm install -g @openai/codex
 codex login
 ```
 
-O npm/CLI é necessário somente para preparar uma sessão caso você ainda não tenha Codex conectado. O CutRoom inclui seu próprio motor Codex e reutiliza a autenticação local existente. Alternativamente, em **Conexão de IA → Codex → Avançado**, informe sua própria chave OpenAI. Ela não é incluída no projeto nem salva pelo CutRoom.
+O CutRoom inclui seu próprio motor Codex e reutiliza a autenticação local. Alternativamente, escolha **Codex → Avançado** e informe sua chave OpenAI.
 
-1. Arraste um vídeo para o editor ou escolha **Projeto → Importar mídia**.
-2. Abra **Conversa → Conexão de IA**.
-3. O aviso da primeira abertura leva a **Pacotes**, também disponível no menu **Conversa**. Instale **Transcrição local** para remover muletas, aplicar a edição limpa completa e criar legendas. O download ocupa centenas de MB e exige internet na primeira instalação. Depois, essas ações preparam a transcrição automaticamente quando necessário. Cortes manuais e detecção de pausas funcionam sem esse pacote.
-4. Peça uma edição no chat, confira o resultado e clique em **Exportar**.
+Para Claude, instale a CLI pelo [guia oficial](https://code.claude.com/docs/en/setup), versão 2.1.248 ou superior, e execute no terminal:
 
-Para títulos animados, diagramas e cenas explicativas, instale **Efeitos e animações** em Pacotes. A prévia já funciona antes do download; o pacote é necessário para exportar cenas. Os controles ficam em **Ferramentas → Estilo e edição → Efeitos e animações**. Exemplo: “Anime estas três etapas em tela cheia quando eu começar a explicação, mantendo minha voz”.
+```text
+claude auth login
+```
 
-**Ferramentas** abre mídia, transcrição ou estilo e edição. A timeline agrupa cortes e histórico em **Editar**, e ampliação em **Zoom da timeline**. Salve pelo menu do projeto ou `Ctrl+S`; abra um projeto com `Ctrl+O`. `Ctrl+,` abre a aparência.
+Depois, selecione **Claude via terminal** no CutRoom. O app usa a CLI oficial sem ler seus tokens. Não é um login próprio do CutRoom com ChatGPT ou Claude. Disponibilidade de modelos e limites dependem da sua conta e da configuração da CLI.
 
-Exemplos:
+[Ver o guia completo de provedores →](docs/providers.md)
 
-> Transcreva o vídeo, remova os silêncios e os “né” sem cortar palavras. Use poucos zooms.
+</details>
 
-> Adicione um callout com “Tudo roda no seu PC” entre 4 e 7 segundos da timeline.
+<details>
+<summary><strong>O Windows mostrou um aviso? Já existe versão Mac ou Linux?</strong></summary>
 
-> Divida o trecho em 12 segundos da fonte e acelere a espera para 6x, sem áudio.
+Os instaladores iniciais ainda não têm assinatura de código e podem gerar um aviso do SmartScreen. Use os [releases oficiais](https://github.com/Mathpcastro/cutroom/releases) e confira o arquivo `SHA256SUMS.txt` antes de decidir executar.
 
-> Use o trecho de 30 a 33 segundos como teaser no início, mantendo também a versão original no vídeo.
+Somente **Windows x64** foi validado e tem instalador disponível. macOS e Linux ainda precisam de adaptação e testes dos motores locais. [Veja o estado da portabilidade](docs/portability.md).
 
-O app é gratuito. A inferência usa os limites do seu plano Codex/ChatGPT, sua configuração Claude Code ou os créditos da sua API. A transcrição local e a renderização não consomem créditos de IA. Texto da transcrição e frames solicitados pelo agente podem ser enviados ao provedor da IA; “local” não significa que o modelo de chat roda offline.
+Não há atualização automática nesta prévia. Feche o CutRoom antes de instalar uma nova versão.
 
-## Desenvolvimento
+</details>
 
-Requer Node.js 24+ e Git. Os binários FFmpeg, ffprobe e Codex vêm das dependências npm.
+## Seu espaço para criar
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/workspace-dark.webp" />
+  <source media="(prefers-color-scheme: light)" srcset="docs/media/workspace-light.webp" />
+  <img src="docs/media/workspace-dark.webp" alt="Workspace real do CutRoom com conversa, player, timeline e painel de edição" width="100%" />
+</picture>
+
+**Grafite · Claro · Dark+ · Light+ · Nord · Tokyo Night.** Troque em **Configurações → Aparência**. A escolha fica salva entre sessões. Ações secundárias ficam em menus e painéis sob demanda para manter o vídeo em foco.
+
+## Aberto para construir junto
+
+Encontrou um bug? Quer melhorar uma legenda, adicionar um comando ou ajudar com Mac e Linux? Você pode participar com código, documentação, testes e ideias.
+
+**[Guia de contribuição](CONTRIBUTING.md)** · **[Reportar um problema](https://github.com/Mathpcastro/cutroom/issues/new/choose)** · **[Ver releases](https://github.com/Mathpcastro/cutroom/releases)**
+
+<details>
+<summary><strong>Rodar o projeto e gerar um instalador</strong></summary>
+
+Requer **Node.js 24+** e Git.
 
 ```powershell
 git clone https://github.com/Mathpcastro/cutroom.git
@@ -82,43 +183,58 @@ npm run dev
 ```
 
 ```powershell
-npm test
-npm run build
-npm run dist
+npm test        # testes automatizados
+npm run build  # TypeScript + build de produção
+npm run dist   # instalador Windows NSIS em release/
 ```
 
-`npm run dist` gera o instalador NSIS em `release/`. A transcrição baixa um runtime independente dentro dos dados do aplicativo; não usa nem modifica o Python global. Builds para macOS/Linux não foram validados e o pacote de transcrição inicial foi preparado para Windows x64.
+Os binários FFmpeg, ffprobe e Codex vêm das dependências npm. A transcrição instala um runtime privado nos dados do aplicativo, sem modificar seu Python global.
 
-## Arquitetura
+Validação da versão 0.6.0: **106 testes**, build e verificações do app empacotado passaram. Novos provedores foram exercitados com APIs de teste; o fluxo da CLI oficial + MCP usou um modelo local simulado. A inferência externa da CLI excedeu o prazo e não é declarada como validada. [Detalhes do release](docs/releases/v0.6.0.md).
 
-- **Electron/React/TypeScript**: interface e ponte isolada, sem Node no renderer.
-- **Projeto declarativo**: as ações manuais e a IA alteram o mesmo modelo, com histórico reversível.
-- **Codex App Server por stdio**: sessão local, ferramentas de edição próprias e streaming. Integrações herdadas, shell e plugins são desativados para a conversa do editor.
-- **Claude Code externo + MCP local**: CLI oficial do usuário, autenticação própria, ferramentas do editor e streaming.
-- **APIs de IA**: Anthropic Messages e OpenAI Chat Completions compatível no processo principal; chaves somente em memória.
-- **FFmpeg/ffprobe**: processamento por subprocessos, com argumentos separados e gráficos em arquivos.
-- **Faster Whisper**: worker Python com dependências fixadas por hash e modelo de revisão fixada, instalado sob demanda.
-- **JASSUB/libass**: renderizador de legendas ASS com worker, WebAssembly e fontes empacotados; gerador compartilhado com a exportação FFmpeg.
+</details>
 
-Não há Remotion, backend hospedado, telemetria própria ou login CutRoom. Não há dependência do OpenCut ou do LosslessCut. A análise de reaproveitamento está em [docs/upstream.md](docs/upstream.md).
+<details>
+<summary><strong>Como o CutRoom funciona por dentro</strong></summary>
 
-## Pacotes e evolução
+| Camada | Implementação |
+| :--- | :--- |
+| Desktop e interface | Electron, React e TypeScript; ponte IPC isolada, sem Node no renderer. |
+| Timeline e histórico | Projeto declarativo compartilhado pelas ações manuais e pelas ferramentas da IA. |
+| Agentes | Codex App Server por stdio; Claude Code externo com MCP local; Anthropic Messages e APIs de Chat Completions compatíveis no processo principal. |
+| Vídeo e áudio | FFmpeg/ffprobe, H.264/AAC e normalização em duas passagens. |
+| Transcrição | Faster Whisper, runtime privado e modelo multilíngue instalados sob demanda. |
+| Legendas | JASSUB/libass na prévia, com gerador ASS compartilhado pela exportação. |
+| Animações | HyperFrames, HTML/CSS e movimentos GSAP declarativos; renderização local com cache. |
 
-A aba Pacotes é a primeira base para um catálogo gratuito de motores locais. O pacote de transcrição já fornece fala, tempos por palavra e dados para legendagem. Novos pacotes devem declarar versão, plataforma, tamanho, dependências, licença e capacidades; veja [docs/packages.md](docs/packages.md). Submissões públicas e instalação arbitrária de plugins não fazem parte desta versão.
+O agente recebe cinco ferramentas do editor: ler projeto, editar, transcrever, inspecionar quadro e exportar. Não recebe acesso livre a shell, arquivos ou plugins.
 
-## Limites desta versão
+**Remotion foi usado no filme de apresentação deste README.** O motor de efeitos dentro do aplicativo é HyperFrames. O editor não exige um backend CutRoom hospedado, telemetria própria ou uma conta CutRoom.
 
-- O modelo de chat depende de internet e da sua conta. Login customizado “Sign in with ChatGPT” ou Claude não existe; use as sessões das CLIs oficiais. As APIs exigem modelos com suporte a ferramentas.
-- Presets não detectam rosto/atividade de tela automaticamente; o agente pode inspecionar frames e comandar foco e velocidade.
-- Tempos ASR podem ser imprecisos, especialmente em hesitações. Revise os cortes. Tokens sem duração são unidos ao texto vizinho sem inventar novos tempos.
-- Player mostra uma composição interativa. As legendas compartilham o gerador ASS com a exportação; cortes com durações fracionárias de frame ainda podem acumular diferenças de tempo entre timeline e MP4. Confira o resultado exportado.
-- A exportação inicial usa CPU. Pode ocupar espaço temporário considerável e levar tempo em vídeos longos.
-- Instaladores iniciais não têm assinatura de código. Não há promessa de suporte comercial.
+[Pacotes locais](docs/packages.md) · [Animações](docs/motion.md) · [Legendas](docs/captions.md) · [Análise dos projetos de referência](docs/upstream.md)
 
-## Contribuir
+</details>
 
-Quer ajudar com código, bugs, interface, documentação ou testes? Veja o [guia de contribuição](CONTRIBUTING.md), abra uma [issue](https://github.com/Mathpcastro/cutroom/issues/new/choose) ou envie um pull request a partir do seu fork. Para ajudar com versões macOS e Linux, consulte o [estado da portabilidade](docs/portability.md).
+<details>
+<summary><strong>Limites da prévia e revisão antes de publicar</strong></summary>
 
-## Licenças
+- Tempos de transcrição podem ser imprecisos, especialmente em hesitações. Confira os cortes e as legendas.
+- Presets não detectam automaticamente rosto ou atividade na tela; o agente pode inspecionar quadros e ajustar o foco.
+- Arredondamentos de frames podem produzir diferenças entre timeline e MP4 em cortes fracionários. Assista ao arquivo exportado.
+- A exportação usa CPU, pode levar tempo e ocupar espaço temporário considerável.
+- O modelo precisa oferecer suporte a ferramentas. Servidores locais e contas externas têm seus próprios requisitos, limites e disponibilidade.
+- O catálogo de pacotes é uma base inicial; ainda não há instalação arbitrária de plugins ou marketplace público.
 
-O código original do CutRoom é [MIT](LICENSE). Dependências e binários conservam suas próprias licenças, incluindo Codex Apache-2.0, Barlow OFL e FFmpeg GPLv3. Consulte [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) e os avisos distribuídos em `resources/licenses/`.
+</details>
+
+---
+
+<p align="center">
+  <strong>Seu próximo vídeo começa com uma frase.</strong><br /><br />
+  <a href="https://github.com/Mathpcastro/cutroom/releases/latest"><strong>↓ Baixar CutRoom de graça</strong></a>
+</p>
+
+<p align="center">
+  <sub>Feito por Matheus Castro · Código original sob <a href="LICENSE">MIT</a> · Dependências mantêm suas <a href="THIRD_PARTY_NOTICES.md">próprias licenças</a>.<br />
+  <a href="docs/media/README.md">Origem e reprodução das demonstrações</a></sub>
+</p>

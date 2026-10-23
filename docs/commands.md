@@ -55,6 +55,6 @@ Os **37 comandos prontos** executam no aplicativo sem Codex ou API key. Transcri
 
 Animações têm prévia imediata. Para exportá-las, instale **Efeitos e animações**, incluindo Soco P&B e Modo cinema. P&B, zoom, cor viva, espelhamento e demais ajustes de imagem sem cenas usam diretamente o FFmpeg incluído.
 
-Somente `/animar` envia um pedido ao Codex conectado, usando seu modelo e nível de raciocínio. Usa os limites da conta ou créditos da sua chave. O agente cria uma cena original em vez de executar um dos modelos prontos.
+Somente `/animar` envia um pedido à IA conectada, usando o modelo e, quando disponível, o nível de raciocínio selecionado. Usa os limites da conta ou créditos da sua chave. O agente cria uma cena original em vez de executar um dos modelos prontos. Veja o [guia de provedores](providers.md).
 
 Cada comando composto é uma alteração reversível: um `/desfazer` remove junto a imagem, o zoom e a cena que ele criou. O progresso aparece na conversa; os arquivos originais são preservados. Exportar abre a escolha do arquivo antes de renderizar. O catálogo não promete recorte automático de pessoa, rastreamento facial ou efeitos 3D que este motor ainda não implementa.

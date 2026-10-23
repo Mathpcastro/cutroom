@@ -14,7 +14,7 @@ O CutRoom usa o player e o produtor oficiais do [HyperFrames](https://github.com
 4. As cenas aparecem na faixa **Efeitos**. Clique para editar; remova pelo painel ou menu Editar. Desfazer/refazer e salvar projeto incluem as cenas.
 5. Exporte normalmente. As cenas são renderizadas no PC e combinadas com o vídeo pelo FFmpeg, mantendo o áudio original, os cortes e as legendas. Cenas sem mudanças reutilizam o cache.
 
-A prévia funciona mesmo antes de baixar o pacote; a exportação com animações exige sua instalação. Não há cobrança de renderização. A conversa continua usando o plano Codex/ChatGPT ou a chave de API do usuário.
+A prévia funciona mesmo antes de baixar o pacote; a exportação com animações exige sua instalação. Não há cobrança de renderização. A conversa usa a conta/configuração Codex ou Claude, ou a API conectada pelo usuário; veja o [guia de provedores](providers.md).
 
 ## Cenas personalizadas
 
