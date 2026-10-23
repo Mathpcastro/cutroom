@@ -67,6 +67,7 @@
       "signExecutable": false
     },
     "nsis": {
+      "artifactName": "CutRoom.Setup.${version}.${ext}",
       "installerIcon": "resources/branding/icon.ico",
       "uninstallerIcon": "resources/branding/icon.ico",
       "oneClick": false,
