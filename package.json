@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dist": "npm run build && electron-builder --win nsis --publish never",
+    "dist:mac": "npm run build && electron-builder --mac dmg --publish never",
     "dist:dir": "npm run build && electron-builder --dir --publish never"
   },
   "build": {
@@ -30,6 +31,10 @@
       {
         "from": "resources",
         "to": "resources"
+      },
+      {
+        "from": "tools/cutroom-claude-desktop-bridge.cjs",
+        "to": "tools/cutroom-claude-desktop-bridge.cjs"
       }
     ],
     "asarUnpack": [
@@ -37,6 +42,14 @@
       "node_modules/ffmpeg-static/**/*",
       "node_modules/ffprobe-static/**/*"
     ],
+    "mac": {
+      "target": "dmg",
+      "icon": "resources/branding/icon.icns",
+      "category": "public.app-category.video"
+    },
+    "dmg": {
+      "icon": "resources/branding/icon.icns"
+    },
     "win": {
       "target": "nsis",
       "icon": "resources/branding/icon.ico",
