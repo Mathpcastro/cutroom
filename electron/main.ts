@@ -57,6 +57,7 @@ import {
   resolveChatCommand,
   applyNativeChatCommand,
 } from "./core/chat-commands";
+import { startWindowsAutoUpdate } from "./core/updater";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -698,7 +699,10 @@ async function executeTool(
     } = z
       .object({
         duration: z.number().min(1).max(600).default(15),
-        color: z.string().regex(/^#[0-9a-f]{6}$/i).default("#151515"),
+        color: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/i)
+          .default("#151515"),
         name: z.string().max(100).default("Canvas Motion"),
       })
       .parse(args);
@@ -1264,6 +1268,7 @@ app.whenReady().then(async () => {
   if (process.env.ELECTRON_RENDERER_URL)
     await window.loadURL(process.env.ELECTRON_RENDERER_URL);
   else await window.loadFile(join(here, "../dist/index.html"));
+  startWindowsAutoUpdate(window);
 
   desktopMcp = new DesktopMcpServer(executeTool, userDir);
   await desktopMcp.start().catch((err) => {

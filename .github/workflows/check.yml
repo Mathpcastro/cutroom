@@ -21,8 +21,27 @@ jobs:
       - name: Build installer
         if: github.event_name == 'workflow_dispatch'
         run: npm run dist
+      - name: Verify updater artifacts
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $files = @(
+            "release/CutRoom.Setup.$version.exe"
+            "release/CutRoom.Setup.$version.exe.blockmap"
+            "release/latest.yml"
+          )
+          foreach ($file in $files) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Missing updater artifact: $file"
+            }
+          }
       - uses: actions/upload-artifact@v4
         if: github.event_name == 'workflow_dispatch'
         with:
           name: cutroom-windows-x64
-          path: release/*.exe
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml

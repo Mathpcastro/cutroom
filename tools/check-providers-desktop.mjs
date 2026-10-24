@@ -63,7 +63,7 @@ delete env.ELECTRON_RUN_AS_NODE;
 const packaged = process.argv.includes("--packaged");
 const app = await electron.launch({
   ...(packaged
-    ? { executablePath: resolve("release/v0.6.0/win-unpacked/CutRoom.exe") }
+    ? { executablePath: resolve("release/v0.6.1/win-unpacked/CutRoom.exe") }
     : { args: ["."] }),
   env,
   timeout: 60_000,
@@ -139,7 +139,9 @@ try {
   await request("disconnectAgent");
   const claude = await request("connectAgent", { provider: "claude-code" });
   expect(claude.connection.provider).toBe("claude-code");
-  expect(claude.connection.model).toBe("sonnet");
+  expect(claude.connection.models.some(m => m.id === claude.connection.model)).toBe(true);
+  expect(claude.connection.reasoningEffort).toBeUndefined();
+  expect(claude.connection.models.every(m => !m.name.includes("alias da CLI"))).toBe(true);
   report.checks.push(
     "official Claude CLI version/auth check (no external inference)",
   );

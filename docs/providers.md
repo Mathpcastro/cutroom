@@ -4,7 +4,7 @@ Abra **Conversa → Conexão de IA**. O editor oferece seis opções. A conexão
 
 | Opção | Como conectar | Uso e cobrança |
 | --- | --- | --- |
-| Codex | Sessão local do Codex; alternativamente chave OpenAI em Avançado | Seu plano/limites ChatGPT-Codex ou créditos de API |
+| Codex | Sessão local do Codex no CutRoom; também pode conectar o Codex como cliente MCP à ponte local | Seu plano/limites ChatGPT-Codex ou créditos de API |
 | Claude via terminal | Instale a CLI oficial do Claude Code e execute `claude auth login` no terminal | Sua própria configuração, conta e limites da CLI |
 | Claude API | Chave Anthropic | Créditos da API Anthropic, separados da assinatura do chat |
 | DeepSeek | Chave DeepSeek | Créditos da sua conta DeepSeek |
@@ -26,7 +26,25 @@ claude auth status
 
 O CutRoom chama a CLI oficial instalada pelo usuário, sem modificar ou empacotar o binário e sem ler seus tokens. Não cria um login próprio com Claude. Configurações de autenticação e variáveis de ambiente do terminal continuam sendo gerenciadas pela CLI; se você usa uma URL/proxy/modelos personalizados no ambiente, essa configuração também se aplica.
 
-Os nomes Sonnet, Opus e Haiku são aliases da CLI, não uma confirmação de que seu plano libera todos eles. Confira sua conta se a solicitação for recusada. [Regras oficiais para integrações com Claude Code](https://code.claude.com/docs/en/legal-and-compliance).
+O catálogo agora vem da inicialização da própria CLI, sem executar uma solicitação ao modelo. O seletor mostra o nome com versão, o identificador resolvido e o alias usado, quando a CLI informa esses dados. Modelos personalizados de gateways são exibidos com sua identidade real, sem receber um nome Claude inventado. Se a CLI não informar a resolução de um alias, isso aparece explicitamente; a identidade informada pela resposta também é mostrada quando diverge da seleção. A opção inicial segue o padrão da CLI. Disponibilidade e limites continuam dependendo da conta e da configuração. [Regras oficiais para integrações com Claude Code](https://code.claude.com/docs/en/legal-and-compliance).
+
+## Modelo e raciocínio
+
+No menu de modelos, confira nome, versão, ID e descrição. Os níveis de raciocínio vêm das capacidades do modelo naquele provedor, não de uma lista única para todas as IAs. O OpenRouter usa os esforços e restrições publicados no catálogo; Claude API e DeepSeek usam seus próprios metadados. Servidores compatíveis que não informam capacidade de esforço continuam com o controle gerenciado pelo provedor.
+
+Fora do Codex, **Padrão do provedor** não envia um esforço explícito. Selecionar Baixo, Médio ou outro nível disponível envia exatamente aquela opção; resetar volta a omitir o parâmetro. O app não presume que Alto seja o padrão de Claude ou de todas as APIs. O Codex mantém os esforços e o padrão informados por seu App Server.
+
+## Codex (cliente MCP externo)
+
+O mesmo servidor MCP local também pode ser registrado no Codex CLI/IDE que aceite servidores MCP por `stdio`. O servidor usa o mesmo caminho absoluto do Node e o mesmo script da ponte indicados na seção anterior. No `~/.codex/config.toml`, adicione:
+
+```toml
+[mcp_servers.cutroom]
+command = "/caminho/absoluto/para/node"
+args = ["/caminho/absoluto/para/cutroom-claude-desktop-bridge.cjs"]
+```
+
+Reinicie o cliente Codex e confirme que `cutroom` aparece entre os servidores MCP. Com o CutRoom aberto, o agente pode ler e editar o projeto, criar um canvas, importar mídia, transcrever, inspecionar quadros e solicitar a exportação. O CutRoom continua exigindo confirmação na janela de salvar o vídeo. Consulte também a [documentação oficial de MCP no Codex](https://developers.openai.com/learn/docs-mcp).
 
 ## Claude Desktop (integração MCP externa)
 
@@ -75,3 +93,5 @@ O chat recebe texto em streaming, etapas das ferramentas, conclusão, falhas e c
 ## Validação da versão 0.6.0
 
 Transportes e ferramentas cobertos por testes: OpenAI compatível em HTTP real local, Anthropic Messages, preservação de raciocínio DeepSeek, autenticação OpenRouter, SSE fragmentado, falhas, cancelamento e servidor MCP autenticado. A CLI oficial também foi exercitada ponta a ponta com um modelo HTTP local **simulado**, lendo e editando um projeto de teste. A interface foi avaliada com conexões simuladas, em claro/escuro e várias larguras. O teste de inferência externa da CLI excedeu o prazo; não é declarado como aprovado. As APIs pagas não foram exercitadas com chaves reais de clientes.
+
+Na 0.6.1, foram acrescentados testes de descoberta de modelos pela CLI, resolução de versões/aliases, metadados OpenRouter, esforço padrão omitido, níveis incompatíveis e identidade real retornada pelo modelo. A consulta ao catálogo foi verificada com a CLI instalada sem inferência. O fluxo nativo de edição continua sendo exercitado com API local simulada.

@@ -62,7 +62,9 @@ export function Assistant({
   const [activePicker, setActivePicker] = useState<"model" | "effort" | null>(
     null,
   );
-  const [efforts, setEfforts] = useState<Record<string, ReasoningEffort>>({});
+  const [efforts, setEfforts] = useState<
+    Record<string, ReasoningEffort | "provider-default">
+  >({});
   const selectedModel =
     state.connection.models.find(
       (item) =>
@@ -77,21 +79,52 @@ export function Assistant({
       ? name.replace(/^(GPT-\d+(?:\.\d+)?)-/i, "$1 ")
       : name;
   const effortKey = selectedModel
-    ? `${connectedProvider}:${selectedModel.id}`
+    ? `${connectedProvider}:${JSON.stringify([
+        selectedModel.id,
+        selectedModel.modelId,
+        supportedEfforts,
+        selectedModel.defaultReasoningEffort,
+        selectedModel.supportsAdaptiveThinking,
+      ])}`
     : "";
+  const cachedEffort = efforts[effortKey];
   const selectedEffort =
-    selectedModel &&
-    efforts[effortKey] &&
-    supportedEfforts.includes(efforts[effortKey])
-      ? efforts[effortKey]
-      : state.connection.model === selectedModel?.id &&
-          state.connection.reasoningEffort &&
-          supportedEfforts.includes(state.connection.reasoningEffort)
-        ? state.connection.reasoningEffort
-        : selectedModel?.defaultReasoningEffort &&
-            supportedEfforts.includes(selectedModel.defaultReasoningEffort)
-          ? selectedModel.defaultReasoningEffort
-          : supportedEfforts[0];
+    cachedEffort &&
+    cachedEffort !== "provider-default" &&
+    supportedEfforts.includes(cachedEffort)
+      ? cachedEffort
+      : connectedProvider !== "codex"
+        ? undefined
+        : state.connection.model === selectedModel?.id &&
+            state.connection.reasoningEffort &&
+            supportedEfforts.includes(state.connection.reasoningEffort)
+          ? state.connection.reasoningEffort
+          : selectedModel?.defaultReasoningEffort &&
+              supportedEfforts.includes(selectedModel.defaultReasoningEffort)
+            ? selectedModel.defaultReasoningEffort
+            : supportedEfforts[0];
+  const resolvedModelId =
+    selectedModel?.modelId ||
+    (connectedProvider !== "claude-code" ? selectedModel?.id : undefined);
+  const responseModel =
+    state.connection.model === selectedModel?.id
+      ? state.connection.activeModel
+      : undefined;
+  const differentResponseModel =
+    responseModel && responseModel !== resolvedModelId
+      ? responseModel
+      : undefined;
+  const identityDetail = (
+    item: AppSnapshot["connection"]["models"][number],
+  ) => {
+    if (item.modelId)
+      return item.modelId === item.id
+        ? `ID: ${item.modelId}`
+        : `${item.id} → ${item.modelId}`;
+    return connectedProvider === "claude-code"
+      ? `Alias: ${item.id} · versão não informada`
+      : `ID: ${item.id}`;
+  };
   const effortLabels: Record<ReasoningEffort, string> = {
     none: "Sem",
     minimal: "Mínimo",
@@ -302,7 +335,12 @@ export function Assistant({
       options,
       context: { time, selectedId },
       ...(command.kind === "ai"
-        ? { model: selectedModel?.id, reasoningEffort: selectedEffort }
+        ? {
+            model: selectedModel?.id,
+            ...(selectedEffort !== undefined
+              ? { reasoningEffort: selectedEffort }
+              : {}),
+          }
         : {}),
     });
   };
@@ -332,7 +370,9 @@ export function Assistant({
     await run("sendChat", {
       text: message,
       model: selectedModel?.id,
-      reasoningEffort: selectedEffort,
+      ...(selectedEffort !== undefined
+        ? { reasoningEffort: selectedEffort }
+        : {}),
     });
   };
   return (
@@ -555,7 +595,20 @@ export function Assistant({
                     options={state.connection.models.map((item) => ({
                       value: item.id,
                       label: modelDisplayName(item.name),
+                      detail: identityDetail(item),
+                      description: item.description,
+                      copyValue: item.modelId || item.id,
                     }))}
+                    context={PROVIDER_LABELS[connectedProvider]}
+                    note={
+                      differentResponseModel
+                        ? `Última resposta: ${differentResponseModel}`
+                        : selectedModel && !supportedEfforts.length
+                          ? selectedModel.supportsAdaptiveThinking
+                            ? "Raciocínio adaptativo gerenciado pelo modelo."
+                            : "Este modelo não anuncia níveis de raciocínio."
+                          : undefined
+                    }
                     onChange={(id) =>
                       setModel({ provider: connectedProvider, id })
                     }
@@ -577,6 +630,7 @@ export function Assistant({
                           : ""
                       }
                       defaultValue={selectedModel?.defaultReasoningEffort}
+                      providerDefault={connectedProvider !== "codex"}
                       options={supportedEfforts.map((effort) => ({
                         value: effort,
                         label: effortLabels[effort],
@@ -585,7 +639,7 @@ export function Assistant({
                         selectedModel &&
                         setEfforts((current) => ({
                           ...current,
-                          [effortKey]: effort,
+                          [effortKey]: effort ?? "provider-default",
                         }))
                       }
                       disabled={!connected || activeWork}
@@ -625,6 +679,16 @@ export function Assistant({
                   </button>
                 )}
               </div>
+              {differentResponseModel && (
+                <div
+                  className="assistant-model-runtime"
+                  role="status"
+                  title={`Última resposta: ${differentResponseModel}`}
+                >
+                  <span>Última resposta</span>
+                  <code>{differentResponseModel}</code>
+                </div>
+              )}
             </form>
             <div className="composer-help">
               / comandos <span>·</span> Enter envia <span>·</span> Shift + Enter

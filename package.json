@@ -1,6 +1,6 @@
 {
   "name": "cutroom",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A local-first, open-source video editor controlled by text.",
   "type": "module",
   "main": "dist-electron/main.js",
@@ -22,6 +22,14 @@
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Mathpcastro",
+        "repo": "cutroom",
+        "releaseType": "release"
+      }
+    ],
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
@@ -59,6 +67,7 @@
       "signExecutable": false
     },
     "nsis": {
+      "artifactName": "CutRoom.Setup.${version}.${ext}",
       "installerIcon": "resources/branding/icon.ico",
       "uninstallerIcon": "resources/branding/icon.ico",
       "oneClick": false,
@@ -71,6 +80,7 @@
     "@hyperframes/player": "0.8.173",
     "@hyperframes/producer": "0.8.173",
     "@openai/codex": "0.163.0",
+    "electron-updater": "6.8.9",
     "fflate": "0.8.3",
     "ffmpeg-static": "5.3.0",
     "ffprobe-static": "3.1.0",

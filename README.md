@@ -39,21 +39,21 @@ https://github.com/user-attachments/assets/dbfbcb2e-656b-4866-ae57-004bb3d46c15
 </details>
 
 <p align="center">
-  <sub>Gravações reais do CutRoom 0.5.0, montadas com Remotion. Prévia acima acelerada em 2×. O download atual é a versão 0.6.0.</sub>
+  <sub>Gravações reais do CutRoom 0.5.0, montadas com Remotion. Prévia acima acelerada em 2×. O download atual é a versão 0.6.1.</sub>
 </p>
 
 ## Do pedido ao arquivo final
 
-| Você quer… | O CutRoom faz |
-| :--- | :--- |
-| **Editar conversando** | Usa as ferramentas do editor para aplicar seus pedidos. Mostra texto e etapas em tempo real; você pode cancelar e desfazer. |
-| **Dar ritmo à gravação** | Detecta pausas, remove muletas pela transcrição e aplica a **Edição limpa**, com cortes, zooms discretos e normalização da voz. |
-| **Legendas com identidade** | Oferece **24 estilos**, seis famílias de fontes offline, karaokê, destaque por palavra, frases progressivas e personalização. |
-| **Explicar com movimento** | Cria títulos, destaques, listas, diagramas e cenas originais por texto. A animação entra na faixa **Efeitos**. |
-| **Ajustar os detalhes** | Permite cortar, dividir, enquadrar, mudar velocidade, silenciar trechos e revisar tudo no player e na timeline. |
-| **Animar do zero** | Cria um **canvas** de cor sólida, sem precisar de gravação, para montar vinhetas, títulos e cenas animadas. |
+| Você quer…                     | O CutRoom faz                                                                                                                                  |
+| :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Editar conversando**         | Usa as ferramentas do editor para aplicar seus pedidos. Mostra texto e etapas em tempo real; você pode cancelar e desfazer.                    |
+| **Dar ritmo à gravação**       | Detecta pausas, remove muletas pela transcrição e aplica a **Edição limpa**, com cortes, zooms discretos e normalização da voz.                |
+| **Legendas com identidade**    | Oferece **24 estilos**, seis famílias de fontes offline, karaokê, destaque por palavra, frases progressivas e personalização.                  |
+| **Explicar com movimento**     | Cria títulos, destaques, listas, diagramas e cenas originais por texto. A animação entra na faixa **Efeitos**.                                 |
+| **Ajustar os detalhes**        | Permite cortar, dividir, enquadrar, mudar velocidade, silenciar trechos e revisar tudo no player e na timeline.                                |
+| **Animar do zero**             | Cria um **canvas** de cor sólida, sem precisar de gravação, para montar vinhetas, títulos e cenas animadas.                                    |
 | **Editar pelo Claude Desktop** | Com o CutRoom aberto, o **Claude Desktop** controla a timeline ao vivo pela integração MCP local: importa vídeos, edita, transcreve e exporta. |
-| **Levar o vídeo pronto** | Exporta **MP4 H.264/AAC** no PC. Salva e reabre projetos, preservando os arquivos originais. |
+| **Levar o vídeo pronto**       | Exporta **MP4 H.264/AAC** no PC. Salva e reabre projetos, preservando os arquivos originais.                                                   |
 
 ### Sua voz ganha presença. Sua ideia ganha movimento.
 
@@ -102,20 +102,20 @@ O agente consulta o projeto, a transcrição e, quando necessário e suportado p
 
 Conecte em **Conversa → Conexão de IA**. Escolha o modelo e, quando disponível, o nível de raciocínio.
 
-| Conexão | O que você usa |
-| :--- | :--- |
-| **Codex / ChatGPT** | Sessão local do Codex ou chave OpenAI própria. O motor Codex já vem no CutRoom. |
-| **Claude via terminal** | CLI oficial do Claude Code instalada separadamente, com a configuração e autenticação do usuário. |
-| **Claude API** | Sua chave Anthropic. |
-| **DeepSeek** | Sua chave e os modelos disponíveis na conta. |
-| **OpenRouter** | Sua chave e um modelo que declare suporte a ferramentas. |
+| Conexão                       | O que você usa                                                                                                |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| **Codex / ChatGPT**           | Sessão local do Codex ou chave OpenAI própria. O motor Codex já vem no CutRoom.                               |
+| **Claude via terminal**       | CLI oficial do Claude Code instalada separadamente, com a configuração e autenticação do usuário.             |
+| **Claude API**                | Sua chave Anthropic.                                                                                          |
+| **DeepSeek**                  | Sua chave e os modelos disponíveis na conta.                                                                  |
+| **OpenRouter**                | Sua chave e um modelo que declare suporte a ferramentas.                                                      |
 | **API compatível com OpenAI** | URL base, modelo e chave do seu serviço. Servidores locais compatíveis, como Ollama, também podem ser usados. |
 
 As chaves informadas ficam **somente na memória da conexão**. Não são salvas nos projetos.
 
 ### Ou converse pelo Claude Desktop
 
-O CutRoom também abre um servidor MCP local, só no seu computador. Aponte o **Claude Desktop** para a ponte `cutroom-claude-desktop-bridge.cjs`, que vem no instalador, e peça direto no chat dele: *“crie um canvas de 15 segundos com um título animado”* ou *“remova os silêncios do vídeo aberto no CutRoom”*. A timeline responde ao vivo.
+O CutRoom também abre um servidor MCP local, só no seu computador. Aponte o **Claude Desktop** para a ponte `cutroom-claude-desktop-bridge.cjs`, que vem no instalador, e peça direto no chat dele: _“crie um canvas de 15 segundos com um título animado”_ ou _“remova os silêncios do vídeo aberto no CutRoom”_. A timeline responde ao vivo.
 
 A conexão só aceita chamadas locais autenticadas por um token salvo na pasta de dados do app. Exportar sempre abre a janela de salvar do CutRoom para você confirmar. Outros clientes que aceitam servidores MCP locais por stdio podem usar a mesma ponte.
 
@@ -170,7 +170,7 @@ Os instaladores ainda não têm assinatura de código. Use os [releases oficiais
 
 **Windows x64** é a plataforma validada. A versão **macOS** (Apple Silicon e Intel) é uma **prévia**: os instaladores são gerados e testados automaticamente em Macs da nuvem, mas ainda não houve validação completa com uso real. Relate o que encontrar nas [issues](https://github.com/Mathpcastro/cutroom/issues/new/choose). Linux ainda não é suportado. [Veja o estado da portabilidade](docs/portability.md).
 
-Não há atualização automática nesta prévia. Feche o CutRoom antes de instalar uma nova versão.
+No Windows, as versões que já incluem o atualizador avisam quando há uma novidade e só baixam com sua autorização. Você pode reiniciar para instalar ou deixar para fechar o app. A primeira versão com esse recurso precisa ser instalada manualmente; o macOS continua sem atualização automática. [Como funcionam as atualizações](docs/auto-update.md).
 
 </details>
 
@@ -220,16 +220,16 @@ Validação da versão 0.6.0: **106 testes**, build e verificações do app empa
 <details>
 <summary><strong>Como o CutRoom funciona por dentro</strong></summary>
 
-| Camada | Implementação |
-| :--- | :--- |
-| Desktop e interface | Electron, React e TypeScript; ponte IPC isolada, sem Node no renderer. |
-| Timeline e histórico | Projeto declarativo compartilhado pelas ações manuais e pelas ferramentas da IA. |
-| Agentes | Codex App Server por stdio; Claude Code externo com MCP local; Anthropic Messages e APIs de Chat Completions compatíveis no processo principal. |
-| Clientes externos | Servidor MCP em `127.0.0.1` com token, usado pelo Claude Desktop por meio de uma ponte stdio. |
-| Vídeo e áudio | FFmpeg/ffprobe, H.264/AAC e normalização em duas passagens. |
-| Transcrição | Faster Whisper, runtime privado e modelo multilíngue instalados sob demanda. |
-| Legendas | JASSUB/libass na prévia, com gerador ASS compartilhado pela exportação. |
-| Animações | HyperFrames, HTML/CSS e movimentos GSAP declarativos; renderização local com cache. |
+| Camada               | Implementação                                                                                                                                   |
+| :------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop e interface  | Electron, React e TypeScript; ponte IPC isolada, sem Node no renderer.                                                                          |
+| Timeline e histórico | Projeto declarativo compartilhado pelas ações manuais e pelas ferramentas da IA.                                                                |
+| Agentes              | Codex App Server por stdio; Claude Code externo com MCP local; Anthropic Messages e APIs de Chat Completions compatíveis no processo principal. |
+| Clientes externos    | Servidor MCP em `127.0.0.1` com token, usado pelo Claude Desktop por meio de uma ponte stdio.                                                   |
+| Vídeo e áudio        | FFmpeg/ffprobe, H.264/AAC e normalização em duas passagens.                                                                                     |
+| Transcrição          | Faster Whisper, runtime privado e modelo multilíngue instalados sob demanda.                                                                    |
+| Legendas             | JASSUB/libass na prévia, com gerador ASS compartilhado pela exportação.                                                                         |
+| Animações            | HyperFrames, HTML/CSS e movimentos GSAP declarativos; renderização local com cache.                                                             |
 
 O agente recebe sete ferramentas do editor: ler projeto, editar, transcrever, inspecionar quadro, exportar, criar canvas e importar vídeos. A importação aceita somente arquivos de vídeo. Não recebe acesso livre a shell, arquivos ou plugins.
 

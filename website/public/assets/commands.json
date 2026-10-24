@@ -1,0 +1,412 @@
+[
+  {
+    "id": "edicao-limpa",
+    "label": "Edição limpa",
+    "description": "Remove pausas e muletas, alterna zooms discretos e normaliza a voz no projeto inteiro.",
+    "category": "Limpeza",
+    "kind": "edit",
+    "example": "/edicao-limpa",
+    "needsTranscript": true
+  },
+  {
+    "id": "remover-pausas",
+    "label": "Remover pausas",
+    "description": "Detecta silêncios reais e corta as pausas, preservando pequenas margens nas falas.",
+    "category": "Limpeza",
+    "kind": "edit",
+    "example": "/remover-pausas"
+  },
+  {
+    "id": "remover-muletas",
+    "label": "Remover muletas",
+    "description": "Usa a transcrição para cortar né, ah e hesitações reconhecidas. Preserva palavras ambíguas.",
+    "category": "Limpeza",
+    "kind": "edit",
+    "example": "/remover-muletas",
+    "needsTranscript": true
+  },
+  {
+    "id": "transcrever",
+    "label": "Transcrever",
+    "description": "Gera palavras e tempos no seu PC. Não ativa legendas nem envia o áudio para uma API.",
+    "category": "Limpeza",
+    "kind": "system",
+    "example": "/transcrever",
+    "needsTranscript": true
+  },
+  {
+    "id": "normalizar",
+    "label": "Normalizar voz",
+    "description": "Equilibra o volume na exportação em −14 LUFS, com medição em duas passagens.",
+    "category": "Limpeza",
+    "kind": "edit",
+    "example": "/normalizar"
+  },
+  {
+    "id": "silenciar",
+    "label": "Silenciar trecho",
+    "description": "Desliga o áudio apenas no intervalo escolhido; o restante do vídeo continua com som.",
+    "category": "Limpeza",
+    "kind": "edit",
+    "example": "/silenciar",
+    "range": true
+  },
+  {
+    "id": "soco-pb",
+    "label": "Soco P&B",
+    "description": "Aplica um zoom de impacto, preto e branco com contraste e até três palavras grandes em sequência.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/soco-pb PARE AGORA --inicio 2 --fim 4",
+    "range": true,
+    "text": true,
+    "defaultText": "PARE AGORA OLHE"
+  },
+  {
+    "id": "modo-cinema",
+    "label": "Modo cinema",
+    "description": "Coloca barras de cinema, reduz a saturação e exibe uma frase com entrada suave. Mantém sua voz.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/modo-cinema Uma ideia muda tudo --inicio 2 --fim 6",
+    "range": true,
+    "text": true,
+    "defaultText": "Uma ideia muda tudo"
+  },
+  {
+    "id": "cortina-cor",
+    "label": "Cortina de cor",
+    "description": "Uma linha com brilho atravessa a tela e revela a versão com cor viva sobre o trecho em P&B.",
+    "defaultText": "",
+    "category": "Imagem",
+    "kind": "motion",
+    "range": true,
+    "text": false,
+    "example": "/cortina-cor --inicio 2 --fim 5"
+  },
+  {
+    "id": "zoom",
+    "label": "Zoom pontual",
+    "description": "Aproxima o enquadramento somente no intervalo indicado, sem alterar o restante do vídeo.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/zoom 1.4 --inicio 2 --fim 5",
+    "range": true,
+    "amount": {
+      "label": "Ampliação",
+      "min": 1,
+      "max": 4,
+      "step": 0.05,
+      "default": 1.25
+    }
+  },
+  {
+    "id": "pb",
+    "label": "Preto e branco",
+    "description": "Remove as cores e aumenta levemente o contraste no trecho escolhido.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/pb",
+    "range": true
+  },
+  {
+    "id": "cor-viva",
+    "label": "Cor viva",
+    "description": "Aumenta a saturação e o contraste do trecho sem mudar o áudio.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/cor-viva",
+    "range": true
+  },
+  {
+    "id": "espelhar",
+    "label": "Espelhar imagem",
+    "description": "Inverte a imagem horizontalmente no intervalo escolhido.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/espelhar",
+    "range": true
+  },
+  {
+    "id": "desfocar",
+    "label": "Desfocar trecho",
+    "description": "Desfoca o quadro inteiro no intervalo. Útil como fundo para texto; não faz rastreamento de rostos.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/desfocar",
+    "range": true
+  },
+  {
+    "id": "vinheta",
+    "label": "Vinheta",
+    "description": "Escurece suavemente as bordas do quadro para destacar o centro.",
+    "category": "Imagem",
+    "kind": "edit",
+    "example": "/vinheta",
+    "range": true
+  },
+  {
+    "id": "titulo",
+    "label": "Título animado",
+    "description": "Exibe um título com entrada, saída e cor de destaque do projeto.",
+    "defaultText": "Sua ideia em movimento",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/titulo Sua ideia em movimento"
+  },
+  {
+    "id": "identificacao",
+    "label": "Identificação",
+    "description": "Mostra um nome e complemento no canto inferior do vídeo.",
+    "defaultText": "Seu nome",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/identificacao Seu nome",
+    "defaultSubtitle": "Seu trabalho ou assunto"
+  },
+  {
+    "id": "destaque",
+    "label": "Destaque",
+    "description": "Destaca uma frase curta sobre a gravação, com alto contraste.",
+    "defaultText": "O ponto principal",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/destaque O ponto principal"
+  },
+  {
+    "id": "prompt-digitando",
+    "label": "Prompt digitando",
+    "description": "Mostra uma conversa que digita seu pedido, um cursor piscando e a confirmação PRONTO. Até 140 caracteres.",
+    "defaultText": "Edite meu vídeo",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/prompt-digitando Crie uma legenda com destaque",
+    "maxText": 140
+  },
+  {
+    "id": "lista-check",
+    "label": "Lista com checks",
+    "description": "Apresenta até seis itens em um cartão e marca cada etapa com um check animado.",
+    "defaultText": "Passo a passo",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/lista-check Planejar | Gravar | Publicar",
+    "items": true,
+    "defaultItems": [
+      "Planejar",
+      "Gravar",
+      "Publicar"
+    ]
+  },
+  {
+    "id": "etapas",
+    "label": "Etapas em tela cheia",
+    "description": "Apresenta etapas numeradas em tela cheia enquanto sua voz continua.",
+    "defaultText": "Como funciona",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/etapas Como funciona",
+    "items": true,
+    "defaultItems": [
+      "Primeiro passo",
+      "Segundo passo",
+      "Terceiro passo"
+    ]
+  },
+  {
+    "id": "diagrama",
+    "label": "Diagrama",
+    "description": "Conecta até seis conceitos em uma explicação visual em tela cheia.",
+    "defaultText": "Da ideia ao resultado",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/diagrama Da ideia ao resultado",
+    "items": true,
+    "defaultItems": [
+      "Ideia",
+      "Processo",
+      "Resultado"
+    ]
+  },
+  {
+    "id": "numero",
+    "label": "Número em foco",
+    "description": "Mostra um número ou dado em tamanho grande com contexto, mantendo a voz.",
+    "defaultText": "3 etapas",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/numero 3 etapas",
+    "defaultSubtitle": "Um processo simples"
+  },
+  {
+    "id": "citacao",
+    "label": "Citação",
+    "description": "Exibe uma frase em um cartão editorial com aspas e entrada suave.",
+    "defaultText": "Uma ideia que merece ficar",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/citacao Uma ideia que merece ficar"
+  },
+  {
+    "id": "cta",
+    "label": "Chamada para ação",
+    "description": "Adiciona uma chamada curta e um botão visual animado. O botão faz parte do vídeo.",
+    "defaultText": "Continue aprendendo",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": true,
+    "example": "/cta Continue aprendendo",
+    "defaultSubtitle": "Inscreva-se no canal"
+  },
+  {
+    "id": "barra-progresso",
+    "label": "Barra de progresso",
+    "description": "Desenha uma barra discreta que avança do início ao fim do intervalo.",
+    "defaultText": "",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": false,
+    "example": "/barra-progresso --inicio 0 --fim 10"
+  },
+  {
+    "id": "contador",
+    "label": "Contagem regressiva",
+    "description": "Conta 3, 2, 1 em tela cheia, com transições curtas, sem alterar sua voz.",
+    "defaultText": "",
+    "category": "Animações",
+    "kind": "motion",
+    "range": true,
+    "text": false,
+    "example": "/contador --inicio 0 --fim 3"
+  },
+  {
+    "id": "timelapse",
+    "label": "Time-lapse",
+    "description": "Acelera o intervalo para 4× por padrão e silencia esse trecho.",
+    "category": "Ritmo",
+    "kind": "edit",
+    "example": "/timelapse 4 --inicio 2 --fim 6",
+    "range": true,
+    "amount": {
+      "label": "Velocidade",
+      "min": 2,
+      "max": 16,
+      "step": 0.5,
+      "default": 4
+    }
+  },
+  {
+    "id": "camera-lenta",
+    "label": "Câmera lenta",
+    "description": "Reduz a velocidade do intervalo para 0,5× por padrão e mantém o áudio ajustado.",
+    "category": "Ritmo",
+    "kind": "edit",
+    "example": "/camera-lenta 0.5 --inicio 2 --fim 4",
+    "range": true,
+    "amount": {
+      "label": "Velocidade",
+      "min": 0.1,
+      "max": 0.95,
+      "step": 0.05,
+      "default": 0.5
+    }
+  },
+  {
+    "id": "legendar",
+    "label": "Legendas limpas",
+    "description": "Ativa legendas em frases curtas com o estilo Frase limpa. Transcreve antes se necessário.",
+    "category": "Legendas",
+    "kind": "edit",
+    "example": "/legendar",
+    "needsTranscript": true
+  },
+  {
+    "id": "legenda-karaoke",
+    "label": "Legendas karaokê",
+    "description": "Ativa legendas que destacam a palavra acompanhando a fala.",
+    "category": "Legendas",
+    "kind": "edit",
+    "example": "/legenda-karaoke",
+    "needsTranscript": true
+  },
+  {
+    "id": "legenda-palavra",
+    "label": "Uma palavra por vez",
+    "description": "Ativa o estilo que exibe uma palavra de cada vez no ritmo da fala.",
+    "category": "Legendas",
+    "kind": "edit",
+    "example": "/legenda-palavra",
+    "needsTranscript": true
+  },
+  {
+    "id": "sem-legendas",
+    "label": "Desativar legendas",
+    "description": "Oculta as legendas sem apagar a transcrição nem seus ajustes.",
+    "category": "Legendas",
+    "kind": "edit",
+    "example": "/sem-legendas"
+  },
+  {
+    "id": "dividir",
+    "label": "Dividir no cursor",
+    "description": "Divide o clipe na posição atual do cursor, preservando imagem e áudio.",
+    "category": "Projeto",
+    "kind": "system",
+    "example": "/dividir 2.5"
+  },
+  {
+    "id": "desfazer",
+    "label": "Desfazer",
+    "description": "Desfaz a última alteração, incluindo todos os ajustes de um comando composto.",
+    "category": "Projeto",
+    "kind": "system",
+    "example": "/desfazer"
+  },
+  {
+    "id": "refazer",
+    "label": "Refazer",
+    "description": "Recupera a última alteração desfeita.",
+    "category": "Projeto",
+    "kind": "system",
+    "example": "/refazer"
+  },
+  {
+    "id": "exportar",
+    "label": "Exportar vídeo",
+    "description": "Abre a escolha do arquivo e renderiza o projeto no seu PC, com legendas e efeitos.",
+    "category": "Projeto",
+    "kind": "system",
+    "example": "/exportar"
+  },
+  {
+    "id": "animar",
+    "label": "Criar com IA",
+    "description": "Envia um pedido de animação original ao Codex. Requer conexão e usa os limites da sua conta.",
+    "defaultText": "Explique as três etapas do vídeo com uma animação",
+    "category": "IA",
+    "kind": "ai",
+    "range": true,
+    "text": true,
+    "example": "/animar Mostre um diagrama quando eu explicar o processo"
+  }
+]

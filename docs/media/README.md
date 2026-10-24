@@ -1,6 +1,6 @@
 # Demonstrações do README
 
-As animações usam gravações reais do aplicativo, sem respostas ou progresso inventados. A gravação foi feita com o CutRoom 0.5.0; a versão de download atual é 0.6.0. Os vídeos demonstram funções que permanecem no app, mas não mostram a nova conexão multiprovedor.
+As animações usam gravações reais do aplicativo, sem respostas ou progresso inventados. A gravação foi feita com o CutRoom 0.5.0; a versão de download atual é 0.6.1. Os vídeos demonstram funções que permanecem no app, mas não mostram a nova conexão multiprovedor.
 
 - `cutroom-demo.mp4`: filme de 43 segundos, H.264, sem áudio. Remotion compõe os trechos reais com títulos, aproximações e transições. O motor de animações do aplicativo é HyperFrames.
 - `overview.gif`: primeiros 40 segundos do filme em 2×, 840 pixels de largura e 7 fps, para movimento direto no README.
