@@ -80,7 +80,8 @@ O artefato do workflow Windows incluirá os três primeiros arquivos. A document
 ## Segurança e privacidade
 
 - A única comunicação nova será a consulta e o download dos arquivos públicos do GitHub Releases.
-- Nenhum dado do projeto, chave de API, conteúdo de mídia ou identificador de usuário será enviado.
+- Projetos, mídias, chaves e conteúdo do usuário não serão enviados. O electron-updater cria um UUID aleatório persistente em `.updaterId`, na pasta de dados do app, e o envia ao GitHub no cabeçalho `x-user-staging-id`; esse UUID não é um identificador da conta nem deriva de projetos, mídias ou chaves.
+- Não há backend nem telemetria própria do CutRoom. Falhas de rede não impedem o uso do editor.
 - O atualizador validará os metadados e a integridade do pacote pelo mecanismo do electron-builder/electron-updater.
 - Não será adicionada execução de scripts remotos nem acesso do renderer ao Node.js.
 

@@ -2,7 +2,7 @@
 
 Nas versões do CutRoom que incluem o atualizador, o app consulta os releases estáveis do GitHub ao abrir. Nenhum pacote é baixado sem autorização. O usuário pode adiar a oferta, reiniciar para instalar depois do download ou deixar a instalação para quando fechar o app.
 
-A consulta usa apenas os arquivos públicos de `Mathpcastro/cutroom`. Não envia projetos, mídias, chaves, identificadores ou telemetria. Falhas de rede não impedem o uso do editor.
+A consulta usa apenas os arquivos públicos de `Mathpcastro/cutroom`. Projetos, mídias, chaves e conteúdo do usuário não são enviados. O electron-updater cria um UUID aleatório persistente em `.updaterId`, na pasta de dados do app, e o envia ao GitHub no cabeçalho `x-user-staging-id`; esse UUID não é um identificador da conta nem deriva de projetos, mídias ou chaves. Não há backend nem telemetria própria do CutRoom. Falhas de rede não impedem o uso do editor.
 
 ## Migração única
 
