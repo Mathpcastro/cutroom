@@ -1050,8 +1050,8 @@ export function Assistant({
                   </div>
                 )}
                 <p className="connection-note">
-                  O editor é grátis. A IA usa os limites ou créditos da sua
-                  conta. Transcrição e renderização continuam no seu PC.
+                  A IA usa os limites ou créditos da sua conta. Transcrição e
+                  renderização continuam no seu PC.
                 </p>
               </div>
               <div className="modal-actions">
