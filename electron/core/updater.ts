@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog } from "electron";
-import { autoUpdater } from "electron-updater";
+// electron-updater é CommonJS: no bundle ESM do processo principal só o export padrão existe.
+import electronUpdater from "electron-updater";
 
 export interface UpdateClient {
   autoDownload: boolean;
@@ -149,7 +150,7 @@ export function startWindowsAutoUpdate(window: BrowserWindow): void {
   };
 
   new UpdateController({
-    client: autoUpdater,
+    client: electronUpdater.autoUpdater,
     dialogs,
     isPackaged: app.isPackaged,
     platform: process.platform,

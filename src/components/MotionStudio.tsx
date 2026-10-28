@@ -111,8 +111,7 @@ export function MotionStudio({
       {!packageReady && (
         <div className="motion-package-note">
           <p>
-            A prévia já funciona. Para exportar, instale o pacote gratuito de
-            efeitos.
+            A prévia já funciona. Para exportar, instale o pacote de efeitos.
           </p>
           <button className="text-link" onClick={openPackages}>
             Abrir Pacotes <ChevronRight size={12} />
