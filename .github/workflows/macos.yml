@@ -1,23 +1,17 @@
 name: macOS installers
-# Builds the .dmg on native runners (Apple Silicon and Intel). On pull requests it only tests and
-# keeps the installers as artifacts. Publishing a release attaches them to it automatically; a manual
-# run with a release tag does the same for an existing release.
+# Builds the .dmg on native runners (Apple Silicon and Intel) and attaches them to the release in
+# Mathpcastro/cutroom-releases, where the installers live (this source repository is private).
+# Runs when a v* tag is pushed, or by hand with a release tag. Without a tag it only keeps the
+# installers as artifacts. It does not run on pull requests: macOS minutes cost 10x on private repos.
+# The publish job needs the RELEASES_TOKEN secret: a fine-grained token with "Contents: read and
+# write" on Mathpcastro/cutroom-releases.
 on:
-  pull_request:
-    paths:
-      - "electron/**"
-      - "src/**"
-      - "resources/**"
-      - "tools/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/macos.yml"
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Tag do release que recebe os .dmg (ex.: v0.6.1). Vazio = só gera os artefatos."
+        description: "Tag do release em cutroom-releases que recebe os .dmg (ex.: v0.6.3). Vazio = só gera os artefatos."
         required: false
         default: ""
 permissions:
@@ -56,14 +50,13 @@ jobs:
           path: release/*.dmg
           if-no-files-found: error
   publish:
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: dmg
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+      GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+      RELEASES_REPO: Mathpcastro/cutroom-releases
+      TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -72,9 +65,9 @@ jobs:
           path: dmg
       - name: Attach installers and update SHA256SUMS.txt
         run: |
-          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt -O SHA256SUMS.txt || touch SHA256SUMS.txt
+          gh release download "$TAG" -R "$RELEASES_REPO" -p SHA256SUMS.txt -O SHA256SUMS.txt || touch SHA256SUMS.txt
           grep -v -- "-mac-.*\.dmg$" SHA256SUMS.txt > sums.txt || true
           (cd dmg && sha256sum *.dmg) >> sums.txt
           mv sums.txt SHA256SUMS.txt
           cat SHA256SUMS.txt
-          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber dmg/*.dmg SHA256SUMS.txt
+          gh release upload "$TAG" -R "$RELEASES_REPO" --clobber dmg/*.dmg SHA256SUMS.txt

@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Mathpcastro/cutroom/releases/latest"><img alt="Baixar para Windows x64" src="https://img.shields.io/badge/BAIXAR-Windows_x64-181918?style=for-the-badge&amp;logo=windows&amp;logoColor=white" /></a>
-  <a href="https://github.com/Mathpcastro/cutroom/releases/latest"><img alt="Baixar para macOS (prévia)" src="https://img.shields.io/badge/BAIXAR-macOS_(pr%C3%A9via)-181918?style=for-the-badge&amp;logo=apple&amp;logoColor=white" /></a>
+  <a href="https://github.com/Mathpcastro/cutroom-releases/releases/latest"><img alt="Baixar para Windows x64" src="https://img.shields.io/badge/BAIXAR-Windows_x64-181918?style=for-the-badge&amp;logo=windows&amp;logoColor=white" /></a>
+  <a href="https://github.com/Mathpcastro/cutroom-releases/releases/latest"><img alt="Baixar para macOS (prévia)" src="https://img.shields.io/badge/BAIXAR-macOS_(pr%C3%A9via)-181918?style=for-the-badge&amp;logo=apple&amp;logoColor=white" /></a>
   <a href="LICENSE"><img alt="Código original sob licença MIT" src="https://img.shields.io/badge/OPEN_SOURCE-MIT-ff6b0b?style=for-the-badge" /></a>
-  <a href="https://github.com/Mathpcastro/cutroom/releases"><img alt="Última versão" src="https://img.shields.io/github/v/release/Mathpcastro/cutroom?style=for-the-badge&amp;label=VERS%C3%83O&amp;color=181918" /></a>
+  <a href="https://github.com/Mathpcastro/cutroom-releases/releases"><img alt="Última versão" src="https://img.shields.io/github/v/release/Mathpcastro/cutroom-releases?style=for-the-badge&amp;label=VERS%C3%83O&amp;color=181918" /></a>
 </p>
 
 <p align="center">
@@ -129,7 +129,7 @@ A conexão só aceita chamadas locais autenticadas por um token salvo na pasta d
 
 ## Comece em quatro passos
 
-1. **[Baixe o CutRoom](https://github.com/Mathpcastro/cutroom/releases/latest)** e importe seu vídeo. No Windows x64, use o `CutRoom.Setup….exe`. No Mac, o `CutRoom-…-mac-arm64.dmg` (Apple Silicon: M1 em diante) ou o `CutRoom-…-mac-x64.dmg` (Intel), ainda em prévia. O instalador já inclui FFmpeg; não exige Python global.
+1. **[Baixe o CutRoom](https://github.com/Mathpcastro/cutroom-releases/releases/latest)** e importe seu vídeo. No Windows x64, use o `CutRoom.Setup….exe`. No Mac, o `CutRoom-…-mac-arm64.dmg` (Apple Silicon: M1 em diante) ou o `CutRoom-…-mac-x64.dmg` (Intel), ainda em prévia. O instalador já inclui FFmpeg; não exige Python global.
 2. **Instale os pacotes que precisar** em **Conversa → Pacotes**. **Transcrição local** prepara fala, muletas e legendas. **Efeitos e animações** libera a exportação das cenas animadas.
 3. **Escolha um comando ou conecte sua IA.** Comandos prontos não exigem conta de IA; pedidos livres e `/animar` usam o provedor conectado.
 4. **Confira, ajuste e exporte.** Use a timeline, desfaça o que quiser e salve seu projeto antes de fechar.
@@ -163,7 +163,7 @@ Depois, selecione **Claude via terminal** no CutRoom. O app usa a CLI oficial se
 <details>
 <summary><strong>Apareceu um aviso de segurança? Funciona no Mac ou no Linux?</strong></summary>
 
-Os instaladores ainda não têm assinatura de código. Use os [releases oficiais](https://github.com/Mathpcastro/cutroom/releases) e confira o arquivo `SHA256SUMS.txt` antes de decidir executar.
+Os instaladores ainda não têm assinatura de código. Use os [releases oficiais](https://github.com/Mathpcastro/cutroom-releases/releases) e confira o arquivo `SHA256SUMS.txt` antes de decidir executar.
 
 - **Windows:** o SmartScreen pode mostrar um aviso.
 - **Mac:** o app não é notarizado pela Apple, então o macOS bloqueia a primeira abertura. Arraste o CutRoom para **Aplicativos**, tente abrir uma vez e vá em **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
@@ -188,7 +188,7 @@ No Windows, as versões que já incluem o atualizador avisam quando há uma novi
 
 Encontrou um bug? Quer melhorar uma legenda, adicionar um comando ou ajudar com Mac e Linux? Você pode participar com código, documentação, testes e ideias.
 
-**[Guia de contribuição](CONTRIBUTING.md)** · **[Reportar um problema](https://github.com/Mathpcastro/cutroom/issues/new/choose)** · **[Ver releases](https://github.com/Mathpcastro/cutroom/releases)**
+**[Guia de contribuição](CONTRIBUTING.md)** · **[Reportar um problema](https://github.com/Mathpcastro/cutroom/issues/new/choose)** · **[Ver releases](https://github.com/Mathpcastro/cutroom-releases/releases)**
 
 <details>
 <summary><strong>Rodar o projeto e gerar um instalador</strong></summary>
@@ -255,7 +255,7 @@ O agente recebe sete ferramentas do editor: ler projeto, editar, transcrever, in
 
 <p align="center">
   <strong>Seu próximo vídeo começa com uma frase.</strong><br /><br />
-  <a href="https://github.com/Mathpcastro/cutroom/releases/latest"><strong>↓ Baixar CutRoom de graça</strong></a>
+  <a href="https://github.com/Mathpcastro/cutroom-releases/releases/latest"><strong>↓ Baixar CutRoom de graça</strong></a>
 </p>
 
 <p align="center">
