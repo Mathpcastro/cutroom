@@ -535,6 +535,7 @@ describe("Claude loopback bridge", () => {
       "list_formats",
       "get_format_guide",
       "render_frame",
+      "job_status",
       "review_video",
     ]);
     expect(

@@ -23,6 +23,7 @@ import { musicDetails, searchMusic } from "./music";
 import { FORMATS, formatGuide } from "./formats";
 
 export const AUDIO_EXTENSIONS = [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".opus", ".flac"];
+const PREVIEW_WAIT_MS = 40_000;
 export const VOICE_KEYS = { elevenlabs: "voice.elevenlabs", openai: "voice.openai" } as const;
 
 type Progress = (value: number, label?: string) => void;
@@ -195,7 +196,7 @@ export class Studio {
     if (!voice && provider === "elevenlabs")
       throw new Error("Escolha uma voz: chame list_voices e passe o id em voice, ou defina a voz padrão em Vozes.");
     const key = createHash("sha256")
-      .update(JSON.stringify([provider, voice, a.model, a.instructions, a.text]))
+      .update(JSON.stringify(["voice-2", provider, voice, a.model, a.instructions, a.text]))
       .digest("hex")
       .slice(0, 32);
     const dir = join(this.host.cacheDir, "voice");
@@ -332,7 +333,13 @@ export class Studio {
     return formatGuide(id);
   }
 
-  private async previewExport(signal: AbortSignal, progress: Progress) {
+  private pending?: { key: string; done: Promise<string>; progress: number; label: string };
+  /**
+   * The final-look render used by render_frame/review_video, cached per project state.
+   * Rendering a 60 s reel takes minutes and MCP clients cut tool calls at ~60 s (Codex), so the
+   * render keeps running in the background: callers get `undefined` and ask again.
+   */
+  private async previewExport(): Promise<{ file: string; project: Project } | undefined> {
     const project = this.host.project();
     if (!project.clips.length) throw new Error("A timeline está vazia.");
     const brand = await this.host.brand.get();
@@ -345,8 +352,38 @@ export class Studio {
     } catch {
       /* Not rendered yet. */
     }
-    await this.host.exportTo(project, file, signal, progress);
-    return { file, project };
+    if (this.pending?.key !== key) {
+      const pending = { key, progress: 0, label: "Renderizando cenas…", done: Promise.resolve("") };
+      pending.done = this.host
+        .job("review", "Renderizando a prévia final…", async (signal, progress) => {
+          await this.host.exportTo(project, file, signal, (value, label) => {
+            pending.progress = value;
+            if (label) pending.label = label;
+            progress(value, label);
+          });
+          return file;
+        })
+        .finally(() => {
+          if (this.pending === pending) this.pending = undefined;
+        });
+      pending.done.catch(() => undefined);
+      this.pending = pending;
+    }
+    const current = this.pending!;
+    const finished = await Promise.race([
+      current.done.then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), PREVIEW_WAIT_MS)),
+    ]);
+    return finished ? { file, project } : undefined;
+  }
+  private rendering() {
+    return {
+      status: "rendering",
+      progress: Math.round(this.pending?.progress ?? 0),
+      step: this.pending?.label,
+      message:
+        "A prévia final ainda está sendo renderizada no computador do usuário. Chame a mesma ferramenta de novo em 30 a 60 segundos; não altere o projeto enquanto isso, senão a renderização recomeça.",
+    };
   }
   private async frame(file: string, time: number, width: number, signal: AbortSignal) {
     const out = join(this.host.cacheDir, `frame-${randomUUID()}.jpg`);
@@ -362,8 +399,10 @@ export class Studio {
 
   async renderFrame(args: Record<string, unknown>) {
     const { time } = z.object({ time: z.number().min(0) }).strict().parse(args);
-    return this.host.job("review", "Renderizando o quadro…", async (signal, progress) => {
-      const { file, project } = await this.previewExport(signal, progress);
+    const preview = await this.previewExport();
+    if (!preview) return this.rendering();
+    return this.host.job("inspection", "Lendo o quadro renderizado…", async (signal) => {
+      const { file, project } = preview;
       const total = project.clips.reduce((s, c) => s + (c.end - c.start) / c.speed, 0);
       const at = Math.min(time, Math.max(0, total - 0.05));
       const portrait = project.settings.height > project.settings.width;
@@ -379,8 +418,10 @@ export class Studio {
       .object({ format: z.string().optional(), frames: z.number().int().min(1).max(12).optional() })
       .strict()
       .parse(args);
-    return this.host.job("review", "Revisando o vídeo…", async (signal, progress) => {
-      const { file, project } = await this.previewExport(signal, (v, l) => progress(v * 0.9, l));
+    const preview = await this.previewExport();
+    if (!preview) return this.rendering();
+    return this.host.job("inspection", "Revisando o vídeo…", async (signal) => {
+      const { file, project } = preview;
       const total = project.clips.reduce((s, c) => s + (c.end - c.start) / c.speed, 0);
       const portrait = project.settings.height > project.settings.width;
       const times = Array.from({ length: frames }, (_, i) => +((total * (i + 0.5)) / frames).toFixed(2));

@@ -889,6 +889,7 @@ export function toolActivityLabel(
     get_format_guide: "Lendo o guia do formato",
     render_frame: "Renderizando um quadro",
     review_video: "Revisando o vídeo",
+    job_status: "Conferindo o andamento",
   };
   if (studio[name]) return studio[name];
   const labels: Record<string, string> = {
@@ -932,7 +933,7 @@ export function validateToolArguments(
   const args = value as Record<string, unknown>;
   const keys = Object.keys(args);
   if (
-    ["get_project", "transcribe"].includes(name) &&
+    ["get_project", "transcribe", "job_status"].includes(name) &&
     keys.length
   )
     throw new Error("Esta ferramenta não aceita argumentos.");

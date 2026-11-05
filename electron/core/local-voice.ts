@@ -25,7 +25,9 @@ if ($Voice) { $s.SelectVoice($Voice) }
 $s.Rate = 1
 $script:words = New-Object System.Collections.ArrayList
 $s.add_SpeakProgress({ param($sender, $e) [void]$script:words.Add(@{ t = $e.Text; at = $e.AudioPosition.TotalSeconds; pos = $e.CharacterPosition; len = $e.CharacterCount }) })
-$s.SetOutputToWaveFile($OutFile)
+# AudioPosition is only consistent with the file at 16 kHz (the default 22 kHz file drifts ~35%).
+$fmt = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
+$s.SetOutputToWaveFile($OutFile, $fmt)
 $s.Speak($text)
 $s.Dispose()
 $script:words | ConvertTo-Json -Compress`;

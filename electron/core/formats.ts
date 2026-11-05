@@ -27,7 +27,7 @@ const COMMON = `
 7. Música: \`search_music{query, kind:"music"}\` → \`add_music{id, gain:-18, loop:true, fadeOut:1.5}\`. Efeitos: \`search_music{query:"whoosh"|"pop"|"click", kind:"sfx"}\` → \`add_music{id, kind:"sfx", start, gain:-8}\` nos cortes e destaques (no máximo 1 a cada 3 s).
 8. Legenda: \`edit_project captions{enabled:true, style:{presetId, position, ...}}\` — ver o formato.
 9. \`render_frame{time}\` em 3 a 5 momentos e corrija. Depois \`review_video{format, frames:8}\`: nota de 1 a 10 por item do checklist, corrija tudo abaixo de 8.
-10. \`export_video{destination:"videos"}\` e informe o caminho. Se usou música CC BY, entregue a linha de crédito que o review mostrou (vai na legenda do post).
+10. \`export_video{destination:"videos"}\`. Se responder \`status:"exporting"\`, chame \`job_status\` a cada 30–60 s até o job \`export\` ficar \`completed\` (o \`output\` é o caminho do MP4) e informe o caminho. Render e exportação rodam no computador do usuário: \`render_frame\`/\`review_video\` também podem responder \`status:"rendering"\` — espere e chame de novo, sem editar o projeto no meio. Se usou música CC BY, entregue a linha de crédito que o review mostrou (vai na legenda do post).
 
 **Desenho das cenas (motor HyperFrames)**
 - A cena é um fragmento HTML/CSS/SVG + uma lista \`animations\` de tweens GSAP: \`{selector, start, duration, from?, to, ease?}\`. Tempos **locais da cena** (0 = início da cena). Sem script, sem URL, sem CSS animation/transition.
@@ -62,7 +62,7 @@ const TEACHER_KIT = `
   </g>
 </svg>
 \`\`\`
-Troque INK/ACCENT pelas cores da marca. **Boca falando:** para cada palavra da narração dentro da cena, dois tweens: \`{selector:".t-mouth-open", start: w.start-S, duration:0.06, to:{opacity:1}}\` e \`{selector:".t-mouth-open", start: max(w.start-S+0.06, w.end-S-0.06), duration:0.06, to:{opacity:0}}\` (boca fechada fica sempre por baixo). Junte palavras com menos de 0,08 s de intervalo num só "abre/fecha". **Vida:** cabeça \`rotation\` ±3 a cada ~1,2 s (sine.inOut), braço \`rotation\` -25→0 quando aponta para um card, piscar: \`.t-eye\` scaleY 1→0.1→1 em 0,12 s a cada 3–4 s.
+Troque INK/ACCENT pelas cores da marca. **Boca falando:** para cada palavra da narração dentro da cena, dois tweens: \`{selector:".t-mouth-open", start: w.start-S, duration:0.05, to:{opacity:1}}\` e \`{selector:".t-mouth-open", start: w.start-S + clamp(w.end-w.start-0.05, 0.08, 0.22), duration:0.05, to:{opacity:0}}\` (boca fechada fica sempre por baixo). **Não junte palavras**: as vozes entregam palavras coladas umas nas outras e a boca ficaria aberta a frase inteira; o "abre/fecha" por palavra é o que parece fala. **Vida:** cabeça \`rotation\` ±3 a cada ~1,2 s (sine.inOut), braço \`rotation\` -25→0 quando aponta para um card, piscar: \`.t-eye\` scaleY 1→0.1→1 em 0,12 s a cada 3–4 s.
 `;
 
 const CARD_KIT = `

@@ -715,6 +715,36 @@ async function executeTool(
     await transcribe();
     return { words: state.project.words };
   }
+  if (name === "job_status")
+    return {
+      jobs: state.jobs.slice(-6).map(({ kind, label, progress, status, error, output, finishedAt }) => ({
+        kind,
+        label,
+        progress: Math.round(progress),
+        status,
+        ...(error ? { error } : {}),
+        ...(output ? { output } : {}),
+        ...(finishedAt ? { finishedAt } : {}),
+      })),
+    };
+  if (name === "export_video" && args.destination === "videos") {
+    // MCP clients cut tool calls at ~60 s; a long export keeps running and job_status reports it.
+    const running = exportVideo("videos");
+    running.catch(() => undefined);
+    const output = await Promise.race([
+      running,
+      new Promise<null>((done) => setTimeout(() => done(null), 40_000)),
+    ]);
+    if (output === null)
+      return {
+        exported: false,
+        status: "exporting",
+        message:
+          "A exportação continua no computador do usuário. Chame job_status em 30–60 s; quando o job de export estiver completed, output é o caminho do MP4.",
+        jobs: state.jobs.filter((job) => job.kind === "export").slice(-1),
+      };
+    return { exported: !!output, path: output };
+  }
   if (name === "export_video") {
     const destination = args.destination === "videos" ? "videos" : "dialog";
     const output = await exportVideo(destination);

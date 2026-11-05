@@ -116,8 +116,14 @@ export const STUDIO_TOOLS = [
   {
     name: "render_frame",
     description:
-      "Render the composed output frame at a TIMELINE second (video, scenes, captions) as an image, exactly as the export will look. Use it to check layout, text fit and timing before exporting.",
+      "Render the composed output frame at a TIMELINE second (video, scenes, captions) as an image, exactly as the export will look. Use it to check layout, text fit and timing before exporting. The first call after a change renders the whole video in the background (minutes for a 60 s reel): if it answers status 'rendering', call it again in 30–60 s without editing the project meanwhile; later calls are instant.",
     inputSchema: objectSchema({ time: number("Timeline second.", { minimum: 0 }) }, ["time"]),
+  },
+  {
+    name: "job_status",
+    description:
+      "Status of the editor's recent jobs (export, preview render, narration, downloads): kind, label, progress %, status and output (the MP4 path when an export completed). Use it after export_video or render_frame answered that work is still running.",
+    inputSchema: objectSchema(),
   },
   {
     name: "review_video",
