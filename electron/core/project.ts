@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { makeMotion, validateMotion } from "./motion-definition";
+import {
+  MAX_AUDIO_TRACKS,
+  makeAudioTrack,
+  validateAudioTrack,
+} from "./audio-tracks";
 import { VIDEO_LOOKS } from "../../src/shared/video-looks";
 import {
   captionTimelineWords,
@@ -180,6 +185,16 @@ export function validateProject(value: unknown): Project {
       fail("Animação fora da timeline.");
   }
   unique(motions);
+  if (
+    p.audio !== undefined &&
+    (!Array.isArray(p.audio) || p.audio.length > MAX_AUDIO_TRACKS)
+  )
+    fail(`Lista de faixas de áudio inválida. Use até ${MAX_AUDIO_TRACKS} faixas.`);
+  const timeline = clips.reduce((sum, c) => sum + clipDuration(c), 0);
+  const audio = ((p.audio ?? []) as unknown[]).map((t) =>
+    validateAudioTrack(t, timeline),
+  );
+  unique(audio);
   const s = obj(p.settings);
   bool(s.captions, "Legendas");
   bool(s.normalize, "Normalização");
@@ -197,6 +212,7 @@ export function validateProject(value: unknown): Project {
   return {
     ...(structuredClone(value) as Project),
     motions: structuredClone(motions),
+    ...(p.audio !== undefined ? { audio: structuredClone(audio) } : {}),
   };
 }
 
@@ -465,6 +481,17 @@ export function applyCommand(project: Project, command: EditCommand): Project {
       p.motions = (p.motions ?? []).filter((s) => s.id !== a.id);
       break;
     }
+    case "audio": {
+      const track = makeAudioTrack(p, a, id(), projectDuration(p));
+      p.audio = [...(p.audio ?? []).filter((t) => t.id !== track.id), track];
+      break;
+    }
+    case "delete_audio": {
+      if (!p.audio?.some((t) => t.id === a.id))
+        fail("Faixa de áudio não encontrada.");
+      p.audio = (p.audio ?? []).filter((t) => t.id !== a.id);
+      break;
+    }
     case "rename":
       p.name = str(a.name, "Nome", 300).trim() || fail("O nome está vazio.");
       break;
@@ -689,6 +716,11 @@ export function applyCommand(project: Project, command: EditCommand): Project {
   p.overlays = p.overlays
     .filter((o) => o.start < duration)
     .map((o) => ({ ...o, end: Math.min(o.end, duration) }));
+  // Audio tracks keep their timeline position; a shorter video only cuts what passes the end.
+  if (p.audio)
+    p.audio = p.audio
+      .filter((t) => t.start < duration - eps)
+      .map((t) => ({ ...t, duration: Math.min(t.duration, duration - t.start) }));
   p.updatedAt = new Date().toISOString();
   return validateProject(p);
 }

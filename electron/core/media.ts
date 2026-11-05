@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { audioMixGraph, audioMixInputs } from "./audio-tracks";
+import { voiceTimelineWords } from "../../src/shared/audio";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -651,6 +653,42 @@ export async function exportProject(
       "utf8",
     );
     const concatInput = ["-f", "concat", "-safe", "0", "-i", list];
+    const tracks = (project.audio ?? []).filter((t) => t.start < elapsed);
+    let audioInput: string[] = [];
+    if (tracks.length) {
+      // Narration, music and effects are mixed once over the clip audio; loudness is measured on the mix.
+      const mixScript = path.join(temp, "mix.ffgraph"),
+        mixed = path.join(temp, "mix.wav");
+      await fs.writeFile(mixScript, audioMixGraph(tracks, elapsed), "utf8");
+      options.onProgress?.(65);
+      await run(
+        ffmpegPath,
+        [
+          "-hide_banner",
+          "-loglevel",
+          "error",
+          "-y",
+          ...concatInput,
+          ...audioMixInputs(tracks),
+          "-filter_complex_script",
+          mixScript,
+          "-map",
+          "[mix]",
+          "-c:a",
+          "pcm_s16le",
+          "-ar",
+          "48000",
+          "-t",
+          n(elapsed),
+          mixed,
+        ],
+        { signal: options.signal, duration: elapsed },
+      );
+      audioInput = ["-i", mixed];
+      words.push(...voiceTimelineWords(project));
+      words.sort((a, b) => a.start - b.start);
+    }
+    const loudnessInput = audioInput.length ? audioInput : concatInput;
     let audioFilter = "anull";
     if (normalize) {
       const base = `loudnorm=I=${targetLufs}:TP=-1.5:LRA=11`;
@@ -660,7 +698,7 @@ export async function exportProject(
         [
           "-hide_banner",
           "-nostats",
-          ...concatInput,
+          ...loudnessInput,
           "-vn",
           "-af",
           `${base}:print_format=json`,
@@ -740,7 +778,7 @@ export async function exportProject(
       [
         ...motionGraph,
         `[${base}]${videoFilter}[v]`,
-        `[0:a:0]${audioFilter},aresample=48000[a]`,
+        `[${audioInput.length ? `${1 + (project.motions ?? []).length}:a:0` : "0:a:0"}]${audioFilter},aresample=48000[a]`,
       ].join(";\n"),
       "utf8",
     );
@@ -753,6 +791,7 @@ export async function exportProject(
         "-y",
         ...concatInput,
         ...motionInputs,
+        ...audioInput,
         "-filter_complex_script",
         finalScript,
         "-map",

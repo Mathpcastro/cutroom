@@ -526,6 +526,16 @@ describe("Claude loopback bridge", () => {
       "inspect_frame",
       "create_blank_canvas",
       "import_media",
+      "add_audio",
+      "list_voices",
+      "add_voiceover",
+      "search_music",
+      "add_music",
+      "get_brand",
+      "list_formats",
+      "get_format_guide",
+      "render_frame",
+      "review_video",
     ]);
     expect(
       (await (await rpc("tools/call", { name: "shell", arguments: {} })).json())

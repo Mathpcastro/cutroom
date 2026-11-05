@@ -1,7 +1,11 @@
 import { mkdir, mkdtemp, stat, writeFile, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { Project } from "../../src/shared/types";
-import { motionCacheKey, motionDocument } from "./motion-document";
+import {
+  motionCacheKey,
+  motionDocument,
+  type MotionAssets,
+} from "./motion-document";
 import { motionBrowser, motionPackageInfo } from "./motion-package";
 import { ffmpegPath, ffprobePath } from "./media";
 import { runProcess } from "./process";
@@ -18,6 +22,7 @@ export async function renderMotions(
     resources: string;
     worker: string;
     signal?: AbortSignal;
+    assets?: MotionAssets;
     onProgress: (p: number, label: string) => void;
   },
 ): Promise<RenderedMotion[]> {
@@ -32,7 +37,7 @@ export async function renderMotions(
   for (let i = 0; i < scenes.length; i++) {
     options.signal?.throwIfAborted();
     const scene = scenes[i],
-      key = motionCacheKey(scene, project.settings),
+      key = motionCacheKey(scene, project.settings, options.assets),
       output = join(options.cache, `${key}.mov`);
     const cached = await stat(output).then(
       (s) => s.size > 0,
@@ -48,6 +53,7 @@ export async function renderMotions(
             project.settings,
             options.resources,
             false,
+            options.assets,
           ),
         );
         const spec = join(work, "request.json"),

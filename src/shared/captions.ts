@@ -1,4 +1,5 @@
 import type { Project, Word } from "./types";
+import { voiceTimelineWords } from "./audio";
 
 export type CaptionMode =
   | "phrase"
@@ -537,6 +538,8 @@ export function captionTimelineWords(project: Project): CaptionWord[] {
       }
     offset += (clip.end - clip.start) / clip.speed;
   }
+  // Narration tracks caption like speech in the clips (voice-over over a blank canvas).
+  result.push(...voiceTimelineWords(project));
   return result.sort((a, b) => a.start - b.start);
 }
 export const captionAssTime = (seconds: number) => {
