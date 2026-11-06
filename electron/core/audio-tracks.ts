@@ -107,11 +107,26 @@ export function audioMixGraph(tracks: AudioTrack[], length: number): string {
       delay = Math.round(track.start * 1000),
       fadeIn = track.fadeIn ?? 0,
       fadeOut = track.fadeOut ?? 0;
+    // Loops repeat inside the graph (aloop over the decoded file, then a bounded atrim): the input
+    // itself is read once, so FFmpeg never depends on an endless -stream_loop demuxer.
+    const loopSamples = Math.max(1, Math.round((track.fileDuration - (track.offset ?? 0)) * 48000));
     const chain = [
-      `atrim=start=${n(track.offset ?? 0)}:duration=${n(track.duration)}`,
-      "asetpts=PTS-STARTPTS",
-      "aresample=48000",
-      "aformat=sample_fmts=fltp:channel_layouts=stereo",
+      ...(track.loop
+        ? [
+            `atrim=start=${n(track.offset ?? 0)}`,
+            "asetpts=PTS-STARTPTS",
+            "aresample=48000",
+            "aformat=sample_fmts=fltp:channel_layouts=stereo",
+            `aloop=loop=-1:size=${loopSamples}`,
+            `atrim=duration=${n(track.duration)}`,
+            "asetpts=PTS-STARTPTS",
+          ]
+        : [
+            `atrim=start=${n(track.offset ?? 0)}:duration=${n(track.duration)}`,
+            "asetpts=PTS-STARTPTS",
+            "aresample=48000",
+            "aformat=sample_fmts=fltp:channel_layouts=stereo",
+          ]),
       `volume=${n(track.gain ?? 0)}dB`,
       ...(fadeIn > 0 ? [`afade=t=in:st=0:d=${n(fadeIn)}`] : []),
       ...(fadeOut > 0
@@ -164,19 +179,12 @@ export function audioMixGraph(tracks: AudioTrack[], length: number): string {
 }
 
 /** Input arguments for the track files (loops repeat the file). */
-/**
- * FFmpeg inputs for the tracks. A looped track is an infinite input: it is also bounded with -t
- * (offset + timeline length) so FFmpeg always ends, whatever the platform build does with atrim.
- */
 /** Second decode of the clip audio + voice tracks for the ducking key (only when music ducks). */
 export function audioMixKeyInputs(tracks: AudioTrack[], clipInput: string[]): string[] {
   if (!needsDuckKey(tracks)) return [];
   return [...clipInput, ...tracks.filter((t) => t.kind === "voice").flatMap((t) => ["-i", t.path])];
 }
-export function audioMixInputs(tracks: AudioTrack[], length?: number): string[] {
-  return tracks.flatMap((t) => [
-    ...(t.loop ? ["-stream_loop", "-1", ...(length ? ["-t", (length + (t.offset ?? 0) + 1).toFixed(3)] : [])] : []),
-    "-i",
-    t.path,
-  ]);
+/** FFmpeg inputs for the tracks, each read once (loops happen inside the graph with aloop). */
+export function audioMixInputs(tracks: AudioTrack[], _length?: number): string[] {
+  return tracks.flatMap((t) => ["-i", t.path]);
 }
