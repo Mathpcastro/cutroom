@@ -1,4 +1,5 @@
 import type { Project, Word } from "./types";
+import { voiceTimelineWords } from "./audio";
 
 export type CaptionMode =
   | "phrase"
@@ -537,6 +538,8 @@ export function captionTimelineWords(project: Project): CaptionWord[] {
       }
     offset += (clip.end - clip.start) / clip.speed;
   }
+  // Narration tracks caption like speech in the clips (voice-over over a blank canvas).
+  result.push(...voiceTimelineWords(project));
   return result.sort((a, b) => a.start - b.start);
 }
 export const captionAssTime = (seconds: number) => {
@@ -598,7 +601,8 @@ export function captionAssParts(
 ): { style: string; events: string[] } {
   const s = resolveCaptionSettings(project.settings.captionStyle),
     { width: w, height: h } = project.settings;
-  const unit = Math.min(w, h) / 1080,
+  // Presets are sized for 16:9; vertical (Reels/Shorts) reads on a phone at arm's length and needs larger type.
+  const unit = (Math.min(w, h) / 1080) * (h > w * 1.2 ? 1.4 : 1),
     size = s.fontSize * unit,
     outline = s.outline * unit;
   const align = s.position === "top" ? 8 : s.position === "center" ? 5 : 2;

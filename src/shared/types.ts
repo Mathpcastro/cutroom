@@ -89,6 +89,42 @@ export interface MotionScene {
   accent?: string;
   background?: string;
 }
+export type AudioKind = "voice" | "music" | "sfx";
+/** Word inside an audio file, in FILE seconds (before track.offset/start are applied). */
+export interface AudioWord {
+  text: string;
+  start: number;
+  end: number;
+}
+export interface AudioTrack {
+  id: string;
+  kind: AudioKind;
+  name: string;
+  path: string;
+  /** Timeline second where the track starts. Tracks are not moved by video cuts. */
+  start: number;
+  /** Second inside the file where playback starts. */
+  offset?: number;
+  /** Seconds played on the timeline (with loop, may exceed the file). */
+  duration: number;
+  fileDuration: number;
+  /** Volume change in dB. */
+  gain?: number;
+  fadeIn?: number;
+  fadeOut?: number;
+  loop?: boolean;
+  /** Music only: lower it while voice/clip audio plays. Default true for music. */
+  duck?: boolean;
+  words?: AudioWord[];
+  source?: {
+    provider: string;
+    title?: string;
+    author?: string;
+    license?: string;
+    url?: string;
+    voice?: string;
+  };
+}
 export interface Project {
   version: 1;
   id: string;
@@ -100,6 +136,7 @@ export interface Project {
   words: Word[];
   overlays: Overlay[];
   motions?: MotionScene[];
+  audio?: AudioTrack[];
   settings: {
     captions: boolean;
     normalize: boolean;
@@ -186,6 +223,8 @@ export type CommandName =
   | "overlay"
   | "motion"
   | "delete_motion"
+  | "audio"
+  | "delete_audio"
   | "remove_silence"
   | "remove_fillers"
   | "preset"
@@ -196,10 +235,8 @@ export interface EditCommand {
   name: CommandName;
   args: Record<string, unknown>;
 }
-export interface EditorEvent {
-  type: "state";
-  state: AppSnapshot;
-}
+export type StudioTab = "start" | "brand" | "voices" | "films" | "publish";
+export type EditorEvent = { type: "state"; state: AppSnapshot } | { type: "studio"; tab: StudioTab };
 export interface CutroomAPI {
   request<T = AppSnapshot>(method: string, params?: unknown): Promise<T>;
   onEvent(callback: (event: EditorEvent) => void): () => void;

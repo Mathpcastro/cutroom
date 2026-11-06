@@ -5,6 +5,7 @@ import {
   ipcMain,
   nativeTheme,
   protocol,
+  safeStorage,
   shell,
 } from "electron";
 import { randomUUID } from "node:crypto";
@@ -13,6 +14,7 @@ import {
   access,
   mkdir,
   readFile,
+  readdir,
   realpath,
   stat,
   writeFile,
@@ -58,6 +60,22 @@ import {
   applyNativeChatCommand,
 } from "./core/chat-commands";
 import { startWindowsAutoUpdate } from "./core/updater";
+import { SecretStore } from "./core/secrets";
+import {
+  BrandStore,
+  carrossellProfiles,
+  importCarrossellBrand,
+} from "./core/brand";
+import { Studio, probeAudio } from "./core/studio";
+import { Films } from "./core/film";
+import { FilmStudio } from "./core/film-studio";
+import { installSkill } from "./core/skill";
+import { Publisher } from "./core/publish";
+import { OsReelScheduler, SCHEDULE_FLAG } from "./core/reel-schedule";
+import { motionBrowser, motionPackageInfo } from "./core/motion-package";
+import { createRequire } from "node:module";
+import { localSpeech, localVoices } from "./core/local-voice";
+import type { MotionAssets } from "./core/motion-document";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -91,6 +109,22 @@ let connectionGeneration = 0;
 let cacheDir: string;
 const motionDocuments = new Map<string, string>();
 let userDir: string;
+let studio: Studio;
+let filmStudio: FilmStudio;
+let publisher: Publisher;
+let secretStore: SecretStore;
+let brandStore: BrandStore;
+/** Host images for scenes: the brand logo as data-asset="logo". */
+async function motionAssets(): Promise<MotionAssets> {
+  const brand = await brandStore?.get();
+  return brand?.logo ? { logo: brand.logo } : {};
+}
+const CANVAS_SIZES = {
+  "16:9": [1920, 1080],
+  "9:16": [1080, 1920],
+  "1:1": [1080, 1080],
+  "4:5": [1080, 1350],
+} as const;
 const appearanceSchema = z
   .object({
     mode: z.enum(["light", "dark"]),
@@ -155,7 +189,17 @@ function activity(entry: AgentActivity) {
   ].slice(-200);
   emit();
 }
+/** Blank canvases carry silent audio: there is nothing to transcribe in them. */
+const isCanvas = (path: string) =>
+  dirname(resolve(path)) === resolve(cacheDir) &&
+  /^canvas-[\w-]+\.mp4$/i.test(path.split(/[\\/]/).pop() ?? "");
 async function requireTranscription(signal?: AbortSignal) {
+  // Narrated canvases caption the voice track, which already has word timings.
+  if (
+    (state.project.audio ?? []).some((t) => t.kind === "voice" && t.words?.length) &&
+    state.project.media.every((media) => !media.hasAudio || isCanvas(media.path))
+  )
+    return;
   const missing = state.project.media.some(
     (media) =>
       media.hasAudio &&
@@ -213,7 +257,10 @@ function idle() {
 }
 async function allowProjectFiles() {
   const nextFiles = new Set<string>();
-  for (const media of state.project.media)
+  for (const media of [
+    ...state.project.media,
+    ...(state.project.audio ?? []).map((track) => ({ path: track.path })),
+  ] as { path: string; thumbnail?: string; proxy?: string }[])
     for (const path of [media.path, media.thumbnail, media.proxy])
       if (path) {
         try {
@@ -405,6 +452,8 @@ async function executeCommand(value: unknown) {
         "overlay",
         "motion",
         "delete_motion",
+        "audio",
+        "delete_audio",
         "remove_silence",
         "remove_fillers",
         "preset",
@@ -588,19 +637,61 @@ async function runChatCommand(value: unknown) {
     throw error;
   }
 }
-async function exportVideo() {
-  if (!state.project.clips.length) throw new Error("A timeline está vazia.");
-  const result = await dialog.showSaveDialog(window!, {
-    title: "Exportar vídeo",
-    defaultPath: `${state.project.name}-editado.mp4`,
-    filters: [{ name: "Vídeo MP4", extensions: ["mp4"] }],
+/** Scenes first (cached), then the FFmpeg export. Shared by the export dialog, agent exports and reviews. */
+async function renderAndExport(
+  snapshot: Project,
+  output: string,
+  signal: AbortSignal,
+  onProgress: (value: number, label?: string) => void,
+) {
+  const motions = await renderMotions(snapshot, {
+    cache: join(cacheDir, "motions"),
+    packages: packages.root,
+    resources,
+    worker: join(here, "render-motion.js"),
+    signal,
+    assets: await motionAssets(),
+    onProgress: (p, label) => onProgress(p * 0.35, label),
   });
-  if (result.canceled || !result.filePath) return emit();
-  const output = resolve(
-    result.filePath.endsWith(".mp4")
-      ? result.filePath
-      : `${result.filePath}.mp4`,
-  );
+  await exportProject(snapshot, output, {
+    signal,
+    onProgress: (p) => onProgress(motions.length ? 35 + p * 0.65 : p),
+    motions,
+    fontPath: join(resources, "fonts", "Barlow-Regular.ttf"),
+  });
+}
+async function exportVideo(destination: "dialog" | "videos" = "dialog") {
+  if (!state.project.clips.length) throw new Error("A timeline está vazia.");
+  let output: string;
+  if (destination === "videos") {
+    // Agents finish unattended: a fresh name in Videos/CutRoom, never an existing file.
+    const folder = join(app.getPath("videos"), "CutRoom");
+    await mkdir(folder, { recursive: true });
+    const safe =
+      state.project.name
+        .replace(/[^\p{L}\p{N} _-]+/gu, "")
+        .trim()
+        .slice(0, 80) || "video";
+    output = join(
+      folder,
+      `${safe}-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.mp4`,
+    );
+  } else {
+    const result = await dialog.showSaveDialog(window!, {
+      title: "Exportar vídeo",
+      defaultPath: `${state.project.name}-editado.mp4`,
+      filters: [{ name: "Vídeo MP4", extensions: ["mp4"] }],
+    });
+    if (result.canceled || !result.filePath) {
+      emit();
+      return undefined;
+    }
+    output = resolve(
+      result.filePath.endsWith(".mp4")
+        ? result.filePath
+        : `${result.filePath}.mp4`,
+    );
+  }
   if (
     state.project.media.some(
       (media) => resolve(media.path).toLowerCase() === output.toLowerCase(),
@@ -614,25 +705,13 @@ async function exportVideo() {
     "export",
     "Exportando no seu computador…",
     async (signal, onProgress) => {
-      const motions = await renderMotions(snapshot, {
-        cache: join(cacheDir, "motions"),
-        packages: packages.root,
-        resources,
-        worker: join(here, "render-motion.js"),
-        signal,
-        onProgress: (p, label) => onProgress(p * 0.35, label),
-      });
-      await exportProject(snapshot, output, {
-        signal,
-        onProgress: (p) => onProgress(motions.length ? 35 + p * 0.65 : p),
-        motions,
-        fontPath: join(resources, "fonts", "Barlow-Regular.ttf"),
-      });
+      await renderAndExport(snapshot, output, signal, onProgress);
       return output;
     },
   );
   message("system", `Exportação concluída: ${output}`);
-  return emit();
+  emit();
+  return output;
 }
 async function executeTool(
   name: string,
@@ -647,12 +726,93 @@ async function executeTool(
     await transcribe();
     return { words: state.project.words };
   }
-  if (name === "export_video") {
-    await exportVideo();
+  if (name === "job_status")
     return {
+      jobs: state.jobs.slice(-6).map(({ kind, label, progress, status, error, output, finishedAt }) => ({
+        kind,
+        label,
+        progress: Math.round(progress),
+        status,
+        ...(error ? { error } : {}),
+        ...(output ? { output } : {}),
+        ...(finishedAt ? { finishedAt } : {}),
+      })),
+    };
+  if (name === "export_video" && args.destination === "videos") {
+    // MCP clients cut tool calls at ~60 s; a long export keeps running and job_status reports it.
+    const running = exportVideo("videos");
+    running.catch(() => undefined);
+    const output = await Promise.race([
+      running,
+      new Promise<null>((done) => setTimeout(() => done(null), 40_000)),
+    ]);
+    if (output === null)
+      return {
+        exported: false,
+        status: "exporting",
+        message:
+          "A exportação continua no computador do usuário. Chame job_status em 30–60 s; quando o job de export estiver completed, output é o caminho do MP4.",
+        jobs: state.jobs.filter((job) => job.kind === "export").slice(-1),
+      };
+    return { exported: !!output, path: output };
+  }
+  if (name === "export_video") {
+    const destination = args.destination === "videos" ? "videos" : "dialog";
+    const output = await exportVideo(destination);
+    return {
+      exported: !!output,
+      ...(output
+        ? { path: output }
+        : { message: "Exportação cancelada pelo usuário." }),
       jobs: state.jobs.filter((job) => job.kind === "export").slice(-1),
     };
   }
+  const studioTools: Record<
+    string,
+    (a: Record<string, unknown>) => Promise<unknown> | unknown
+  > = {
+    add_audio: (a) => studio.addAudio(a),
+    list_voices: (a) => studio.listVoices(a.provider as never),
+    add_voiceover: (a) => studio.addVoiceover(a),
+    search_music: (a) => studio.searchMusic(a),
+    add_music: (a) => studio.addMusic(a),
+    get_brand: () => studio.getBrand(),
+    list_formats: () => studio.listFormats(),
+    get_format_guide: (a) => studio.getFormatGuide(a),
+    render_frame: (a) => studio.renderFrame(a),
+    review_video: (a) => studio.reviewVideo(a),
+    create_film: (a) => filmStudio.create(a),
+    list_films: () => filmStudio.list(),
+    film_voiceover: (a) => filmStudio.voiceover(a),
+    film_asset: (a) => filmStudio.asset(a),
+    write_film_file: (a) => filmStudio.write(a),
+    read_film_file: (a) => filmStudio.read(a),
+    film_check: (a) => filmStudio.check(a),
+    film_capture_page: (a) => filmStudio.capture(a),
+    film_review: (a) => filmStudio.review(a),
+    instagram_accounts: () => publisher.settings(),
+    schedule_reel: (a) => publisher.schedule(a),
+    schedule_reels_daily: (a) => publisher.scheduleSeries(a),
+    cancel_scheduled_reel: (a) => publisher.cancelScheduled(z.object({ id: z.string().max(40) }).strict().parse(a).id),
+    open_studio: (a) => {
+      const { tab } = z.object({ tab: z.enum(["start", "brand", "voices", "films", "publish"]) }).strict().parse(a);
+      if (!window || window.isDestroyed()) throw new Error("A janela do CutRoom está fechada.");
+      window.webContents.send("editor:event", { type: "studio", tab });
+      if (window.isMinimized()) window.restore();
+      window.focus();
+      return { opened: tab, message: "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar." };
+    },
+    publish_reel: async (a) => {
+      // Publishing waits for Meta to process the video (can pass 60 s): answer within 40 s, keep going.
+      const task = publisher.publish(a);
+      task.catch(() => undefined);
+      const done = await Promise.race([task.then((r) => ({ status: "published", ...r })), new Promise<undefined>((r) => setTimeout(() => r(undefined), 40_000))]);
+      return done ?? { status: "publishing", message: "O Reels está sendo publicado. Consulte job_status (job publish) em 30–60 s; não publique de novo." };
+    },
+    film_stills: (a) => filmStudio.stills(a),
+    render_film: (a) => filmStudio.render(a),
+  };
+  if (studioTools[name]) return studioTools[name](args);
   if (name === "inspect_frame") {
     const { mediaId, time } = z
       .object({ mediaId: z.string(), time: z.number().finite().min(0) })
@@ -696,6 +856,7 @@ async function executeTool(
       duration = 15,
       color = "#151515",
       name: canvasName = "Canvas Motion",
+      aspect,
     } = z
       .object({
         duration: z.number().min(1).max(600).default(15),
@@ -704,8 +865,13 @@ async function executeTool(
           .regex(/^#[0-9a-f]{6}$/i)
           .default("#151515"),
         name: z.string().max(100).default("Canvas Motion"),
+        aspect: z.enum(["16:9", "9:16", "1:1", "4:5"]).optional(),
       })
       .parse(args);
+    // The first media sets the export size, so a vertical canvas makes a vertical project.
+    const [canvasW, canvasH] = state.project.media.length
+      ? [state.project.settings.width, state.project.settings.height]
+      : CANVAS_SIZES[aspect ?? "16:9"];
     const canvasColorHex = color.replace("#", "0x");
     const canvasFile = join(cacheDir, `canvas-${randomUUID()}.mp4`);
     await runProcess(
@@ -714,7 +880,7 @@ async function executeTool(
         "-f",
         "lavfi",
         "-i",
-        `color=c=${canvasColorHex}:s=1920x1080:d=${duration}`,
+        `color=c=${canvasColorHex}:s=${canvasW}x${canvasH}:r=30:d=${duration}`,
         "-f",
         "lavfi",
         "-i",
@@ -743,6 +909,7 @@ async function executeTool(
       success: true,
       duration,
       color,
+      size: `${state.project.settings.width}x${state.project.settings.height}`,
       project: state.project,
       message: `Canvas de ${duration}s criado com sucesso. Agora você pode adicionar motions, títulos e efeitos no intervalo de 0 a ${duration}s!`,
     };
@@ -880,6 +1047,96 @@ async function request(method: string, params?: unknown): Promise<unknown> {
     case "getState":
       state.packages = await packages.list();
       return emit();
+    case "getVoiceSettings":
+      return studio.voiceSettings();
+    case "setVoiceKey": {
+      const { provider, key } = z
+        .object({
+          provider: z.enum(["elevenlabs", "openai"]),
+          key: z.string().max(500).optional(),
+        })
+        .parse(params);
+      return studio.setVoiceKey(provider, key);
+    }
+    case "setVoicePreferences":
+      return studio.setVoicePreferences(params);
+    case "listVoices":
+      return studio.listVoices(
+        z
+          .object({ provider: z.enum(["elevenlabs", "openai", "kokoro", "local"]).optional() })
+          .parse(params ?? {}).provider,
+      );
+    case "listFormats":
+      return studio.listFormats();
+    case "getPublishSettings":
+      return publisher.settings();
+    case "setComposioKey": {
+      const { key } = z.object({ key: z.string().max(500).optional() }).parse(params ?? {});
+      return publisher.setKey(key);
+    }
+    case "refreshInstagram":
+      return publisher.refresh();
+    case "setDefaultInstagram":
+      return publisher.setDefault(z.object({ id: z.string().max(100) }).parse(params).id);
+    case "listVideos":
+      return { videos: await publisher.videos() };
+    case "publishReel":
+      return publisher.publish(params);
+    case "scheduleReel":
+      return publisher.schedule(params);
+    case "scheduleReelSeries":
+      return publisher.scheduleSeries(params);
+    case "cancelScheduledReel":
+      return publisher.cancelScheduled(z.object({ id: z.string().max(40) }).parse(params).id);
+    case "publishLateReel":
+      return publisher.publishLate(z.object({ id: z.string().max(40) }).parse(params).id);
+    case "listFilms":
+      return filmStudio.list();
+    case "openFilmFolder": {
+      const { id } = z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) }).parse(params);
+      await shell.openPath(join(app.getPath("videos"), "CutRoom", "filmes", id));
+      return { ok: true };
+    }
+    case "latestFilmRender": {
+      // Newest MP4 rendered from this film (Videos/CutRoom/<slug>-<date>.mp4), playable in the Studio.
+      const { id } = z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) }).parse(params);
+      const folder = join(app.getPath("videos"), "CutRoom");
+      const films = (await filmStudio.list()).films;
+      const film = films.find((f) => f.id === id);
+      if (!film) throw new Error("Filme não encontrado.");
+      const prefix = film.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+      const names = (await readdir(folder).catch(() => [] as string[])).filter((n) => n.startsWith(`${prefix}-`) && n.endsWith(".mp4") && !n.includes(".partial"));
+      if (!names.length) return { path: null };
+      names.sort();
+      const path = await realpath(join(folder, names[names.length - 1]));
+      allowedFiles.add(path);
+      return { path };
+    }
+    case "renderFilm":
+      return filmStudio.render({ film: z.object({ id: z.string() }).parse(params).id });
+    case "revealVideo": {
+      const { path } = z.object({ path: z.string() }).parse(params);
+      const base = resolve(join(app.getPath("videos"), "CutRoom"));
+      if (!resolve(path).startsWith(base)) throw new Error("O vídeo precisa estar em Vídeos/CutRoom.");
+      shell.showItemInFolder(resolve(path));
+      return { ok: true };
+    }
+    case "installAgentSkill":
+      return { files: await installSkill(app.getPath("home"), app.getVersion()) };
+    case "getBrand":
+      return { brand: (await brandStore.get()) ?? null };
+    case "saveBrand":
+      return { brand: await brandStore.set(params) };
+    case "carrossellProfiles":
+      return carrossellProfiles();
+    case "importCarrossellBrand": {
+      const { profileId } = z
+        .object({ profileId: z.string().max(100).optional() })
+        .parse(params ?? {});
+      return {
+        brand: await brandStore.set(await importCarrossellBrand(profileId)),
+      };
+    }
     case "dismissOnboarding":
       state.onboarding = {
         dismissed: true,
@@ -1053,7 +1310,8 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return transcribe(true);
     case "exportVideo":
       idle();
-      return exportVideo();
+      await exportVideo();
+      return emit();
     case "installPackage": {
       idle();
       const { id } = z.object({ id: z.string() }).parse(params);
@@ -1087,12 +1345,15 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       const { id } = z.object({ id: z.string() }).parse(params);
       const scene = state.project.motions?.find((s) => s.id === id);
       if (!scene) throw new Error("Animação não encontrada.");
-      const key = motionCacheKey(scene, state.project.settings);
+      const assets = await motionAssets();
+      const key = motionCacheKey(scene, state.project.settings, assets);
       if (!motionDocuments.has(key)) {
         const html = await motionDocument(
           scene,
           state.project.settings,
           resources,
+          true,
+          assets,
         );
         if (motionDocuments.size >= 100)
           motionDocuments.delete(motionDocuments.keys().next().value!);
@@ -1142,6 +1403,16 @@ async function request(method: string, params?: unknown): Promise<unknown> {
   }
 }
 
+// One CutRoom per profile: a scheduled launch while the app is open hands over to the open window
+// (which publishes), so a Reel can never be posted twice by two processes.
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on("second-instance", (_event, argv) => {
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore();
+    if (!argv.includes(SCHEDULE_FLAG)) window.focus();
+  }
+  if (argv.includes(SCHEDULE_FLAG)) void publisher?.runDue().then(emit, () => undefined);
+});
 app.whenReady().then(async () => {
   userDir = process.env.CUTROOM_USER_DATA || app.getPath("userData");
   try {
@@ -1156,6 +1427,71 @@ app.whenReady().then(async () => {
   await mkdir(cacheDir, { recursive: true });
   await mkdir(join(userDir, "agent-workspace"), { recursive: true });
   packages = new PackageManager(join(userDir, "packages"), resources);
+  brandStore = new BrandStore(userDir);
+  studio = new Studio({
+    project: () => state.project,
+    command: async (command) => {
+      await executeCommand(command);
+    },
+    job: (kind, label, run) => job(kind, label, run),
+    allowFile: async (path) => {
+      allowedFiles.add(await realpath(path));
+    },
+    cacheDir,
+    userDir,
+    secrets: (secretStore = new SecretStore(userDir, safeStorage)),
+    brand: brandStore,
+    transcribeFile: (media, signal, progress) =>
+      packages.transcribe(media, cacheDir, progress, signal),
+    exportTo: (project, output, signal, progress) =>
+      renderAndExport(project, output, signal, progress),
+    kokoroSpeech: (text, voice, signal) =>
+      packages.kokoroSpeak(text, voice, join(cacheDir, "voice"), signal),
+    kokoroReady: () => packages.kokoroInstalled(),
+    ...(["win32", "darwin"].includes(process.platform)
+      ? {
+          localSpeech: async (text: string, voice: string | undefined, signal: AbortSignal) => {
+            const dir = join(cacheDir, "voice");
+            await mkdir(dir, { recursive: true });
+            return localSpeech(text, voice, signal, dir, (path) => probeAudio(path, signal));
+          },
+          localVoices,
+        }
+      : {}),
+  });
+  publisher = new Publisher({
+    secrets: secretStore,
+    userDir,
+    videosDir: join(app.getPath("videos"), "CutRoom"),
+    job: (kind, label, run) => job(kind, label, run),
+    os: new OsReelScheduler(
+      process.execPath,
+      app.isPackaged ? [SCHEDULE_FLAG] : [app.getAppPath(), SCHEDULE_FLAG],
+    ),
+  });
+  // Reels autopilot: due posts go out every minute while CutRoom is open (and right away when the
+  // operating system opened it for a scheduled post).
+  setInterval(() => void publisher.runDue().then((r) => r.length && emit(), () => undefined), 60_000);
+  setTimeout(() => void publisher.runDue().then((r) => r.length && emit(), () => undefined), process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000);
+  filmStudio = new FilmStudio(
+    {
+      films: new Films(
+        join(app.getPath("videos"), "CutRoom", "filmes"),
+        join(resources, "film-kit"),
+        createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"),
+        join(resources, "film-recipes"),
+      ),
+      brand: brandStore,
+      videosDir: join(app.getPath("videos"), "CutRoom"),
+      runner: async () => {
+        if (!(await motionPackageInfo(packages.root)).installed)
+          throw new Error("Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.");
+        return { worker: join(here, "render-motion.js"), browser: motionBrowser(packages.root) };
+      },
+      job: (kind, label, run) => job(kind, label, run),
+    },
+    studio,
+  );
   state.packages = await packages.list();
   try {
     const preferences = JSON.parse(
@@ -1194,6 +1530,13 @@ app.whenReady().then(async () => {
             ".webm": "video/webm",
             ".jpg": "image/jpeg",
             ".png": "image/png",
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".m4a": "audio/mp4",
+            ".aac": "audio/aac",
+            ".ogg": "audio/ogg",
+            ".opus": "audio/ogg",
+            ".flac": "audio/flac",
           } as Record<string, string>
         )[extname(path).toLowerCase()] || "application/octet-stream";
       const headers: Record<string, string> = {

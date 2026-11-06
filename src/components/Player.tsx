@@ -17,6 +17,7 @@ import { duration, locateClip, timecode } from "../lib/editor";
 import { OverlayPreview } from "./OverlayPreview";
 import { CaptionPreview } from "./CaptionPreview";
 import { MotionPreview } from "./MotionPreview";
+import { AudioTracksPreview } from "./AudioTracksPreview";
 import { videoLookCss, wipeProgress } from "../shared/video-looks";
 
 interface Props {
@@ -359,6 +360,12 @@ export function Player({
               </div>
             )}
             <MotionPreview project={project} time={time} />
+            <AudioTracksPreview
+              project={project}
+              time={time}
+              playing={playing}
+              muted={volumeMuted}
+            />
             {!active?.clip.muted && (
               <CaptionPreview project={project} time={time} />
             )}

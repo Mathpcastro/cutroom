@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CutRoom — o vídeo que faz o seu SaaS vender no orgânico</title>
+<meta name="description" content="O agente faz o Reels, o piloto automático posta, o carrossel converte. Funil orgânico para vender o seu SaaS sem tráfego pago.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #ff5a36; --ink: #111; --paper: #fff; --soft: #f2f0ec; --grey: #6b6560; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Instrument Sans", system-ui, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.5; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .ribbon { background: var(--ink); color: #fff; text-align: center; padding: 12px 16px; font-size: 15px; }
+  .ribbon b { color: var(--accent); }
+  h1 { font: 58px/1 Anton, Impact, sans-serif; text-transform: uppercase; letter-spacing: .4px; }
+  h1 em, h2 em { font: italic 400 1em/1 "Instrument Serif", serif; text-transform: none; color: var(--accent); letter-spacing: 0; }
+  h2 { font: 44px/1.05 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 12px; }
+  .sub { font-size: 18px; color: var(--grey); max-width: 760px; margin-bottom: 26px; }
+  section { padding: 64px 0; }
+  .soft { background: var(--soft); }
+  .dark { background: var(--ink); color: #fff; }
+  .dark .sub { color: rgba(255,255,255,.7); }
+  .cta { display: inline-flex; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 19px "Instrument Sans"; text-decoration: none; box-shadow: 0 14px 40px rgba(255,90,54,.35); }
+  .cta small { font-weight: 500; opacity: .9; }
+  .price { margin-top: 12px; font-size: 15px; color: var(--grey); }
+  .no { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--grey); }
+  .note { margin-top: 18px; font-size: 13px; color: var(--grey); max-width: 820px; }
+
+  /* Dobra 1 */
+  .hero { padding: 40px 0; display: grid; grid-template-columns: 1.15fr .85fr; gap: 44px; align-items: center; min-height: calc(100vh - 46px); }
+  .lead { font-size: 19px; margin: 18px 0 20px; max-width: 580px; }
+  .mech { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .mech span { padding: 8px 14px; border-radius: 999px; background: var(--soft); font: 600 14px "Instrument Sans"; }
+  .mech span b { color: var(--accent); }
+  .phone { justify-self: center; width: min(300px, 78vw); aspect-ratio: 9/16; border-radius: 36px; overflow: hidden; background: #000; border: 10px solid var(--ink); box-shadow: 0 30px 80px rgba(0,0,0,.22); position: relative; }
+  .phone video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Comparativo: 2 dobras de 3 */
+  .fold { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
+  .fold > .wrap { width: 100%; min-width: 0; }
+  .trio { min-width: 0; }
+  html, body { overflow-x: hidden; }
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .case { position: relative; background: var(--paper); border-radius: 26px; padding: 14px; box-shadow: 0 16px 50px rgba(0,0,0,.06); }
+  .case h3 { font: 700 18px "Instrument Sans"; margin: 4px 4px 10px; }
+  .case h3 span { color: var(--accent); }
+  .reel { position: relative; aspect-ratio: 9/16; max-height: 60vh; margin: 0 auto; border-radius: 20px; overflow: hidden; background: #000; }
+  .reel video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tag-ours { position: absolute; left: 10px; bottom: 10px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 12px "Instrument Sans"; letter-spacing: .5px; text-transform: uppercase; }
+  .orig { position: absolute; right: 10px; bottom: 10px; width: 30%; border-radius: 12px; overflow: hidden; border: 3px solid #fff; box-shadow: 0 8px 24px rgba(0,0,0,.35); text-decoration: none; background: #000; }
+  .orig img { width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block; }
+  .orig span { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; background: rgba(0,0,0,.78); color: #fff; font: 700 10px/1.25 "Instrument Sans"; text-align: center; }
+  .sound { position: absolute; left: 10px; top: 10px; padding: 7px 12px; border-radius: 999px; border: 0; background: rgba(0,0,0,.65); color: #fff; font: 600 12px "Instrument Sans"; cursor: pointer; }
+  .case p { font-size: 14px; color: var(--grey); margin: 10px 4px 2px; }
+
+  /* Monetização */
+  .ways { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .way { background: var(--paper); border-radius: 24px; padding: 28px; }
+  .way b.n { display: block; font: 48px/1 Anton, Impact, sans-serif; color: var(--accent); margin-bottom: 6px; }
+  .way h3 { font-size: 22px; margin-bottom: 8px; }
+  .way p { font-size: 16px; }
+  .way ul { margin: 10px 0 0 18px; font-size: 15px; }
+  .way li { margin-bottom: 4px; }
+  .funnel { display: grid; grid-template-columns: repeat(4, 1fr); margin: 8px 0 22px; }
+  .stage-f { padding: 22px 22px 22px 30px; background: #2a2623; color: #fff; clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%); }
+  .stage-f:first-child { background: var(--ink); clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%); }
+  .stage-f:nth-child(3) { background: #3a332e; } .stage-f:nth-child(4) { background: var(--accent); }
+  .stage-f b { display: block; font: 28px/1 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 6px; }
+  .stage-f span { font-size: 14px; opacity: .9; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .day-f { background: var(--soft); border-radius: 14px; padding: 12px 10px; font-size: 12px; }
+  .day-f strong { display: block; font: 20px Anton, Impact, sans-serif; margin-bottom: 4px; }
+  .day-f i { display: block; font-style: normal; padding: 5px 7px; border-radius: 9px; margin-top: 5px; }
+  .day-f .r { background: var(--accent); color: #fff; } .day-f .c { background: var(--ink); color: #fff; }
+  .panel { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+  .panel th, .panel td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(0,0,0,.08); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  ul.inc { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; }
+  ul.inc li { padding-left: 28px; position: relative; font-size: 17px; }
+  ul.inc li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+  .final { text-align: center; }
+  footer { padding: 30px 0 50px; text-align: center; font-size: 13px; color: var(--grey); }
+
+  @media (max-width: 860px) {
+    h1 { font-size: 40px; } h2 { font-size: 32px; }
+    .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 30px; }
+    .fold { min-height: auto; }
+    /* Cada dobra vira um carrossel de arrastar no celular. */
+    .trio { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; padding-bottom: 8px; }
+    .case { flex: 0 0 78%; scroll-snap-align: center; }
+    .reel { max-height: none; }
+    .ways, ul.inc, .funnel { grid-template-columns: 1fr; }
+    .stage-f, .stage-f:first-child { clip-path: none; border-radius: 14px; margin-bottom: 6px; }
+    .week { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+  <div class="ribbon">Seu acesso ao <b>Carrossell</b> está garantido. Antes de ir: uma oferta que só aparece agora.</div>
+
+  <!-- DOBRA 1: a tese e a oferta -->
+  <div class="wrap">
+    <header class="hero">
+      <div>
+        <h1>O carrossel aquece. <em>O Reels traz gente nova.</em> Juntos, vendem o seu SaaS sem tráfego pago.</h1>
+        <p class="lead">O <b>CutRoom</b> é o editor que o Claude Code e o Codex controlam: você pede o vídeo, o agente escreve, narra, anima e entrega o Reels pronto com a sua marca do Carrossell. O piloto automático posta um por dia, e todo vídeo termina levando para o link do seu perfil.</p>
+        <div class="mech"><span><b>1</b> Reels todo dia</span><span><b>2</b> visita no perfil</span><span><b>3</b> clique no link</span><span><b>4</b> venda</span></div>
+        <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o CutRoom <small>por R$ 97</small></a>
+        <p class="price">Pagamento único, só nesta página.</p>
+        <a class="no" href="#RECUSAR" data-cakto-downsell>Não, obrigado. Vou ficar só com os carrosséis.</a>
+      </div>
+      <div class="phone"><video src="videos/stickman.mp4" poster="videos/stickman.jpg" autoplay muted loop playsinline data-autoplay></video></div>
+    </header>
+  </div>
+
+  <!-- DOBRAS 2 e 3: os vídeos feitos no CutRoom -->
+  <section class="soft fold">
+    <div class="wrap">
+      <h2>Feito no CutRoom. <em>Sem câmera, sem editor.</em></h2>
+      <p class="sub">Os formatos que mais viralizam em vídeo feito com código, prontos para o seu SaaS. Toque em um vídeo para ouvir.</p>
+      <div class="trio">
+        <div class="case"><h3>Suspense de <span>stickman</span></h3>
+          <div class="reel"><video src="videos/stickman.mp4" poster="videos/stickman.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">Feito no CutRoom</span></div>
+          <p>Cenário 3D com luz de dia e de noite, HUD de dia e hora, regras e um final com escolha que enche os comentários.</p></div>
+        <div class="case"><h3>Jogo em <span>pixel art</span></h3>
+          <div class="reel"><video src="videos/pixel.mp4" poster="videos/pixel.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">Feito no CutRoom</span></div>
+          <p>O seu funil vira uma fase: posts são moedas, o chefão é o algoritmo, o combo é carrossel + Reels.</p></div>
+        <div class="case"><h3>Explainer <span>ilustrado</span></h3>
+          <div class="reel"><video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">Feito no CutRoom</span></div>
+          <p>O seu SaaS como um planeta: a estrela do conteúdo acende e os visitantes entram em órbita.</p></div>
+      </div>
+    </div>
+  </section>
+  <section class="soft fold" style="padding-top:0">
+    <div class="wrap">
+      <h2 style="font-size:34px">E para mostrar o <em>produto</em></h2>
+      <div class="trio">
+        <div class="case"><h3>O app <span>funcionando</span></h3>
+          <div class="reel"><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">Feito no CutRoom</span></div>
+          <p>Formas que viram a interface, cursor clicando, estado por estado.</p></div>
+        <div class="case"><h3>Voo pela sua <span>landing page</span></h3>
+          <div class="reel"><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">Feito no CutRoom</span></div>
+          <p>O CutRoom captura a sua página e a câmera voa por ela até a frase da marca.</p></div>
+        <div class="case"><h3>Aula com <span>apresentador</span></h3>
+          <div class="reel"><video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">Feito no CutRoom</span></div>
+          <p>Pixel art com a boca na voz, cards na palavra falada e o seu número.</p></div>
+      </div>
+      <p class="note">Todos feitos pelo CutRoom com a voz que roda no seu computador e música livre de direitos.</p>
+    </div>
+  </section>
+
+  <!-- MONETIZAÇÃO -->
+  <section>
+    <div class="wrap">
+      <h2>Como o CutRoom <em>vira venda</em></h2>
+      <p class="sub">Vídeo bonito não paga conta. O que paga é o caminho que ele abre. Estas são as formas de transformar o conteúdo em vendas do seu SaaS, todas no orgânico.</p>
+      <h3 style="font-size:24px;margin-bottom:10px">1. O funil diário, sem 1 real de tráfego</h3>
+      <div class="funnel">
+        <div class="stage-f"><b>Reels todo dia</b><span>O piloto posta 1 vídeo por dia no mesmo horário. O gancho fala com quem ainda não te segue.</span></div>
+        <div class="stage-f"><b>Visita no perfil</b><span>Todo vídeo fecha com "link no perfil" + o seu @, falado e na tela.</span></div>
+        <div class="stage-f"><b>Clique no link</b><span>Bio com a promessa e um link só: a oferta.</span></div>
+        <div class="stage-f"><b>Venda</b><span>Teste, assinatura ou compra, com a pessoa já aquecida.</span></div>
+      </div>
+      <div class="week">
+        <div class="day-f"><strong>SEG</strong><i class="r">Reels · aula</i><i class="c">Carrossel · dor</i></div>
+        <div class="day-f"><strong>TER</strong><i class="r">Reels · UI motion</i><i class="c">Carrossel · prova</i></div>
+        <div class="day-f"><strong>QUA</strong><i class="r">Reels · stickman</i><i class="c">Carrossel · método</i></div>
+        <div class="day-f"><strong>QUI</strong><i class="r">Reels · "e se"</i><i class="c">Carrossel · objeção</i></div>
+        <div class="day-f"><strong>SEX</strong><i class="r">Reels · landing</i><i class="c">Carrossel · oferta</i></div>
+        <div class="day-f"><strong>SÁB</strong><i class="r">Reels · explainer</i><i class="c">Carrossel · bastidor</i></div>
+        <div class="day-f"><strong>DOM</strong><i class="r">O melhor da semana</i><i class="c">Carrossel · pergunta</i></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="soft">
+    <div class="wrap">
+      <div class="ways">
+        <div class="way"><b class="n">2</b><h3>Teste ganchos, não vídeos</h3>
+          <p>Todo Reels tem três partes: gancho, corpo e chamada. Quando um corpo vende, você não joga fora: troca só o gancho ou o formato e testa de novo. O CutRoom refaz o mesmo roteiro como aula, stickman ou explainer em minutos.</p>
+          <ul><li>Mude 1 ou 2 coisas por teste, nunca o vídeo inteiro.</li><li>Guarde os vencedores e volte com eles em formato novo.</li><li>Para quem não te segue, abra com a dor ou o resultado, não com o nome do app.</li></ul></div>
+        <div class="way"><b class="n">3</b><h3>Uma mini VSL na sua página</h3>
+          <p>O formato aula vira o vídeo da landing do seu SaaS: o primeiro minuto cumpre exatamente o que o Reels prometeu, depois vêm a história curta, a tese, o produto e a oferta. Quem chega do vídeo encontra a mesma conversa.</p>
+          <ul><li>Promessa do Reels = primeira frase da página.</li><li>Mostre o produto funcionando, com tela real.</li><li>Prova só de cliente real.</li></ul></div>
+        <div class="way"><b class="n">4</b><h3>Uma porta de entrada, depois a assinatura</h3>
+          <p>O vídeo pode levar para algo pequeno e fácil de aceitar: um diagnóstico rápido, um modelo pronto ou um teste do app. A assinatura vem como o próximo passo do mesmo benefício, mais rápido e com menos esforço.</p>
+          <ul><li>Na entrada, entregue uma fatia do resultado, não tudo.</li><li>O próximo passo resolve a mesma dor, mais depressa.</li><li>Promessa do tamanho do preço: crível vence grandioso.</li></ul></div>
+        <div class="way"><b class="n">5</b><h3>5 números por dia, um gargalo por vez</h3>
+          <p>Meça de baixo para cima e ataque só a etapa mais fora do ritmo.</p>
+          <table class="panel">
+            <tr><th>Etapa</th><th>Se estiver baixa, mexa em…</th></tr>
+            <tr><td><span class="dot" style="background:#e5484d"></span>Assinaturas</td><td>página e oferta</td></tr>
+            <tr><td><span class="dot" style="background:#f5a524"></span>Cliques no link</td><td>bio e chamada do vídeo</td></tr>
+            <tr><td><span class="dot" style="background:#f5a524"></span>Visitas no perfil</td><td>o fim do vídeo (CTA)</td></tr>
+            <tr><td><span class="dot" style="background:#17c964"></span>Retenção dos 3 s</td><td>o gancho e o formato</td></tr>
+            <tr><td><span class="dot" style="background:#17c964"></span>Reels publicados</td><td>o piloto automático</td></tr>
+          </table></div>
+        <div class="way"><b class="n">6</b><h3>Modele o que já viraliza</h3>
+          <p>Cada formato do CutRoom foi modelado a partir do que já viraliza em vídeo feito com código: a estrutura e o ritmo, nunca a cópia. Você parte de um filme pronto e troca o roteiro, as telas e a marca.</p></div>
+        <div class="way"><b class="n">7</b><h3>Venda vídeo como serviço</h3>
+          <p>Com o mesmo CutRoom, você produz Reels para outros SaaS, agências e clientes de consultoria: o agente faz, você revisa e entrega. É uma segunda fonte de receita com o que você já sabe fazer.</p></div>
+      </div>
+      <p class="note">O Matheus chegou a 112 assinaturas e R$ 4.008,64 de MRR com conteúdo orgânico. É o resultado dele, não uma promessa: o seu depende do produto, da oferta e da constância.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>O que você <em>leva</em></h2>
+      <ul class="inc">
+        <li>CutRoom para o seu computador, com atualizações</li>
+        <li>7 formatos de vídeo com filme pronto e guia passo a passo</li>
+        <li>Piloto automático: um Reels por dia no Instagram, sozinho</li>
+        <li>Todo vídeo termina levando para o link do seu perfil</li>
+        <li>Narração natural que roda no seu computador, sem pagar por minuto</li>
+        <li>Vozes ElevenLabs ou OpenAI com a sua chave, se preferir</li>
+        <li>Música e efeitos livres de direitos, com o crédito pronto</li>
+        <li>Skill para o Claude Code e o Codex fazerem os vídeos sozinhos</li>
+      </ul>
+      <p class="note">O CutRoom usa a IA que você já tem (Claude Code, Codex ou outra conectada no app). O uso dessas IAs e das vozes premium é cobrado pelos próprios serviços, na sua conta.</p>
+    </div>
+  </section>
+
+  <section class="dark final">
+    <div class="wrap">
+      <h2>Seu SaaS em vídeo, <em>todo dia</em></h2>
+      <p class="sub" style="margin:0 auto 24px">Carrossel para aquecer, Reels para alcançar, um link para vender.</p>
+      <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o CutRoom <small>por R$ 97</small></a>
+      <p class="price" style="color:rgba(255,255,255,.6)">Oferta única desta página.</p>
+      <a class="no" href="#RECUSAR" data-cakto-downsell style="color:rgba(255,255,255,.6)">Não, obrigado.</a>
+    </div>
+  </section>
+
+  <footer>CutRoom · Carrossell</footer>
+  <script>
+    // Os vídeos do CutRoom tocam sozinhos enquanto estão na tela (sem som, em loop); toque para ouvir.
+    const videos = document.querySelectorAll("video[data-autoplay]");
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => (e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause())), { threshold: 0.4 });
+    videos.forEach((v) => {
+      io.observe(v);
+      const b = document.createElement("button");
+      b.className = "sound";
+      b.textContent = "🔊 Ouvir";
+      b.onclick = () => {
+        const on = v.muted;
+        videos.forEach((o) => { o.muted = true; });
+        document.querySelectorAll(".sound").forEach((x) => (x.textContent = "🔊 Ouvir"));
+        v.muted = !on;
+        if (on) { v.currentTime = 0; v.play(); b.textContent = "🔇 Sem som"; }
+      };
+      v.parentElement.appendChild(b);
+    });
+  </script>
+</body>
+</html>

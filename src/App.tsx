@@ -18,6 +18,7 @@ import { BrandMark } from "./components/BrandMark";
 import { Player } from "./components/Player";
 import { Timeline } from "./components/Timeline";
 import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
+import { StudioPanel } from "./components/StudioPanel";
 import { Menu } from "./components/Menu";
 import { applyTheme, themes, type ThemeId } from "./lib/themes";
 import { useDialogKeyboard } from "./lib/useDialogKeyboard";
@@ -30,6 +31,12 @@ export default function App() {
   const [loading, setLoading] = useState(!!window.cutroom);
   const [tab, setTab] = useState<"media" | "transcript" | "style">("media");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [studio, setStudio] = useState<null | "start" | "brand" | "voices" | "films" | "publish">(null);
+  useEffect(() => {
+    const open = (event: Event) => setStudio(((event as CustomEvent).detail as typeof studio) ?? "start");
+    window.addEventListener("cutroom:studio", open);
+    return () => window.removeEventListener("cutroom:studio", open);
+  }, []);
   const [theme, setTheme] = useState<ThemeId>(
     (document.documentElement.dataset.theme as ThemeId) || "graphite",
   );
@@ -109,6 +116,7 @@ export default function App() {
     let active = true;
     const unsubscribe = window.cutroom.onEvent((event) => {
       if (active && event.type === "state") setState(event.state);
+      if (active && event.type === "studio") setStudio(event.tab);
     });
     void window.cutroom
       .request<AppSnapshot>("getState")
@@ -339,6 +347,9 @@ export default function App() {
               );
           }}
         >
+          {studio && desktop && (
+            <StudioPanel state={state} run={run} initial={studio} onClose={() => setStudio(null)} />
+          )}
           <nav className="workspace-toolbar" aria-label="Painéis do editor">
             <Menu label="Ferramentas" className="workspace-menu">
               <div className="menu-caption">Painéis do projeto</div>
@@ -363,6 +374,10 @@ export default function App() {
                   )}
                 </button>
               ))}
+              <div role="separator" />
+              <button role="menuitem" disabled={!desktop} onClick={() => setStudio("start")}>
+                Estúdio de vídeos
+              </button>
               <div role="separator" />
               <button
                 role="menuitem"
