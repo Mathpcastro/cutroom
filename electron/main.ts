@@ -66,6 +66,10 @@ import {
   importCarrossellBrand,
 } from "./core/brand";
 import { Studio, probeAudio } from "./core/studio";
+import { Films } from "./core/film";
+import { FilmStudio } from "./core/film-studio";
+import { motionBrowser, motionPackageInfo } from "./core/motion-package";
+import { createRequire } from "node:module";
 import { localSpeech, localVoices } from "./core/local-voice";
 import type { MotionAssets } from "./core/motion-document";
 
@@ -102,6 +106,7 @@ let cacheDir: string;
 const motionDocuments = new Map<string, string>();
 let userDir: string;
 let studio: Studio;
+let filmStudio: FilmStudio;
 let brandStore: BrandStore;
 /** Host images for scenes: the brand logo as data-asset="logo". */
 async function motionAssets(): Promise<MotionAssets> {
@@ -770,6 +775,15 @@ async function executeTool(
     get_format_guide: (a) => studio.getFormatGuide(a),
     render_frame: (a) => studio.renderFrame(a),
     review_video: (a) => studio.reviewVideo(a),
+    create_film: (a) => filmStudio.create(a),
+    list_films: () => filmStudio.list(),
+    film_voiceover: (a) => filmStudio.voiceover(a),
+    film_asset: (a) => filmStudio.asset(a),
+    write_film_file: (a) => filmStudio.write(a),
+    read_film_file: (a) => filmStudio.read(a),
+    film_check: (a) => filmStudio.check(a),
+    film_stills: (a) => filmStudio.stills(a),
+    render_film: (a) => filmStudio.render(a),
   };
   if (studioTools[name]) return studioTools[name](args);
   if (name === "inspect_frame") {
@@ -1348,6 +1362,24 @@ app.whenReady().then(async () => {
         }
       : {}),
   });
+  filmStudio = new FilmStudio(
+    {
+      films: new Films(
+        join(app.getPath("videos"), "CutRoom", "filmes"),
+        join(resources, "film-kit"),
+        createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"),
+      ),
+      brand: brandStore,
+      videosDir: join(app.getPath("videos"), "CutRoom"),
+      runner: async () => {
+        if (!(await motionPackageInfo(packages.root)).installed)
+          throw new Error("Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.");
+        return { worker: join(here, "render-motion.js"), browser: motionBrowser(packages.root) };
+      },
+      job: (kind, label, run) => job(kind, label, run),
+    },
+    studio,
+  );
   state.packages = await packages.list();
   try {
     const preferences = JSON.parse(

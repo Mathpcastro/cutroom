@@ -14,6 +14,15 @@
       .replace(/[̀-ͯ]/g, "")
       .replace(/[^a-z0-9]/g, "");
   };
+  var darken = function (hex, f) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return hex;
+    var n = parseInt(m[1], 16),
+      c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) {
+        return ("0" + Math.round(v * f).toString(16)).slice(-2);
+      });
+    return "#" + c.join("");
+  };
   var r3 = function (n) {
     return Math.round(n * 1000) / 1000;
   };
@@ -205,6 +214,117 @@
     gesture: function (tl, sel, at, hold) {
       tl.fromTo(sel, { y: 380 }, { y: 0, duration: 0.32, ease: "back.out(1.6)" }, r3(at));
       tl.to(sel, { y: 380, duration: 0.28, ease: "power2.in" }, r3(at + (hold || 1.7)));
+    },
+    /**
+     * Pixel-art presenter (32x36 sprite, crisp SVG): 5 mouths driven by the narration loudness,
+     * instant blinks, whole-pixel head bob, and a thumbs-up that rises on each time in `thumbs`.
+     * opts: {parent:"#film", x, y, px:18, hoodie:"#E8462F", skin:"#F0C29B", hair:"#3A2A22", until, thumbs:[s], hold:1.6}
+     * Returns {el, hand(t)} — call hand(t) for extra thumbs-ups. No motion blur on pixel art.
+     */
+    pixelPresenter: function (tl, opts) {
+      var o = opts || {},
+        PX = o.px || 18,
+        until = o.until || (T.voiceEnd || 10) + 1.5;
+      var hoodie = o.hoodie || (window.BRAND && window.BRAND.palette && window.BRAND.palette.accent) || "#E8462F";
+      var PAL = {
+        K: "#2B1D16", H: o.hair || "#3A2A22", h: o.hairLight || "#5C4336", S: o.skin || "#F0C29B", s: o.skinShade || "#D9A27A",
+        W: "#FFFFFF", G: "#1E1C1A", E: "#1E1C1A", R: hoodie, r: o.hoodieShade || darken(hoodie, 0.78), D: "#F4F1EC",
+        P: "#F2A08F", M: "#7A2F2A", T: "#E07A6A",
+      };
+      var half = [
+        "..........KKKKKK", "........KKHHHHHH", ".......KHHHhHHHH", "......KHHHHHHHHH", ".....KHHhHHHHHHH", ".....KHHHHHHHHHH",
+        "....KHHHHHHHHHHH", "....KHHHSSHHHHHH", "....KHSSSSSSHHSS", "...KKSSSSSSSSSSS", "...KSGGGGGGGGSSS", "..KSSGWWEEWWGGGG",
+        "..KSSGWWEEWWGSSS", "...KSGGGGGGGGSSS", "...KSSSSSSSSSSSS", "...KSSPPSSSSSSSs", "...KSSPPSSSSSSss", "....KSSSSSSSSSSS",
+        "....KSSSSSSSSSSS", ".....KSSSSSSSSSS", "......KSSSSSSSSS", ".......KKSSSSSSS", ".........KKKSSSS", "...........KsSSS",
+        "...........KsSSS", "......KKKKKRRRRR", "....KKRRRRRRrRRR", "...KRRRRRRRRRrRR", "..KRRRRRRRRRDRRR", "..KRRRRRRRRRDRRR",
+        ".KRRRRRRRRRRDRRR", ".KRrRRRRRRRRRRRR", ".KRrRRRRRRRRRRRR", "KRRrRRRRRRRRRRRR", "KRRrRRRRRRRRRRRR", "KRRrRRRRRRRRRRRR",
+      ];
+      var rows = half.map(function (h) {
+        return h + h.split("").reverse().join("");
+      });
+      var runs = function (grid, ox, oy) {
+        var out = "";
+        grid.forEach(function (row, y) {
+          for (var x = 0; x < row.length; ) {
+            var c = row[x],
+              e = x;
+            while (e < row.length && row[e] === c) e++;
+            if (c !== ".")
+              out += '<rect x="' + ((ox || 0) + x) * PX + '" y="' + ((oy || 0) + y) * PX + '" width="' + (e - x) * PX + '" height="' + PX + '" fill="' + PAL[c] + '"/>';
+            x = e;
+          }
+        });
+        return out;
+      };
+      var MOUTHS = [
+        ["........", "..KKKK..", "........", "........"],
+        ["........", "..KKKK..", "..KMMK..", "........"],
+        ["........", ".KKKKKK.", ".KMMMMK.", "..KKKK.."],
+        [".KKKKKK.", ".KMMMMK.", ".KMTTMK.", "..KKKK.."],
+        ["..KKKK..", ".KMMMMK.", ".KMTTMK.", "..KKKK.."],
+      ];
+      // Thumbs-up: thumb on the side, closed fist with finger creases. Never a single centred finger.
+      var HAND = [
+        ".KK.......", "KSSK......", "KSSK......", "KSSKKKKKK.", "KSSSSSSSSK", "KSSSSKKKSK",
+        "KSSSSSSSSK", "KSSSSKKKSK", "KSSSSSSSSK", ".KSSSKKKK.", "..KRRRRK..", "..KRRRRK..",
+      ];
+      var mouths = MOUTHS.map(function (m, i) {
+        return '<g class="crp-mo crp-mo' + i + '"' + (i ? ' style="visibility:hidden;opacity:0"' : "") + ">" + runs(m, 12, 17) + "</g>";
+      }).join("");
+      var lid = ["SSSSSS", "KKKKKK"];
+      var w = 32 * PX,
+        h = 36 * PX,
+        parent = document.querySelector(o.parent || "[data-composition-id]");
+      var root = parent.getBoundingClientRect ? parent : document.body;
+      var x = o.x != null ? o.x : (parseFloat(root.getAttribute("data-width")) || 1080) - w - 6,
+        y = o.y != null ? o.y : (parseFloat(root.getAttribute("data-height")) || 1920) - h;
+      var holder = document.createElement("div");
+      holder.className = "crp";
+      holder.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:" + w + "px;height:" + h + "px;z-index:" + (o.z || 7) + ";overflow:visible";
+      holder.innerHTML =
+        '<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" shape-rendering="crispEdges" style="overflow:visible">' +
+        '<g class="crp-body">' + runs(rows.slice(25), 0, 25) + "</g>" +
+        '<g class="crp-head">' + runs(rows.slice(0, 25)) + mouths +
+        '<g class="crp-lid" style="visibility:hidden;opacity:0">' + runs(lid, 6, 11) + runs(lid, 20, 11) + "</g></g>" +
+        '<g class="crp-hand" style="transform:translateY(' + 12 * PX + 'px)">' + runs(HAND, 22, 24) + "</g></svg>";
+      parent.appendChild(holder);
+      var q = function (s) {
+        return holder.querySelectorAll(s);
+      };
+      // Mouth from loudness: fast attack, quick release, 5 shapes.
+      var env = T.envelope || { fps: 30, db: [] },
+        level = 0,
+        prev = -1;
+      for (var i = 0; i < env.db.length; i++) {
+        level = Math.max(Math.min(1, Math.max(0, (env.db[i] + 42) / 26)), level * 0.55);
+        var shape = Math.round(level * 4);
+        if (shape !== prev) {
+          tl.set(q(".crp-mo"), { autoAlpha: 0 }, r3(i / env.fps));
+          tl.set(q(".crp-mo" + shape), { autoAlpha: 1 }, r3(i / env.fps));
+          prev = shape;
+        }
+      }
+      var end = r3((T.voiceEnd || 0) + 0.05);
+      tl.set(q(".crp-mo"), { autoAlpha: 0 }, end);
+      tl.set(q(".crp-mo0"), { autoAlpha: 1 }, end);
+      var seed = o.seed || 11,
+        rnd = function () {
+          return (seed = (seed * 16807) % 2147483647) / 2147483647;
+        };
+      for (var b = 1.1; b < until - 0.3; b += 2.2 + rnd() * 1.8) {
+        tl.set(q(".crp-lid"), { autoAlpha: 1 }, r3(b));
+        tl.set(q(".crp-lid"), { autoAlpha: 0 }, r3(b + 0.1));
+      }
+      for (var t = 0, k = 0; t < until - 0.5; t += 0.5, k++) {
+        tl.set(q(".crp-head"), { y: k % 2 ? PX : 0 }, r3(t));
+        tl.set(q(".crp-body"), { y: k % 4 === 1 ? PX / 2 : 0 }, r3(t));
+      }
+      var hand = function (at) {
+        tl.to(q(".crp-hand"), { y: 0, duration: 0.2, ease: "steps(4)" }, r3(at));
+        tl.to(q(".crp-hand"), { y: 12 * PX, duration: 0.2, ease: "steps(4)" }, r3(at + (o.hold || 1.6)));
+      };
+      (o.thumbs || []).forEach(hand);
+      return { el: holder, hand: hand };
     },
   };
   window.CR = CR;

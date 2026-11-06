@@ -890,6 +890,15 @@ export function toolActivityLabel(
     render_frame: "Renderizando um quadro",
     review_video: "Revisando o vídeo",
     job_status: "Conferindo o andamento",
+    create_film: "Criando o filme",
+    list_films: "Listando filmes",
+    film_voiceover: "Gravando a narração do filme",
+    film_asset: "Adicionando mídia ao filme",
+    write_film_file: "Escrevendo o filme",
+    read_film_file: "Lendo o filme",
+    film_check: "Checando o filme",
+    film_stills: "Gerando quadros do filme",
+    render_film: "Renderizando o filme",
   };
   if (studio[name]) return studio[name];
   const labels: Record<string, string> = {

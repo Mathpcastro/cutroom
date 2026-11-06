@@ -537,6 +537,15 @@ describe("Claude loopback bridge", () => {
       "render_frame",
       "job_status",
       "review_video",
+      "create_film",
+      "list_films",
+      "film_voiceover",
+      "film_asset",
+      "write_film_file",
+      "read_film_file",
+      "film_check",
+      "film_stills",
+      "render_film",
     ]);
     expect(
       (await (await rpc("tools/call", { name: "shell", arguments: {} })).json())

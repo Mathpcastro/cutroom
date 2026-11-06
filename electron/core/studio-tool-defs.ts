@@ -134,4 +134,92 @@ export const STUDIO_TOOLS = [
       frames: number("How many frames (default 6).", { minimum: 1, maximum: 12 }),
     }),
   },
+  // Films in code: full HyperFrames projects (HTML + GSAP) written by the agent, rendered by CutRoom.
+  {
+    name: "create_film",
+    description:
+      "Start a FILM IN CODE: the highest-quality way to make a reel (explainers, UI motion, product demos, cartoons). Creates a folder in Videos/CutRoom/filmes/<id>/ with index.html (starter), CUTROOM.md (contract, kit, quality rules and the format guide), the motion kit (kit/cutroom-kit.js, GSAP), fonts, brand.js (user's brand) and assets/. You write the film as HTML/CSS/JS with one paused GSAP timeline; CutRoom records the voice with word timings, checks, previews frames and renders the MP4. Edit the folder with your own file tools when you have them, otherwise write_film_file. Prefer this over the timeline scene tools for new videos.",
+    inputSchema: objectSchema(
+      {
+        name: string("Film title (also the output file name)."),
+        aspect: { type: "string", enum: ["9:16", "16:9", "1:1", "4:5"], description: "Default 9:16 (Reels), or the format's aspect." },
+        format: string("Format id from list_formats: its guide and checklist are written into CUTROOM.md."),
+      },
+      ["name"],
+    ),
+  },
+  {
+    name: "list_films",
+    description: "List the user's films (id, name, size, folder, format), newest first.",
+    inputSchema: objectSchema(),
+  },
+  {
+    name: "film_voiceover",
+    description:
+      "Record the film's narration from the script and write timing.js: window.TIMING = {words:[{text,start,end}], envelope:{fps:30, db:[...]}, voiceEnd}. CR.word('palavra', n) then returns the second each word is spoken, CR.captions/CR.mouth use it automatically. Returns the words with times, the <audio> tag to put in index.html and the suggested film duration. Cached by script+voice: re-running the same script costs nothing; changing it costs the user's provider credits again.",
+    inputSchema: objectSchema(
+      {
+        film: string("Film id."),
+        text: string("Exact script to speak, user's language, short sentences (max 5000 chars).", { maxLength: 5000 }),
+        provider: { type: "string", enum: ["elevenlabs", "openai", "local"] },
+        voice: string("Voice id from list_voices. Default: the voice chosen in CutRoom."),
+        model: string("Provider model (optional)."),
+        instructions: string("OpenAI only: tone/pace instructions."),
+      },
+      ["film", "text"],
+    ),
+  },
+  {
+    name: "film_asset",
+    description:
+      "Put media into the film's assets/ folder: music or a sound effect from search_music (music: id; license re-checked, CC BY credit recorded and returned), or a local file the user gave you (path: absolute; images, video or audio, e.g. product screenshots). Returns the relative path to use in index.html (src=\"assets/...\").",
+    inputSchema: objectSchema(
+      {
+        film: string("Film id."),
+        music: string("Track id from search_music."),
+        path: string("Absolute path of a local image, video or audio file."),
+        name: string("File name to use inside assets/ (optional)."),
+      },
+      ["film"],
+    ),
+  },
+  {
+    name: "write_film_file",
+    description:
+      "Write a text file inside the film folder (index.html, extra .css/.js/.svg/.json/.md). Paths are relative to the film folder; nothing outside it can be written. film.json and timing.js belong to CutRoom. Max 2 MB. No remote URLs: everything must be in the folder or a data: URL.",
+    inputSchema: objectSchema(
+      {
+        film: string("Film id."),
+        path: string("Relative path, e.g. index.html or scenes/demo.js."),
+        content: string("Full file content."),
+      },
+      ["film", "path", "content"],
+    ),
+  },
+  {
+    name: "read_film_file",
+    description: "Read a text file of the film (e.g. CUTROOM.md, index.html, timing.js). Without path, lists the film's files and its folder.",
+    inputSchema: objectSchema({ film: string("Film id."), path: string("Relative path.") }, ["film"]),
+  },
+  {
+    name: "film_check",
+    description:
+      "Check the film before rendering: HyperFrames linter, missing files, remote URLs (refused: the render never uses the internet), timeline registration, non-deterministic code, narration tag. Returns errors (must fix) and warnings.",
+    inputSchema: objectSchema({ film: string("Film id.") }, ["film"]),
+  },
+  {
+    name: "film_stills",
+    description:
+      "Render exact frames of the film at chosen seconds (half resolution) plus any script errors. Use 4–6 times around key words (hook, demos, final question) to check layout, text size, overlaps and timing before render_film. Takes ~10–20 s.",
+    inputSchema: objectSchema(
+      { film: string("Film id."), times: { type: "array", items: { type: "number", minimum: 0 }, minItems: 1, maxItems: 8, description: "Seconds." } },
+      ["film", "times"],
+    ),
+  },
+  {
+    name: "render_film",
+    description:
+      "Render the film to MP4 (1080p, 30 fps, audio normalized to -14 LUFS / 48 kHz for Reels) into Videos/CutRoom. Runs in the background: answers status 'rendering' within 40 s; call render_film again (same film, without editing it) every ~60 s until status 'done' with the output path. Refuses films that fail film_check.",
+    inputSchema: objectSchema({ film: string("Film id.") }, ["film"]),
+  },
 ];

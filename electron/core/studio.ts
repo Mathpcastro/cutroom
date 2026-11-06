@@ -176,20 +176,18 @@ export class Studio {
     };
   }
 
-  async addVoiceover(args: Record<string, unknown>) {
-    const a = z
-      .object({
-        text: z.string().trim().min(1).max(5000),
-        provider: z.enum(VOICE_PROVIDERS).optional(),
-        voice: z.string().max(200).optional(),
-        model: z.string().max(100).optional(),
-        instructions: z.string().max(1000).optional(),
-        start: z.number().min(0).optional(),
-        gain: z.number().min(-60).max(20).optional(),
-        name: z.string().max(300).optional(),
-      })
-      .strict()
-      .parse(args);
+  static voiceArgs = z
+    .object({
+      text: z.string().trim().min(1).max(5000),
+      provider: z.enum(VOICE_PROVIDERS).optional(),
+      voice: z.string().max(200).optional(),
+      model: z.string().max(100).optional(),
+      instructions: z.string().max(1000).optional(),
+    })
+    .strict();
+
+  /** Narration audio + word timings for a script, cached by script and voice (never paid twice). */
+  async synthesize(a: z.infer<typeof Studio.voiceArgs>) {
     const prefs = await this.voicePreferences();
     const provider = a.provider ?? prefs.provider ?? "elevenlabs";
     const voice = a.voice ?? prefs.voices?.[provider] ?? (provider === "openai" ? "coral" : undefined);
@@ -204,7 +202,6 @@ export class Studio {
     const meta = join(dir, `${key}.json`);
     let file: string, words: AudioWord[] | undefined;
     try {
-      // Same script + voice = same audio: never pay the provider twice.
       ({ file, words } = JSON.parse(await readFile(meta, "utf8")));
       await stat(file);
     } catch {
@@ -238,6 +235,19 @@ export class Studio {
       words = result.words;
       await writeFile(meta, JSON.stringify({ file, words }), "utf8");
     }
+    return { file, words, provider, voice };
+  }
+
+  async addVoiceover(args: Record<string, unknown>) {
+    const a = Studio.voiceArgs
+      .extend({
+        start: z.number().min(0).optional(),
+        gain: z.number().min(-60).max(20).optional(),
+        name: z.string().max(300).optional(),
+      })
+      .strict()
+      .parse(args);
+    const { file, words, provider, voice } = await this.synthesize(a);
     const added = await this.addAudio(
       {
         path: file,
@@ -266,21 +276,8 @@ export class Studio {
     return searchMusic(a).then((results) => ({ results }));
   }
 
-  async addMusic(args: Record<string, unknown>) {
-    const { id, kind = "music", ...placement } = z
-      .object({
-        id: z.string(),
-        kind: z.enum(["music", "sfx"]).optional(),
-        start: z.number().min(0).optional(),
-        offset: z.number().min(0).optional(),
-        duration: z.number().positive().optional(),
-        gain: z.number().min(-60).max(20).optional(),
-        fadeIn: z.number().min(0).optional(),
-        fadeOut: z.number().min(0).optional(),
-        loop: z.boolean().optional(),
-      })
-      .strict()
-      .parse(args);
+  /** Downloads an Openverse item into the cache (license re-read from Openverse, never from the model). */
+  async downloadAudio(id: string) {
     const item = await musicDetails(id);
     const dir = join(this.host.cacheDir, "music");
     await mkdir(dir, { recursive: true });
@@ -303,6 +300,25 @@ export class Studio {
         await rm(partial, { force: true });
       });
     }
+    return { item, file };
+  }
+
+  async addMusic(args: Record<string, unknown>) {
+    const { id, kind = "music", ...placement } = z
+      .object({
+        id: z.string(),
+        kind: z.enum(["music", "sfx"]).optional(),
+        start: z.number().min(0).optional(),
+        offset: z.number().min(0).optional(),
+        duration: z.number().positive().optional(),
+        gain: z.number().min(-60).max(20).optional(),
+        fadeIn: z.number().min(0).optional(),
+        fadeOut: z.number().min(0).optional(),
+        loop: z.boolean().optional(),
+      })
+      .strict()
+      .parse(args);
+    const { item, file } = await this.downloadAudio(id);
     return this.addAudio(
       { path: file, kind, name: item.title, ...(kind === "music" ? { gain: -16, loop: true } : {}), ...placement },
       {
