@@ -17,7 +17,7 @@ const GOALS = [
   ["autoridade", "Conteúdo de autoridade", "um Reels que ensine algo do meu nicho e gere salvamentos"],
 ] as const;
 const PROVIDERS = [
-  ["kokoro", "Kokoro (offline, grátis)"],
+  ["kokoro", "Kokoro (offline, sem créditos)"],
   ["elevenlabs", "ElevenLabs (chave própria)"],
   ["openai", "OpenAI (chave própria)"],
   ["local", "Voz do computador"],

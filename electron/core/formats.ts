@@ -21,7 +21,7 @@ const FLOW = `
 1. \`get_brand\` — o que vende, para quem, tom, oferta, CTA, cores e logo. Tudo no vídeo fala e parece a marca.
 2. Roteiro falado completo, em português do Brasil, frases curtas, uma ideia por frase. Mostre ao usuário antes de gerar a voz. Sem jargão de IA ("revolucionário", "desbloqueie", "no mundo de hoje"). Números só os que o usuário deu.
 3. \`create_film{name, format}\` — a pasta já vem com o filme inicial deste formato (a versão do CutRoom), \`CUTROOM.md\` e o kit.
-4. \`film_voiceover{film, text}\` — sem provedor, usa a voz escolhida pelo usuário (ElevenLabs, ou Kokoro offline e grátis). Grava \`timing.js\`; se responder \`status:"generating"\`, chame de novo com o mesmo texto.
+4. \`film_voiceover{film, text}\` — sem provedor, usa a voz escolhida pelo usuário (ElevenLabs, ou Kokoro offline, sem créditos de API). Grava \`timing.js\`; se responder \`status:"generating"\`, chame de novo com o mesmo texto.
 5. Adapte \`index.html\`: textos, telas, cores, e reancore cada cena com \`CR.at("palavra", n, segundosReserva)\`. \`data-duration\` e o \`tl.set({}, {}, D)\` final = \`voiceEnd + 1,5–2 s\`.
 6. Música: \`search_music{query, kind:"music"}\` → \`film_asset{film, music:id}\` → \`<audio id="musica" data-volume="0.14" data-fade-out="1.5">\`. Efeitos (\`kind:"sfx"\`, whoosh/pop/click) cada um com \`id\` e \`data-track-index\` próprios, volume 0,3–0,5, na batida da cena.
 7. \`film_check\` → \`film_stills\` em 5–6 momentos (gancho, cada virada, final) → corrija → \`film_review\` (nota por item do checklist; corrija tudo abaixo de 8) → \`render_film\` (chame de novo até \`status:"done"\`).
