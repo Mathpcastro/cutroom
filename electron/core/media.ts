@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { audioMixGraph, audioMixInputs } from "./audio-tracks";
+import { audioMixGraph, audioMixInputs,
+  audioMixKeyInputs } from "./audio-tracks";
 import { voiceTimelineWords } from "../../src/shared/audio";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -670,6 +671,7 @@ export async function exportProject(
           "-y",
           ...concatInput,
           ...audioMixInputs(tracks, elapsed),
+          ...audioMixKeyInputs(tracks, concatInput),
           "-filter_complex_script",
           mixScript,
           "-map",

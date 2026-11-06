@@ -83,10 +83,17 @@ export function makeAudioTrack(
   return validateAudioTrack(merged, timeline);
 }
 
+/** True when the mix needs the sidechain key inputs (see audioMixKeyInputs). */
+export const needsDuckKey = (tracks: AudioTrack[]) => tracks.some((t) => t.kind === "music" && t.duck !== false);
+
 /**
  * FFmpeg graph that mixes clip audio (input 0) with every track (inputs 1..n, in order).
  * Music ducks under voice and clip audio with a sidechain compressor. Output label [mix],
  * exactly `length` seconds, 48 kHz stereo.
+ *
+ * The compressor key is built from a second, independent decode of the clip audio and the voice
+ * tracks (inputs n+1.., see audioMixKeyInputs) instead of an asplit of the speech: asplit feeding
+ * both amix and sidechaincompress can deadlock in some FFmpeg builds (it hung on macOS arm64).
  */
 export function audioMixGraph(tracks: AudioTrack[], length: number): string {
   const lines: string[] = [
@@ -121,19 +128,29 @@ export function audioMixGraph(tracks: AudioTrack[], length: number): string {
     labels.length === 1
       ? `[${labels[0]}]anull[${out}]`
       : `${labels.map((l) => `[${l}]`).join("")}amix=inputs=${labels.length}:duration=first:dropout_transition=0:normalize=0[${out}]`;
-  lines.push(sum(voices, "speech"));
+  lines.push(sum(voices, "speechmain"));
   const finalInputs = ["speechmain"];
   if (music.length) {
-    lines.push(`[speech]asplit=2[speechmain][speechkey]`);
-    const ducked = tracks.some((t) => t.kind === "music" && t.duck !== false);
     lines.push(sum(music, "musicsum"));
-    if (ducked)
-      lines.push(
-        `[musicsum][speechkey]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=350:makeup=1[musicout]`,
-      );
-    else lines.push(`[speechkey]anullsink`, `[musicsum]anull[musicout]`);
+    if (needsDuckKey(tracks)) {
+      // Key: clip audio again (input n+1) + each voice track again (inputs n+2..), same timing.
+      const keyBase = tracks.length + 1,
+        keys = [`k0`];
+      lines.push(`[${keyBase}:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=duration=${n(length)},asetpts=PTS-STARTPTS[k0]`);
+      tracks
+        .filter((t) => t.kind === "voice")
+        .forEach((track, i) => {
+          const delay = Math.round(track.start * 1000);
+          lines.push(
+            `[${keyBase + 1 + i}:a:0]atrim=start=${n(track.offset ?? 0)}:duration=${n(track.duration)},asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${n(track.gain ?? 0)}dB${delay > 0 ? `,adelay=${delay}|${delay}` : ""},apad,atrim=duration=${n(length)}[k${i + 1}]`,
+          );
+          keys.push(`k${i + 1}`);
+        });
+      lines.push(sum(keys, "speechkey"));
+      lines.push(`[musicsum][speechkey]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=350:makeup=1[musicout]`);
+    } else lines.push(`[musicsum]anull[musicout]`);
     finalInputs.push("musicout");
-  } else lines.push(`[speech]anull[speechmain]`);
+  }
   if (effects.length) {
     lines.push(sum(effects, "sfxsum"));
     finalInputs.push("sfxsum");
@@ -151,6 +168,11 @@ export function audioMixGraph(tracks: AudioTrack[], length: number): string {
  * FFmpeg inputs for the tracks. A looped track is an infinite input: it is also bounded with -t
  * (offset + timeline length) so FFmpeg always ends, whatever the platform build does with atrim.
  */
+/** Second decode of the clip audio + voice tracks for the ducking key (only when music ducks). */
+export function audioMixKeyInputs(tracks: AudioTrack[], clipInput: string[]): string[] {
+  if (!needsDuckKey(tracks)) return [];
+  return [...clipInput, ...tracks.filter((t) => t.kind === "voice").flatMap((t) => ["-i", t.path])];
+}
 export function audioMixInputs(tracks: AudioTrack[], length?: number): string[] {
   return tracks.flatMap((t) => [
     ...(t.loop ? ["-stream_loop", "-1", ...(length ? ["-t", (length + (t.offset ?? 0) + 1).toFixed(3)] : [])] : []),
