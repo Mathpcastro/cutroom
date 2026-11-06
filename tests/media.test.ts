@@ -355,7 +355,12 @@ describe("FFmpeg media engine", () => {
     ]);
     expect(p.audio![1].duck).toBe(true);
     const out = path.join(dir, "mixed.mp4");
-    await exportProject(p, out);
+    // Diagnostics: the last progress step shows where FFmpeg stalls if this ever hangs again.
+    const steps: number[] = [];
+    const guard = AbortSignal.timeout(100_000);
+    await exportProject(p, out, { signal: guard, onProgress: (v) => { if (!steps.length || Math.floor(v) !== steps[steps.length - 1]) steps.push(Math.floor(v)); } }).catch((error) => {
+      throw new Error(`export parou em ${steps.slice(-6).join(" → ")}%: ${error instanceof Error ? error.message : error}`);
+    });
     const result = await probeMedia(out, path.join(dir, "cache"));
     expect(result.duration).toBeCloseTo(4, 1);
     // Audible from the start: the looped music plays where neither clip nor narration does.
