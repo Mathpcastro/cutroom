@@ -30,13 +30,16 @@ ${formats}
 5. \`film_voiceover{film, text}\` → \`timing.js\` com o tempo de cada palavra e o volume por quadro. Se responder \`status:"generating"\`, chame de novo com o mesmo texto.
 6. Adapte \`index.html\`: textos, telas, cores; reancore as cenas com \`CR.at("palavra", n, segundosReserva)\`. Música e efeitos: \`search_music\` → \`film_asset\`. Telas reais do produto: \`film_asset{path}\` ou \`film_capture_page{url}\`.
 7. \`film_check\` → \`film_stills\` (5–6 momentos) → \`film_review\` (corrija toda nota abaixo de 8 e toda flag) → \`render_film\` (repita até \`status:"done"\`).
-8. Entregue o caminho do MP4 (fica em Vídeos/CutRoom) e a linha de crédito da música CC BY para a legenda do post. Postar no Instagram só com confirmação explícita do usuário.
+8. Entregue o caminho do MP4 (fica em Vídeos/CutRoom) e a linha de crédito da música CC BY para a legenda do post. Postar no Instagram só com confirmação explícita do usuário: \`publish_reel\` (agora) ou \`schedule_reels_daily\` (piloto automático, um Reels por dia).
 
 ## O que segura a atenção
 - Gancho em imagem nos 3 primeiros segundos; novo plano a cada 1,5–3 s; nada parado mais de 1,5 s.
 - Mostre em vez de listar; cada elemento entra até 0,15 s depois da palavra que ele mostra.
 - Texto ≤ 6 palavras por card, grande, fora da faixa de baixo (interface do Reels).
 - Virada no meio; final com pergunta que divide ou CTA claro. Números só os que o usuário deu.
+
+## Funil orgânico (sem tráfego pago)
+Reels (alcance) → visita no perfil → clique no link → venda; os carrosséis do Carrossell fazem o meio (confiança). Todo vídeo fecha com "link no perfil" falado e na tela (\`CR.profileCTA\`), uma ação só. Legenda: gancho repetido + 2–3 linhas de valor + "👉 link no perfil" + crédito da música. Cadência: 1 Reels por dia no mesmo horário + 1 carrossel por dia.
 `;
 }
 

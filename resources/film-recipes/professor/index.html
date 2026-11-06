@@ -130,13 +130,15 @@
     CR.count(tl, ".num", 0, 112, t112 - 0.7, 0.8);
     CR.rise(tl, ".counter-label", t112 + 0.3);
     // 5. Final: pergunta que divide.
-    var tVoce = at("você", 1, 26.0), tCurtida = at("curtida", 2, 28.0), tAss = at("assinatura", 1, 29.3);
+    var tPerfil = at("perfil", 1, 21.0), tCurtida = at("curtida", 2, 22.0), tAss = at("assinatura", 1, 22.6), tVoce = tCurtida - 0.35;
     CR.wipe(tl, tVoce - 0.45);
     CR.hide(tl, ".sc-proof", tVoce);
     CR.show(tl, ".sc-end", tVoce);
     CR.slam(tl, ".vs1", tCurtida);
     CR.pop(tl, ".or", tCurtida + 0.4);
     CR.stamp(tl, ".vs2", tAss, -2);
+    // Funil: CTA de perfil falado e na tela (lado direito, o apresentador fica à esquerda).
+    CR.profileCTA(tl, at("modelo", 1, tPerfil - 0.8), { x: 430, y: 1120, until: D });
 
     CR.camera(tl, ".cam", D, [tMil, tZero, tMorre, t112, tAss], { inner: ".punch" });
     CR.captions(tl, { el: ".cr-captions", maxWords: 4, keys: ["dor", "prova", "convite", "assinatura", "vende"] });

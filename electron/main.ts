@@ -14,6 +14,7 @@ import {
   access,
   mkdir,
   readFile,
+  readdir,
   realpath,
   stat,
   writeFile,
@@ -70,6 +71,7 @@ import { Films } from "./core/film";
 import { FilmStudio } from "./core/film-studio";
 import { installSkill } from "./core/skill";
 import { Publisher } from "./core/publish";
+import { OsReelScheduler, SCHEDULE_FLAG } from "./core/reel-schedule";
 import { motionBrowser, motionPackageInfo } from "./core/motion-package";
 import { createRequire } from "node:module";
 import { localSpeech, localVoices } from "./core/local-voice";
@@ -789,6 +791,9 @@ async function executeTool(
     film_capture_page: (a) => filmStudio.capture(a),
     film_review: (a) => filmStudio.review(a),
     instagram_accounts: () => publisher.settings(),
+    schedule_reel: (a) => publisher.schedule(a),
+    schedule_reels_daily: (a) => publisher.scheduleSeries(a),
+    cancel_scheduled_reel: (a) => publisher.cancelScheduled(z.object({ id: z.string().max(40) }).strict().parse(a).id),
     open_studio: (a) => {
       const { tab } = z.object({ tab: z.enum(["start", "brand", "voices", "films", "publish"]) }).strict().parse(a);
       if (!window || window.isDestroyed()) throw new Error("A janela do CutRoom está fechada.");
@@ -1077,12 +1082,35 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return { videos: await publisher.videos() };
     case "publishReel":
       return publisher.publish(params);
+    case "scheduleReel":
+      return publisher.schedule(params);
+    case "scheduleReelSeries":
+      return publisher.scheduleSeries(params);
+    case "cancelScheduledReel":
+      return publisher.cancelScheduled(z.object({ id: z.string().max(40) }).parse(params).id);
+    case "publishLateReel":
+      return publisher.publishLate(z.object({ id: z.string().max(40) }).parse(params).id);
     case "listFilms":
       return filmStudio.list();
     case "openFilmFolder": {
       const { id } = z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) }).parse(params);
       await shell.openPath(join(app.getPath("videos"), "CutRoom", "filmes", id));
       return { ok: true };
+    }
+    case "latestFilmRender": {
+      // Newest MP4 rendered from this film (Videos/CutRoom/<slug>-<date>.mp4), playable in the Studio.
+      const { id } = z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) }).parse(params);
+      const folder = join(app.getPath("videos"), "CutRoom");
+      const films = (await filmStudio.list()).films;
+      const film = films.find((f) => f.id === id);
+      if (!film) throw new Error("Filme não encontrado.");
+      const prefix = film.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+      const names = (await readdir(folder).catch(() => [] as string[])).filter((n) => n.startsWith(`${prefix}-`) && n.endsWith(".mp4") && !n.includes(".partial"));
+      if (!names.length) return { path: null };
+      names.sort();
+      const path = await realpath(join(folder, names[names.length - 1]));
+      allowedFiles.add(path);
+      return { path };
     }
     case "renderFilm":
       return filmStudio.render({ film: z.object({ id: z.string() }).parse(params).id });
@@ -1375,6 +1403,16 @@ async function request(method: string, params?: unknown): Promise<unknown> {
   }
 }
 
+// One CutRoom per profile: a scheduled launch while the app is open hands over to the open window
+// (which publishes), so a Reel can never be posted twice by two processes.
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on("second-instance", (_event, argv) => {
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore();
+    if (!argv.includes(SCHEDULE_FLAG)) window.focus();
+  }
+  if (argv.includes(SCHEDULE_FLAG)) void publisher?.runDue().then(emit, () => undefined);
+});
 app.whenReady().then(async () => {
   userDir = process.env.CUTROOM_USER_DATA || app.getPath("userData");
   try {
@@ -1426,7 +1464,15 @@ app.whenReady().then(async () => {
     userDir,
     videosDir: join(app.getPath("videos"), "CutRoom"),
     job: (kind, label, run) => job(kind, label, run),
+    os: new OsReelScheduler(
+      process.execPath,
+      app.isPackaged ? [SCHEDULE_FLAG] : [app.getAppPath(), SCHEDULE_FLAG],
+    ),
   });
+  // Reels autopilot: due posts go out every minute while CutRoom is open (and right away when the
+  // operating system opened it for a scheduled post).
+  setInterval(() => void publisher.runDue().then((r) => r.length && emit(), () => undefined), 60_000);
+  setTimeout(() => void publisher.runDue().then((r) => r.length && emit(), () => undefined), process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000);
   filmStudio = new FilmStudio(
     {
       films: new Films(

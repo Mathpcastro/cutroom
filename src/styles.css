@@ -3166,3 +3166,8 @@ svg {
 .studio-error { color: #e5484d; font-size: 12px; }
 .studio-notice { color: var(--text); font-size: 12px; opacity: .85; word-break: break-all; }
 .studio-empty { font-size: 12px; color: var(--muted); }
+
+.studio-picks { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow: auto; }
+.studio-pick { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.studio-pick b { min-width: 16px; height: 16px; border-radius: 8px; background: var(--accent-soft); text-align: center; font-size: 10px; line-height: 16px; }
+.studio-player { width: 240px; aspect-ratio: 9 / 16; align-self: center; border-radius: 12px; background: #000; }

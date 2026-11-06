@@ -243,6 +243,41 @@ export const STUDIO_TOOLS = [
     inputSchema: objectSchema(),
   },
   {
+    name: "schedule_reel",
+    description:
+      "Schedule one MP4 from Videos/CutRoom to be published as a Reel at a local date and time (\"2026-11-08 18:00\"). The operating system opens CutRoom at that time and it posts by itself; if the computer was off it posts when it comes back (up to 6 h late, later it waits for the user). ONLY after the user confirmed video, caption, account and time — then confirm:true. instagram_accounts lists what is scheduled.",
+    inputSchema: objectSchema(
+      {
+        video: string("Absolute path of the MP4."),
+        caption: string("Caption (max 2200). End with the funnel CTA (link no perfil) and the CC BY credit when there is one.", { maxLength: 2200 }),
+        at: string("Local date and time, YYYY-MM-DD HH:MM, at least 2 minutes ahead and up to 120 days."),
+        account: string("Account id or @username (default: the user's default)."),
+        confirm: { type: "boolean", enum: [true] },
+      },
+      ["video", "at", "confirm"],
+    ),
+  },
+  {
+    name: "schedule_reels_daily",
+    description:
+      "Reels autopilot: schedule a series, one post per day (or every N days) at the same time, in the given order. Use it to keep a daily organic cadence (Reels for reach + Carrossell carousels for trust). ONLY after the user confirmed the list, captions, account and time — then confirm:true.",
+    inputSchema: objectSchema(
+      {
+        posts: { type: "array", minItems: 1, maxItems: 60, items: objectSchema({ video: string("Absolute path of the MP4."), caption: string("Caption.", { maxLength: 2200 }) }, ["video"]) },
+        time: string("HH:MM local time, e.g. 18:00."),
+        everyDays: number("Days between posts (default 1).", { minimum: 1, maximum: 14 }),
+        account: string("Account id or @username."),
+        confirm: { type: "boolean", enum: [true] },
+      },
+      ["posts", "time", "confirm"],
+    ),
+  },
+  {
+    name: "cancel_scheduled_reel",
+    description: "Cancel a scheduled Reel by id (from instagram_accounts.scheduled).",
+    inputSchema: objectSchema({ id: string("Scheduled Reel id.") }, ["id"]),
+  },
+  {
     name: "publish_reel",
     description:
       "Publish an MP4 from Videos/CutRoom as an Instagram Reel through the user's Composio connection. ONLY after the user explicitly confirmed in chat this exact video, caption and account — then pass confirm:true. Posting is public and cannot be undone. Answers status 'publishing' within 40 s; check job_status (job 'publish') instead of calling again.",

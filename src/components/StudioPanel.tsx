@@ -88,12 +88,29 @@ export function StudioPanel({ state, run, onClose, initial }: { state: AppSnapsh
 
   // ---- Filmes ----
   const [films, setFilms] = useState<Film[]>([]);
+  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
+  const play = (id: string) =>
+    void guard(async () => {
+      if (playing?.id === id) return setPlaying(null);
+      const r = await api<{ path: string | null }>("latestFilmRender", { id });
+      if (!r.path) throw new Error("Este filme ainda não foi renderizado. Clique em Renderizar.");
+      setPlaying({ id, url: window.cutroom!.mediaUrl(r.path) });
+    });
   useEffect(() => {
     if (tab === "films") void api<{ films: Film[] }>("listFilms").then((r) => setFilms(r.films), () => undefined);
   }, [tab, state.jobs.length]);
 
   // ---- Publicar ----
-  const [pub, setPub] = useState<{ hasKey: boolean; accounts: Account[]; defaultAccount?: string; history: { permalink: string; username: string; publishedAt: string }[] } | null>(null);
+  const [pub, setPub] = useState<{
+    hasKey: boolean;
+    accounts: Account[];
+    defaultAccount?: string;
+    history: { permalink: string; username: string; publishedAt: string }[];
+    scheduled?: { id: string; video: string; at: string; status: string; error?: string; permalink?: string }[];
+  } | null>(null);
+  const [when, setWhen] = useState("");
+  const [series, setSeries] = useState<string[]>([]);
+  const [seriesTime, setSeriesTime] = useState("18:00");
   const [videos, setVideos] = useState<VideoFile[]>([]);
   const [video, setVideo] = useState("");
   const [caption, setCaption] = useState("");
@@ -273,12 +290,14 @@ export function StudioPanel({ state, run, onClose, initial }: { state: AppSnapsh
 
         {tab === "films" && (
           <section className="studio-section">
+            {playing && <video className="studio-player" src={playing.url} controls autoPlay playsInline />}
             <p className="studio-lead">Filmes criados pelo agente em Vídeos/CutRoom/filmes. Cada pasta é um projeto que você pode abrir e editar.</p>
             {!films.length && <p className="studio-empty">Nenhum filme ainda. Comece pela aba Começar.</p>}
             <ul className="studio-list">
               {films.map((f) => (
                 <li key={f.id}>
                   <div><strong>{f.name}</strong><small>{f.format ?? "livre"} · {f.size} · {new Date(f.createdAt).toLocaleDateString("pt-BR")}</small></div>
+                  <button className="button small" onClick={() => play(f.id)}>{playing?.id === f.id ? "Fechar" : "▶ Assistir"}</button>
                   <button className="button small" onClick={() => void guard(() => api("openFilmFolder", { id: f.id }))}><FolderOpen size={12} /> Pasta</button>
                   <button className="button small" disabled={busy} onClick={() => void guard(async () => { const r = await api<{ status: string; output?: string; errors?: string[] }>("renderFilm", { id: f.id }); setNotice(r.status === "done" ? `Pronto: ${r.output}` : r.status === "blocked" ? `Corrija antes: ${r.errors?.join(" ")}` : "Renderizando… acompanhe a barra de tarefas."); })}>Renderizar</button>
                 </li>
@@ -324,8 +343,44 @@ export function StudioPanel({ state, run, onClose, initial }: { state: AppSnapsh
               <button className="button primary" disabled={!confirmed || !video || !account || busy} onClick={() => void guard(async () => { const r = await api<{ permalink: string }>("publishReel", { video, caption, account: account?.id, confirm: true }); setConfirmed(false); setPub(await api("getPublishSettings")); setNotice(`Publicado${r.permalink ? `: ${r.permalink}` : "."}`); })}>
                 <Rocket size={13} /> Publicar Reels
               </button>
+              <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="Data e hora do agendamento" />
+              <button className="button" disabled={!confirmed || !video || !account || !when} onClick={() => void guard(async () => { await api("scheduleReel", { video, caption, account: account?.id, at: when.replace("T", " "), confirm: true }); setConfirmed(false); setPub(await api("getPublishSettings")); }, "Reels agendado. O CutRoom abre sozinho no horário e publica.")}>
+                Agendar
+              </button>
               {video && <button className="button" onClick={() => void guard(() => api("revealVideo", { path: video }))}>Mostrar o vídeo</button>}
             </div>
+            <div className="studio-box">
+              <strong>Piloto automático</strong>
+              <p>Escolha os vídeos na ordem: o CutRoom publica um por dia no mesmo horário, com a legenda acima. Junto com os carrosséis do Carrossell, o perfil fica ativo todo dia sem tráfego pago.</p>
+              <div className="studio-picks">
+                {videos.slice(0, 12).map((v) => (
+                  <label key={v.path} className="studio-pick">
+                    <input type="checkbox" checked={series.includes(v.path)} onChange={(e) => setSeries(e.target.checked ? [...series, v.path] : series.filter((x) => x !== v.path))} />
+                    {series.includes(v.path) && <b>{series.indexOf(v.path) + 1}</b>} {v.name}
+                  </label>
+                ))}
+              </div>
+              <div className="field-pair">
+                <input type="time" value={seriesTime} onChange={(e) => setSeriesTime(e.target.value)} aria-label="Horário diário" />
+                <button className="button primary" disabled={!confirmed || !series.length || !account} onClick={() => void guard(async () => { await api("scheduleReelSeries", { posts: series.map((v) => ({ video: v, caption })), time: seriesTime, account: account?.id, confirm: true }); setSeries([]); setConfirmed(false); setPub(await api("getPublishSettings")); }, "Piloto automático ligado.")}>
+                  Ligar: 1 por dia às {seriesTime}
+                </button>
+              </div>
+            </div>
+            {!!pub?.scheduled?.length && (
+              <ul className="studio-list">
+                {pub.scheduled.map((e) => (
+                  <li key={e.id}>
+                    <div>
+                      <strong>{new Date(e.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} · {e.status === "scheduled" ? "agendado" : e.status === "published" ? "publicado" : e.status === "late" ? "atrasado (PC estava desligado)" : e.status === "failed" ? "erro" : "publicando…"}</strong>
+                      <small>{e.video.split(/[\\/]/).pop()}{e.error ? ` · ${e.error}` : ""}{e.permalink ? ` · ${e.permalink}` : ""}</small>
+                    </div>
+                    {e.status === "scheduled" && <button className="button small" onClick={() => void guard(async () => setPub(await api("cancelScheduledReel", { id: e.id })))}>Cancelar</button>}
+                    {(e.status === "late" || e.status === "failed") && <button className="button small" onClick={() => void guard(async () => { await api("publishLateReel", { id: e.id }); setPub(await api("getPublishSettings")); }, "Publicado.")}>Publicar agora</button>}
+                  </li>
+                ))}
+              </ul>
+            )}
             {!!pub?.history.length && (
               <ul className="studio-list">
                 {pub.history.map((h) => <li key={h.publishedAt}><div><strong>@{h.username}</strong><small>{new Date(h.publishedAt).toLocaleString("pt-BR")} · {h.permalink}</small></div></li>)}

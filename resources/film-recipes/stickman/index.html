@@ -166,6 +166,7 @@
     CR.rise(tl, ".q", tVoce);
     tl.to(".h-phone", { autoAlpha: 0, duration: 0.2 }, tVoce);
     pose(tVoce, 30, -30, 0, 0);
+    CR.profileCTA(tl, at("modelo", 1, tVoce + 2.0), { x: 470, y: 1040, until: D });
 
     CR.camera(tl, ".cam", D, [tLeo, tNinguem, tAte, tAss, tDif], { inner: ".punch" });
     tl.set({}, {}, D);

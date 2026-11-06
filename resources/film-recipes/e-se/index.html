@@ -133,6 +133,7 @@
     CR.exit(tl, ".badge", tMas);
     tl.to(".sky", { background: "linear-gradient(#7cc4ee, #cfeefb)", duration: 1 }, tMas + 0.3);
     CR.slam(tl, ".end", tVoce);
+    CR.profileCTA(tl, at("primeiro", 1, tVoce + 1.2), { y: 820, ink: "#1E1C1A", until: D });
 
     CR.camera(tl, ".world", D, [tDia30, tDia90, tDia365, tVoce], { inner: ".punch", drift: 0.02 });
     tl.set({}, {}, D);

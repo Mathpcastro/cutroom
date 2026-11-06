@@ -94,6 +94,29 @@
         tl.to(inner, { scale: 1, duration: 0.5, ease: "power2.inOut" }, r3(p + 0.14));
       });
     },
+    /**
+     * Funnel end card: "LINK NO PERFIL" + the brand's @ with an arrow toward the profile picture
+     * (bottom-left in the Reels interface). Stays until the end. opts: {handle, text, y, color}
+     */
+    profileCTA: function (tl, at, opts) {
+      var o = opts || {},
+        root = document.querySelector(o.parent || "[data-composition-id]"),
+        brand = window.BRAND || {},
+        handle = o.handle || (brand.handle ? "@" + String(brand.handle).replace(/^@/, "") : ""),
+        color = o.color || (brand.palette && brand.palette.accent) || "#E8462F";
+      var box = document.createElement("div");
+      box.className = "cr-cta";
+      box.style.cssText = "position:absolute;left:" + (o.x || 70) + "px;top:" + (o.y || 1250) + "px;z-index:45;visibility:hidden;opacity:0;font-family:Anton,Impact,sans-serif";
+      box.innerHTML =
+        '<div style="display:inline-block;padding:22px 40px;border-radius:999px;background:' + color + ';color:#fff;font-size:76px;line-height:1;box-shadow:0 20px 60px rgba(0,0,0,.25)">' + (o.text || "LINK NO PERFIL") + "</div>" +
+        (handle ? '<div style="margin:18px 0 0 12px;font:700 50px \'Instrument Sans\',sans-serif;color:' + (o.ink || "#1E1C1A") + ';text-shadow:0 2px 14px rgba(255,255,255,.6)">' + handle + "</div>" : "") +
+        '<svg width="150" height="150" viewBox="0 0 150 150" style="display:block;margin:6px 0 0 20px"><path class="cr-cta-arrow" d="M120 10 C110 80 70 110 20 130 M20 130 L60 132 M20 130 L36 96" fill="none" stroke="' + color + '" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="260" stroke-dashoffset="260"/></svg>';
+      root.appendChild(box);
+      tl.fromTo(box, { autoAlpha: 0, y: 60, scale: 0.9 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.35, ease: "back.out(2)" }, r3(at));
+      tl.to(box.querySelector(".cr-cta-arrow"), { strokeDashoffset: 0, duration: 0.45, ease: "power2.out" }, r3(at + 0.3));
+      for (var t = at + 0.9; t < (o.until || at + 6); t += 0.9) tl.to(box, { scale: 1.04, duration: 0.2, yoyo: true, repeat: 1, ease: "sine.inOut" }, r3(t));
+      return box;
+    },
     wordEnd: function (text, nth) {
       var start = CR.word(text, nth);
       for (var i = 0; i < T.words.length; i++) if (T.words[i].start === start) return T.words[i].end;

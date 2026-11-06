@@ -166,6 +166,7 @@
     var tFaca = at("faça", 1, 19.0);
     out(".chain, .arrow", tFaca);
     title(".t6", tFaca);
+    CR.profileCTA(tl, at("passo", 1, tFaca + 2.0), { x: 330, y: 1240, ink: "#FFFFFF", until: D });
     CR.rise(tl, ".mascot", 0.6);
     for (var w = 0; w < 4; w++) tl.to(".m-arm", { rotation: w % 2 ? 0 : -18, svgOrigin: "215 170", duration: 0.25 }, tFaca + w * 0.25);
     CR.sway(tl, ".m-body", D, 2.5, 1.4);

@@ -24,8 +24,20 @@ const FLOW = `
 4. \`film_voiceover{film, text}\` — sem provedor, usa a voz escolhida pelo usuário (ElevenLabs, ou Kokoro offline, sem créditos de API). Grava \`timing.js\`; se responder \`status:"generating"\`, chame de novo com o mesmo texto.
 5. Adapte \`index.html\`: textos, telas, cores, e reancore cada cena com \`CR.at("palavra", n, segundosReserva)\`. \`data-duration\` e o \`tl.set({}, {}, D)\` final = \`voiceEnd + 1,5–2 s\`.
 6. Música: \`search_music{query, kind:"music"}\` → \`film_asset{film, music:id}\` → \`<audio id="musica" data-volume="0.14" data-fade-out="1.5">\`. Efeitos (\`kind:"sfx"\`, whoosh/pop/click) cada um com \`id\` e \`data-track-index\` próprios, volume 0,3–0,5, na batida da cena.
-7. \`film_check\` → \`film_stills\` em 5–6 momentos (gancho, cada virada, final) → corrija → \`film_review\` (nota por item do checklist; corrija tudo abaixo de 8) → \`render_film\` (chame de novo até \`status:"done"\`).
-8. Entregue o caminho do MP4 e, se houver música CC BY, a linha de crédito para a legenda do post.
+7. Legenda pronta para o post (fórmula na seção Funil abaixo).
+8. \`film_check\` → \`film_stills\` em 5–6 momentos (gancho, cada virada, final) → corrija → \`film_review\` (nota por item do checklist; corrija tudo abaixo de 8) → \`render_film\` (chame de novo até \`status:"done"\`).
+9. Entregue o caminho do MP4 e a legenda; com a confirmação do usuário, \`publish_reel\` ou \`schedule_reels_daily\`. Se houver música CC BY, a linha de crédito vai na legenda.
+
+## Funil orgânico (sem tráfego pago)
+O vídeo existe para levar a pessoa do feed para a venda: **Reels (alcance) → visita no perfil → clique no link → venda**. Os carrosséis do Carrossell fazem o meio do caminho (confiança e prova) no mesmo perfil.
+- **Gancho para quem não segue:** os primeiros 2 s falam com um desconhecido (a dor ou um número), nunca "oi, eu sou".
+- **Laço aberto:** prometa cedo algo que só aparece no fim ("no final eu mostro o carrossel que trouxe 112 assinaturas").
+- **Uma ideia só** por vídeo; o produto aparece como a saída, não como anúncio.
+- **CTA de perfil** nos últimos 3 s, falado e na tela: \`CR.profileCTA(tl, CR.at("perfil", 1, D - 3))\` ("LINK NO PERFIL" + @ da marca apontando para a foto do perfil). Uma ação só: não peça para seguir, curtir, comentar e clicar ao mesmo tempo.
+- **Final que volta ao começo** quando der (a última frase puxa a primeira): replay conta como retenção.
+- **Legenda** (até ~300 caracteres): 1ª linha repete o gancho; 2–3 linhas de valor; "👉 O link está no perfil (@marca)"; crédito da música CC BY; 3–5 hashtags do nicho. Fixe um comentário com a mesma chamada.
+- **Cadência:** 1 Reels por dia no mesmo horário (\`schedule_reels_daily\`) + 1 carrossel por dia no piloto automático do Carrossell. Perfil: bio com a promessa + link para a oferta, destaques com prova.
+- Mude só uma variável por vez (gancho, formato ou horário) e compare visitas ao perfil e cliques, não curtidas.
 
 ## Ritmo que segura (vale para todos)
 - Gancho em **imagem** nos 3 primeiros segundos: algo se mexendo + a frase mais forte do roteiro. Nada de logo ou "olá" no começo.
@@ -44,6 +56,7 @@ const CHECK_COMMON = [
   "Cores, logo e tom da marca do usuário",
   "Áudio: narração clara, música baixa (≈ 0,14), efeitos na batida, nada mudo",
   "Final com pergunta que divide ou CTA claro",
+  "Funil: CTA 'link no perfil' falado e na tela nos últimos 3 s, com o @ da marca",
 ];
 
 export const FORMATS: VideoFormat[] = ([
