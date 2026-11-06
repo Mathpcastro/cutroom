@@ -1,6 +1,6 @@
 import type { AudioWord } from "../../src/shared/types";
 
-export const VOICE_PROVIDERS = ["elevenlabs", "openai", "local"] as const;
+export const VOICE_PROVIDERS = ["elevenlabs", "openai", "kokoro", "local"] as const;
 export type VoiceProvider = (typeof VOICE_PROVIDERS)[number];
 
 export interface VoiceOption {

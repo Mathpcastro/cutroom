@@ -71,7 +71,9 @@ export class FilmStudio {
     const a = Studio.voiceArgs.extend({ film }).strict().parse(args);
     const { film: id, ...voiceArgs } = a;
     await this.host.films.meta(id);
-    const { file, words, provider, voice } = await this.studio.synthesize(voiceArgs);
+    const voiced = await this.studio.synthesize(voiceArgs);
+    if (!voiced) return Studio.generating;
+    const { file, words, provider, voice } = voiced;
     return this.host.job("voice", "Preparando os tempos da narração…", async (signal) => {
       const duration = await probeAudio(file, signal);
       const set = await this.host.films.setVoice(id, { file, words, duration, provider, voice }, signal);

@@ -1036,7 +1036,7 @@ async function request(method: string, params?: unknown): Promise<unknown> {
     case "listVoices":
       return studio.listVoices(
         z
-          .object({ provider: z.enum(["elevenlabs", "openai", "local"]).optional() })
+          .object({ provider: z.enum(["elevenlabs", "openai", "kokoro", "local"]).optional() })
           .parse(params ?? {}).provider,
       );
     case "getBrand":
@@ -1351,6 +1351,9 @@ app.whenReady().then(async () => {
       packages.transcribe(media, cacheDir, progress, signal),
     exportTo: (project, output, signal, progress) =>
       renderAndExport(project, output, signal, progress),
+    kokoroSpeech: (text, voice, signal) =>
+      packages.kokoroSpeak(text, voice, join(cacheDir, "voice"), signal),
+    kokoroReady: () => packages.kokoroInstalled(),
     ...(["win32", "darwin"].includes(process.platform)
       ? {
           localSpeech: async (text: string, voice: string | undefined, signal: AbortSignal) => {

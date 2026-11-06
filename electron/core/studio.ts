@@ -21,6 +21,7 @@ import {
 } from "./voice";
 import { musicDetails, searchMusic } from "./music";
 import { FORMATS, formatGuide } from "./formats";
+import { KOKORO_DEFAULT_VOICE, KOKORO_VOICES } from "./kokoro";
 
 export const AUDIO_EXTENSIONS = [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".opus", ".flac"];
 const PREVIEW_WAIT_MS = 40_000;
@@ -43,6 +44,9 @@ export interface StudioHost {
   /** Local text-to-speech, when the offline voice package is installed. */
   localSpeech?(text: string, voice: string | undefined, signal: AbortSignal): Promise<SpeechResult>;
   localVoices?(): Promise<VoiceOption[]>;
+  /** Kokoro offline voice (package "Voz Kokoro"). */
+  kokoroSpeech?(text: string, voice: string | undefined, signal: AbortSignal): Promise<SpeechResult>;
+  kokoroReady?(): Promise<boolean>;
 }
 
 export interface VoicePreferences {
@@ -94,7 +98,16 @@ export class Studio {
       keys: await this.host.secrets.describe(Object.values(VOICE_KEYS)),
       preferences: await this.voicePreferences(),
       localAvailable: !!this.host.localSpeech,
+      kokoroAvailable: (await this.host.kokoroReady?.()) ?? false,
     };
+  }
+  /** No choice saved: the best voice the user can use right now, paid keys first, then offline voices. */
+  private async defaultProvider(): Promise<VoiceProvider> {
+    const keys = await this.host.secrets.describe(Object.values(VOICE_KEYS));
+    if (keys[VOICE_KEYS.elevenlabs]) return "elevenlabs";
+    if (await this.host.kokoroReady?.()) return "kokoro";
+    if (keys[VOICE_KEYS.openai]) return "openai";
+    return this.host.localSpeech ? "local" : "elevenlabs";
   }
   async setVoiceKey(provider: string, key: string | undefined) {
     const name = VOICE_KEYS[provider as keyof typeof VOICE_KEYS] ?? (() => {
@@ -152,13 +165,16 @@ export class Studio {
 
   async listVoices(provider?: VoiceProvider) {
     const prefs = await this.voicePreferences();
-    const chosen = provider ?? prefs.provider ?? "elevenlabs";
+    const chosen = provider ?? prefs.provider ?? (await this.defaultProvider());
     const configured = await this.host.secrets.describe(Object.values(VOICE_KEYS));
     let voices: VoiceOption[] = [];
     if (chosen === "elevenlabs") voices = await elevenLabsVoices(await this.key("elevenlabs"));
     else if (chosen === "openai") {
       await this.key("openai");
       voices = OPENAI_VOICES.map((id) => ({ id, name: id, provider: "openai" as const, language: "multilíngue" }));
+    } else if (chosen === "kokoro") {
+      if (!(await this.host.kokoroReady?.())) throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom (narração offline, sem créditos).");
+      voices = KOKORO_VOICES.map(({ lang: _lang, ...v }) => v);
     } else {
       if (!this.host.localVoices)
         throw new Error("A voz local está disponível no Windows e no Mac.");
@@ -170,6 +186,7 @@ export class Studio {
       configured: {
         elevenlabs: !!configured[VOICE_KEYS.elevenlabs],
         openai: !!configured[VOICE_KEYS.openai],
+        kokoro: (await this.host.kokoroReady?.()) ?? false,
         local: !!this.host.localSpeech,
       },
       voices,
@@ -189,8 +206,8 @@ export class Studio {
   /** Narration audio + word timings for a script, cached by script and voice (never paid twice). */
   async synthesize(a: z.infer<typeof Studio.voiceArgs>) {
     const prefs = await this.voicePreferences();
-    const provider = a.provider ?? prefs.provider ?? "elevenlabs";
-    const voice = a.voice ?? prefs.voices?.[provider] ?? (provider === "openai" ? "coral" : undefined);
+    const provider = a.provider ?? prefs.provider ?? (await this.defaultProvider());
+    const voice = a.voice ?? prefs.voices?.[provider] ?? (provider === "openai" ? "coral" : provider === "kokoro" ? KOKORO_DEFAULT_VOICE : undefined);
     if (!voice && provider === "elevenlabs")
       throw new Error("Escolha uma voz: chame list_voices e passe o id em voice, ou defina a voz padrão em Vozes.");
     const key = createHash("sha256")
@@ -205,14 +222,23 @@ export class Studio {
       ({ file, words } = JSON.parse(await readFile(meta, "utf8")));
       await stat(file);
     } catch {
-      const result = await this.host.job("voice", "Gerando a narração…", async (signal, progress) => {
+      // Offline voices can take longer than an MCP call allows (Codex cuts at ~60 s): keep generating
+      // in the background and let the agent call again; the result lands in the cache.
+      let pending = this.voiceJobs.get(key);
+      if (!pending) {
+        pending = this.host.job("voice", "Gerando a narração…", async (signal, progress) => {
         progress(10, "Gerando a narração…");
         const speech =
           provider === "elevenlabs"
             ? await elevenLabsSpeech({ apiKey: await this.key("elevenlabs"), voiceId: voice!, text: a.text, modelId: a.model, signal })
             : provider === "openai"
               ? await openAiSpeech({ apiKey: await this.key("openai"), voice: voice!, text: a.text, model: a.model, instructions: a.instructions, signal })
-              : await (this.host.localSpeech ??
+              : provider === "kokoro"
+                ? await (this.host.kokoroSpeech ??
+                    (() => {
+                      throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom.");
+                    }))(a.text, voice, signal)
+                : await (this.host.localSpeech ??
                   (() => {
                     throw new Error("A voz local está disponível no Windows e no Mac.");
                   }))(a.text, voice, signal);
@@ -229,14 +255,26 @@ export class Studio {
           );
           timings = alignScript(a.text, recognized);
         }
+        await writeFile(meta, JSON.stringify({ file: out, words: timings }), "utf8");
         return { file: out, words: timings };
       });
+        const job = pending;
+        job.finally(() => this.voiceJobs.get(key) === job && this.voiceJobs.delete(key)).catch(() => undefined);
+        this.voiceJobs.set(key, job);
+      }
+      const result = await Promise.race([pending, new Promise<undefined>((done) => setTimeout(() => done(undefined), PREVIEW_WAIT_MS))]);
+      if (!result) return undefined;
       file = result.file;
       words = result.words;
-      await writeFile(meta, JSON.stringify({ file, words }), "utf8");
     }
     return { file, words, provider, voice };
   }
+  private voiceJobs = new Map<string, Promise<{ file: string; words: AudioWord[] | undefined }>>();
+  /** What voice tools answer while a narration is still being generated. */
+  static readonly generating = {
+    status: "generating",
+    message: "A narração ainda está sendo gerada no computador do usuário. Chame a mesma ferramenta de novo, com o mesmo texto, em 30 segundos (não cobra de novo).",
+  };
 
   async addVoiceover(args: Record<string, unknown>) {
     const a = Studio.voiceArgs
@@ -247,7 +285,9 @@ export class Studio {
       })
       .strict()
       .parse(args);
-    const { file, words, provider, voice } = await this.synthesize(a);
+    const voiced = await this.synthesize(a);
+    if (!voiced) return Studio.generating;
+    const { file, words, provider, voice } = voiced;
     const added = await this.addAudio(
       {
         path: file,

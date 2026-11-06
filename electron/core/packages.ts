@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
-import { access, chmod, mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { access, chmod, mkdir, readFile, stat, writeFile, rename } from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import { join } from "node:path";
 import { gunzipSync, unzipSync } from "fflate";
 import type { Media, PackageInfo, Word } from "../../src/shared/types";
 import { runProcess } from "./process";
 import manifest from "../../resources/packages/transcription-base.json";
 import { MOTION_PACKAGE, motionPackageInfo, installMotionPackage } from "./motion-package";
+import { KOKORO_FILES, KOKORO_PACKAGE, KOKORO_VERSION, kokoroSpeech } from "./kokoro";
 
 const UV_VERSION = "0.11.21";
 export const TRANSCRIPTION_PACKAGE = "faster-whisper-base";
@@ -142,18 +144,104 @@ export class PackageManager {
         capabilities: manifest.capabilities,
       },
       await motionPackageInfo(this.root),
+      await this.kokoroInfo(installed),
     ];
   }
-  async install(
-    id: string,
-    onProgress: (progress: number, label: string) => void,
-    signal?: AbortSignal,
-  ) {
-    if (id === MOTION_PACKAGE) return installMotionPackage(this.root, onProgress, signal);
-    if (id !== TRANSCRIPTION_PACKAGE) throw new Error("Pacote desconhecido.");
+
+  // ---------- Voz Kokoro (offline narration) ----------
+  private kokoroPython() {
+    return process.platform === "win32" ? join(this.root, "voice", "Scripts", "python.exe") : join(this.root, "voice", "bin", "python3");
+  }
+  private kokoroModels() {
+    return join(this.root, "models", "kokoro");
+  }
+  async kokoroInstalled() {
+    const marker = await readFile(join(this.root, "kokoro.ready.json"), "utf8").then((t) => JSON.parse(t), () => null);
+    if (marker?.version !== KOKORO_VERSION) return false;
+    return access(this.kokoroPython()).then(
+      () => true,
+      () => false,
+    );
+  }
+  private async kokoroInfo(transcription: boolean): Promise<PackageInfo> {
+    const installed = (await this.kokoroInstalled()) && transcription;
+    return {
+      id: KOKORO_PACKAGE,
+      name: "Voz Kokoro",
+      description:
+        "Narração natural no seu PC, sem internet e sem créditos: vozes em português (Alex, Dora, Santa), inglês e espanhol. Usa a Transcrição local para marcar o tempo de cada palavra.",
+      version: KOKORO_VERSION,
+      size: transcription ? "≈ 230 MB · download único" : "≈ 230 MB + Transcrição local",
+      installed,
+      status: installed ? "installed" : "available",
+      capabilities: ["voice", "offline-tts"],
+    };
+  }
+  private async downloadVerified(file: (typeof KOKORO_FILES)[number], dir: string, onProgress: (p: number) => void, signal?: AbortSignal) {
+    const target = join(dir, file.name);
+    const sha = (path: string) =>
+      new Promise<string>((done, reject) => {
+        const hash = createHash("sha256");
+        createReadStream(path).on("data", (c) => hash.update(c)).on("error", reject).on("end", () => done(hash.digest("hex")));
+      });
+    if ((await stat(target).then((s) => s.size, () => 0)) === file.bytes && (await sha(target)) === file.sha256) return;
+    const response = await fetch(file.url, { signal });
+    if (!response.ok || !response.body) throw new Error(`Falha ao baixar o modelo de voz: HTTP ${response.status}.`);
+    const partial = `${target}.partial`,
+      chunks: Uint8Array[] = [];
+    let got = 0;
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+      got += chunk.length;
+      onProgress(Math.min(1, got / file.bytes));
+    }
+    const data = Buffer.concat(chunks);
+    if (createHash("sha256").update(data).digest("hex") !== file.sha256) throw new Error("O modelo de voz baixado não passou na verificação de integridade.");
+    await writeFile(partial, data);
+    await rename(partial, target);
+  }
+  private async installKokoro(onProgress: (progress: number, label: string) => void, signal?: AbortSignal) {
+    const runtime = UV_RUNTIMES[`${process.platform}-${process.arch}`];
+    if (!runtime) throw new Error("A Voz Kokoro não é suportada nesta plataforma.");
+    // Word timings come from the local transcription: install it first when missing.
+    if (!(await this.list())[0].installed)
+      await this.install(TRANSCRIPTION_PACKAGE, (p, label) => onProgress(p * 0.4, `Transcrição local: ${label}`), signal);
+    const { uv, env } = await this.bootstrap((p, label) => onProgress(40 + p * 0.02, label), signal);
+    onProgress(42, "Preparando o Python da voz…");
+    try {
+      await access(this.kokoroPython());
+    } catch {
+      await runProcess(uv, ["--no-config", "venv", "--python", "3.12", "--managed-python", join(this.root, "voice")], { env, signal });
+    }
+    onProgress(48, "Instalando o motor de voz…");
+    await this.pipInstall(uv, this.kokoroPython(), join(this.resources, "workers", runtime.lock.replace("requirements", "requirements.kokoro")), env, (p, label) => onProgress(55, label), signal);
+    await mkdir(this.kokoroModels(), { recursive: true });
+    let done = 0;
+    for (const file of KOKORO_FILES) {
+      const share = file.bytes / KOKORO_FILES.reduce((s, f) => s + f.bytes, 0);
+      await this.downloadVerified(file, this.kokoroModels(), (f) => onProgress(60 + (done + f * share) * 32, "Baixando as vozes…"), signal);
+      done += share;
+    }
+    onProgress(94, "Testando a voz…");
+    await runProcess(
+      this.kokoroPython(),
+      ["-X", "utf8", join(this.resources, "workers", "speak_kokoro.py"), "check", "--model", join(this.kokoroModels(), KOKORO_FILES[0].name), "--voices", join(this.kokoroModels(), KOKORO_FILES[1].name)],
+      { env, signal },
+    );
+    await writeFile(join(this.root, "kokoro.ready.json"), JSON.stringify({ version: KOKORO_VERSION, installedAt: new Date().toISOString() }));
+    onProgress(100, "Voz Kokoro pronta.");
+  }
+  /** Synthesizes with Kokoro (throws a friendly message when the package is missing). */
+  async kokoroSpeak(text: string, voice: string | undefined, tempDir: string, signal?: AbortSignal) {
+    if (!(await this.kokoroInstalled())) throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom.");
+    await mkdir(tempDir, { recursive: true });
+    return kokoroSpeech({ python: this.kokoroPython(), worker: join(this.resources, "workers", "speak_kokoro.py"), models: this.kokoroModels(), text, voice, tempDir, signal });
+  }
+  /** Downloads uv (SHA-256 checked) once; it installs CutRoom's private Python and locked wheels. */
+  private async bootstrap(onProgress: (progress: number, label: string) => void, signal?: AbortSignal) {
     const uvInfo = UV_RUNTIMES[`${process.platform}-${process.arch}`];
     if (!uvInfo)
-      throw new Error("O pacote de transcrição não é suportado nesta plataforma.");
+      throw new Error("Este pacote não é suportado nesta plataforma.");
     await mkdir(this.root, { recursive: true });
     const uvBinName = process.platform === "win32" ? `uv-${UV_VERSION}.exe` : `uv-${UV_VERSION}`;
     const uv = join(this.root, "bootstrap", uvBinName);
@@ -192,6 +280,67 @@ export class PackageManager {
       UV_NO_MODIFY_PATH: "1",
       PYTHONUTF8: "1",
     };
+    return { uv, env, uvInfo };
+  }
+  private async pipInstall(
+    uv: string,
+    python: string,
+    reqFile: string,
+    env: NodeJS.ProcessEnv,
+    onProgress: (progress: number, label: string) => void,
+    signal?: AbortSignal,
+  ) {
+    try {
+      await runProcess(
+        uv,
+        [
+          "--no-config",
+          "pip",
+          "install",
+          "--python",
+          python,
+          "--link-mode",
+          "copy",
+          "--require-hashes",
+          "-r",
+          reqFile,
+        ],
+        { env, signal },
+      );
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      // Windows antivirus can retain extracted DLLs and prevent uv's atomic cache rename.
+      // pip installs the exact same hash-locked wheels without that cache promotion step.
+      onProgress(35, "Concluindo a instalação do runtime…");
+      await runProcess(python, ["-m", "ensurepip", "--upgrade"], {
+        env,
+        signal,
+      });
+      await runProcess(
+        python,
+        [
+          "-m",
+          "pip",
+          "install",
+          "--disable-pip-version-check",
+          "--no-warn-script-location",
+          "--require-hashes",
+          "-r",
+          reqFile,
+        ],
+        { env, signal },
+      );
+    }
+  }
+  async install(
+    id: string,
+    onProgress: (progress: number, label: string) => void,
+    signal?: AbortSignal,
+  ) {
+    if (id === MOTION_PACKAGE) return installMotionPackage(this.root, onProgress, signal);
+    if (id === KOKORO_PACKAGE) return this.installKokoro(onProgress, signal);
+    if (id !== TRANSCRIPTION_PACKAGE) throw new Error("Pacote desconhecido.");
+    const { uv, env, uvInfo } = await this.bootstrap(onProgress, signal);
     onProgress(12, "Instalando Python privado do CutRoom…");
     try {
       await access(this.python());
@@ -210,48 +359,7 @@ export class PackageManager {
       );
     }
     onProgress(30, "Instalando o motor de transcrição…");
-    const reqFile = join(this.resources, "workers", uvInfo.lock);
-    try {
-      await runProcess(
-        uv,
-        [
-          "--no-config",
-          "pip",
-          "install",
-          "--python",
-          this.python(),
-          "--link-mode",
-          "copy",
-          "--require-hashes",
-          "-r",
-          reqFile,
-        ],
-        { env, signal },
-      );
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      // Windows antivirus can retain extracted DLLs and prevent uv's atomic cache rename.
-      // pip installs the exact same hash-locked wheels without that cache promotion step.
-      onProgress(35, "Concluindo a instalação do runtime…");
-      await runProcess(this.python(), ["-m", "ensurepip", "--upgrade"], {
-        env,
-        signal,
-      });
-      await runProcess(
-        this.python(),
-        [
-          "-m",
-          "pip",
-          "install",
-          "--disable-pip-version-check",
-          "--no-warn-script-location",
-          "--require-hashes",
-          "-r",
-          reqFile,
-        ],
-        { env, signal },
-      );
-    }
+    await this.pipInstall(uv, this.python(), join(this.resources, "workers", uvInfo.lock), env, onProgress, signal);
     await runProcess(
       this.python(),
       [

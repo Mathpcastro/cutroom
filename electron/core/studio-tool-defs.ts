@@ -40,19 +40,19 @@ export const STUDIO_TOOLS = [
   {
     name: "list_voices",
     description:
-      "List narration voices for a provider: elevenlabs (user's API key, word timing included), openai (user's API key; timing aligned locally, needs Transcrição local) or local (the computer's own voices: Windows SAPI with exact word timing, macOS say; free, offline, lower quality). Reports which providers are configured. Keys are entered by the user in CutRoom; never ask for them in chat.",
+      "List narration voices for a provider: elevenlabs (user's API key, word timing included), openai (user's API key; timing aligned locally, needs Transcrição local), kokoro (package Voz Kokoro: natural offline voices on the user's CPU, free, pt-BR pm_alex default / pf_dora / pm_santa, also English and Spanish; ~2x real time, timing aligned locally) or local (the computer's own voices: Windows SAPI with exact word timing, macOS say; free, offline, robotic). Without a provider, the default is the user's choice, else ElevenLabs if configured, else Kokoro if installed. Reports which providers are configured. Keys are entered by the user in CutRoom; never ask for them in chat.",
     inputSchema: objectSchema({
-      provider: { type: "string", enum: ["elevenlabs", "openai", "local"] },
+      provider: { type: "string", enum: ["elevenlabs", "openai", "kokoro", "local"] },
     }),
   },
   {
     name: "add_voiceover",
     description:
-      "Synthesize narration from a script and add it as a voice track with word timings (captions follow it automatically). Write the script exactly as it must be spoken, in the user's language, short sentences. Returns the track id, its duration and the word timings in TIMELINE seconds: use them to place scenes on the exact word. Costs the user's provider credits: generate once, then reuse.",
+      "Synthesize narration from a script and add it as a voice track with word timings (captions follow it automatically). Write the script exactly as it must be spoken, in the user's language, short sentences. Returns the track id, its duration and the word timings in TIMELINE seconds: use them to place scenes on the exact word. Costs the user's provider credits (kokoro and local are free): generate once, then reuse. If it answers status 'generating', call again with the same text in ~30 s.",
     inputSchema: objectSchema(
       {
         text: string("Script to speak (max 5000 characters).", { maxLength: 5000 }),
-        provider: { type: "string", enum: ["elevenlabs", "openai", "local"] },
+        provider: { type: "string", enum: ["elevenlabs", "openai", "kokoro", "local"] },
         voice: string("Voice id from list_voices. Default: the voice chosen in CutRoom."),
         model: string("Provider model (optional)."),
         instructions: string("OpenAI only: tone/pace instructions, e.g. 'animado, ritmo rápido'."),
@@ -156,12 +156,12 @@ export const STUDIO_TOOLS = [
   {
     name: "film_voiceover",
     description:
-      "Record the film's narration from the script and write timing.js: window.TIMING = {words:[{text,start,end}], envelope:{fps:30, db:[...]}, voiceEnd}. CR.word('palavra', n) then returns the second each word is spoken, CR.captions/CR.mouth use it automatically. Returns the words with times, the <audio> tag to put in index.html and the suggested film duration. Cached by script+voice: re-running the same script costs nothing; changing it costs the user's provider credits again.",
+      "Record the film's narration from the script and write timing.js: window.TIMING = {words:[{text,start,end}], envelope:{fps:30, db:[...]}, voiceEnd}. CR.word('palavra', n) then returns the second each word is spoken, CR.captions/CR.mouth use it automatically. Returns the words with times, the <audio> tag to put in index.html and the suggested film duration. Cached by script+voice: re-running the same script costs nothing; changing it costs the user's provider credits again (kokoro and local are free). If it answers status 'generating', call again with the same text in ~30 s.",
     inputSchema: objectSchema(
       {
         film: string("Film id."),
         text: string("Exact script to speak, user's language, short sentences (max 5000 chars).", { maxLength: 5000 }),
-        provider: { type: "string", enum: ["elevenlabs", "openai", "local"] },
+        provider: { type: "string", enum: ["elevenlabs", "openai", "kokoro", "local"] },
         voice: string("Voice id from list_voices. Default: the voice chosen in CutRoom."),
         model: string("Provider model (optional)."),
         instructions: string("OpenAI only: tone/pace instructions."),
