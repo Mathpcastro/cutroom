@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CutRoom — vídeos que vendem o seu SaaS</title>
-<meta name="description" content="O editor que o Claude Code e o Codex controlam: roteiro, narração, animação e Reels pronto, com a sua marca.">
+<title>CutRoom — o vídeo que faz o seu SaaS vender no orgânico</title>
+<meta name="description" content="O agente faz o Reels, o piloto automático posta, o carrossel converte. Funil orgânico para vender o seu SaaS sem tráfego pago.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <style>
@@ -15,65 +15,85 @@
   .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
   .ribbon { background: var(--ink); color: #fff; text-align: center; padding: 12px 16px; font-size: 15px; }
   .ribbon b { color: var(--accent); }
-  header.hero { padding: 56px 0 40px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
-  h1 { font: 64px/1 Anton, Impact, sans-serif; letter-spacing: .5px; text-transform: uppercase; }
-  h1 em { font: italic 400 1em/1 "Instrument Serif", serif; text-transform: none; color: var(--accent); letter-spacing: 0; }
-  .lead { font-size: 20px; margin: 22px 0 28px; max-width: 560px; }
-  .cta { display: inline-flex; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 19px "Instrument Sans"; text-decoration: none; box-shadow: 0 14px 40px rgba(255,90,54,.35); }
-  .cta small { font-weight: 500; opacity: .9; }
-  .price { margin-top: 14px; font-size: 15px; color: var(--grey); }
-  .price s { margin-right: 6px; }
-  .no { display: inline-block; margin-top: 14px; font-size: 14px; color: var(--grey); }
-  .phone { justify-self: center; width: min(320px, 80vw); aspect-ratio: 9/16; border-radius: 36px; overflow: hidden; background: #000; border: 10px solid var(--ink); box-shadow: 0 30px 80px rgba(0,0,0,.22); }
-  .phone video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  h1 { font: 58px/1 Anton, Impact, sans-serif; text-transform: uppercase; letter-spacing: .4px; }
+  h1 em, h2 em { font: italic 400 1em/1 "Instrument Serif", serif; text-transform: none; color: var(--accent); letter-spacing: 0; }
+  h2 { font: 44px/1.05 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 12px; }
+  .sub { font-size: 18px; color: var(--grey); max-width: 760px; margin-bottom: 26px; }
   section { padding: 64px 0; }
   .soft { background: var(--soft); }
-  h2 { font: 44px/1.05 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 14px; }
-  h2 em { font: italic 400 1em "Instrument Serif", serif; text-transform: none; color: var(--accent); }
-  .sub { font-size: 18px; color: var(--grey); max-width: 720px; margin-bottom: 36px; }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; padding: 28px 0; border-top: 1px solid rgba(0,0,0,.1); }
-  .pair h3 { grid-column: 1 / -1; font: 700 24px "Instrument Sans"; }
-  .pair h3 span { color: var(--accent); }
-  .col-label { font: 700 13px "Instrument Sans"; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 10px; }
-  .stat { display: inline-block; margin: 0 0 12px; padding: 6px 12px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
-  /* Original post: the thumbnail opens it on X; if X's embed script loads, it swaps in the real post. */
-  blockquote.twitter-tweet { margin: 0; max-width: 380px; padding: 0; border: 0; }
-  .xcard { position: relative; display: block; width: min(300px, 100%); aspect-ratio: 9/16; border-radius: 24px; overflow: hidden; background: #000; text-decoration: none; }
-  .xcard img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9; }
-  .xcard .play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 84px; height: 84px; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--ink); font-size: 34px; line-height: 84px; text-align: center; }
-  .xcard .xby { position: absolute; left: 12px; bottom: 12px; padding: 8px 14px; border-radius: 999px; background: rgba(0,0,0,.7); color: #fff; font: 600 13px "Instrument Sans"; }
-  .ours { position: relative; }
-  .ours .sound { position: absolute; left: 12px; top: 40px; padding: 8px 14px; border-radius: 999px; border: 0; background: rgba(0,0,0,.65); color: #fff; font: 600 13px "Instrument Sans"; cursor: pointer; }
-  .funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 10px; }
-  .stage-f { position: relative; padding: 26px 22px 26px 30px; background: var(--ink); color: #fff; clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%, 22px 50%); }
-  .stage-f:first-child { clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%); }
-  .stage-f:nth-child(2) { background: #2a2623; } .stage-f:nth-child(3) { background: #3a332e; } .stage-f:nth-child(4) { background: var(--accent); }
-  .stage-f b { display: block; font: 34px/1 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 8px; }
-  .stage-f span { font-size: 15px; opacity: .9; }
-  .week { margin-top: 26px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
-  .day-f { background: var(--paper); border-radius: 16px; padding: 14px 12px; font-size: 13px; }
-  .day-f strong { display: block; font: 22px Anton, Impact, sans-serif; margin-bottom: 6px; }
-  .day-f i { display: block; font-style: normal; padding: 6px 8px; border-radius: 10px; margin-top: 6px; }
+  .dark { background: var(--ink); color: #fff; }
+  .dark .sub { color: rgba(255,255,255,.7); }
+  .cta { display: inline-flex; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 19px "Instrument Sans"; text-decoration: none; box-shadow: 0 14px 40px rgba(255,90,54,.35); }
+  .cta small { font-weight: 500; opacity: .9; }
+  .price { margin-top: 12px; font-size: 15px; color: var(--grey); }
+  .no { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--grey); }
+  .note { margin-top: 18px; font-size: 13px; color: var(--grey); max-width: 820px; }
+
+  /* Dobra 1 */
+  .hero { padding: 40px 0; display: grid; grid-template-columns: 1.15fr .85fr; gap: 44px; align-items: center; min-height: calc(100vh - 46px); }
+  .lead { font-size: 19px; margin: 18px 0 20px; max-width: 580px; }
+  .mech { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .mech span { padding: 8px 14px; border-radius: 999px; background: var(--soft); font: 600 14px "Instrument Sans"; }
+  .mech span b { color: var(--accent); }
+  .phone { justify-self: center; width: min(300px, 78vw); aspect-ratio: 9/16; border-radius: 36px; overflow: hidden; background: #000; border: 10px solid var(--ink); box-shadow: 0 30px 80px rgba(0,0,0,.22); position: relative; }
+  .phone video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Comparativo: 2 dobras de 3 */
+  .fold { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
+  .fold > .wrap { width: 100%; min-width: 0; }
+  .trio { min-width: 0; }
+  html, body { overflow-x: hidden; }
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .case { position: relative; background: var(--paper); border-radius: 26px; padding: 14px; box-shadow: 0 16px 50px rgba(0,0,0,.06); }
+  .case h3 { font: 700 18px "Instrument Sans"; margin: 4px 4px 10px; }
+  .case h3 span { color: var(--accent); }
+  .reel { position: relative; aspect-ratio: 9/16; max-height: 60vh; margin: 0 auto; border-radius: 20px; overflow: hidden; background: #000; }
+  .reel video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tag-ours { position: absolute; left: 10px; bottom: 10px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 12px "Instrument Sans"; letter-spacing: .5px; text-transform: uppercase; }
+  .orig { position: absolute; right: 10px; bottom: 10px; width: 30%; border-radius: 12px; overflow: hidden; border: 3px solid #fff; box-shadow: 0 8px 24px rgba(0,0,0,.35); text-decoration: none; background: #000; }
+  .orig img { width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block; }
+  .orig span { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; background: rgba(0,0,0,.78); color: #fff; font: 700 10px/1.25 "Instrument Sans"; text-align: center; }
+  .sound { position: absolute; left: 10px; top: 10px; padding: 7px 12px; border-radius: 999px; border: 0; background: rgba(0,0,0,.65); color: #fff; font: 600 12px "Instrument Sans"; cursor: pointer; }
+  .case p { font-size: 14px; color: var(--grey); margin: 10px 4px 2px; }
+
+  /* Monetização */
+  .ways { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .way { background: var(--paper); border-radius: 24px; padding: 28px; }
+  .way b.n { display: block; font: 48px/1 Anton, Impact, sans-serif; color: var(--accent); margin-bottom: 6px; }
+  .way h3 { font-size: 22px; margin-bottom: 8px; }
+  .way p { font-size: 16px; }
+  .way ul { margin: 10px 0 0 18px; font-size: 15px; }
+  .way li { margin-bottom: 4px; }
+  .funnel { display: grid; grid-template-columns: repeat(4, 1fr); margin: 8px 0 22px; }
+  .stage-f { padding: 22px 22px 22px 30px; background: #2a2623; color: #fff; clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%); }
+  .stage-f:first-child { background: var(--ink); clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%); }
+  .stage-f:nth-child(3) { background: #3a332e; } .stage-f:nth-child(4) { background: var(--accent); }
+  .stage-f b { display: block; font: 28px/1 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 6px; }
+  .stage-f span { font-size: 14px; opacity: .9; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .day-f { background: var(--soft); border-radius: 14px; padding: 12px 10px; font-size: 12px; }
+  .day-f strong { display: block; font: 20px Anton, Impact, sans-serif; margin-bottom: 4px; }
+  .day-f i { display: block; font-style: normal; padding: 5px 7px; border-radius: 9px; margin-top: 5px; }
   .day-f .r { background: var(--accent); color: #fff; } .day-f .c { background: var(--ink); color: #fff; }
-  .ours video { width: min(300px, 100%); aspect-ratio: 9/16; border-radius: 24px; background: #000; display: block; }
-  .ours p { margin-top: 10px; font-size: 15px; color: var(--grey); max-width: 320px; }
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .step { background: var(--paper); border-radius: 24px; padding: 28px; }
-  .step b { display: block; font: 56px/1 Anton, Impact, sans-serif; color: var(--accent); margin-bottom: 8px; }
-  .step h4 { font-size: 20px; margin-bottom: 6px; }
-  ul.inc { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
-  ul.inc li { padding-left: 30px; position: relative; font-size: 17px; }
-  ul.inc li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--accent); font-weight: 700; }
-  .note { margin-top: 22px; font-size: 14px; color: var(--grey); max-width: 760px; }
+  .panel { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+  .panel th, .panel td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(0,0,0,.08); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  ul.inc { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; }
+  ul.inc li { padding-left: 28px; position: relative; font-size: 17px; }
+  ul.inc li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
   .final { text-align: center; }
-  .final h2 { margin-bottom: 18px; }
   footer { padding: 30px 0 50px; text-align: center; font-size: 13px; color: var(--grey); }
+
   @media (max-width: 860px) {
-    header.hero { grid-template-columns: 1fr; padding-top: 36px; }
-    h1 { font-size: 44px; }
-    h2 { font-size: 34px; }
-    .pair, .steps, ul.inc, .funnel { grid-template-columns: 1fr; }
-    .stage-f, .stage-f:first-child { clip-path: none; border-radius: 16px; margin-bottom: 6px; }
+    h1 { font-size: 40px; } h2 { font-size: 32px; }
+    .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 30px; }
+    .fold { min-height: auto; }
+    /* Cada dobra vira um carrossel de arrastar no celular. */
+    .trio { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; padding-bottom: 8px; }
+    .case { flex: 0 0 78%; scroll-snap-align: center; }
+    .reel { max-height: none; }
+    .ways, ul.inc, .funnel { grid-template-columns: 1fr; }
+    .stage-f, .stage-f:first-child { clip-path: none; border-radius: 14px; margin-bottom: 6px; }
     .week { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
@@ -81,78 +101,73 @@
 <body>
   <div class="ribbon">Seu acesso ao <b>Carrossell</b> está garantido. Antes de ir: uma oferta que só aparece agora.</div>
 
+  <!-- DOBRA 1: a tese e a oferta -->
   <div class="wrap">
     <header class="hero">
       <div>
-        <h1>Carrossel com IA já vende o seu SaaS. <em>Com vídeo, vende mais.</em></h1>
-        <p class="lead">O <b>CutRoom</b> é o editor de vídeo que o Claude Code e o Codex controlam. Você pede o vídeo; o agente escreve o roteiro, grava a narração, anima cada cena na batida da voz e entrega o Reels pronto, com a sua marca do Carrossell.</p>
+        <h1>O carrossel aquece. <em>O Reels traz gente nova.</em> Juntos, vendem o seu SaaS sem tráfego pago.</h1>
+        <p class="lead">O <b>CutRoom</b> é o editor que o Claude Code e o Codex controlam: você pede o vídeo, o agente escreve, narra, anima e entrega o Reels pronto com a sua marca do Carrossell. O piloto automático posta um por dia, e todo vídeo termina levando para o link do seu perfil.</p>
+        <div class="mech"><span><b>1</b> Reels todo dia</span><span><b>2</b> visita no perfil</span><span><b>3</b> clique no link</span><span><b>4</b> venda</span></div>
         <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o CutRoom <small>por R$ 97</small></a>
         <p class="price">Pagamento único, só nesta página.</p>
         <a class="no" href="#RECUSAR" data-cakto-downsell>Não, obrigado. Vou ficar só com os carrosséis.</a>
       </div>
-      <div class="phone"><video src="videos/professor.mp4" poster="videos/professor.jpg" autoplay muted loop playsinline></video></div>
+      <div class="phone"><video src="videos/professor.mp4" poster="videos/professor.jpg" autoplay muted loop playsinline data-autoplay></video></div>
     </header>
   </div>
 
-  <section class="soft">
+  <!-- DOBRAS 2 e 3: o comparativo -->
+  <section class="soft fold">
     <div class="wrap">
-      <h2>Esses vídeos feitos em código <em>estão viralizando</em></h2>
-      <p class="sub">Criadores lá fora estão fazendo vídeos inteiros com o Claude, sem After Effects. À esquerda, o post original. À direita, o mesmo formato feito pelo CutRoom, com o seu agente, para vender um SaaS.</p>
-
-      <div class="pair">
-        <h3>Aula com apresentador <span>animado</span></h3>
-        <div><div class="col-label">Lá fora</div><span class="stat">60 mil visualizações · 1,8 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2116010421740007894" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2116009362552434688/img/jkPpJnTcWGJQzywL.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Apresentador em pixel art com a boca na voz, cards na palavra falada e o número do seu resultado.</p></div>
+      <h2>Viralizou lá fora. <em>O CutRoom faz igual.</em></h2>
+      <p class="sub">Vídeos inteiros feitos em código com o Claude estão passando de centenas de milhares de visualizações. No canto, o original. No vídeo, a versão do CutRoom para vender um SaaS.</p>
+      <div class="trio">
+        <div class="case"><h3>Aula com <span>apresentador</span></h3>
+          <div class="reel"><video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">CutRoom</span>
+            <a class="orig" href="https://x.com/finnardley/status/2116010421740007894" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2116009362552434688/img/jkPpJnTcWGJQzywL.jpg" alt="Original de @finnardley" loading="lazy"><span>Original · 60 mil views</span></a></div>
+          <p>Pixel art com a boca na voz, cards na palavra e o número do seu resultado.</p></div>
+        <div class="case"><h3>O produto <span>funcionando</span></h3>
+          <div class="reel"><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">CutRoom</span>
+            <a class="orig" href="https://x.com/twoclipping/status/2103835273813496100" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2103830256347910144/img/YsUzKmE5XqGD9NZR.jpg" alt="Original de @twoclipping" loading="lazy"><span>Original · 144 mil views</span></a></div>
+          <p>Formas que viram a interface do seu app, cursor clicando, estado por estado.</p></div>
+        <div class="case"><h3>Voo pela sua <span>landing page</span></h3>
+          <div class="reel"><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">CutRoom</span>
+            <a class="orig" href="https://x.com/twoclipping/status/2110329502676951367" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2110328827956068352/img/Yfz92C5G-vOXGdv4.jpg" alt="Original de @twoclipping" loading="lazy"><span>Original · 154 mil views</span></a></div>
+          <p>O CutRoom captura a sua página e a câmera voa por ela até a frase da marca.</p></div>
       </div>
-
-      <div class="pair">
-        <h3>O produto <span>funcionando</span> (UI motion)</h3>
-        <div><div class="col-label">Lá fora</div><span class="stat">144 mil visualizações · 3,8 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/twoclipping/status/2103835273813496100" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2103830256347910144/img/YsUzKmE5XqGD9NZR.jpg" alt="Vídeo de @twoclipping no X" loading="lazy"><span class="play">▶</span><span class="xby">@twoclipping · assistir no X</span></a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Formas que viram a interface do seu app, cursor clicando e cada estado na batida da narração.</p></div>
+    </div>
+  </section>
+  <section class="soft fold" style="padding-top:0">
+    <div class="wrap">
+      <div class="trio">
+        <div class="case"><h3>História de <span>stickman</span></h3>
+          <div class="reel"><video src="videos/stickman.mp4" poster="videos/stickman.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">CutRoom</span>
+            <a class="orig" href="https://x.com/finnardley/status/2115786060231770351" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2115784242701500416/img/a_e-E2kTPxvwNIU5.jpg" alt="Original de @finnardley" loading="lazy"><span>Original · 62 mil views</span></a></div>
+          <p>A virada do seu cliente em quatro atos, com o traço se desenhando.</p></div>
+        <div class="case"><h3>"E se…" em <span>2D</span></h3>
+          <div class="reel"><video src="videos/e-se.mp4" poster="videos/e-se.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">CutRoom</span>
+            <a class="orig" href="https://x.com/finnardley/status/2117997239125585942" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2117994784631541761/img/VzOtyP3iKz8Z5d3a.jpg" alt="Original de @finnardley" loading="lazy"><span>Original · 37 mil views</span></a></div>
+          <p>Uma pergunta que prende, o tempo passando, cada marco mudando o cenário.</p></div>
+        <div class="case"><h3>Explainer <span>ilustrado</span></h3>
+          <div class="reel"><video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" muted loop playsinline preload="metadata" data-autoplay></video><span class="tag-ours">CutRoom</span>
+            <a class="orig" href="https://x.com/finnardley/status/2114305886420086817" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2114305237498388481/img/DMcFgslJnlOdVQ94.jpg" alt="Original de @finnardley" loading="lazy"><span>Original · 258 mil views</span></a></div>
+          <p>Vetor chapado, profundidade e um mascote explicando um conceito do seu nicho.</p></div>
       </div>
-
-      <div class="pair">
-        <h3>Voo 3D pela sua <span>landing page</span></h3>
-        <div><div class="col-label">Lá fora</div><span class="stat">154 mil visualizações · 4,3 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/twoclipping/status/2110329502676951367" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2110328827956068352/img/Yfz92C5G-vOXGdv4.jpg" alt="Vídeo de @twoclipping no X" loading="lazy"><span class="play">▶</span><span class="xby">@twoclipping · assistir no X</span></a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>O CutRoom captura a sua página e a câmera voa por ela até o cartão com a frase da marca.</p></div>
-      </div>
-
-      <div class="pair">
-        <h3>História de <span>stickman</span></h3>
-        <div><div class="col-label">Lá fora</div><span class="stat">62 mil visualizações · 1,1 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2115786060231770351" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2115784242701500416/img/a_e-E2kTPxvwNIU5.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/stickman.mp4" poster="videos/stickman.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>A transformação do seu cliente em quatro atos, com o traço se desenhando na tela.</p></div>
-      </div>
-
-      <div class="pair">
-        <h3>"E se…" em <span>2D</span></h3>
-        <div><div class="col-label">Lá fora</div><span class="stat">37 mil visualizações · 842 salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2117997239125585942" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2117994784631541761/img/VzOtyP3iKz8Z5d3a.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/e-se.mp4" poster="videos/e-se.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Uma pergunta que prende, o tempo passando e cada marco mudando o cenário.</p></div>
-      </div>
-
-      <div class="pair">
-        <h3>Explainer <span>ilustrado</span></h3>
-        <div><div class="col-label">Lá fora</div><span class="stat">258 mil visualizações · 5,3 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2114305886420086817" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2114305237498388481/img/DMcFgslJnlOdVQ94.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Vetor chapado, profundidade e um mascote explicando um conceito do seu nicho.</p></div>
-      </div>
-      <p class="note">Números públicos dos posts no X em 06/11/2026. Os vídeos à direita foram feitos pelo CutRoom com a voz que roda no próprio computador e música livre de direitos.</p>
+      <p class="note">Visualizações públicas dos posts no X em 06/11/2026; toque no canto para ver o original. Os vídeos do CutRoom usam a voz que roda no seu computador e música livre de direitos. Os formatos são modelados, não copiados.</p>
     </div>
   </section>
 
+  <!-- MONETIZAÇÃO -->
   <section>
     <div class="wrap">
-      <h2>O funil completo <em>sem 1 real de tráfego</em></h2>
-      <p class="sub">Os carrosséis do Carrossell constroem confiança. Os Reels do CutRoom trazem gente nova todo dia. Os dois postam sozinhos, no mesmo perfil, e cada vídeo termina mandando a pessoa para o link.</p>
+      <h2>Como o CutRoom <em>vira venda</em></h2>
+      <p class="sub">Vídeo bonito não paga conta. O que paga é o caminho que ele abre. Estas são as formas de transformar o conteúdo em vendas do seu SaaS, todas no orgânico.</p>
+      <h3 style="font-size:24px;margin-bottom:10px">1. O funil diário, sem 1 real de tráfego</h3>
       <div class="funnel">
-        <div class="stage-f"><b>1. Reels todo dia</b><span>O piloto automático do CutRoom posta um vídeo por dia no mesmo horário. O gancho fala com quem ainda não te segue.</span></div>
-        <div class="stage-f"><b>2. Visita no perfil</b><span>Todo vídeo fecha com "link no perfil" e o seu @. Quem chega encontra os carrosséis provando o que você vende.</span></div>
-        <div class="stage-f"><b>3. Clique no link</b><span>Bio com a promessa e o link da oferta. Um caminho só, sem distração.</span></div>
-        <div class="stage-f"><b>4. Venda</b><span>Teste grátis, assinatura ou compra: a pessoa chega aquecida pelo vídeo e pelos carrosséis.</span></div>
+        <div class="stage-f"><b>Reels todo dia</b><span>O piloto posta 1 vídeo por dia no mesmo horário. O gancho fala com quem ainda não te segue.</span></div>
+        <div class="stage-f"><b>Visita no perfil</b><span>Todo vídeo fecha com "link no perfil" + o seu @, falado e na tela.</span></div>
+        <div class="stage-f"><b>Clique no link</b><span>Bio com a promessa e um link só: a oferta.</span></div>
+        <div class="stage-f"><b>Venda</b><span>Teste, assinatura ou compra, com a pessoa já aquecida.</span></div>
       </div>
       <div class="week">
         <div class="day-f"><strong>SEG</strong><i class="r">Reels · aula</i><i class="c">Carrossel · dor</i></div>
@@ -161,20 +176,39 @@
         <div class="day-f"><strong>QUI</strong><i class="r">Reels · "e se"</i><i class="c">Carrossel · objeção</i></div>
         <div class="day-f"><strong>SEX</strong><i class="r">Reels · landing</i><i class="c">Carrossel · oferta</i></div>
         <div class="day-f"><strong>SÁB</strong><i class="r">Reels · explainer</i><i class="c">Carrossel · bastidor</i></div>
-        <div class="day-f"><strong>DOM</strong><i class="r">Reels · melhor da semana</i><i class="c">Carrossel · pergunta</i></div>
+        <div class="day-f"><strong>DOM</strong><i class="r">O melhor da semana</i><i class="c">Carrossel · pergunta</i></div>
       </div>
-      <p class="note">Exemplo de semana. Você aprova os vídeos uma vez e liga o piloto: o CutRoom publica um por dia, e o Carrossell cuida dos carrosséis.</p>
     </div>
   </section>
 
   <section class="soft">
     <div class="wrap">
-      <h2>Como <em>funciona</em></h2>
-      <div class="steps">
-        <div class="step"><b>1</b><h4>Sua marca</h4><p>Importe a marca do Carrossell com um clique (nome, tom, oferta, cores) ou preencha à mão.</p></div>
-        <div class="step"><b>2</b><h4>Escolha o formato</h4><p>Aula, UI motion, voo pela landing page, stickman, "e se…" ou explainer. Cada um já vem com um filme pronto como ponto de partida.</p></div>
-        <div class="step"><b>3</b><h4>O agente faz, o piloto publica</h4><p>O Claude Code, o Codex ou o assistente do CutRoom monta, revisa e renderiza. Você aprova e o piloto automático publica um Reels por dia.</p></div>
+      <div class="ways">
+        <div class="way"><b class="n">2</b><h3>Teste ganchos, não vídeos</h3>
+          <p>Todo Reels tem três partes: gancho, corpo e chamada. Quando um corpo vende, você não joga fora: troca só o gancho ou o formato e testa de novo. O CutRoom refaz o mesmo roteiro como aula, stickman ou explainer em minutos.</p>
+          <ul><li>Mude 1 ou 2 coisas por teste, nunca o vídeo inteiro.</li><li>Guarde os vencedores e volte com eles em formato novo.</li><li>Para quem não te segue, abra com a dor ou o resultado, não com o nome do app.</li></ul></div>
+        <div class="way"><b class="n">3</b><h3>Uma mini VSL na sua página</h3>
+          <p>O formato aula vira o vídeo da landing do seu SaaS: o primeiro minuto cumpre exatamente o que o Reels prometeu, depois vêm a história curta, a tese, o produto e a oferta. Quem chega do vídeo encontra a mesma conversa.</p>
+          <ul><li>Promessa do Reels = primeira frase da página.</li><li>Mostre o produto funcionando, com tela real.</li><li>Prova só de cliente real.</li></ul></div>
+        <div class="way"><b class="n">4</b><h3>Uma porta de entrada, depois a assinatura</h3>
+          <p>O vídeo pode levar para algo pequeno e fácil de aceitar: um diagnóstico rápido, um modelo pronto ou um teste do app. A assinatura vem como o próximo passo do mesmo benefício, mais rápido e com menos esforço.</p>
+          <ul><li>Na entrada, entregue uma fatia do resultado, não tudo.</li><li>O próximo passo resolve a mesma dor, mais depressa.</li><li>Promessa do tamanho do preço: crível vence grandioso.</li></ul></div>
+        <div class="way"><b class="n">5</b><h3>5 números por dia, um gargalo por vez</h3>
+          <p>Meça de baixo para cima e ataque só a etapa mais fora do ritmo.</p>
+          <table class="panel">
+            <tr><th>Etapa</th><th>Se estiver baixa, mexa em…</th></tr>
+            <tr><td><span class="dot" style="background:#e5484d"></span>Assinaturas</td><td>página e oferta</td></tr>
+            <tr><td><span class="dot" style="background:#f5a524"></span>Cliques no link</td><td>bio e chamada do vídeo</td></tr>
+            <tr><td><span class="dot" style="background:#f5a524"></span>Visitas no perfil</td><td>o fim do vídeo (CTA)</td></tr>
+            <tr><td><span class="dot" style="background:#17c964"></span>Retenção dos 3 s</td><td>o gancho e o formato</td></tr>
+            <tr><td><span class="dot" style="background:#17c964"></span>Reels publicados</td><td>o piloto automático</td></tr>
+          </table></div>
+        <div class="way"><b class="n">6</b><h3>Modele o que já viraliza</h3>
+          <p>Cada formato do CutRoom foi modelado a partir do que já passa de centenas de milhares de visualizações: a estrutura e o ritmo, nunca a cópia. Você parte de um filme pronto e troca o roteiro, as telas e a marca.</p></div>
+        <div class="way"><b class="n">7</b><h3>Venda vídeo como serviço</h3>
+          <p>Com o mesmo CutRoom, você produz Reels para outros SaaS, agências e clientes de consultoria: o agente faz, você revisa e entrega. É uma segunda fonte de receita com o que você já sabe fazer.</p></div>
       </div>
+      <p class="note">O Matheus chegou a 112 assinaturas e R$ 4.008,64 de MRR com conteúdo orgânico. É o resultado dele, não uma promessa: o seu depende do produto, da oferta e da constância.</p>
     </div>
   </section>
 
@@ -183,31 +217,31 @@
       <h2>O que você <em>leva</em></h2>
       <ul class="inc">
         <li>CutRoom para o seu computador, com atualizações</li>
-        <li>6 formatos de vídeo com filme inicial e guia passo a passo</li>
+        <li>6 formatos de vídeo com filme pronto e guia passo a passo</li>
+        <li>Piloto automático: um Reels por dia no Instagram, sozinho</li>
+        <li>Todo vídeo termina levando para o link do seu perfil</li>
         <li>Narração natural que roda no seu computador, sem pagar por minuto</li>
         <li>Vozes ElevenLabs ou OpenAI com a sua chave, se preferir</li>
-        <li>Música e efeitos livres de direitos, com o crédito pronto para a legenda</li>
-        <li>Piloto automático: um Reels por dia no Instagram, sozinho</li>
+        <li>Música e efeitos livres de direitos, com o crédito pronto</li>
         <li>Skill para o Claude Code e o Codex fazerem os vídeos sozinhos</li>
-        <li>Todo vídeo termina levando para o link do seu perfil</li>
       </ul>
       <p class="note">O CutRoom usa a IA que você já tem (Claude Code, Codex ou outra conectada no app). O uso dessas IAs e das vozes premium é cobrado pelos próprios serviços, na sua conta.</p>
     </div>
   </section>
 
-  <section class="final">
+  <section class="dark final">
     <div class="wrap">
-      <h2>Seu SaaS em vídeo, <em>hoje</em></h2>
+      <h2>Seu SaaS em vídeo, <em>todo dia</em></h2>
+      <p class="sub" style="margin:0 auto 24px">Carrossel para aquecer, Reels para alcançar, um link para vender.</p>
       <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o CutRoom <small>por R$ 97</small></a>
-      <p class="price">Oferta única desta página.</p>
-      <a class="no" href="#RECUSAR" data-cakto-downsell>Não, obrigado.</a>
+      <p class="price" style="color:rgba(255,255,255,.6)">Oferta única desta página.</p>
+      <a class="no" href="#RECUSAR" data-cakto-downsell style="color:rgba(255,255,255,.6)">Não, obrigado.</a>
     </div>
   </section>
 
   <footer>CutRoom · Carrossell</footer>
-  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
   <script>
-    // Our videos play by themselves while on screen (muted, looping), like in the feed; tap for sound.
+    // Os vídeos do CutRoom tocam sozinhos enquanto estão na tela (sem som, em loop); toque para ouvir.
     const videos = document.querySelectorAll("video[data-autoplay]");
     const io = new IntersectionObserver((entries) => entries.forEach((e) => (e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause())), { threshold: 0.4 });
     videos.forEach((v) => {
