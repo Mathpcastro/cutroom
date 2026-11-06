@@ -36,10 +36,25 @@
   .pair h3 span { color: var(--accent); }
   .col-label { font: 700 13px "Instrument Sans"; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 10px; }
   .stat { display: inline-block; margin: 0 0 12px; padding: 6px 12px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
-  /* Fallback while (or if) the X embed script does not load: the link still looks like a post card. */
-  blockquote.twitter-tweet { margin: 0; max-width: 380px; padding: 22px 24px; border-radius: 18px; background: var(--paper); border-left: 6px solid var(--ink); font-weight: 600; }
-  blockquote.twitter-tweet a { text-decoration: none; }
-  blockquote.twitter-tweet a::after { content: " →"; color: var(--accent); }
+  /* Original post: the thumbnail opens it on X; if X's embed script loads, it swaps in the real post. */
+  blockquote.twitter-tweet { margin: 0; max-width: 380px; padding: 0; border: 0; }
+  .xcard { position: relative; display: block; width: min(300px, 100%); aspect-ratio: 9/16; border-radius: 24px; overflow: hidden; background: #000; text-decoration: none; }
+  .xcard img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9; }
+  .xcard .play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 84px; height: 84px; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--ink); font-size: 34px; line-height: 84px; text-align: center; }
+  .xcard .xby { position: absolute; left: 12px; bottom: 12px; padding: 8px 14px; border-radius: 999px; background: rgba(0,0,0,.7); color: #fff; font: 600 13px "Instrument Sans"; }
+  .ours { position: relative; }
+  .ours .sound { position: absolute; left: 12px; top: 40px; padding: 8px 14px; border-radius: 999px; border: 0; background: rgba(0,0,0,.65); color: #fff; font: 600 13px "Instrument Sans"; cursor: pointer; }
+  .funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 10px; }
+  .stage-f { position: relative; padding: 26px 22px 26px 30px; background: var(--ink); color: #fff; clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%, 22px 50%); }
+  .stage-f:first-child { clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%); }
+  .stage-f:nth-child(2) { background: #2a2623; } .stage-f:nth-child(3) { background: #3a332e; } .stage-f:nth-child(4) { background: var(--accent); }
+  .stage-f b { display: block; font: 34px/1 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 8px; }
+  .stage-f span { font-size: 15px; opacity: .9; }
+  .week { margin-top: 26px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .day-f { background: var(--paper); border-radius: 16px; padding: 14px 12px; font-size: 13px; }
+  .day-f strong { display: block; font: 22px Anton, Impact, sans-serif; margin-bottom: 6px; }
+  .day-f i { display: block; font-style: normal; padding: 6px 8px; border-radius: 10px; margin-top: 6px; }
+  .day-f .r { background: var(--accent); color: #fff; } .day-f .c { background: var(--ink); color: #fff; }
   .ours video { width: min(300px, 100%); aspect-ratio: 9/16; border-radius: 24px; background: #000; display: block; }
   .ours p { margin-top: 10px; font-size: 15px; color: var(--grey); max-width: 320px; }
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -57,7 +72,9 @@
     header.hero { grid-template-columns: 1fr; padding-top: 36px; }
     h1 { font-size: 44px; }
     h2 { font-size: 34px; }
-    .pair, .steps, ul.inc { grid-template-columns: 1fr; }
+    .pair, .steps, ul.inc, .funnel { grid-template-columns: 1fr; }
+    .stage-f, .stage-f:first-child { clip-path: none; border-radius: 16px; margin-bottom: 6px; }
+    .week { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -85,43 +102,43 @@
       <div class="pair">
         <h3>Aula com apresentador <span>animado</span></h3>
         <div><div class="col-label">Lá fora</div><span class="stat">60 mil visualizações · 1,8 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2116010421740007894">Ver o post de @finnardley no X</a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/professor.mp4" poster="videos/professor.jpg" controls muted playsinline preload="none"></video><p>Apresentador em pixel art com a boca na voz, cards na palavra falada e o número do seu resultado.</p></div>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2116010421740007894" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2116009362552434688/img/jkPpJnTcWGJQzywL.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Apresentador em pixel art com a boca na voz, cards na palavra falada e o número do seu resultado.</p></div>
       </div>
 
       <div class="pair">
         <h3>O produto <span>funcionando</span> (UI motion)</h3>
         <div><div class="col-label">Lá fora</div><span class="stat">144 mil visualizações · 3,8 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/twoclipping/status/2103835273813496100">Ver o post de @twoclipping no X</a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" controls muted playsinline preload="none"></video><p>Formas que viram a interface do seu app, cursor clicando e cada estado na batida da narração.</p></div>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/twoclipping/status/2103835273813496100" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2103830256347910144/img/YsUzKmE5XqGD9NZR.jpg" alt="Vídeo de @twoclipping no X" loading="lazy"><span class="play">▶</span><span class="xby">@twoclipping · assistir no X</span></a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Formas que viram a interface do seu app, cursor clicando e cada estado na batida da narração.</p></div>
       </div>
 
       <div class="pair">
         <h3>Voo 3D pela sua <span>landing page</span></h3>
         <div><div class="col-label">Lá fora</div><span class="stat">154 mil visualizações · 4,3 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/twoclipping/status/2110329502676951367">Ver o post de @twoclipping no X</a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" controls muted playsinline preload="none"></video><p>O CutRoom captura a sua página e a câmera voa por ela até o cartão com a frase da marca.</p></div>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/twoclipping/status/2110329502676951367" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2110328827956068352/img/Yfz92C5G-vOXGdv4.jpg" alt="Vídeo de @twoclipping no X" loading="lazy"><span class="play">▶</span><span class="xby">@twoclipping · assistir no X</span></a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>O CutRoom captura a sua página e a câmera voa por ela até o cartão com a frase da marca.</p></div>
       </div>
 
       <div class="pair">
         <h3>História de <span>stickman</span></h3>
         <div><div class="col-label">Lá fora</div><span class="stat">62 mil visualizações · 1,1 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2115786060231770351">Ver o post de @finnardley no X</a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/stickman.mp4" poster="videos/stickman.jpg" controls muted playsinline preload="none"></video><p>A transformação do seu cliente em quatro atos, com o traço se desenhando na tela.</p></div>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2115786060231770351" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2115784242701500416/img/a_e-E2kTPxvwNIU5.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/stickman.mp4" poster="videos/stickman.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>A transformação do seu cliente em quatro atos, com o traço se desenhando na tela.</p></div>
       </div>
 
       <div class="pair">
         <h3>"E se…" em <span>2D</span></h3>
         <div><div class="col-label">Lá fora</div><span class="stat">37 mil visualizações · 842 salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2117997239125585942">Ver o post de @finnardley no X</a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/e-se.mp4" poster="videos/e-se.jpg" controls muted playsinline preload="none"></video><p>Uma pergunta que prende, o tempo passando e cada marco mudando o cenário.</p></div>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2117997239125585942" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2117994784631541761/img/VzOtyP3iKz8Z5d3a.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/e-se.mp4" poster="videos/e-se.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Uma pergunta que prende, o tempo passando e cada marco mudando o cenário.</p></div>
       </div>
 
       <div class="pair">
         <h3>Explainer <span>ilustrado</span></h3>
         <div><div class="col-label">Lá fora</div><span class="stat">258 mil visualizações · 5,3 mil salvos</span>
-          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2114305886420086817">Ver o post de @finnardley no X</a></blockquote></div>
-        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" controls muted playsinline preload="none"></video><p>Vetor chapado, profundidade e um mascote explicando um conceito do seu nicho.</p></div>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a class="xcard" href="https://x.com/finnardley/status/2114305886420086817" target="_blank" rel="noopener"><img src="https://pbs.twimg.com/amplify_video_thumb/2114305237498388481/img/DMcFgslJnlOdVQ94.jpg" alt="Vídeo de @finnardley no X" loading="lazy"><span class="play">▶</span><span class="xby">@finnardley · assistir no X</span></a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" muted loop playsinline preload="metadata" data-autoplay></video><p>Vetor chapado, profundidade e um mascote explicando um conceito do seu nicho.</p></div>
       </div>
       <p class="note">Números públicos dos posts no X em 06/11/2026. Os vídeos à direita foram feitos pelo CutRoom com a voz que roda no próprio computador e música livre de direitos.</p>
     </div>
@@ -129,16 +146,39 @@
 
   <section>
     <div class="wrap">
-      <h2>Como <em>funciona</em></h2>
-      <div class="steps">
-        <div class="step soft"><b>1</b><h4>Sua marca</h4><p>Importe a marca do Carrossell com um clique (nome, tom, oferta, cores) ou preencha à mão.</p></div>
-        <div class="step soft"><b>2</b><h4>Escolha o formato</h4><p>Aula, UI motion, voo pela landing page, stickman, "e se…" ou explainer. Cada um já vem com um filme pronto como ponto de partida.</p></div>
-        <div class="step soft"><b>3</b><h4>O agente faz, você publica</h4><p>O Claude Code, o Codex ou o assistente do CutRoom monta, revisa e renderiza. Você confere e publica no Reels direto do app.</p></div>
+      <h2>O funil completo <em>sem 1 real de tráfego</em></h2>
+      <p class="sub">Os carrosséis do Carrossell constroem confiança. Os Reels do CutRoom trazem gente nova todo dia. Os dois postam sozinhos, no mesmo perfil, e cada vídeo termina mandando a pessoa para o link.</p>
+      <div class="funnel">
+        <div class="stage-f"><b>1. Reels todo dia</b><span>O piloto automático do CutRoom posta um vídeo por dia no mesmo horário. O gancho fala com quem ainda não te segue.</span></div>
+        <div class="stage-f"><b>2. Visita no perfil</b><span>Todo vídeo fecha com "link no perfil" e o seu @. Quem chega encontra os carrosséis provando o que você vende.</span></div>
+        <div class="stage-f"><b>3. Clique no link</b><span>Bio com a promessa e o link da oferta. Um caminho só, sem distração.</span></div>
+        <div class="stage-f"><b>4. Venda</b><span>Teste grátis, assinatura ou compra: a pessoa chega aquecida pelo vídeo e pelos carrosséis.</span></div>
       </div>
+      <div class="week">
+        <div class="day-f"><strong>SEG</strong><i class="r">Reels · aula</i><i class="c">Carrossel · dor</i></div>
+        <div class="day-f"><strong>TER</strong><i class="r">Reels · UI motion</i><i class="c">Carrossel · prova</i></div>
+        <div class="day-f"><strong>QUA</strong><i class="r">Reels · stickman</i><i class="c">Carrossel · método</i></div>
+        <div class="day-f"><strong>QUI</strong><i class="r">Reels · "e se"</i><i class="c">Carrossel · objeção</i></div>
+        <div class="day-f"><strong>SEX</strong><i class="r">Reels · landing</i><i class="c">Carrossel · oferta</i></div>
+        <div class="day-f"><strong>SÁB</strong><i class="r">Reels · explainer</i><i class="c">Carrossel · bastidor</i></div>
+        <div class="day-f"><strong>DOM</strong><i class="r">Reels · melhor da semana</i><i class="c">Carrossel · pergunta</i></div>
+      </div>
+      <p class="note">Exemplo de semana. Você aprova os vídeos uma vez e liga o piloto: o CutRoom publica um por dia, e o Carrossell cuida dos carrosséis.</p>
     </div>
   </section>
 
   <section class="soft">
+    <div class="wrap">
+      <h2>Como <em>funciona</em></h2>
+      <div class="steps">
+        <div class="step"><b>1</b><h4>Sua marca</h4><p>Importe a marca do Carrossell com um clique (nome, tom, oferta, cores) ou preencha à mão.</p></div>
+        <div class="step"><b>2</b><h4>Escolha o formato</h4><p>Aula, UI motion, voo pela landing page, stickman, "e se…" ou explainer. Cada um já vem com um filme pronto como ponto de partida.</p></div>
+        <div class="step"><b>3</b><h4>O agente faz, o piloto publica</h4><p>O Claude Code, o Codex ou o assistente do CutRoom monta, revisa e renderiza. Você aprova e o piloto automático publica um Reels por dia.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <div class="wrap">
       <h2>O que você <em>leva</em></h2>
       <ul class="inc">
@@ -147,9 +187,9 @@
         <li>Narração natural que roda no seu computador, sem pagar por minuto</li>
         <li>Vozes ElevenLabs ou OpenAI com a sua chave, se preferir</li>
         <li>Música e efeitos livres de direitos, com o crédito pronto para a legenda</li>
-        <li>Publicação de Reels no Instagram pelo próprio app</li>
+        <li>Piloto automático: um Reels por dia no Instagram, sozinho</li>
         <li>Skill para o Claude Code e o Codex fazerem os vídeos sozinhos</li>
-        <li>Revisão automática de ritmo antes de renderizar</li>
+        <li>Todo vídeo termina levando para o link do seu perfil</li>
       </ul>
       <p class="note">O CutRoom usa a IA que você já tem (Claude Code, Codex ou outra conectada no app). O uso dessas IAs e das vozes premium é cobrado pelos próprios serviços, na sua conta.</p>
     </div>
@@ -166,5 +206,24 @@
 
   <footer>CutRoom · Carrossell</footer>
   <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+  <script>
+    // Our videos play by themselves while on screen (muted, looping), like in the feed; tap for sound.
+    const videos = document.querySelectorAll("video[data-autoplay]");
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => (e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause())), { threshold: 0.4 });
+    videos.forEach((v) => {
+      io.observe(v);
+      const b = document.createElement("button");
+      b.className = "sound";
+      b.textContent = "🔊 Ouvir";
+      b.onclick = () => {
+        const on = v.muted;
+        videos.forEach((o) => { o.muted = true; });
+        document.querySelectorAll(".sound").forEach((x) => (x.textContent = "🔊 Ouvir"));
+        v.muted = !on;
+        if (on) { v.currentTime = 0; v.play(); b.textContent = "🔇 Sem som"; }
+      };
+      v.parentElement.appendChild(b);
+    });
+  </script>
 </body>
 </html>
