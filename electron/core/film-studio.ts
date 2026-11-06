@@ -3,8 +3,8 @@ import { extname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { ffmpegPath } from "./media";
 import { runProcess } from "./process";
-import { FILM_SIZES, Films, checkFilm, filmStills, renderFilm, slug, type FilmRunner } from "./film";
-import { formatGuide } from "./formats";
+import { FILM_SIZES, Films, analyzeFilm, capturePage, checkFilm, filmStills, renderFilm, slug, type FilmRunner } from "./film";
+import { FORMATS, formatGuide } from "./formats";
 import { Studio, probeAudio } from "./studio";
 import type { BrandStore } from "./brand";
 
@@ -123,6 +123,12 @@ export class FilmStudio {
     return this.host.films.readFile(a.film, a.path);
   }
 
+  async capture(args: Record<string, unknown>) {
+    const a = z.object({ film, url: z.string().url().max(2000), name: z.string().max(60).optional() }).strict().parse(args);
+    const runner = await this.host.runner();
+    return this.host.job("inspection", "Capturando a página…", (signal) => capturePage(this.host.films, a.film, a.url, { ...runner, signal }, a.name));
+  }
+
   async check(args: Record<string, unknown>) {
     const { film: id } = z.object({ film }).strict().parse(args);
     const runner = await this.host.runner();
@@ -151,6 +157,39 @@ export class FilmStudio {
           "Olhe cada quadro: texto cortado ou pequeno, sobreposição, contraste, tela vazia, elemento fora de hora. Erros de script acima quebram a timeline: corrija antes de renderizar.",
       };
     });
+  }
+
+  /**
+   * Self-review before rendering: key frames, measured pace and motion, and the format checklist.
+   * The agent scores each row as a viewer who did not make the film and fixes rows below 8.
+   */
+  async review(args: Record<string, unknown>) {
+    const { film: id } = z.object({ film }).strict().parse(args);
+    const meta = await this.host.films.meta(id);
+    const runner = await this.host.runner();
+    const analysis = await this.host.job("inspection", "Medindo ritmo e movimento do filme…", (signal) => analyzeFilm(this.host.films, id, { ...runner, signal }));
+    const D = analysis.duration || meta.voice?.duration || 10;
+    const times = [0.5, 2.5, D * 0.25, D * 0.45, D * 0.65, D * 0.85, D - 0.8].map((t) => +Math.max(0, Math.min(t, D - 0.1)).toFixed(2));
+    const frames = (await this.stills({ film: id, times })) as { images: string[]; frameTimes: number[]; errors: string[] };
+    const m = analysis.motion, s = analysis.speech;
+    const flags: string[] = [];
+    if (m.firstMotion > 1) flags.push(`Primeiro movimento só em ${m.firstMotion}s: o gancho precisa mexer já no primeiro segundo.`);
+    if (m.longestStill > 1.5) flags.push(`Trecho parado de ${m.longestStill}s a partir de ${m.longestStillAt}s: entre com câmera, um elemento ou corte.`);
+    if (m.shotChangesPer10s < 2) flags.push(`Só ${m.shotChangesPer10s} trocas de plano a cada 10 s: o ritmo bom de Reels fica entre 3 e 6.`);
+    if (s.words && (s.wordsPerMinute < 140 || s.wordsPerMinute > 220)) flags.push(`Narração a ${s.wordsPerMinute} palavras/min: o confortável fica entre 150 e 200.`);
+    if (s.longestPause > 1.2) flags.push(`Pausa de ${s.longestPause}s na narração: preencha com imagem ou encurte.`);
+    const format = FORMATS.find((f) => f.id === meta.format);
+    return {
+      images: frames.images,
+      frameTimes: frames.frameTimes,
+      errors: frames.errors,
+      duration: +D.toFixed(2),
+      metrics: { ...m, ...s },
+      flags,
+      checklist: format?.checklist ?? [],
+      instructions:
+        "Avalie como alguém que NÃO fez o filme e vai decidir em 1 s se continua assistindo. Dê nota de 1 a 10 para cada item do checklist (justifique em uma linha olhando os quadros e as métricas), mais duas notas: 'história' (gancho, virada, final) e 'execução' (legibilidade, ritmo, acabamento). Corrija tudo abaixo de 8 e as flags antes de render_film.",
+    };
   }
 
   /** Renders in the background: answers within 40 s (Codex cuts MCP calls at ~60 s); job_status / render_film again for the result. */

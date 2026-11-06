@@ -68,6 +68,8 @@ import {
 import { Studio, probeAudio } from "./core/studio";
 import { Films } from "./core/film";
 import { FilmStudio } from "./core/film-studio";
+import { installSkill } from "./core/skill";
+import { Publisher } from "./core/publish";
 import { motionBrowser, motionPackageInfo } from "./core/motion-package";
 import { createRequire } from "node:module";
 import { localSpeech, localVoices } from "./core/local-voice";
@@ -107,6 +109,8 @@ const motionDocuments = new Map<string, string>();
 let userDir: string;
 let studio: Studio;
 let filmStudio: FilmStudio;
+let publisher: Publisher;
+let secretStore: SecretStore;
 let brandStore: BrandStore;
 /** Host images for scenes: the brand logo as data-asset="logo". */
 async function motionAssets(): Promise<MotionAssets> {
@@ -782,6 +786,16 @@ async function executeTool(
     write_film_file: (a) => filmStudio.write(a),
     read_film_file: (a) => filmStudio.read(a),
     film_check: (a) => filmStudio.check(a),
+    film_capture_page: (a) => filmStudio.capture(a),
+    film_review: (a) => filmStudio.review(a),
+    instagram_accounts: () => publisher.settings(),
+    publish_reel: async (a) => {
+      // Publishing waits for Meta to process the video (can pass 60 s): answer within 40 s, keep going.
+      const task = publisher.publish(a);
+      task.catch(() => undefined);
+      const done = await Promise.race([task.then((r) => ({ status: "published", ...r })), new Promise<undefined>((r) => setTimeout(() => r(undefined), 40_000))]);
+      return done ?? { status: "publishing", message: "O Reels está sendo publicado. Consulte job_status (job publish) em 30–60 s; não publique de novo." };
+    },
     film_stills: (a) => filmStudio.stills(a),
     render_film: (a) => filmStudio.render(a),
   };
@@ -1039,6 +1053,38 @@ async function request(method: string, params?: unknown): Promise<unknown> {
           .object({ provider: z.enum(["elevenlabs", "openai", "kokoro", "local"]).optional() })
           .parse(params ?? {}).provider,
       );
+    case "getPublishSettings":
+      return publisher.settings();
+    case "setComposioKey": {
+      const { key } = z.object({ key: z.string().max(500).optional() }).parse(params ?? {});
+      return publisher.setKey(key);
+    }
+    case "refreshInstagram":
+      return publisher.refresh();
+    case "setDefaultInstagram":
+      return publisher.setDefault(z.object({ id: z.string().max(100) }).parse(params).id);
+    case "listVideos":
+      return { videos: await publisher.videos() };
+    case "publishReel":
+      return publisher.publish(params);
+    case "listFilms":
+      return filmStudio.list();
+    case "openFilmFolder": {
+      const { id } = z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) }).parse(params);
+      await shell.openPath(join(app.getPath("videos"), "CutRoom", "filmes", id));
+      return { ok: true };
+    }
+    case "renderFilm":
+      return filmStudio.render({ film: z.object({ id: z.string() }).parse(params).id });
+    case "revealVideo": {
+      const { path } = z.object({ path: z.string() }).parse(params);
+      const base = resolve(join(app.getPath("videos"), "CutRoom"));
+      if (!resolve(path).startsWith(base)) throw new Error("O vídeo precisa estar em Vídeos/CutRoom.");
+      shell.showItemInFolder(resolve(path));
+      return { ok: true };
+    }
+    case "installAgentSkill":
+      return { files: await installSkill(app.getPath("home"), app.getVersion()) };
     case "getBrand":
       return { brand: (await brandStore.get()) ?? null };
     case "saveBrand":
@@ -1345,7 +1391,7 @@ app.whenReady().then(async () => {
     },
     cacheDir,
     userDir,
-    secrets: new SecretStore(userDir, safeStorage),
+    secrets: (secretStore = new SecretStore(userDir, safeStorage)),
     brand: brandStore,
     transcribeFile: (media, signal, progress) =>
       packages.transcribe(media, cacheDir, progress, signal),
@@ -1365,12 +1411,19 @@ app.whenReady().then(async () => {
         }
       : {}),
   });
+  publisher = new Publisher({
+    secrets: secretStore,
+    userDir,
+    videosDir: join(app.getPath("videos"), "CutRoom"),
+    job: (kind, label, run) => job(kind, label, run),
+  });
   filmStudio = new FilmStudio(
     {
       films: new Films(
         join(app.getPath("videos"), "CutRoom", "filmes"),
         join(resources, "film-kit"),
         createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"),
+        join(resources, "film-recipes"),
       ),
       brand: brandStore,
       videosDir: join(app.getPath("videos"), "CutRoom"),

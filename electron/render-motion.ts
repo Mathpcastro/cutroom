@@ -12,7 +12,7 @@ import {
 } from "@hyperframes/producer";
 
 interface Spec {
-  mode?: "scene" | "film" | "stills" | "lint";
+  mode?: "scene" | "film" | "stills" | "lint" | "capture" | "analyze";
   browser: string;
   fps: number;
   directory: string;
@@ -98,10 +98,92 @@ async function stills(spec: Spec) {
   }
 }
 
+/**
+ * Motion analysis for film_review: seeks the film every `step` seconds at a tiny size and measures
+ * how much the picture changes between samples (mean absolute difference, 0–1).
+ */
+async function analyze(spec: Spec & { step?: number }) {
+  const { default: puppeteer } = await import("puppeteer-core");
+  const server = await createFileServer({ projectDir: spec.directory, fps: { num: spec.fps, den: 1 } });
+  const browser = await puppeteer.launch({ executablePath: spec.browser, headless: true, args: ["--mute-audio"] });
+  try {
+    const page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on("request", (r) => (r.url().startsWith(server.url) || r.url().startsWith("data:") ? void r.continue() : void r.abort()));
+    await page.setViewport({ width: spec.width ?? 1080, height: spec.height ?? 1920, deviceScaleFactor: 0.1 });
+    await page.goto(`${server.url}/index.html`, { waitUntil: "load" });
+    await page.waitForFunction(() => ((window as unknown as { __hf?: { duration?: number } }).__hf?.duration ?? 0) > 0, { timeout: 60_000 });
+    const duration = await page.evaluate(() => (window as unknown as { __hf: { duration: number } }).__hf.duration);
+    const lab = await browser.newPage(); // decodes and compares frames away from the film page
+    const step = spec.step ?? 0.25,
+      samples: { t: number; diff: number }[] = [];
+    let previous = "";
+    for (let t = 0; t < duration - 0.05; t += step) {
+      await page.evaluate((s) => (window as unknown as { __hf: { seek(t: number): void } }).__hf.seek(s), t);
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      const shot = (await page.screenshot({ type: "jpeg", quality: 70, encoding: "base64" })) as string;
+      if (previous)
+        samples.push({
+          t: +t.toFixed(2),
+          diff: await lab.evaluate(async (a, b) => {
+            const load = async (src: string) => {
+              const img = new Image();
+              img.src = `data:image/jpeg;base64,${src}`;
+              await img.decode();
+              const c = document.createElement("canvas");
+              c.width = img.width;
+              c.height = img.height;
+              const g = c.getContext("2d")!;
+              g.drawImage(img, 0, 0);
+              return g.getImageData(0, 0, c.width, c.height).data;
+            };
+            const [x, y] = [await load(a), await load(b)];
+            let sum = 0;
+            for (let i = 0; i < x.length; i += 4) sum += Math.abs(x[i] - y[i]) + Math.abs(x[i + 1] - y[i + 1]) + Math.abs(x[i + 2] - y[i + 2]);
+            return sum / ((x.length / 4) * 3 * 255);
+          }, previous, shot),
+        });
+      previous = shot;
+    }
+    return { duration, step, samples };
+  } finally {
+    await browser.close();
+    server.close();
+  }
+}
+
+/** Full-page screenshot of a public page (the user's landing page) for the fly-over format. */
+async function capture(spec: Spec & { url: string; maxHeight?: number }) {
+  const { default: puppeteer } = await import("puppeteer-core");
+  const browser = await puppeteer.launch({ executablePath: spec.browser, headless: true, args: ["--hide-scrollbars", "--mute-audio"] });
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: spec.width ?? 1440, height: 900, deviceScaleFactor: 1 });
+    await page.goto(spec.url, { waitUntil: "networkidle2", timeout: 45_000 });
+    // Scroll once so lazy images and scroll-triggered animations finish, then back to the top.
+    await page.evaluate(async () => {
+      for (let y = 0; y < document.body.scrollHeight; y += 600) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      window.scrollTo(0, 0);
+      await new Promise((r) => setTimeout(r, 800));
+    });
+    const height = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+    const clipHeight = Math.min(height, spec.maxHeight ?? 9000);
+    await page.screenshot({ path: spec.output as `${string}.jpg`, type: "jpeg", quality: 88, clip: { x: 0, y: 0, width: spec.width ?? 1440, height: clipHeight }, captureBeyondViewport: true });
+    return { width: spec.width ?? 1440, height: clipHeight, pageHeight: height, title: await page.title() };
+  } finally {
+    await browser.close();
+  }
+}
+
 try {
   const spec: Spec = JSON.parse(await readFile(process.argv[2], "utf8"));
   const mode = spec.mode ?? "scene";
   if (mode === "lint") say({ complete: true, findings: await lint(spec) });
+  else if (mode === "analyze") say({ complete: true, ...(await analyze(spec)) });
+  else if (mode === "capture") say({ complete: true, ...(await capture(spec as Spec & { url: string })) });
   else if (mode === "stills") say({ complete: true, ...(await stills(spec)) });
   else {
     const film = mode === "film",

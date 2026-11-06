@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- Formato "e-se" do CutRoom: cenário 2D que atravessa o tempo, contador de dias e marcos. Roteiro em roteiro.txt. -->
+<script src="brand.js"></script>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
+  @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
+  @font-face { font-family: "Instrument Serif"; src: url(fonts/InstrumentSerif-Italic.ttf); font-style: italic; }
+  :root { --accent: #E8462F; --ink: #1E1C1A; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #9fd3f2; }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: "Instrument Sans"; color: var(--ink); }
+  .sky { position: absolute; inset: 0; background: linear-gradient(#7cc4ee, #cfeefb); }
+  .sun { position: absolute; left: 760px; top: 1300px; width: 180px; height: 180px; border-radius: 50%; background: #ffd35c; box-shadow: 0 0 120px #ffd35c; }
+  .world, .punch { position: absolute; inset: 0; transform-origin: 50% 62%; }
+  .hills-far { position: absolute; left: -200px; top: 1120px; width: 1500px; height: 500px; }
+  .hills-near { position: absolute; left: -200px; top: 1260px; width: 1500px; height: 700px; }
+  .house { position: absolute; left: 330px; top: 1010px; width: 420px; height: 360px; }
+  .board { position: absolute; left: 380px; top: 1080px; width: 320px; height: 150px; display: flex; gap: 10px; padding: 14px; flex-wrap: wrap; }
+  .board i { width: 54px; height: 54px; border-radius: 8px; background: var(--accent); opacity: 0; }
+  .badge { position: absolute; left: 640px; top: 940px; padding: 14px 26px; border-radius: 999px; background: #fff; font: 700 38px "Instrument Sans"; box-shadow: 0 14px 40px rgba(0,0,0,.15); }
+  .person { position: absolute; top: 1360px; width: 70px; height: 150px; }
+  .day { position: absolute; left: 0; width: 1080px; top: 230px; text-align: center; font: 200px/1 Anton; color: #fff; text-shadow: 0 10px 40px rgba(0,0,0,.18); }
+  .q { position: absolute; left: 80px; width: 920px; top: 470px; text-align: center; font: 104px/1.02 Anton; color: #fff; text-shadow: 0 10px 40px rgba(0,0,0,.2); }
+  .doors { position: absolute; left: 110px; top: 470px; width: 860px; display: grid; grid-template-columns: repeat(19, 1fr); gap: 6px; }
+  .doors i { display: block; height: 36px; border-radius: 12px 12px 3px 3px; background: rgba(255,255,255,.35); }
+  .note { position: absolute; left: 0; width: 1080px; top: 1330px; text-align: center; font: italic 58px "Instrument Serif"; color: #fff; }
+  .end { position: absolute; left: 40px; width: 1000px; top: 470px; text-align: center; font: 130px/1.05 Anton; color: #fff; }
+  .end span { color: #ffd35c; }
+  .later { visibility: hidden; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="24" data-width="1080" data-height="1920">
+  <div class="sky"></div>
+  <div class="sun"></div>
+  <div class="world"><div class="punch">
+    <svg class="hills-far" viewBox="0 0 1500 500"><path d="M0 220 Q250 60 520 200 T1050 170 T1500 210 V500 H0Z" fill="#8fcf9b"/></svg>
+    <svg class="hills-near" viewBox="0 0 1500 700"><path d="M0 130 Q380 20 760 110 T1500 100 V700 H0Z" fill="#5fb873"/></svg>
+    <svg class="house" viewBox="0 0 420 360">
+      <path d="M30 160 L210 30 L390 160 Z" fill="var(--accent)"/>
+      <rect x="60" y="150" width="300" height="210" rx="8" fill="#fff"/>
+      <rect x="180" y="250" width="70" height="110" rx="10" fill="var(--ink)"/>
+    </svg>
+    <div class="board"></div>
+    <div class="badge later">★ autoridade</div>
+  </div></div>
+  <div class="day later">DIA <span class="dn">1</span></div>
+  <div class="q later">E SE VOCÊ POSTASSE UM CARROSSEL POR DIA?</div>
+  <div class="doors later"></div>
+  <div class="note later">nada disso é garantido</div>
+  <div class="end later">VOCÊ COMEÇARIA<br><span>HOJE?</span></div>
+  <audio id="voz" data-start="0" data-duration="22" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
+  <!--MUSICA-->
+  <script src="kit/gsap.min.js"></script>
+  <script src="timing.js"></script>
+  <script src="kit/cutroom-kit.js"></script>
+  <script>
+    (function () {
+      var p = (window.BRAND && window.BRAND.palette) || {}, s = document.documentElement.style;
+      if (p.accent) s.setProperty("--accent", p.accent);
+      if (p.ink) s.setProperty("--ink", p.ink);
+    })();
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = Math.max(CR.timing.voiceEnd + 1.8, 8), at = CR.at;
+    var root = document.querySelector(".punch");
+    // People: simple figures that walk in (fixed positions, no randomness).
+    var people = [];
+    var colors = ["#1E1C1A", "#3d5a80", "#9c4f96", "#2a9d8f", "#e76f51", "#264653", "#f4a261", "#6d597a", "#457b9d", "#e63946"];
+    for (var i = 0; i < 10; i++) {
+      var d = document.createElement("div");
+      d.className = "person later";
+      d.innerHTML = '<svg viewBox="0 0 70 150" width="70" height="150"><circle cx="35" cy="22" r="20" fill="#f2c9a0"/><rect x="12" y="46" width="46" height="70" rx="20" fill="' + colors[i] + '"/><rect x="16" y="110" width="14" height="38" rx="7" fill="#1E1C1A"/><rect x="40" y="110" width="14" height="38" rx="7" fill="#1E1C1A"/></svg>';
+      d.style.left = "-120px";
+      root.appendChild(d);
+      people.push(d);
+    }
+    function walkIn(p, t, x, dur) {
+      tl.set(p, { autoAlpha: 1, x: 0 }, t);
+      tl.to(p, { x: x + 120, duration: dur || 1.1, ease: "power1.out" }, t);
+      tl.to(p, { y: -10, duration: 0.14, yoyo: true, repeat: Math.round((dur || 1.1) / 0.14), ease: "sine.inOut" }, t);
+    }
+    var board = document.querySelector(".board");
+    for (var b = 0; b < 8; b++) board.appendChild(document.createElement("i"));
+    var doors = document.querySelector(".doors");
+    for (var k = 0; k < 365; k++) doors.appendChild(document.createElement("i"));
+
+    // Gancho: a pergunta e o contador já correndo, o sol nascendo.
+    var tE = at("e", 1, 0.05), tAno = at("ano", 1, 2.4);
+    CR.slam(tl, ".q", tE);
+    CR.show(tl, ".day", tE + 0.3);
+    tl.to(".sun", { y: -760, x: 40, duration: D * 0.55, ease: "sine.out" }, 0);
+    // Dia 1: um card no quadro, alguém passa sem parar.
+    var tDia1 = at("dia", 2, 3.0), tVe = at("vê", 1, 4.2);
+    CR.exit(tl, ".q", tDia1 - 0.2);
+    tl.to(".board i:nth-child(1)", { opacity: 1, duration: 0.2 }, tDia1);
+    tl.set(people[0], { autoAlpha: 1 }, tDia1 + 0.2);
+    tl.fromTo(people[0], { x: 0 }, { x: 1300, duration: 3.2, ease: "none" }, tDia1 + 0.2);
+    // Dia 30: o quadro enche e aparece a autoridade.
+    var tDia30 = at("dia", 3, 5.0), tAut = at("autoridade", 1, 6.6);
+    CR.count(tl, ".dn", 1, 30, tDia30 - 0.2, 0.5);
+    tl.to(".board i", { opacity: 1, duration: 0.12, stagger: 0.08 }, tDia30);
+    CR.pop(tl, ".badge", tAut);
+    walkIn(people[1], tDia30 + 0.2, 180);
+    walkIn(people[2], tDia30 + 0.5, 250);
+    // Dia 90: as pessoas chegam.
+    var tDia90 = at("dia", 4, 8.0), tVende = at("vende", 1, 9.6);
+    CR.count(tl, ".dn", 30, 90, tDia90 - 0.2, 0.5);
+    tl.to(".sky", { background: "linear-gradient(#f6a46b, #fde3c1)", duration: 1.2 }, tDia90);
+    [3, 4, 5, 6, 7, 8, 9].forEach(function (n, j) { walkIn(people[n], tDia90 + j * 0.18, 120 + j * 95, 1.0); });
+    tl.to(".punch", { scale: 1.08, duration: 1.5, ease: "power2.inOut" }, tVende - 0.5);
+    // Dia 365: 365 portas acendendo.
+    var tDia365 = at("dia", 5, 10.6), tPortas = at("portas", 1, 13.6);
+    CR.count(tl, ".dn", 90, 365, tDia365 - 0.1, 1.1);
+    tl.to(".world", { scale: 0.6, y: 430, duration: 0.8, ease: "power3.inOut" }, tDia365);
+    tl.to(".sky", { background: "linear-gradient(#1b2a52, #4b3f72)", duration: 1.2 }, tDia365);
+    tl.to(".sun", { autoAlpha: 0, duration: 0.6 }, tDia365); // noite
+    tl.to(".sun", { autoAlpha: 1, duration: 0.6 }, at("mas", 1, 16.6) + 0.3);
+    CR.show(tl, ".doors", tDia365 + 0.4);
+    tl.to(".doors i", { backgroundColor: "#ffd35c", duration: 0.08, stagger: { each: 0.006, from: "start" } }, tPortas - 1.6);
+    // Honestidade e final.
+    var tNada = at("nada", 1, 15.2), tMas = at("mas", 1, 16.6), tVoce = at("você", 4, 19.0);
+    CR.rise(tl, ".note", tNada);
+    tl.to(".doors", { autoAlpha: 0.25, duration: 0.4 }, tNada);
+    CR.exit(tl, ".note, .day", tMas);
+    tl.to(".doors", { autoAlpha: 0, duration: 0.3 }, tMas);
+    tl.to(".world", { scale: 1, y: 0, duration: 0.8, ease: "power3.inOut" }, tMas);
+    tl.to(".person", { autoAlpha: 0, duration: 0.3 }, tMas);
+    tl.to(".board i", { opacity: 0, duration: 0.2 }, tMas);
+    CR.exit(tl, ".badge", tMas);
+    tl.to(".sky", { background: "linear-gradient(#7cc4ee, #cfeefb)", duration: 1 }, tMas + 0.3);
+    CR.slam(tl, ".end", tVoce);
+
+    CR.camera(tl, ".world", D, [tDia30, tDia90, tDia365, tVoce], { inner: ".punch", drift: 0.02 });
+    tl.set({}, {}, D);
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>

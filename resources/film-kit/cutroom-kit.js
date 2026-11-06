@@ -37,6 +37,63 @@
         if (norm(T.words[i].text) === target && ++k === (nth || 1)) return T.words[i].start;
       throw new Error('CutRoom kit: word "' + text + '" #' + (nth || 1) + " is not in the narration");
     },
+    /**
+     * Like word(), but never throws: returns `fallback` (seconds) when the word is not in the narration.
+     * Recipe starters use it so a film still renders after the script changes (re-anchor later).
+     */
+    at: function (text, nth, fallback) {
+      try {
+        return CR.word(text, nth);
+      } catch (e) {
+        return fallback === undefined ? 0 : fallback;
+      }
+    },
+    /**
+     * Cursor that travels and clicks. points: [{x, y, t, click?}] in px of the composition, t in s.
+     * Creates the arrow once (white with ink outline) and a ripple on each click.
+     */
+    cursor: function (tl, points, opts) {
+      var o = opts || {},
+        root = document.querySelector(o.parent || "[data-composition-id]"),
+        size = o.size || 96;
+      var el = document.createElement("div");
+      el.className = "cr-cursor";
+      el.style.cssText = "position:absolute;left:0;top:0;width:" + size + "px;height:" + size * 1.4 + "px;z-index:" + (o.z || 40) + ";visibility:hidden;opacity:0;transform-origin:0 0";
+      el.innerHTML = '<svg viewBox="0 0 40 56" width="100%" height="100%"><path d="M2 2 L2 46 L14 35 L22 54 L31 50 L23 32 L38 32 Z" fill="#fff" stroke="' + (o.ink || "#1E1C1A") + '" stroke-width="3" stroke-linejoin="round"/></svg>';
+      root.appendChild(el);
+      var ring = document.createElement("div");
+      ring.style.cssText = "position:absolute;left:0;top:0;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;border:8px solid " + (o.ring || "#fff") + ";z-index:" + ((o.z || 40) - 1) + ";visibility:hidden;opacity:0";
+      root.appendChild(ring);
+      (points || []).forEach(function (p, i) {
+        if (i === 0) {
+          tl.set(el, { x: p.x, y: p.y }, r3(Math.max(0, p.t - 0.01)));
+          tl.fromTo(el, { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.2 }, r3(p.t));
+        } else tl.to(el, { x: p.x, y: p.y, duration: p.move || 0.42, ease: "power2.inOut" }, r3(p.t - (p.move || 0.42)));
+        if (p.click) {
+          tl.to(el, { scale: 0.84, duration: 0.07, yoyo: true, repeat: 1 }, r3(p.t));
+          tl.set(ring, { x: p.x + 6, y: p.y + 6 }, r3(p.t));
+          tl.fromTo(ring, { scale: 0.3, autoAlpha: 0.95 }, { scale: 1.7, autoAlpha: 0, duration: 0.34, ease: "power2.out" }, r3(p.t));
+        }
+      });
+      if (o.hideAt) tl.to(el, { autoAlpha: 0, duration: 0.15 }, r3(o.hideAt));
+      return el;
+    },
+    /**
+     * Camera on a wrapper element: slow drift that never stops plus a punch-in on each `punches` time.
+     * The wrapper should fill the frame (transform-origin center).
+     */
+    camera: function (tl, sel, until, punches, opts) {
+      var o = opts || {},
+        drift = o.drift || 0.035;
+      for (var t = 0, k = 0; t < until; t += 3, k++)
+        tl.to(sel, { scale: 1 + (k % 2 ? drift : drift * 0.4), x: k % 2 ? -14 : 12, duration: 3, ease: "sine.inOut" }, r3(t));
+      // Punches go on an inner wrapper (opts.inner) so they never fight the drift tweens.
+      var inner = o.inner || sel;
+      (punches || []).forEach(function (p) {
+        tl.fromTo(inner, { scale: 1 }, { scale: 1 + (o.punch || 0.06), duration: 0.12, ease: "power3.out", immediateRender: false }, r3(p));
+        tl.to(inner, { scale: 1, duration: 0.5, ease: "power2.inOut" }, r3(p + 0.14));
+      });
+    },
     wordEnd: function (text, nth) {
       var start = CR.word(text, nth);
       for (var i = 0; i < T.words.length; i++) if (T.words[i].start === start) return T.words[i].end;
@@ -280,9 +337,9 @@
         y = o.y != null ? o.y : (parseFloat(root.getAttribute("data-height")) || 1920) - h;
       var holder = document.createElement("div");
       holder.className = "crp";
-      holder.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:" + w + "px;height:" + h + "px;z-index:" + (o.z || 7) + ";overflow:visible";
+      holder.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:" + w + "px;height:" + h + "px;z-index:" + (o.z || 7) + ";overflow:hidden"; // the hidden hand waits below the sprite
       holder.innerHTML =
-        '<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" shape-rendering="crispEdges" style="overflow:visible">' +
+        '<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" shape-rendering="crispEdges" style="overflow:hidden">' +
         '<g class="crp-body">' + runs(rows.slice(25), 0, 25) + "</g>" +
         '<g class="crp-head">' + runs(rows.slice(0, 25)) + mouths +
         '<g class="crp-lid" style="visibility:hidden;opacity:0">' + runs(lid, 6, 11) + runs(lid, 20, 11) + "</g></g>" +

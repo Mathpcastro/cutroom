@@ -897,6 +897,10 @@ export function toolActivityLabel(
     write_film_file: "Escrevendo o filme",
     read_film_file: "Lendo o filme",
     film_check: "Checando o filme",
+    film_capture_page: "Capturando a página",
+    film_review: "Revisando o filme",
+    instagram_accounts: "Lendo as contas do Instagram",
+    publish_reel: "Publicando o Reels",
     film_stills: "Gerando quadros do filme",
     render_film: "Renderizando o filme",
   };

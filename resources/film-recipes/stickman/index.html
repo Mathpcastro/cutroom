@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- Formato "stickman" do CutRoom: a história do cliente em 4 atos com um boneco de palito. Roteiro em roteiro.txt. -->
+<script src="brand.js"></script>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
+  @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
+  @font-face { font-family: "Instrument Serif"; src: url(fonts/InstrumentSerif-Italic.ttf); font-style: italic; }
+  @font-face { font-family: Caveat; src: url(fonts/Caveat.ttf); font-weight: 400 700; }
+  :root { --accent: #E8462F; --ink: #1E1C1A; --paper: #F4F1EC; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); color: var(--ink); font-family: "Instrument Sans"; }
+  .tint { position: absolute; inset: 0; background: var(--accent); opacity: 0; }
+  .cam, .punch { position: absolute; inset: 0; transform-origin: 50% 55%; }
+  .later { visibility: hidden; opacity: 0; }
+  .floor { position: absolute; left: 60px; top: 1390px; width: 960px; height: 10px; border-radius: 5px; background: var(--ink); transform-origin: 0 50%; }
+  .hero { position: absolute; left: 110px; top: 654px; width: 470px; height: 783px; overflow: visible; }
+  .hero * { fill: none; stroke: var(--ink); stroke-width: 13; stroke-linecap: round; stroke-linejoin: round; }
+  .hero .solid { fill: var(--ink); stroke: none; }
+  .hero .phone { fill: #fff; }
+  .hero .screen { fill: var(--accent); stroke: none; }
+  .name { position: absolute; left: 520px; top: 640px; font: 700 120px Caveat; color: var(--accent); }
+  .post { position: absolute; left: 560px; top: 1020px; width: 120px; height: 120px; border: 10px solid var(--ink); border-radius: 18px; background: #fff; }
+  .post::after { content: ""; position: absolute; left: 18px; right: 18px; top: 26px; height: 14px; border-radius: 7px; background: var(--ink); box-shadow: 0 28px 0 var(--ink); }
+  .day { position: absolute; left: 0; width: 1080px; top: 330px; text-align: center; font: 210px/1 Anton; }
+  .zero { position: absolute; left: 610px; top: 560px; padding: 22px 40px; border: 12px solid var(--accent); border-radius: 26px; color: var(--accent); font: 110px/1 Anton; }
+  .bulb { position: absolute; left: 260px; top: 420px; width: 170px; height: 220px; }
+  .bulb path, .bulb line { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; }
+  .card3 { position: absolute; left: 600px; width: 400px; padding: 30px 40px; border: 10px solid var(--ink); border-radius: 30px; background: #fff; font: 76px/1 Anton; }
+  .card3 i { font-style: normal; color: var(--accent); }
+  .k1 { top: 520px; } .k2 { top: 720px; } .k3 { top: 920px; }
+  .msg { position: absolute; padding: 20px 32px; border-radius: 30px 30px 30px 6px; background: var(--ink); color: #fff; font: 600 44px "Instrument Sans"; }
+  .m1 { left: 600px; top: 540px; } .m2 { left: 640px; top: 690px; } .m3 { left: 590px; top: 840px; }
+  .subs { position: absolute; left: 0; width: 1080px; top: 300px; text-align: center; font: 150px/1 Anton; color: var(--accent); }
+  .say { position: absolute; left: 0; width: 1080px; text-align: center; font: 150px/1 Anton; }
+  .say1 { top: 420px; } .say2 { top: 590px; color: var(--accent); }
+  .q { position: absolute; left: 80px; width: 920px; top: 360px; font: 116px/1.02 Anton; }
+  .q span { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="25" data-width="1080" data-height="1920">
+  <div class="tint"></div>
+  <div class="cam"><div class="punch">
+    <div class="floor"></div>
+    <svg class="hero" viewBox="0 0 300 500">
+      <g class="h-legL"><line class="draw" x1="150" y1="300" x2="100" y2="470" style="stroke-dasharray:180;stroke-dashoffset:180"/></g>
+      <g class="h-legR"><line class="draw" x1="150" y1="300" x2="200" y2="470" style="stroke-dasharray:180;stroke-dashoffset:180"/></g>
+      <line class="draw" x1="150" y1="135" x2="150" y2="300" style="stroke-dasharray:170;stroke-dashoffset:170"/>
+      <g class="h-armL"><line class="draw" x1="150" y1="170" x2="70" y2="255" style="stroke-dasharray:120;stroke-dashoffset:120"/></g>
+      <g class="h-armR">
+        <line class="draw" x1="150" y1="170" x2="225" y2="215" style="stroke-dasharray:90;stroke-dashoffset:90"/>
+        <g class="h-phone" style="visibility:hidden;opacity:0"><rect class="phone" x="215" y="160" width="52" height="88" rx="10"/><rect class="screen" x="224" y="172" width="34" height="62" rx="4"/></g>
+      </g>
+      <g class="h-head">
+        <circle class="draw" cx="150" cy="80" r="55" style="stroke-dasharray:346;stroke-dashoffset:346"/>
+        <circle class="solid h-eye" cx="132" cy="74" r="7" style="visibility:hidden;opacity:0"/><circle class="solid h-eye" cx="168" cy="74" r="7" style="visibility:hidden;opacity:0"/>
+        <path class="h-smile" d="M128 100 Q150 118 172 100" style="visibility:hidden;opacity:0"/>
+        <path class="h-sad" d="M130 110 Q150 96 170 110" style="visibility:hidden;opacity:0"/>
+      </g>
+    </svg>
+    <div class="name later">Léo</div>
+    <div class="post p0 later"></div><div class="post p1 later"></div><div class="post p2 later"></div><div class="post p3 later"></div>
+    <div class="day later">DIA <span class="dn">1</span></div>
+    <div class="zero later">0 VENDAS</div>
+    <svg class="bulb later" viewBox="0 0 170 220"><path d="M85 20 C40 20 20 55 20 85 C20 115 45 130 55 150 L115 150 C125 130 150 115 150 85 C150 55 130 20 85 20 Z" style="stroke-dasharray:520;stroke-dashoffset:520"/><line x1="60" y1="180" x2="110" y2="180"/><line x1="68" y1="205" x2="102" y2="205"/></svg>
+    <div class="card3 k1 later"><i>1</i> A DOR</div>
+    <div class="card3 k2 later"><i>2</i> A PROVA</div>
+    <div class="card3 k3 later"><i>3</i> O CONVITE</div>
+    <div class="msg m1 later">quero testar!</div>
+    <div class="msg m2 later">como assina?</div>
+    <div class="msg m3 later">é pra mim 🙋</div>
+    <div class="subs later">+<span class="sn">0</span> ASSINATURAS</div>
+    <div class="say say1 later">NÃO POSTOU MAIS.</div>
+    <div class="say say2 later">POSTOU DIFERENTE.</div>
+    <div class="q later">VOCÊ ESTÁ POSTANDO COMO O <span>LÉO DE ANTES?</span></div>
+  </div></div>
+  <audio id="voz" data-start="0" data-duration="23" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
+  <!--MUSICA-->
+  <script src="kit/gsap.min.js"></script>
+  <script src="timing.js"></script>
+  <script src="kit/cutroom-kit.js"></script>
+  <script>
+    (function () {
+      var p = (window.BRAND && window.BRAND.palette) || {}, s = document.documentElement.style;
+      if (p.accent) s.setProperty("--accent", p.accent);
+      if (p.ink) s.setProperty("--ink", p.ink);
+    })();
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = Math.max(CR.timing.voiceEnd + 1.8, 8), at = CR.at;
+    // Pose helpers: rotation about the joints, in SVG coordinates (svgOrigin).
+    function pose(t, armL, armR, legL, legR, d) {
+      var o = { duration: d || 0.25, ease: "power2.out" };
+      tl.to(".h-armL", Object.assign({ rotation: armL, svgOrigin: "150 170" }, o), t);
+      tl.to(".h-armR", Object.assign({ rotation: armR, svgOrigin: "150 170" }, o), t);
+      tl.to(".h-legL", Object.assign({ rotation: legL, svgOrigin: "150 300" }, o), t);
+      tl.to(".h-legR", Object.assign({ rotation: legR, svgOrigin: "150 300" }, o), t);
+    }
+    function face(t, mood) {
+      tl.set(".h-smile", { autoAlpha: mood === "happy" ? 1 : 0 }, t);
+      tl.set(".h-sad", { autoAlpha: mood === "sad" ? 1 : 0 }, t);
+    }
+
+    // Ato 1 — Léo se desenha e mostra o app.
+    var tEsse = at("esse", 1, 0.05), tLeo = at("léo", 1, 0.4), tApp = at("app", 1, 1.3), tPosta = at("posta", 1, 2.2);
+    tl.fromTo(".floor", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, tEsse);
+    tl.to(".hero .draw", { strokeDashoffset: 0, duration: 0.5, stagger: 0.06, ease: "power2.out" }, tEsse);
+    tl.set(".h-eye", { autoAlpha: 1 }, tEsse + 0.5);
+    face(tEsse + 0.5, "happy");
+    CR.pop(tl, ".name", tLeo);
+    CR.pop(tl, ".h-phone", tApp);
+    pose(tApp, 15, -30, 0, 0);
+    CR.exit(tl, ".name", tPosta);
+    // Posts saem do celular, um por vez (posta todo dia).
+    [0, 1, 2, 3].forEach(function (i) {
+      var t0 = tPosta + i * 0.35;
+      tl.fromTo(".p" + i, { x: 0, y: 0, scale: 0.3, autoAlpha: 0, rotation: 0 }, { x: 160 + i * 70, y: 300 - i * 20, scale: 1, autoAlpha: 1, rotation: -12 + i * 9, duration: 0.45, ease: "power2.out" }, t0);
+    });
+    // Ato 2 — os dias passam e ninguém compra.
+    var tDia = at("dia", 2, 3.4), tSessenta = at("sessenta", 1, 4.1), tNoventa = at("noventa", 1, 4.8), tNinguem = at("ninguém", 1, 5.6);
+    CR.slam(tl, ".day", tDia);
+    CR.count(tl, ".dn", 1, 30, tDia - 0.3, 0.3);
+    CR.count(tl, ".dn", 30, 60, tSessenta - 0.25, 0.25);
+    CR.count(tl, ".dn", 60, 90, tNoventa - 0.25, 0.25);
+    tl.to(".post", { y: 340, rotation: function (i) { return [-8, 6, -3, 10][i]; }, duration: 0.35, ease: "bounce.out", stagger: 0.05 }, tSessenta);
+    CR.stamp(tl, ".zero", tNinguem, -6);
+    face(tNinguem, "sad");
+    pose(tNinguem, 8, 12, 0, 0, 0.4);
+    tl.to(".h-head", { rotation: 12, svgOrigin: "150 135", duration: 0.4 }, tNinguem);
+    // Ato 3 — a virada.
+    var tAte = at("até", 1, 6.6), tProblema = at("problema", 1, 8.4), tDor = at("dor", 1, 10.0), tProva = at("prova", 1, 10.5), tConvite = at("convite", 1, 11.0);
+    CR.exit(tl, ".day, .zero", tAte - 0.1);
+    tl.to(".post", { autoAlpha: 0, duration: 0.2 }, tAte);
+    tl.to(".h-head", { rotation: 0, svgOrigin: "150 135", duration: 0.3 }, tAte);
+    face(tAte + 0.3, "happy");
+    tl.set(".bulb", { autoAlpha: 1 }, tAte + 0.2);
+    tl.to(".bulb path", { strokeDashoffset: 0, duration: 0.45 }, tAte + 0.2);
+    tl.to(".tint", { opacity: 0.08, duration: 0.6 }, tAte + 0.3);
+    pose(tAte + 0.2, 120, -30, 0, 0, 0.3);
+    tl.to(".bulb", { autoAlpha: 0, duration: 0.2 }, tProblema);
+    pose(tProblema, 15, -30, 0, 0);
+    CR.rise(tl, ".k1", tDor);
+    CR.rise(tl, ".k2", tProva);
+    CR.rise(tl, ".k3", tConvite);
+    // Ato 4 — mensagens, assinaturas, Léo pulando.
+    var tMsg = at("mensagens", 1, 12.6), tAss = at("assinaturas", 1, 13.6);
+    CR.exit(tl, ".card3", tMsg - 0.6);
+    CR.pop(tl, ".m1", tMsg - 0.2);
+    CR.pop(tl, ".m2", tMsg + 0.15);
+    CR.pop(tl, ".m3", tMsg + 0.5);
+    CR.slam(tl, ".subs", tAss - 0.2);
+    CR.count(tl, ".sn", 0, 12, tAss - 0.2, 0.9);
+    pose(tAss, 92, -62, 18, -18, 0.2);
+    tl.to(".hero", { y: -70, duration: 0.22, yoyo: true, repeat: 5, ease: "power2.out" }, tAss);
+    // Final.
+    var tNao = at("não", 1, 15.3), tDif = at("diferente", 1, 16.4), tVoce = at("você", 1, 17.4);
+    CR.exit(tl, ".msg, .subs", tNao - 0.1);
+    pose(tNao, 15, -30, 0, 0);
+    CR.slam(tl, ".say1", tNao);
+    CR.slam(tl, ".say2", tDif - 0.25);
+    CR.exit(tl, ".say", tVoce - 0.1);
+    CR.rise(tl, ".q", tVoce);
+    tl.to(".h-phone", { autoAlpha: 0, duration: 0.2 }, tVoce);
+    pose(tVoce, 30, -30, 0, 0);
+
+    CR.camera(tl, ".cam", D, [tLeo, tNinguem, tAte, tAss, tDif], { inner: ".punch" });
+    tl.set({}, {}, D);
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>

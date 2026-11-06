@@ -1,6 +1,8 @@
 /**
- * Video formats CutRoom produces from scratch. Each guide is written for the agent that drives
- * CutRoom (in-app chat, Claude Code, Codex): it only uses CutRoom tools, never a terminal.
+ * Video formats CutRoom produces from scratch, as FILMS IN CODE (HyperFrames: HTML + GSAP + kit).
+ * Each recipe is written for the agent that drives CutRoom (in-app chat, Claude Code, Codex) and
+ * ships with a starter film in resources/film-recipes/<id>/ — CutRoom's own version of the format,
+ * complete and rendering — that create_film{format} copies into the new film folder.
  * The formats are CutRoom's own, inspired by what performs on Reels/Shorts; no third-party prompt is copied.
  */
 export interface VideoFormat {
@@ -14,288 +16,186 @@ export interface VideoFormat {
   checklist: string[];
 }
 
-const COMMON = `
-## Regras do CutRoom (valem para todo formato)
+const FLOW = `
+## Fluxo (todo formato)
+1. \`get_brand\` — o que vende, para quem, tom, oferta, CTA, cores e logo. Tudo no vídeo fala e parece a marca.
+2. Roteiro falado completo, em português do Brasil, frases curtas, uma ideia por frase. Mostre ao usuário antes de gerar a voz. Sem jargão de IA ("revolucionário", "desbloqueie", "no mundo de hoje"). Números só os que o usuário deu.
+3. \`create_film{name, format}\` — a pasta já vem com o filme inicial deste formato (a versão do CutRoom), \`CUTROOM.md\` e o kit.
+4. \`film_voiceover{film, text}\` — sem provedor, usa a voz escolhida pelo usuário (ElevenLabs, ou Kokoro offline e grátis). Grava \`timing.js\`; se responder \`status:"generating"\`, chame de novo com o mesmo texto.
+5. Adapte \`index.html\`: textos, telas, cores, e reancore cada cena com \`CR.at("palavra", n, segundosReserva)\`. \`data-duration\` e o \`tl.set({}, {}, D)\` final = \`voiceEnd + 1,5–2 s\`.
+6. Música: \`search_music{query, kind:"music"}\` → \`film_asset{film, music:id}\` → \`<audio id="musica" data-volume="0.14" data-fade-out="1.5">\`. Efeitos (\`kind:"sfx"\`, whoosh/pop/click) cada um com \`id\` e \`data-track-index\` próprios, volume 0,3–0,5, na batida da cena.
+7. \`film_check\` → \`film_stills\` em 5–6 momentos (gancho, cada virada, final) → corrija → \`film_review\` (nota por item do checklist; corrija tudo abaixo de 8) → \`render_film\` (chame de novo até \`status:"done"\`).
+8. Entregue o caminho do MP4 e, se houver música CC BY, a linha de crédito para a legenda do post.
 
-**Fluxo**
-1. \`get_brand\`: use o que a marca vende, para quem, o tom, a oferta e o CTA. Cores = \`palette.accent\` (destaque), \`palette.ink\` (texto/escuro), \`palette.paper\` (claro). Fontes = \`fonts.heading\`/\`fonts.body\` se existirem; senão Montserrat (títulos) e Barlow (texto). Se \`configured:false\`, pergunte ao usuário o essencial (produto, público, oferta) e siga.
-2. Roteiro completo primeiro (texto falado), mostre ao usuário e só então gere a voz. Português do Brasil, frases curtas, uma ideia por frase, sem jargão de IA ("revolucionário", "no mundo de hoje", "desbloqueie").
-3. \`create_blank_canvas{aspect, duration, color}\` com a duração estimada + 2 s (≈ 2,6 palavras por segundo). A duração final se ajusta depois com \`edit_project trim\`.
-4. \`list_voices\` → \`add_voiceover{text, voice, start: 0.3}\`. A resposta traz \`timelineWords\`: o tempo de cada palavra na timeline. **Todo o visual é ancorado nesses tempos.** Gere a voz uma vez só (custa crédito do usuário).
-5. Ajuste o canvas: \`edit_project trim{clipId, start:0, end: fim_da_última_palavra + 1.2}\`.
-6. Cenas: \`edit_project motion{...}\` em modo \`fullscreen\` (fundo da cena cobre o canvas). Uma cena por bloco do roteiro, 4 a 12 s cada, emendadas sem buraco (start de uma = end da anterior).
-7. Música: \`search_music{query, kind:"music"}\` → \`add_music{id, gain:-18, loop:true, fadeOut:1.5}\`. Efeitos: \`search_music{query:"whoosh"|"pop"|"click", kind:"sfx"}\` → \`add_music{id, kind:"sfx", start, gain:-8}\` nos cortes e destaques (no máximo 1 a cada 3 s).
-8. Legenda: \`edit_project captions{enabled:true, style:{presetId, position, ...}}\` — ver o formato.
-9. \`render_frame{time}\` em 3 a 5 momentos e corrija. Depois \`review_video{format, frames:8}\`: nota de 1 a 10 por item do checklist, corrija tudo abaixo de 8.
-10. \`export_video{destination:"videos"}\`. Se responder \`status:"exporting"\`, chame \`job_status\` a cada 30–60 s até o job \`export\` ficar \`completed\` (o \`output\` é o caminho do MP4) e informe o caminho. Render e exportação rodam no computador do usuário: \`render_frame\`/\`review_video\` também podem responder \`status:"rendering"\` — espere e chame de novo, sem editar o projeto no meio. Se usou música CC BY, entregue a linha de crédito que o review mostrou (vai na legenda do post).
-
-**Desenho das cenas (motor HyperFrames)**
-- A cena é um fragmento HTML/CSS/SVG + uma lista \`animations\` de tweens GSAP: \`{selector, start, duration, from?, to, ease?}\`. Tempos **locais da cena** (0 = início da cena). Sem script, sem URL, sem CSS animation/transition.
-- Canvas de desenho: largura **1920** sempre. Em 9:16 a altura é **3413** (escala para 1080x1920); em 16:9 é 1080. Use \`position:absolute\` e posições em px nesse canvas. Em 9:16 deixe livre a faixa de 2700 a 3150 px (legenda) e não ponha texto importante acima de 300 px nem abaixo de 3200 px (interface do Reels).
-- Texto: títulos 140–220 px, texto de apoio 70–100 px em 9:16. Máximo ~6 palavras por card. Contraste forte (ink sobre paper ou paper sobre ink/accent).
-- Fontes disponíveis: Barlow (400/700), Montserrat (800), Anton, Oswald, Lora (400, itálico), Caveat. Use \`font-family\` no CSS.
-- Logo da marca: \`<img data-asset="logo" style="...">\` (só se \`get_brand\` disser que existe).
-- Propriedades animáveis: x, y, xPercent, yPercent, scale, scaleX, scaleY, rotation, skewX, skewY, opacity, autoAlpha, color, backgroundColor, borderColor, borderRadius, width, height, letterSpacing, fontSize, clipPath, filter, transformOrigin, fill, stroke, strokeDasharray, strokeDashoffset. Eases: power1–4 (in/out/inOut), back, sine, expo, linear.
-- Entrada E saída: todo elemento que aparece precisa sair (ou a cena termina com ele). Até 800 tweens por cena.
-- **Sincronia com a fala:** para destacar a palavra que começa em \`T\` (timeline) numa cena que começa em \`S\`, o tween começa em \`T - S\` (pode antecipar 0,05 s). Cards entram 0,1 s antes da palavra-chave e saem quando a frase seguinte começa.
-- Movimento: entradas de 0,25–0,45 s com \`back.out\` ou \`power3.out\`; nada parado mais de 2 s (micro-movimento: scale 1→1.03, y ±8, rotation ±1,5 em \`sine.inOut\`).
+## Ritmo que segura (vale para todos)
+- Gancho em **imagem** nos 3 primeiros segundos: algo se mexendo + a frase mais forte do roteiro. Nada de logo ou "olá" no começo.
+- Novo plano a cada 1,5–3 s (corte, troca de card, câmera que entra). Nada parado mais de 1,5 s: \`CR.camera\` em deriva lenta e soco nas palavras-chave.
+- Mostre em vez de listar: cada frase importante vira uma demonstração (tela, número contando, antes/depois).
+- Cada elemento entra até 0,15 s depois da palavra que ele mostra; contadores chegam ao número na palavra falada.
+- Texto na tela ≤ 6 palavras, grande (títulos 120–190 px em 1080x1920), longe da faixa de baixo (interface do Reels: deixe livres os últimos ~380 px e a direita inferior).
+- Virada no meio (a crença comum estava errada / o problema real é outro) e final com pergunta que divide os comentários ou CTA claro.
 `;
 
-const TEACHER_KIT = `
-### Kit: professor cartoon (SVG)
-\`\`\`html
-<svg class="teacher" viewBox="0 0 400 520" style="position:absolute;left:1290px;top:2050px;width:560px;height:728px">
-  <g class="t-body">
-    <rect x="110" y="300" width="180" height="200" rx="60" fill="INK"/>
-    <rect x="160" y="300" width="80" height="70" rx="20" fill="ACCENT"/>
-    <g class="t-arm" style="transform-origin:290px 330px"><rect x="280" y="320" width="120" height="34" rx="17" fill="INK"/><circle cx="398" cy="337" r="22" fill="#f2c9a0"/></g>
-  </g>
-  <g class="t-head" style="transform-origin:200px 290px">
-    <circle cx="200" cy="200" r="110" fill="#f2c9a0"/>
-    <path d="M95 170 Q200 40 305 170 Q290 100 200 92 Q110 100 95 170Z" fill="INK"/>
-    <rect x="128" y="178" width="58" height="40" rx="12" fill="none" stroke="INK" stroke-width="9"/>
-    <rect x="214" y="178" width="58" height="40" rx="12" fill="none" stroke="INK" stroke-width="9"/>
-    <line x1="186" y1="196" x2="214" y2="196" stroke="INK" stroke-width="8"/>
-    <circle class="t-eye" cx="157" cy="198" r="9" fill="INK"/><circle class="t-eye" cx="243" cy="198" r="9" fill="INK"/>
-    <path class="t-mouth-closed" d="M165 255 Q200 272 235 255" fill="none" stroke="INK" stroke-width="9" stroke-linecap="round"/>
-    <ellipse class="t-mouth-open" cx="200" cy="262" rx="30" ry="20" fill="INK" opacity="0"/>
-  </g>
-</svg>
-\`\`\`
-Troque INK/ACCENT pelas cores da marca. **Boca falando:** para cada palavra da narração dentro da cena, dois tweens: \`{selector:".t-mouth-open", start: w.start-S, duration:0.05, to:{opacity:1}}\` e \`{selector:".t-mouth-open", start: w.start-S + clamp(w.end-w.start-0.05, 0.08, 0.22), duration:0.05, to:{opacity:0}}\` (boca fechada fica sempre por baixo). **Não junte palavras**: as vozes entregam palavras coladas umas nas outras e a boca ficaria aberta a frase inteira; o "abre/fecha" por palavra é o que parece fala. **Vida:** cabeça \`rotation\` ±3 a cada ~1,2 s (sine.inOut), braço \`rotation\` -25→0 quando aponta para um card, piscar: \`.t-eye\` scaleY 1→0.1→1 em 0,12 s a cada 3–4 s.
-`;
+const CHECK_COMMON = [
+  "Gancho em imagem com movimento nos 3 primeiros segundos",
+  "Novo plano a cada 1,5–3 s; nada parado mais de 1,5 s",
+  "Cada card/elemento entra até 0,15 s depois da palavra falada",
+  "Texto ≤ 6 palavras por card, legível no celular, fora da faixa de baixo",
+  "Cores, logo e tom da marca do usuário",
+  "Áudio: narração clara, música baixa (≈ 0,14), efeitos na batida, nada mudo",
+  "Final com pergunta que divide ou CTA claro",
+];
 
-const CARD_KIT = `
-### Kit: cards, carimbos e títulos
-\`\`\`html
-<div class="title" style="position:absolute;left:120px;top:420px;width:1680px;font:800 190px/1.02 Montserrat;color:INK;letter-spacing:-4px">Título curto</div>
-<div class="card c1" style="position:absolute;left:140px;top:1000px;width:1640px;padding:70px 80px;border-radius:48px;background:INK;color:PAPER;font:700 96px/1.15 Barlow">Passo 1: ...</div>
-<div class="stamp ok" style="position:absolute;left:1500px;top:960px;width:220px;height:220px;border-radius:50%;background:#1faa59;color:#fff;font:800 150px/220px Montserrat;text-align:center;transform:rotate(-12deg)">✓</div>
-<div class="stamp no" style="position:absolute;left:1500px;top:960px;width:220px;height:220px;border-radius:50%;background:#e5383b;color:#fff;font:800 150px/220px Montserrat;text-align:center;transform:rotate(-12deg)">✕</div>
-<div class="hl" style="position:absolute;left:130px;top:1150px;width:0;height:30px;background:ACCENT;opacity:.85"></div>
-\`\`\`
-Padrões: card entra \`from:{y:120, opacity:0, scale:.96}\` → \`to:{y:0, opacity:1, scale:1}\` (0,35 s, back.out); carimbo \`from:{scale:2.4, opacity:0, rotation:-30}\` → \`to:{scale:1, opacity:1, rotation:-12}\` (0,22 s, power4.out) + sfx "stamp"/"pop"; sublinhado \`to:{width:900}\` (0,4 s, power2.out) na palavra-chave; número grande conta: troque o texto em cenas curtas ou use 3 divs sobrepostos com opacity.
-`;
-
-const STICK_KIT = `
-### Kit: boneco de palito (SVG, traço que se desenha)
-\`\`\`html
-<svg class="hero" viewBox="0 0 300 500" style="position:absolute;left:760px;top:1500px;width:400px;height:667px" fill="none" stroke="INK" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
-  <circle class="h-head" cx="150" cy="80" r="55" fill="PAPER"/>
-  <g class="h-eyes"><circle cx="130" cy="75" r="6" fill="INK" stroke="none"/><circle cx="170" cy="75" r="6" fill="INK" stroke="none"/></g>
-  <path class="h-mouth" d="M130 105 Q150 118 170 105"/>
-  <line class="h-spine" x1="150" y1="135" x2="150" y2="310"/>
-  <g class="h-armL" style="transform-origin:150px 170px"><line x1="150" y1="170" x2="70" y2="260"/></g>
-  <g class="h-armR" style="transform-origin:150px 170px"><line x1="150" y1="170" x2="230" y2="260"/></g>
-  <g class="h-legL" style="transform-origin:150px 310px"><line x1="150" y1="310" x2="95" y2="460"/></g>
-  <g class="h-legR" style="transform-origin:150px 310px"><line x1="150" y1="310" x2="205" y2="460"/></g>
-</svg>
-\`\`\`
-O mesmo SVG em todas as cenas = o personagem nunca muda. **Desenhar o traço:** \`style="stroke-dasharray:400;stroke-dashoffset:400"\` no elemento e tween \`to:{strokeDashoffset:0}\` (0,5 s). **Andar:** pernas \`rotation\` ±20 alternadas a cada 0,25 s + \`.hero\` x avançando (linear). **Susto:** braços rotation ±120, \`.h-head\` y -20, scale 1.1, efeito "boing". **Pensar:** balão SVG (ellipse + 3 círculos) com o texto dentro, entra com scale 0→1 back.out.
-`;
-
-const CURSOR_KIT = `
-### Kit: forma que vira interface + cursor
-\`\`\`html
-<div class="shape" style="position:absolute;left:560px;top:1406px;width:800px;height:600px;border-radius:300px;background:ACCENT;box-shadow:0 40px 120px rgba(0,0,0,.35)"></div>
-<div class="ui ui1" style="position:absolute;left:560px;top:1406px;width:800px;height:600px;opacity:0;font:700 72px/1.2 Barlow;color:PAPER;padding:60px"> ... conteúdo do estado 1 ... </div>
-<svg class="cursor" viewBox="0 0 40 56" style="position:absolute;left:1500px;top:2400px;width:110px;height:154px"><path d="M2 2 L2 46 L14 35 L22 54 L31 50 L23 32 L38 32 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round"/></svg>
-<div class="click" style="position:absolute;left:1480px;top:2380px;width:80px;height:80px;border-radius:50%;border:8px solid #fff;opacity:0"></div>
-\`\`\`
-Cada estado: (1) cursor vai até o ponto de clique (\`x/y\`, 0,35 s, power2.inOut); (2) clique: \`.cursor\` scale .85→1 (0,08+0,1 s) e \`.click\` from {scale:.4,opacity:.9} to {scale:1.8,opacity:0} (0,3 s) + sfx "click"; (3) \`.shape\` muda \`width/height/borderRadius/backgroundColor\` para o próximo estado (0,35 s, expo.inOut) e o conteúdo do estado anterior sai (opacity 0, 0,12 s) enquanto o novo entra (opacity/y, 0,2 s, 0,15 s depois). Estados típicos: botão pílula → campo de busca → lista de resultados → card de produto → gráfico subindo → notificação → checkout → "pronto ✓". Mantenha o centro da forma estável para o olho não se perder.
-`;
-
-const SPACE_KIT = `
-### Kit: explainer estilo "livro ilustrado científico" (sem WebGL)
-\`\`\`html
-<div class="sky" style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,#22305e,#0b1026 70%)"></div>
-<svg class="stars" viewBox="0 0 1920 3413" style="position:absolute;inset:0;width:1920px;height:3413px"><g fill="#fff"> <circle cx="120" cy="300" r="4"/> ... 40 a 80 estrelas de 2 a 6 px ... </g></svg>
-<svg class="planet" viewBox="0 0 600 600" style="position:absolute;left:660px;top:1100px;width:600px;height:600px">
-  <defs><radialGradient id="pg" cx="35%" cy="30%"><stop offset="0" stop-color="#7fd3ff"/><stop offset=".6" stop-color="#2f7bd8"/><stop offset="1" stop-color="#173a7a"/></radialGradient></defs>
-  <circle cx="300" cy="300" r="290" fill="url(#pg)"/>
-  <path d="M120 220 Q200 160 280 230 T450 260 Q420 330 330 320 T150 330Z" fill="#3fbf6f" opacity=".9"/>
-  <circle cx="300" cy="300" r="290" fill="none" stroke="#bfe8ff" stroke-width="14" opacity=".5"/>
-</svg>
-<svg class="mascot" viewBox="0 0 200 240" style="position:absolute;left:1380px;top:2150px;width:340px;height:408px">
-  <ellipse cx="100" cy="150" rx="70" ry="80" fill="#f4f4f8"/><circle cx="100" cy="80" r="62" fill="#f4f4f8"/>
-  <rect x="58" y="55" width="84" height="56" rx="26" fill="#1b2a52"/><circle cx="82" cy="80" r="8" fill="#7fd3ff"/><circle cx="118" cy="80" r="8" fill="#7fd3ff"/>
-</svg>
-\`\`\`
-Estilo: formas chapadas com gradiente suave, cores saturadas sobre fundo escuro, linhas grossas arredondadas, muita profundidade por camadas (fundo lento, meio, frente rápida = paralaxe com \`y\` em velocidades diferentes). Câmera: \`scale\`/\`x\`/\`y\` num \`<div class="world">\` que embrulha tudo (zoom lento 1→1.12 ao longo da cena). Rótulos com seta fina e texto curto (Barlow 700, 80 px). Um mascote reage (pula, aponta, se assusta) nas viradas do roteiro. Use números reais e ditos na narração; nunca invente dado.
-`;
-
-export const FORMATS: VideoFormat[] = [
+export const FORMATS: VideoFormat[] = ([
   {
     id: "professor",
-    name: "Explainer com professor cartoon",
+    name: "Aula com apresentador em pixel art",
     aspect: "9:16",
-    length: "45–60 s",
-    goodFor:
-      "Explicar como o SaaS resolve um problema em 3 passos, comparar jeito antigo x novo, ensinar um conceito que leva à oferta. Um dos formatos que mais converte.",
-    needs: ["voz (ElevenLabs, OpenAI ou local)"],
-    guide: `# Explainer com professor cartoon (9:16, 45–60 s)
+    length: "35–55 s",
+    goodFor: "Ensinar um erro comum do público e mostrar o produto como a saída. Explainer de nicho que gera salvamentos e comentários.",
+    needs: ["prints ou telas reais do produto (opcional)"],
+    guide: `# Aula com apresentador em pixel art
+Um apresentador em pixel art no canto inferior (boca pela voz, piscada, joinha) "dá a aula" enquanto o quadro troca a cada frase: títulos que batem, cards, números contando, o produto real.
 
-Uma aula de menos de um minuto: um professor desenhado fala no canto de baixo enquanto títulos, cards e carimbos aparecem **na palavra exata** que está sendo dita.
+## Estrutura (≈ 45 s)
+1. **Gancho (0–3 s):** contraste em duas linhas que batem uma depois da outra ("MIL CURTIDAS." / "ZERO VENDAS."), câmera com soco em cada uma.
+2. **Diagnóstico (3–12 s):** o erro que o público comete, mostrado (feed de posts com curtidas e painel zerado, ou os 3 tipos lado a lado).
+3. **Virada (12–25 s):** o que funciona, em passos de 1 a 3, cada passo num card que entra na palavra.
+4. **Prova (25–38 s):** o produto real (prints do app ou slides reais) deslizando num celular; um número que conta até o resultado do usuário.
+5. **Final (38–45 s):** pergunta que divide ("curtida ou assinatura?") + o apresentador faz joinha.
 
-## Roteiro (120–150 palavras)
-1. **Gancho (0–3 s):** uma frase que abre uma lacuna ou contraria o senso comum, ligada à dor do público da marca. Ex.: "Você está perdendo cliente no WhatsApp e nem sabe."
-2. **Promessa (3–6 s):** o que a pessoa vai entender. "Em 40 segundos, os 3 níveis de atendimento."
-3. **Corpo em 3 blocos** (10–14 s cada): cada bloco = 1 título + 1 card + 1 prova (carimbo ✓/✕, número, mini-diagrama). Nível 1 → 2 → 3, antes → depois, erro → acerto.
-4. **Virada (3–5 s):** onde o produto da marca entra, sem exagero.
-5. **CTA (3–4 s):** um pedido só (comentar uma palavra, link na bio, seguir). Use o CTA da marca se houver.
-
-## Cenas
-- Fundo: \`paper\` liso ou com um quadriculado sutil (linhas 2 px a 6% de opacidade). Professor fixo no canto inferior direito, visível do início ao fim (repita o mesmo SVG em todas as cenas, na mesma posição, para não "pular").
-- Topo (300–900 px): título do bloco. Meio (950–2600 px): cards empilhados, um por frase. O professor ocupa ~2050–2780 px à direita; cards à esquerda nessa faixa.
-- Uma cena por bloco do roteiro. Na troca de bloco: cards antigos saem para cima (y -80, opacity 0, 0,25 s) e o novo título entra.
-- Gestos: braço aponta para o card no instante em que ele entra; cabeça inclina nas perguntas; carimbo com sfx.
-
-${TEACHER_KIT}
-${CARD_KIT}
-
-## Áudio
-Voz: tom de professor animado, ritmo rápido (OpenAI: instructions "professor empolgado, ritmo rápido, frases curtas"). Música lo-fi ou "upbeat corporate" a -20 dB. Sfx: "pop" em cada card, "stamp" nos carimbos, "whoosh" na troca de bloco.
-
-## Legenda
-\`captions{enabled:true, style:{presetId:"keyword-punch" (ou "word-pop"/"highlight-pill"), position:"bottom"}}\`, palavras-chave na cor accent. Se a legenda brigar com os cards, use position "center" só nas cenas sem card no meio — senão mantenha embaixo.
-${COMMON}`,
-    checklist: [
-      "Gancho nos 3 primeiros segundos, ligado à dor do público da marca",
-      "Cada card/título entra a no máximo 0,15 s da palavra que ele mostra",
-      "A boca do professor abre e fecha com a fala, sem ficar aberta no silêncio",
-      "Nenhum texto cortado, sobreposto à legenda ou fora da área segura do Reels",
-      "No máximo 6 palavras por card; contraste legível no celular",
-      "Cores e fontes da marca; o produto aparece na virada sem promessa exagerada",
-      "Música baixa sob a voz; sfx pontuais, não em toda frase",
-      "Um único CTA no final",
-    ],
+## Como montar
+- \`CR.pixelPresenter(tl, {x, y, px:18, thumbs:[...]})\`: o moletom usa a cor de destaque da marca. Nunca use motion blur com pixel art.
+- Quadro: um wrapper \`.cam > .punch\` com \`CR.camera(tl, ".cam", D, [socos], {inner:".punch"})\`.
+- Legenda palavra a palavra no topo com \`CR.captions\` (palavras-chave em itálico serifado, cor de destaque).
+- Celular: div com borda arredondada de 64 px e sombra; os prints deslizam dentro com \`x\` em passos.
+- Troca de bloco com \`CR.wipe(tl, t)\` (meio-tom) no máximo 2 vezes.`,
+    checklist: [...CHECK_COMMON, "Apresentador vivo o tempo todo (boca, piscada, balanço)", "Produto real aparece na prova"],
   },
   {
     id: "ui-motion",
-    name: "UI motion (a forma que vira o seu produto)",
+    name: "UI motion: o produto funcionando",
     aspect: "9:16",
-    length: "12–20 s",
-    goodFor:
-      "Mostrar o SaaS em ação de um jeito hipnótico: uma forma se transforma em 8 a 12 telas do produto enquanto um cursor clica, tudo no ritmo de uma música de 120 BPM. Ótimo para anúncio e para o topo do perfil.",
-    needs: ["música (search_music)"],
-    guide: `# UI motion (9:16, 12–20 s)
+    length: "20–35 s",
+    goodFor: "Mostrar o app/SaaS fazendo o trabalho: formas que viram interface, cursor clicando, estados que mudam. Ótimo para lançamento e anúncio.",
+    needs: ["nome das telas e ações principais do produto", "cores da marca"],
+    guide: `# UI motion: o produto funcionando
+Formas simples (pílulas, círculos) se transformam na interface do produto; um cursor clica e cada clique muda o estado. Fundo limpo, muito movimento, poucas palavras.
 
-Uma forma central se transforma em 8 a 12 "estados" de interface do produto da marca enquanto um cursor clica em cada mudança. Sem narração (ou só um texto final). O corte é na batida da música.
+## Estrutura (≈ 28 s)
+1. **Gancho (0–2,5 s):** uma pílula da cor da marca estica e vira um campo de texto; o pedido do usuário é digitado (\`CR.type\`).
+2. **Ação (2,5–14 s):** 3 a 4 estados do produto, um por frase: cursor vai até o botão (\`CR.cursor\` com \`click:true\`), clique → o card morfa (\`width/height/borderRadius\`) para o próximo estado; itens entram em cascata (\`stagger\` 0,06).
+3. **Resultado (14–22 s):** o que o produto entrega aparece grande (lista pronta, vídeo, gráfico subindo) com um número contando.
+4. **Final (22–28 s):** logo + frase de 4–6 palavras + CTA.
 
-## Antes de desenhar
-1. \`get_brand\` e liste com o usuário os 8–12 estados: o fluxo real do produto em telas simples (ex.: botão "Agendar" → calendário → horário escolhido → formulário → confirmação → lembrete no WhatsApp → painel com agenda cheia → "R$ +3.200 este mês"). Use os nomes e números reais que o usuário der.
-2. Música: \`search_music{query:"upbeat electronic 120 bpm", kind:"music"}\`. Escolha uma faixa enérgica, \`add_music{id, gain:-6, loop:false, fadeOut:0.6}\` (aqui a música é protagonista: sem voz, sem ducking).
-3. Batida: a 120 BPM cada batida dura 0,5 s. Troque de estado a cada 2 batidas (1 s) ou 3 batidas (1,5 s); total = estados × intervalo + 1,5 s de abertura + 2 s de final.
+## Como montar
+- Morfologia: uma única div \`.shape\` muda de forma com tweens de \`width\`, \`height\`, \`borderRadius\`, \`x\`, \`y\` (0,45 s, \`power3.inOut\`), e o conteúdo de cada estado faz fade por cima.
+- Cursor: \`CR.cursor(tl, [{x,y,t}, {x,y,t,click:true}, ...])\`, chegando 0,1 s antes da palavra.
+- Sombras suaves (\`0 30px 80px rgba(0,0,0,.18)\`), cantos 28–48 px, tipografia Instrument Sans.
+- Efeito "click" em cada clique e um whoosh por troca de estado.`,
+    checklist: [...CHECK_COMMON, "Cada clique muda visivelmente o estado", "Formas morfam (sem cortes secos entre telas)"],
+  },
+  {
+    id: "landing-flyover",
+    name: "Voo 3D pela landing page",
+    aspect: "9:16",
+    length: "14–20 s",
+    goodFor: "Anúncio do SaaS a partir da própria landing page: a câmera desliza sobre a página deitada em 3D, sobe para mostrar tudo e fecha num cartão com a frase da marca.",
+    needs: ["link da landing page", "frase final em duas partes (afirmação + cauda curta)"],
+    guide: `# Voo 3D pela landing page
+A página do usuário vira um plano deitado num chão claro; uma câmera contínua (sem cortes) desliza por ela, sobe para a vista de cima e termina num cartão com a frase da marca.
 
-## Cenas
-- \`create_blank_canvas{aspect:"9:16", color: paper ou ink da marca}\`. Uma cena \`fullscreen\` por 3–4 estados (até 800 tweens cada), emendadas.
-- Forma central sempre no mesmo centro (x≈960, y≈1700 no canvas 1920x3413). Ela muda \`width/height/borderRadius/backgroundColor\` entre estados; o conteúdo de cada estado é um \`<div>\` próprio que entra e sai.
-- Cursor branco com contorno, sempre visível, com micro-movimento entre cliques. Cada troca de estado = 1 clique na batida.
-- Abertura: a forma nasce de um ponto (scale 0→1, back.out) com o logo (\`<img data-asset="logo">\`) ou o nome da marca. Final: último estado vira o logo + uma frase curta de CTA ("Teste grátis • link na bio" se a marca tiver teste).
-- Sombra suave na forma, fundo com um gradiente muito leve. Nada de texto pequeno: cada estado tem no máximo uma linha grande + um elemento de UI.
+## Estrutura (≈ 16 s)
+1. \`film_capture_page{film, url}\` — grava \`assets/pagina.jpg\` (1440 px de largura, até 9000 de altura).
+2. **Voo (0–9 s):** o plano em \`perspective: 1400px\`, inclinado \`rotateX(52°)\`, desliza de cima para baixo em velocidade constante (\`y\` com \`ease:"none"\`, só aceleração no começo e freada no fim). 2–3 elementos da página (botão, card, print do produto) "levantam" do papel: cópias recortadas com \`clip-path\` e \`translateZ\` + sombra.
+3. **Subida (9–11 s):** o \`rotateX\` vai a 0 e a escala diminui até a página inteira caber (vista de cima).
+4. **Cartão (11–16 s):** fundo da marca, frase em duas linhas (a segunda curta e em itálico), logo; música bate aqui.
 
-${CURSOR_KIT}
-
-## Legenda
-Desligada (\`captions{enabled:false}\`), o texto está nos estados.
-${COMMON}`,
+## Como montar
+- Narração é opcional: este formato funciona só com música e 1–2 whooshes (na subida e no cartão). Sem narração, não grave voz e não inclua \`timing.js\` no HTML.
+- Proibido: cortes, zoom que entra e sai, câmera girando de lado, texto sobre a página antes do cartão.
+- Para recortes "levantados", use a mesma imagem com \`clip-path: inset(...)\` posicionada exatamente sobre o lugar dela na página.`,
     checklist: [
-      "Cada troca de estado cai na batida da música (erro máximo 0,05 s)",
-      "8 a 12 estados reais do produto, na ordem do fluxo do usuário",
-      "Forma centrada e estável; o olho não se perde entre estados",
-      "Cursor sempre visível; cada mudança é causada por um clique",
-      "Textos grandes (≥ 80 px) e curtos; nada ilegível no celular",
-      "Cores da marca na forma e no final com logo/nome + CTA",
-      "Música com licença comercial e volume forte, sem distorcer",
+      "Uma câmera contínua, sem cortes, velocidade constante no voo",
+      "Página nítida e legível no começo do voo",
+      "2–3 elementos levantam com sombra",
+      "Subida termina mostrando a página inteira",
+      "Cartão final com a frase da marca e logo",
+      "Música bate no cartão; whooshes na subida",
     ],
+  },
+  {
+    id: "stickman",
+    name: "História de stickman",
+    aspect: "9:16",
+    length: "35–55 s",
+    goodFor: "Contar uma história de transformação do cliente (antes → tentativa → virada → depois) com um boneco de palito desenhado em traço. Alto tempo de tela.",
+    needs: ["a história do cliente em 4 atos"],
+    guide: `# História de stickman
+Um boneco de palito (sempre o mesmo SVG) vive a história do cliente em 4 atos. O traço se desenha na tela, o cenário é mínimo (chão, objetos em linha) e os números contam.
+
+## Estrutura (≈ 45 s)
+1. **Gancho (0–3 s):** o boneco já em ação num problema visível (empurrando uma pedra, cercado de posts sem resposta) + frase curta.
+2. **Antes (3–14 s):** a rotina que não funciona: contador de dias subindo, ícones de curtida que somem, ombros caídos.
+3. **Virada (14–28 s):** ele encontra o método/produto: um objeto aparece (o celular com o app), lâmpada, cenário muda de cor.
+4. **Depois (28–40 s):** resultado concreto: notificações chegando, número contando, ele pulando.
+5. **Final (40–45 s):** pergunta para o público se colocar no lugar dele.
+
+## Como montar
+- Boneco: SVG com \`stroke-linecap:round\`, traço 12–16 px, cabeça círculo, partes em grupos com \`transform-origin\` nas juntas (ombro, quadril). Andar = pernas alternando \`rotation\` ±22° a cada 0,25 s; braço caído = rotation 15°, alegre = -140°.
+- Traços que se desenham: \`stroke-dasharray/dashoffset\` = comprimento, \`CR.draw(tl, sel, t)\`.
+- Cenário em linhas da cor da tinta sobre papel; a cor de destaque só no que importa (o produto, o resultado).
+- Mude o enquadramento a cada ato (\`CR.camera\` + escala/posição do grupo \`.mundo\`).`,
+    checklist: [...CHECK_COMMON, "O mesmo boneco do começo ao fim", "Os 4 atos são visíveis (antes, tentativa, virada, depois)"],
   },
   {
     id: "e-se",
-    name: "Desenho 2D \"E se...?\"",
+    name: "E se… (cenário 2D)",
     aspect: "9:16",
-    length: "20–35 s",
-    goodFor:
-      "Prender atenção com uma pergunta curiosa ligada ao nicho do SaaS (\"E se sua clínica nunca mais faltasse paciente?\"), contada por um boneco de palito que é sempre o mesmo personagem. Topo de funil e seguidores.",
-    needs: ["voz (ElevenLabs, OpenAI ou local)"],
-    guide: `# Desenho 2D "E se...?" (9:16, 20–35 s)
+    length: "30–50 s",
+    goodFor: "Prender pela curiosidade: \"E se você postasse um carrossel por dia durante um ano?\". Linha do tempo com marcos, contador de tempo e consequências visuais.",
+    needs: ["a pergunta \"e se\"", "3–5 marcos plausíveis (sem números inventados)"],
+    guide: `# E se… (cenário 2D)
+Um cenário 2D chapado (céu, chão, personagem simples) atravessa o tempo: um relógio/contador de dias corre, e cada marco muda o cenário. Termina com a resposta e a pergunta para o público.
 
-Uma pergunta "E se...?" respondida em 4 a 6 cenas curtas com um boneco de palito desenhado em código (o mesmo SVG em todas as cenas, então o herói nunca muda), luz de fim de tarde e narração calma.
+## Estrutura (≈ 40 s)
+1. **Gancho (0–3 s):** a pergunta na tela, grande, com o contador já correndo ("DIA 1").
+2. **Marcos (3–30 s):** 3 a 5 saltos de tempo ("DIA 7", "DIA 30", "DIA 90", "DIA 365"): o contador corre até o marco na palavra falada; o cenário ganha algo novo a cada marco (mais seguidores na calçada, a loja abre, o céu muda do dia para a noite).
+3. **Resposta (30–36 s):** a consequência principal, mostrada.
+4. **Final (36–40 s):** "E você, começaria hoje?" — pergunta que divide.
 
-## Roteiro (60–90 palavras)
-1. **Pergunta (0–3 s):** "E se [cenário improvável ligado à dor do público]?"
-2. **Consequências em escada (3 a 4 frases):** cada frase piora ou melhora o cenário, com um detalhe concreto e visual.
-3. **Virada:** a realidade/solução, onde o produto da marca entra de leve.
-4. **Fecho:** frase de efeito curta + CTA simples ("segue para a parte 2").
-
-## Cenas
-- Paleta "fim de tarde": céu em degradê (#ffb37a → #ff7a6b → #6b4f9e), sol baixo, chão chapado escuro, silhuetas simples (casa, prédio, mesa, celular) em SVG. O boneco em ink da marca ou quase preto, traço grosso.
-- Uma cena por frase. Cada cena: o traço do cenário se desenha (strokeDashoffset) em 0,5 s, o boneco age (anda, aponta, se assusta, comemora) na palavra-chave, um objeto de destaque na cor accent.
-- Transição: fade para o céu (opacity) ou o boneco sai andando e entra na cena seguinte pelo lado oposto.
-- Texto na tela só para números e palavras-chave (Caveat ou Montserrat, 140 px).
-
-${STICK_KIT}
-
-## Áudio
-Voz calma e curiosa (OpenAI: "narrador curioso, calmo, pausas curtas"). Música ambiente suave a -22 dB. Sfx de "pop" quando objetos aparecem e um "whoosh" na virada.
-
-## Legenda
-\`captions{enabled:true, style:{presetId:"handwritten" ou "clean-phrase", position:"bottom"}}\`.
-${COMMON}`,
-    checklist: [
-      "A pergunta \"E se...?\" está nos 3 primeiros segundos",
-      "O boneco é idêntico em todas as cenas (mesmo SVG, mesmas proporções)",
-      "Cada ação do boneco acontece na palavra que a descreve",
-      "Cenário legível em silhueta; uma cor de destaque por cena",
-      "Nenhum quadro parado por mais de 2 s",
-      "Produto da marca aparece de leve na virada, sem virar anúncio",
-      "Legenda não cobre o boneco nem o objeto de destaque",
-    ],
+## Como montar
+- Cenário em camadas com paralaxe (fundo move 0,2x, meio 0,6x, frente 1x da câmera) — tudo em SVG/CSS, formas arredondadas, gradientes suaves.
+- Contador: \`CR.count(tl, ".dia", de, até, t, duração, v => "DIA " + Math.round(v))\`.
+- Céu: troca de cor com tween de \`background\` (dia → pôr do sol → noite) entre marcos.
+- Seja honesto: marcos são possibilidades ("pode acontecer"), não promessas; números só os do usuário.`,
+    checklist: [...CHECK_COMMON, "Contador de tempo visível e chegando no marco falado", "Cenário muda a cada marco", "Sem promessa de resultado inventada"],
   },
   {
-    id: "ciencia",
-    name: "Explainer ilustrado (estilo Kurzgesagt)",
+    id: "kurzgesagt",
+    name: "Explainer ilustrado (estilo livro científico)",
     aspect: "9:16",
-    length: "30–45 s",
-    goodFor:
-      "Explicar um dado, um mecanismo ou um 'e se' grande do mercado do cliente com ilustrações chapadas coloridas, mascote e narração sincronizada. Autoridade e compartilhamento.",
-    needs: ["voz (ElevenLabs, OpenAI ou local)"],
-    guide: `# Explainer ilustrado estilo Kurzgesagt (9:16, 30–45 s)
+    length: "40–60 s",
+    goodFor: "Explicar um conceito do nicho com ilustração vetorial chapada, cores saturadas em fundo escuro, um mascote e muita profundidade. Autoridade e compartilhamento.",
+    needs: ["o conceito em 3 partes"],
+    guide: `# Explainer ilustrado (estilo livro científico)
+Ilustração vetorial chapada (formas com gradiente suave, contorno grosso arredondado), fundo escuro azul/roxo, cores saturadas, um mascote simples reagindo. A câmera atravessa camadas.
 
-Ilustração chapada com gradientes, fundo escuro profundo, um mascote, e a narração explicando um mecanismo passo a passo. Cada frase ganha uma imagem.
+## Estrutura (≈ 50 s)
+1. **Gancho (0–3 s):** zoom rápido de muito longe para o objeto do assunto (um planeta, um celular gigante, um cérebro) com a pergunta.
+2. **Parte 1 (3–18 s):** o conceito básico, com um diagrama que se monta peça por peça na palavra.
+3. **Parte 2 (18–33 s):** o mecanismo (setas animadas, partículas fluindo de A para B, contador).
+4. **Parte 3 (33–45 s):** a aplicação para o público (o mascote usando o produto).
+5. **Final (45–50 s):** frase curta + CTA, mascote acenando.
 
-## Roteiro (80–120 palavras)
-1. **Pergunta grande (0–3 s):** "O que acontece quando [fenômeno do mercado]?"
-2. **Contexto (1 frase)** com um número real que o usuário confirmou.
-3. **Mecanismo em 3 passos** — causa → efeito → consequência —, cada passo com uma metáfora visual (um funil que vaza, uma engrenagem, um planeta que perde a órbita).
-4. **O que fazer:** a resposta prática, onde o produto entra.
-5. **Fecho:** frase memorável + CTA.
-
-## Cenas
-- \`create_blank_canvas{aspect:"9:16", color:"#0b1026"}\`. Uma cena por passo (5–9 s). Tudo dentro de \`<div class="world">\` para fazer "câmera" (zoom lento e pans).
-- 3 camadas de profundidade com velocidades diferentes. Objetos principais grandes (500–900 px), contornos claros, sombras internas com gradiente.
-- Mascote (o mesmo em todas as cenas) reage às viradas. Rótulos curtos com seta.
-- Transições: zoom para dentro de um objeto que vira a próxima cena (scale 1→6 + opacity) ou corte na batida com whoosh.
-
-${SPACE_KIT}
-${CARD_KIT}
-
-## Áudio
-Voz de documentário, curiosa e clara. Música "cinematic ambient" ou "documentary" a -20 dB. Sfx suaves (whoosh, shimmer).
-
-## Legenda
-\`captions{enabled:true, style:{presetId:"documentary" ou "clean-phrase", position:"bottom", maxWords:5}}\`.
-${COMMON}`,
-    checklist: [
-      "Pergunta grande nos 3 primeiros segundos",
-      "Cada frase tem uma imagem que a explica (não só texto)",
-      "Números na tela são reais e iguais aos falados",
-      "Profundidade: pelo menos 2 camadas se movendo em velocidades diferentes",
-      "Mascote idêntico em todas as cenas",
-      "Paleta harmônica; destaque na cor da marca",
-      "Transições fluidas, sem quadro vazio",
-    ],
+## Como montar
+- Paleta: fundo \`radial-gradient(#22305e, #0b1026)\`, objetos em azul/ciano/verde/laranja saturados, contorno 8–14 px numa cor mais escura do próprio objeto.
+- Profundidade: 3 camadas (estrelas/partículas lentas, objeto principal, primeiro plano rápido). Zooms grandes (\`scale\` 0,2 → 1) com \`power3.inOut\`.
+- Partículas: 20–60 círculos com posições de semente fixa (nunca \`Math.random\` sem semente) fluindo com \`stagger\`.
+- Mascote: forma simples (blob com olhos), pisca e reage às viradas.`,
+    checklist: [...CHECK_COMMON, "Ilustração chapada consistente (mesma paleta e contorno)", "Profundidade com camadas e zoom", "Diagramas se montam na palavra"],
   },
-];
+] as VideoFormat[]).map((f) => ({ ...f, guide: `${f.guide}\n${FLOW}` }));
 
 export function formatGuide(id: string) {
   const format = FORMATS.find((f) => f.id === id);

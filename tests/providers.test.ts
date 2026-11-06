@@ -543,8 +543,12 @@ describe("Claude loopback bridge", () => {
       "film_asset",
       "write_film_file",
       "read_film_file",
+      "film_capture_page",
       "film_check",
       "film_stills",
+      "film_review",
+      "instagram_accounts",
+      "publish_reel",
       "render_film",
     ]);
     expect(

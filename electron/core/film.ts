@@ -91,6 +91,8 @@ export class Films {
     private root: string,
     private kit: string,
     private gsap: string,
+    /** resources/film-recipes: one folder per format with its starter film (our own example). */
+    private recipes?: string,
   ) {}
 
   dir(id: string) {
@@ -159,8 +161,16 @@ export class Films {
     }
     await writeFile(join(dir, "timing.js"), `window.TIMING = { words: [], envelope: { fps: 30, db: [] }, voiceEnd: 0 };\n`, "utf8");
     await writeFile(join(dir, "index.html"), starterHtml(meta), "utf8");
-    await writeFile(join(dir, "CUTROOM.md"), filmRules(meta, options.guide), "utf8");
-    return { ...meta, path: dir, files: await this.files(id) };
+    let starter = false;
+    if (options.format && this.recipes && /^[a-z0-9-]+$/.test(options.format)) {
+      const recipe = join(this.recipes, options.format);
+      if (await stat(recipe).then((s) => s.isDirectory(), () => false)) {
+        await cp(recipe, dir, { recursive: true, force: true });
+        starter = true;
+      }
+    }
+    await writeFile(join(dir, "CUTROOM.md"), filmRules(meta, options.guide, starter), "utf8");
+    return { ...meta, path: dir, starter, files: await this.files(id) };
   }
 
   async files(id: string, all = false) {
@@ -200,9 +210,9 @@ export class Films {
   async setVoice(id: string, voice: { file: string; words?: AudioWord[]; duration: number; provider?: string; voice?: string }, signal?: AbortSignal) {
     const meta = await this.meta(id),
       dir = this.dir(id),
-      ext = extname(voice.file).toLowerCase() || ".mp3",
-      name = `voice${ext}`;
-    await cp(voice.file, join(dir, "assets", name));
+      name = "voice.wav";
+    // Always assets/voice.wav (48 kHz mono), whatever the provider: recipe starters reference that name.
+    await runProcess(ffmpegPath, ["-v", "error", "-y", "-i", voice.file, "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le", join(dir, "assets", name)], { signal });
     const db = await audioEnvelope(voice.file, meta.fps, signal);
     const words = (voice.words ?? []).map((w) => ({ text: w.text, start: +w.start.toFixed(3), end: +w.end.toFixed(3) }));
     const voiceEnd = words.length ? words[words.length - 1].end : voice.duration;
@@ -257,6 +267,9 @@ export class Films {
       if (/Math\.random\(|Date\.now\(|requestAnimationFrame\(|setInterval\(|setTimeout\(/.test(html))
         warnings.push("Evite Math.random, Date.now, setTimeout e requestAnimationFrame: o render busca cada quadro pelo tempo; use sementes fixas e a timeline.");
       if (meta.voice && !/timing\.js/.test(html)) warnings.push("A narração existe, mas o index.html não carrega timing.js.");
+      const declared = Number(/data-composition-id=[^>]*data-duration=["']([\d.]+)["']|data-duration=["']([\d.]+)["'][^>]*data-composition-id/.exec(html)?.slice(1).find(Boolean));
+      if (meta.voice && declared && (declared < meta.voice.duration + 0.5 || declared > meta.voice.duration + 4))
+        warnings.push(`data-duration="${declared}" não acompanha a narração (${meta.voice.duration.toFixed(1)} s): use ≈ ${(meta.voice.duration + 1.8).toFixed(1)}.`);
       if (meta.voice && !new RegExp(meta.voice.file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(html)) warnings.push(`Inclua a narração: <audio id="voz" data-start="0" data-track-index="20" src="${meta.voice.file}"></audio>.`);
     }
     return { ok: errors.length === 0, errors, warnings, credits: meta.credits.map((c) => c.attribution).filter(Boolean) };
@@ -345,6 +358,21 @@ export async function checkFilm(films: Films, id: string, runner: FilmRunner) {
   }
   report.ok = report.errors.length === 0;
   return report;
+}
+
+/** Captures a public page (http/https) into assets/ — the input of the landing page fly-over. */
+export async function capturePage(films: Films, id: string, url: string, runner: FilmRunner, name = "pagina") {
+  const parsed = new URL(url);
+  if (!/^https?:$/.test(parsed.protocol)) fail("Use um link http ou https.");
+  const file = `assets/${slug(name)}.jpg`;
+  const result = (await runFilmWorker(films.dir(id), { mode: "capture", url: parsed.href, output: join(films.dir(id), file), width: 1440, maxHeight: 9000 }, runner)) as {
+    width?: number;
+    height?: number;
+    pageHeight?: number;
+    title?: string;
+  };
+  if (!result.height) fail("Não consegui capturar a página.");
+  return { file, width: result.width, height: result.height, pageHeight: result.pageHeight, title: result.title };
 }
 
 export async function filmStills(films: Films, id: string, times: number[], runner: FilmRunner): Promise<FilmStills> {
@@ -438,7 +466,13 @@ export function starterHtml(meta: FilmMeta) {
 `;
 }
 
-export function filmRules(meta: FilmMeta, guide?: string) {
+const STARTER_NOTE = `
+## Filme inicial deste formato
+
+O \`index.html\` desta pasta é a versão do CutRoom deste formato, completa e funcionando (com o roteiro de exemplo em \`roteiro.txt\`). Reescreva o roteiro para a marca do usuário, grave a voz com \`film_voiceover\` e reancore cada cena nas palavras do novo roteiro: \`CR.at("palavra", n, segundosReserva)\` não quebra se a palavra sumir. Troque textos, cores e telas; mantenha a estrutura de cenas, o ritmo e os movimentos.
+`;
+
+export function filmRules(meta: FilmMeta, guide?: string, starter = false) {
   return `# Filme: ${meta.name}
 
 Pasta de um filme do CutRoom (projeto HyperFrames). Você escreve \`index.html\` (e outros arquivos de texto); o CutRoom grava a narração (\`film_voiceover\` → \`assets/voice.*\` + \`timing.js\`), baixa música e efeitos (\`film_asset\`), checa (\`film_check\`), mostra quadros (\`film_stills\`) e renderiza (\`render_film\`).
@@ -463,5 +497,59 @@ Pasta de um filme do CutRoom (projeto HyperFrames). Você escreve \`index.html\`
 - Novo plano a cada 1,5–3 s; nada parado mais de 1,5 s (câmera em deriva lenta e "socos" nas palavras-chave).
 - Cada card entra até 0,15 s depois da palavra que ele mostra; contadores chegam ao número na palavra falada.
 - Texto ≤ 6 palavras por card, legível no celular, longe da faixa inferior (interface do Reels).
-${guide ? `\n## Guia do formato\n\n${guide}\n` : ""}`;
+${starter ? STARTER_NOTE : ""}${guide ? `\n## Guia do formato\n\n${guide}\n` : ""}`;
+}
+
+/** Picture-change metrics from film_review samples (diff 0–1 between frames `step` s apart). */
+export function motionMetrics(samples: { t: number; diff: number }[], step: number) {
+  const STILL = 0.0015, CUT = 0.1;
+  let longest = 0, run = 0, runStart = 0, longestAt = 0;
+  for (const s of samples) {
+    if (s.diff < STILL) {
+      if (!run) runStart = s.t - step;
+      run += step;
+      if (run > longest) [longest, longestAt] = [run, runStart];
+    } else run = 0;
+  }
+  const duration = samples.length ? samples[samples.length - 1].t : 0;
+  const cuts = samples.filter((s) => s.diff >= CUT).length;
+  const firstMotion = samples.find((s) => s.diff >= STILL * 2)?.t ?? duration;
+  return {
+    longestStill: +longest.toFixed(2),
+    longestStillAt: +Math.max(0, longestAt).toFixed(2),
+    shotChangesPer10s: duration ? +((cuts / duration) * 10).toFixed(1) : 0,
+    movingShare: samples.length ? +(samples.filter((s) => s.diff >= STILL).length / samples.length).toFixed(2) : 0,
+    firstMotion: +firstMotion.toFixed(2),
+  };
+}
+
+/** Narration pace from the word timings. */
+export function speechMetrics(words: { text: string; start: number; end: number }[]) {
+  if (!words.length) return { words: 0, wordsPerMinute: 0, longestPause: 0 };
+  let pause = 0;
+  for (let i = 1; i < words.length; i++) pause = Math.max(pause, words[i].start - words[i - 1].end);
+  const span = words[words.length - 1].end - words[0].start;
+  return { words: words.length, wordsPerMinute: Math.round((words.length / Math.max(span, 0.1)) * 60), longestPause: +pause.toFixed(2) };
+}
+
+export async function analyzeFilm(films: Films, id: string, runner: FilmRunner) {
+  const meta = await films.meta(id),
+    dir = films.dir(id);
+  const stage = await stageFilm(films, id);
+  try {
+    const r = (await runFilmWorker(dir, { mode: "analyze", step: 0.25, width: meta.width, height: meta.height }, runner, stage)) as {
+      duration?: number;
+      step?: number;
+      samples?: { t: number; diff: number }[];
+    };
+    let words: { text: string; start: number; end: number }[] = [];
+    try {
+      words = JSON.parse((await readFile(join(dir, "timing.js"), "utf8")).replace(/^window\.TIMING = /, "").replace(/;\s*$/, "")).words ?? [];
+    } catch {
+      /* No narration. */
+    }
+    return { duration: r.duration ?? 0, motion: motionMetrics(r.samples ?? [], r.step ?? 0.25), speech: speechMetrics(words) };
+  } finally {
+    await rm(stage, { recursive: true, force: true });
+  }
 }

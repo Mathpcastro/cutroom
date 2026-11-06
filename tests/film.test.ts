@@ -115,3 +115,35 @@ describe("film helpers", () => {
     expect(slug("***")).toBe("filme");
   });
 });
+
+describe("film review metrics", () => {
+  it("measures still stretches, shot changes and first motion", async () => {
+    const { motionMetrics, speechMetrics } = await import("../electron/core/film");
+    const samples = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5].map((t, i) => ({ t, diff: [0.0, 0.0, 0.2, 0.01, 0.0, 0.0, 0.0, 0.0, 0.15, 0.01][i] }));
+    const m = motionMetrics(samples, 0.25);
+    expect(m.firstMotion).toBe(0.75);
+    expect(m.longestStill).toBe(1);
+    expect(m.longestStillAt).toBe(1);
+    expect(m.shotChangesPer10s).toBe(8);
+    const s = speechMetrics([
+      { text: "Mil", start: 0, end: 0.3 },
+      { text: "curtidas.", start: 0.3, end: 0.8 },
+      { text: "Zero", start: 2.0, end: 2.4 },
+    ]);
+    expect(s).toEqual({ words: 3, wordsPerMinute: 75, longestPause: 1.2 });
+  });
+});
+
+describe("agent skill", () => {
+  it("lists every format and installs for Claude Code and Codex", async () => {
+    const { cutroomSkill, installSkill } = await import("../electron/core/skill");
+    const { FORMATS } = await import("../electron/core/formats");
+    const text = cutroomSkill("0.7.0");
+    expect(text).toMatch(/^---\nname: cutroom-videos\ndescription: /);
+    for (const f of FORMATS) expect(text).toContain(`\`${f.id}\``);
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "cutroom-home-"));
+    const files = await installSkill(home, "0.7.0");
+    expect(files.map((f) => path.relative(home, f).replaceAll("\\", "/"))).toEqual([".claude/skills/cutroom-videos/SKILL.md", ".codex/skills/cutroom-videos/SKILL.md"]);
+    await fs.rm(home, { recursive: true, force: true });
+  });
+});

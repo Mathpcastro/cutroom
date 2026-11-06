@@ -202,6 +202,15 @@ export const STUDIO_TOOLS = [
     inputSchema: objectSchema({ film: string("Film id."), path: string("Relative path.") }, ["film"]),
   },
   {
+    name: "film_capture_page",
+    description:
+      "Screenshot a public web page (the user's landing page, product page or app) at 1440 px wide, full height up to 9000 px, into the film's assets/ as JPEG. Input of the landing page fly-over format and of any scene that shows the user's real site. Returns the file, its size and the page title. The capture uses the internet; the film render never does.",
+    inputSchema: objectSchema(
+      { film: string("Film id."), url: string("http(s) link of the page."), name: string("File name inside assets/ (default pagina).") },
+      ["film", "url"],
+    ),
+  },
+  {
     name: "film_check",
     description:
       "Check the film before rendering: HyperFrames linter, missing files, remote URLs (refused: the render never uses the internet), timeline registration, non-deterministic code, narration tag. Returns errors (must fix) and warnings.",
@@ -214,6 +223,32 @@ export const STUDIO_TOOLS = [
     inputSchema: objectSchema(
       { film: string("Film id."), times: { type: "array", items: { type: "number", minimum: 0 }, minItems: 1, maxItems: 8, description: "Seconds." } },
       ["film", "times"],
+    ),
+  },
+  {
+    name: "film_review",
+    description:
+      "Self-review the film before render_film: 7 key frames, measured metrics (first motion, longest still stretch, shot changes per 10 s, share of frames moving, narration words per minute and longest pause), flags for anything outside the ranges that hold attention, and the format checklist. Score every checklist row 1–10 as a viewer who did not make the film, plus 'história' and 'execução'; fix rows below 8 and every flag. Takes ~20–40 s.",
+    inputSchema: objectSchema({ film: string("Film id.") }, ["film"]),
+  },
+  {
+    name: "instagram_accounts",
+    description: "Instagram accounts the user connected for Reels publishing (Composio, set up in CutRoom › Estúdio › Publicar), the default account and recent posts. Never ask for the Composio key in chat.",
+    inputSchema: objectSchema(),
+  },
+  {
+    name: "publish_reel",
+    description:
+      "Publish an MP4 from Videos/CutRoom as an Instagram Reel through the user's Composio connection. ONLY after the user explicitly confirmed in chat this exact video, caption and account — then pass confirm:true. Posting is public and cannot be undone. Answers status 'publishing' within 40 s; check job_status (job 'publish') instead of calling again.",
+    inputSchema: objectSchema(
+      {
+        video: string("Absolute path of the MP4 (render_film output)."),
+        caption: string("Post caption (max 2200 chars). Include the CC BY music credit when there is one.", { maxLength: 2200 }),
+        account: string("Account id or @username from instagram_accounts (default: the user's default)."),
+        shareToFeed: { type: "boolean", description: "Also show in the profile feed (default true)." },
+        confirm: { type: "boolean", enum: [true], description: "true only after explicit user confirmation." },
+      },
+      ["video", "confirm"],
     ),
   },
   {

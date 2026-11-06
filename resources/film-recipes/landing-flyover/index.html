@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!--
+  Formato "landing-flyover" do CutRoom: voo 3D contínuo pela landing page, sem narração.
+  1. film_capture_page{film, url} → assets/pagina.jpg (anote a altura que ele devolve).
+  2. Ajuste CONFIG abaixo: altura da página, os 2–6 elementos que levantam (em px da captura de 1440 de largura) e a frase final.
+-->
+<script src="brand.js"></script>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
+  @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
+  @font-face { font-family: "Instrument Serif"; src: url(fonts/InstrumentSerif-Italic.ttf); font-style: italic; }
+  :root { --accent: #E8462F; --ink: #1E1C1A; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f2f3f6; }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, #f9fbfb 0%, #f2f3f6 75%); font-family: "Instrument Sans"; }
+  .stage { position: absolute; inset: 0; perspective: 2300px; perspective-origin: 540px 200px; }
+  .zoom { position: absolute; inset: 0; transform-origin: 540px 960px; transform-style: preserve-3d; }
+  .tilt { position: absolute; left: 40px; top: 470px; width: 1000px; transform-origin: 50% 0; transform-style: preserve-3d; }
+  .slide { position: absolute; left: 0; top: 0; width: 1000px; transform-style: preserve-3d; }
+  .page { position: absolute; left: 0; top: 0; width: 1000px; border-radius: 24px; box-shadow: 0 40px 120px rgba(26,33,51,.18); overflow: hidden; background-size: 1000px auto; background-repeat: no-repeat; }
+  .lift { position: absolute; border-radius: 14px; background-repeat: no-repeat; transform-style: preserve-3d; filter: drop-shadow(0 26px 22px rgba(26,33,51,.26)); }
+  .card { position: absolute; inset: 0; background: var(--accent); visibility: hidden; opacity: 0; }
+  .line { position: absolute; left: 90px; width: 900px; color: #fff; }
+  .l1 { top: 740px; font: 150px/0.98 Anton; }
+  .l2 { top: 1080px; font: italic 92px/1 "Instrument Serif"; }
+  .brand { position: absolute; left: 90px; top: 1290px; font: 700 46px "Instrument Sans"; color: rgba(255,255,255,.85); letter-spacing: 1px; }
+  .later { visibility: hidden; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="15" data-width="1080" data-height="1920">
+  <div class="stage"><div class="zoom"><div class="tilt"><div class="slide"><div class="page"></div></div></div></div></div>
+  <div class="card">
+    <div class="line l1 later"></div>
+    <div class="line l2 later"></div>
+    <div class="brand later"></div>
+  </div>
+  <!--MUSICA-->
+  <!--SFX-->
+  <script src="kit/gsap.min.js"></script>
+  <script src="timing.js"></script>
+  <script src="kit/cutroom-kit.js"></script>
+  <script>
+    var CONFIG = {
+      src: "assets/pagina.jpg",
+      pageHeight: 7086, // altura devolvida por film_capture_page (px da captura de 1440)
+      // Elementos que levantam do papel: x, y, w, h em px da captura; at = segundo em que levantam.
+      lifts: [
+        { x: 760, y: 220, w: 560, h: 520, at: 0.15, z: 70 },
+        { x: 80, y: 655, w: 700, h: 62, at: 0.35, z: 40 },
+        { x: 80, y: 1140, w: 740, h: 400, at: 1.9, z: 50 },
+        { x: 840, y: 1140, w: 540, h: 480, at: 2.2, z: 60 },
+        { x: 860, y: 3000, w: 460, h: 480, at: 4.0, z: 60 },
+        { x: 800, y: 5400, w: 580, h: 680, at: 6.0, z: 55 },
+      ],
+      line1: "Carrossel que vende.",
+      line2: "no piloto automático.",
+      brand: (window.BRAND && window.BRAND.name) || "",
+    };
+    (function () {
+      var p = (window.BRAND && window.BRAND.palette) || {};
+      if (p.accent) document.documentElement.style.setProperty("--accent", p.accent);
+    })();
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = 15, k = 1000 / 1440, Hs = CONFIG.pageHeight * k;
+    var page = document.querySelector(".page"), slide = document.querySelector(".slide");
+    page.style.height = Hs + "px";
+    page.style.backgroundImage = "url(" + CONFIG.src + ")";
+    slide.style.height = Hs + "px";
+    CONFIG.lifts.forEach(function (l, i) {
+      var el = document.createElement("div");
+      el.className = "lift lift" + i;
+      el.style.cssText += ";left:" + l.x * k + "px;top:" + l.y * k + "px;width:" + l.w * k + "px;height:" + l.h * k + "px;background-image:url(" + CONFIG.src + ");background-size:1000px auto;background-position:" + -l.x * k + "px " + -l.y * k + "px";
+      slide.appendChild(el);
+      // Stand up about its own middle (top edge toward the lens), hover, then settle back as the camera passes.
+      tl.fromTo(el, { z: 0, rotationX: 0 }, { z: l.z, rotationX: -24, duration: 1.1, ease: "power2.out" }, l.at);
+      tl.to(el, { z: 0, rotationX: 0, duration: 1.0, ease: "power2.inOut" }, Math.min(l.at + 3.2, 7.4));
+    });
+    document.querySelector(".l1").textContent = CONFIG.line1;
+    document.querySelector(".l2").textContent = CONFIG.line2;
+    document.querySelector(".brand").textContent = CONFIG.brand;
+
+    // Voo: plano deitado (rotationX 54) que desliza numa velocidade só, de cima até perto do fim da página.
+    tl.set(".tilt", { rotationX: 54 }, 0);
+    tl.fromTo(slide, { y: -40 }, { y: -(Hs - 1000), duration: 7.9, ease: "power1.inOut" }, 0);
+    // Subida: o plano fica de frente e a câmera afasta até ver um bom pedaço da página (sem voltar a aproximar).
+    tl.to(".tilt", { rotationX: 0, duration: 1.6, ease: "power2.inOut" }, 7.9);
+    tl.to(".zoom", { scale: 0.42, duration: 1.6, ease: "power2.inOut" }, 7.9);
+    tl.to(slide, { y: -(Hs / 2) + 400, duration: 1.6, ease: "power2.inOut" }, 7.9);
+    // Mergulho no cartão final (a cor da marca sobe e cobre a página).
+    tl.set(".card", { autoAlpha: 1 }, 9.9);
+    tl.fromTo(".card", { yPercent: 100 }, { yPercent: 0, duration: 0.5, ease: "power3.inOut" }, 9.9);
+    CR.slam(tl, ".l1", 10.35);
+    CR.rise(tl, ".l2", 10.9);
+    CR.rise(tl, ".brand", 11.4);
+    tl.set({}, {}, D);
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- Formato "ui-motion" do CutRoom: uma forma que vira interface, cursor clicando, estados que mudam. Roteiro em roteiro.txt. -->
+<script src="brand.js"></script>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
+  @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
+  @font-face { font-family: "Instrument Serif"; src: url(fonts/InstrumentSerif-Italic.ttf); font-style: italic; }
+  @font-face { font-family: "JetBrains Mono"; src: url(fonts/JetBrainsMono.ttf); font-weight: 100 900; }
+  :root { --accent: #E8462F; --ink: #1E1C1A; --paper: #EBE7E1; --card: #FFFFFF; --grey: #8A857E; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); font-family: "Instrument Sans"; color: var(--ink); }
+  .cam, .punch { position: absolute; inset: 0; transform-origin: 50% 47%; }
+  .grid { position: absolute; inset: -200px; background-image: radial-gradient(rgba(0,0,0,.09) 3px, transparent 3px); background-size: 54px 54px; }
+  .later { visibility: hidden; opacity: 0; }
+  .shape { position: absolute; left: 540px; top: 900px; width: 200px; height: 90px; border-radius: 45px; background: var(--accent); box-shadow: 0 30px 90px rgba(0,0,0,.16); overflow: hidden; }
+  .state { position: absolute; inset: 0; padding: 50px 56px; }
+  .label { font: 700 30px "JetBrains Mono"; letter-spacing: 2px; text-transform: uppercase; color: var(--grey); }
+  .typed { margin-top: 26px; font: 600 60px/1.2 "Instrument Sans"; overflow: hidden; white-space: nowrap; width: 0; }
+  .typed2 { margin-top: 6px; }
+  .btn { position: absolute; right: 56px; bottom: 46px; padding: 22px 46px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 40px "Instrument Sans"; }
+  .wave { display: flex; align-items: center; gap: 10px; height: 170px; margin-top: 30px; }
+  .wave i { display: block; width: 12px; height: 160px; border-radius: 6px; background: var(--accent); transform: scaleY(.15); }
+  .track { position: relative; height: 92px; margin-top: 22px; border-radius: 18px; background: #F2EFEA; }
+  .clip { position: absolute; top: 10px; height: 72px; border-radius: 14px; }
+  .playhead { position: absolute; top: -12px; left: 0; width: 6px; height: 340px; border-radius: 3px; background: var(--ink); }
+  .chip { position: absolute; left: 160px; top: 1430px; padding: 26px 44px; border-radius: 999px; background: var(--ink); color: #fff; font: 600 44px "Instrument Sans"; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+  .chip b { color: var(--accent); }
+  .reel { position: absolute; inset: 0; background: linear-gradient(170deg, var(--ink), #3a2f2a); color: #fff; }
+  .reel .title { position: absolute; left: 50px; right: 50px; top: 300px; font: 96px/1 Anton; }
+  .reel .bar { position: absolute; left: 50px; right: 50px; bottom: 80px; height: 10px; border-radius: 5px; background: rgba(255,255,255,.25); }
+  .reel .bar i { display: block; height: 100%; width: 0; border-radius: 5px; background: var(--accent); }
+  .ok { position: absolute; left: 640px; top: 470px; width: 220px; height: 220px; border-radius: 50%; background: #1FAA59; color: #fff; font: 150px/220px Anton; text-align: center; }
+  .end { position: absolute; left: 0; width: 1080px; text-align: center; }
+  .logo { top: 760px; font: 190px/1 Anton; }
+  .logo span { color: var(--accent); }
+  .tag { top: 990px; font: italic 64px "Instrument Serif"; }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="15.5" data-width="1080" data-height="1920">
+  <div class="cam"><div class="punch">
+    <div class="grid"></div>
+    <div class="shape">
+      <div class="state st1 later">
+        <div class="label">Pedido</div>
+        <div class="typed t1">Um vídeo pro meu SaaS,</div>
+        <div class="typed typed2 t2">em formato de aula.</div>
+        <div class="btn">Gerar</div>
+      </div>
+      <div class="state st2 later">
+        <div class="label">Narração · voz pronta</div>
+        <div class="wave"></div>
+      </div>
+      <div class="state st3 later">
+        <div class="label">Cenas na batida da voz</div>
+        <div class="track"></div><div class="track"></div><div class="track"></div>
+        <div class="playhead"></div>
+      </div>
+      <div class="state st4 later reel">
+        <div class="title">SEU SAAS<br>EM 1 AULA<br>DE 40 S</div>
+        <div class="bar"><i></i></div>
+      </div>
+    </div>
+    <div class="chip later">♪ Música <b>livre de direitos</b></div>
+    <div class="ok later">✓</div>
+    <div class="end logo later">CUT<span>ROOM</span></div>
+    <div class="end tag later">o editor que o seu agente controla</div>
+  </div></div>
+  <audio id="voz" data-start="0" data-duration="13.7" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
+  <!--MUSICA-->
+  <script src="kit/gsap.min.js"></script>
+  <script src="timing.js"></script>
+  <script src="kit/cutroom-kit.js"></script>
+  <script>
+    (function () {
+      var p = (window.BRAND && window.BRAND.palette) || {}, s = document.documentElement.style;
+      if (p.accent) s.setProperty("--accent", p.accent);
+      if (p.ink) s.setProperty("--ink", p.ink);
+      if (p.paper) s.setProperty("--paper", p.paper);
+    })();
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = Math.max(CR.timing.voiceEnd + 1.8, 8), at = CR.at;
+    // Morph the one shape between states (center x 540, y 900).
+    function morph(t, w, h, r, color) {
+      tl.to(".shape", { width: w, height: h, borderRadius: r, backgroundColor: color || "#FFFFFF", duration: 0.45, ease: "power3.inOut" }, t);
+    }
+    function swap(from, to, t) {
+      if (from) tl.to(from, { autoAlpha: 0, duration: 0.15 }, t);
+      tl.fromTo(to, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: "power3.out" }, t + 0.3);
+    }
+    // Waveform bars and timeline clips (fixed seed: same film every render).
+    var seed = 7, rnd = function () { return (seed = (seed * 16807) % 2147483647) / 2147483647; };
+    var wave = document.querySelector(".wave");
+    for (var i = 0; i < 44; i++) wave.appendChild(document.createElement("i"));
+    var colors = ["var(--accent)", "#F6A77A", "var(--ink)"];
+    document.querySelectorAll(".track").forEach(function (tr, k) {
+      for (var x = 16, n = 0; x < 780; n++) {
+        var w = 80 + rnd() * 150, c = document.createElement("div");
+        c.className = "clip c" + k;
+        c.style.cssText = "left:" + x + "px;width:" + w + "px;background:" + colors[k] + ";opacity:0";
+        tr.appendChild(c); x += w + 12;
+      }
+    });
+
+    // 1. Gancho: a pílula estica e vira o campo do pedido; o pedido é digitado.
+    var tVoce = at("você", 1, 0.05), tVideo = at("vídeo", 1, 1.3), tFormato = at("formato", 1, 2.5);
+    tl.set(".shape", { xPercent: -50, yPercent: -50 }, 0); // centered on (540, 900) by transform, never left/top
+    tl.fromTo(".shape", { scale: 0.2, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.35, ease: "back.out(2)" }, tVoce);
+    morph(tVoce + 0.45, 940, 440, 44);
+    swap(null, ".st1", tVoce + 0.45);
+    CR.type(tl, ".t1", tVideo - 0.2);
+    CR.type(tl, ".t2", tFormato - 0.1);
+    // 2. Clique em Gerar → narração com a onda pela voz.
+    var tGrava = at("grava", 1, 4.2), tNarr = at("narração", 1, 4.6);
+    CR.cursor(tl, [{ x: 820, y: 1500, t: tGrava - 1.0 }, { x: 870, y: 1050, t: tGrava - 0.15, click: true }], { hideAt: tNarr + 0.6 });
+    morph(tGrava, 940, 360, 40);
+    swap(".st1", ".st2", tGrava);
+    // The wave follows the real loudness of the narration (timing.js envelope).
+    var bars = document.querySelectorAll(".wave i"), env = CR.timing.envelope || { fps: 30, db: [] };
+    var level = function (t) { var db = env.db[Math.round(t * env.fps)]; return db === undefined ? 0.2 : Math.max(0.12, Math.min(1, (db + 45) / 30)); };
+    for (var tw = tGrava + 0.3; tw < at("monta", 1, 5.6) + 0.3; tw += 0.12)
+      for (var b = 0; b < bars.length; b++)
+        tl.to(bars[b], { scaleY: Math.max(0.1, level(tw) * (0.35 + 0.65 * Math.abs(Math.sin(b * 1.7 + tw * 9)))), duration: 0.12, ease: "none" }, tw);
+    // 3. Timeline: cenas entram em cascata e piscam na batida.
+    var tMonta = at("monta", 1, 5.6), tBatida = at("batida", 1, 6.6);
+    morph(tMonta, 980, 520, 40);
+    swap(".st2", ".st3", tMonta);
+    tl.to(".clip", { opacity: 1, duration: 0.2, stagger: 0.035 }, tMonta + 0.4);
+    tl.fromTo(".playhead", { x: 0 }, { x: 860, duration: 2.6, ease: "none" }, tMonta + 0.6);
+    tl.to(".clip", { scaleY: 1.18, duration: 0.08, yoyo: true, repeat: 1, stagger: 0.01 }, tBatida);
+    // 4. Música livre de direitos.
+    var tMusica = at("música", 1, 7.6);
+    CR.pop(tl, ".chip", tMusica);
+    CR.exit(tl, ".chip", tMusica + 1.6);
+    // 5. Entrega o Reels pronto.
+    var tEntrega = at("entrega", 1, 9.3), tMinutos = at("minutos", 1, 10.6);
+    morph(tEntrega, 560, 1000, 70, "#1E1C1A");
+    swap(".st3", ".st4", tEntrega);
+    tl.to(".reel .bar i", { width: "100%", duration: 2.0, ease: "none" }, tEntrega + 0.4);
+    CR.stamp(tl, ".ok", tMinutos, -8);
+    // 6. Final: a marca.
+    var tCut = at("cutroom", 2, 11.6);
+    tl.to(".shape, .ok", { scale: 0.6, autoAlpha: 0, duration: 0.3, ease: "power2.in" }, tCut - 0.3);
+    CR.slam(tl, ".logo", tCut);
+    CR.rise(tl, ".tag", tCut + 0.5);
+
+    CR.camera(tl, ".cam", D, [tVoce, tGrava, tMonta, tEntrega, tCut], { inner: ".punch", punch: 0.04 });
+    tl.set({}, {}, D);
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>
