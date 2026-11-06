@@ -51,7 +51,7 @@ describe("films", () => {
   it("keeps writes inside the film folder and to text files", async () => {
     const id = "curtida-ou-assinatura";
     await expect(films.writeFile(id, "../fora.html", "x")).rejects.toThrow(/dentro da pasta/);
-    await expect(films.writeFile(id, "C:/Windows/x.html", "x")).rejects.toThrow(/dentro da pasta/);
+    await expect(films.writeFile(id, path.resolve(os.tmpdir(), "fora.html"), "x")).rejects.toThrow(/dentro da pasta/);
     await expect(films.writeFile(id, "run.exe", "x")).rejects.toThrow(/Só arquivos de texto/);
     await expect(films.writeFile(id, "timing.js", "x")).rejects.toThrow(/CutRoom/);
     await expect(films.readFile(id, "../../segredo.json")).rejects.toThrow(/dentro da pasta/);

@@ -669,7 +669,7 @@ export async function exportProject(
           "error",
           "-y",
           ...concatInput,
-          ...audioMixInputs(tracks),
+          ...audioMixInputs(tracks, elapsed),
           "-filter_complex_script",
           mixScript,
           "-map",

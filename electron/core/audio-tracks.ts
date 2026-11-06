@@ -147,6 +147,14 @@ export function audioMixGraph(tracks: AudioTrack[], length: number): string {
 }
 
 /** Input arguments for the track files (loops repeat the file). */
-export function audioMixInputs(tracks: AudioTrack[]): string[] {
-  return tracks.flatMap((t) => [...(t.loop ? ["-stream_loop", "-1"] : []), "-i", t.path]);
+/**
+ * FFmpeg inputs for the tracks. A looped track is an infinite input: it is also bounded with -t
+ * (offset + timeline length) so FFmpeg always ends, whatever the platform build does with atrim.
+ */
+export function audioMixInputs(tracks: AudioTrack[], length?: number): string[] {
+  return tracks.flatMap((t) => [
+    ...(t.loop ? ["-stream_loop", "-1", ...(length ? ["-t", (length + (t.offset ?? 0) + 1).toFixed(3)] : [])] : []),
+    "-i",
+    t.path,
+  ]);
 }
