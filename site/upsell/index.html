@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CutRoom — vídeos que vendem o seu SaaS</title>
+<meta name="description" content="O editor que o Claude Code e o Codex controlam: roteiro, narração, animação e Reels pronto, com a sua marca.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #ff5a36; --ink: #111; --paper: #fff; --soft: #f2f0ec; --grey: #6b6560; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Instrument Sans", system-ui, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.5; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .ribbon { background: var(--ink); color: #fff; text-align: center; padding: 12px 16px; font-size: 15px; }
+  .ribbon b { color: var(--accent); }
+  header.hero { padding: 56px 0 40px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+  h1 { font: 64px/1 Anton, Impact, sans-serif; letter-spacing: .5px; text-transform: uppercase; }
+  h1 em { font: italic 400 1em/1 "Instrument Serif", serif; text-transform: none; color: var(--accent); letter-spacing: 0; }
+  .lead { font-size: 20px; margin: 22px 0 28px; max-width: 560px; }
+  .cta { display: inline-flex; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 19px "Instrument Sans"; text-decoration: none; box-shadow: 0 14px 40px rgba(255,90,54,.35); }
+  .cta small { font-weight: 500; opacity: .9; }
+  .price { margin-top: 14px; font-size: 15px; color: var(--grey); }
+  .price s { margin-right: 6px; }
+  .no { display: inline-block; margin-top: 14px; font-size: 14px; color: var(--grey); }
+  .phone { justify-self: center; width: min(320px, 80vw); aspect-ratio: 9/16; border-radius: 36px; overflow: hidden; background: #000; border: 10px solid var(--ink); box-shadow: 0 30px 80px rgba(0,0,0,.22); }
+  .phone video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  section { padding: 64px 0; }
+  .soft { background: var(--soft); }
+  h2 { font: 44px/1.05 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 14px; }
+  h2 em { font: italic 400 1em "Instrument Serif", serif; text-transform: none; color: var(--accent); }
+  .sub { font-size: 18px; color: var(--grey); max-width: 720px; margin-bottom: 36px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; padding: 28px 0; border-top: 1px solid rgba(0,0,0,.1); }
+  .pair h3 { grid-column: 1 / -1; font: 700 24px "Instrument Sans"; }
+  .pair h3 span { color: var(--accent); }
+  .col-label { font: 700 13px "Instrument Sans"; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 10px; }
+  .stat { display: inline-block; margin: 0 0 12px; padding: 6px 12px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  /* Fallback while (or if) the X embed script does not load: the link still looks like a post card. */
+  blockquote.twitter-tweet { margin: 0; max-width: 380px; padding: 22px 24px; border-radius: 18px; background: var(--paper); border-left: 6px solid var(--ink); font-weight: 600; }
+  blockquote.twitter-tweet a { text-decoration: none; }
+  blockquote.twitter-tweet a::after { content: " →"; color: var(--accent); }
+  .ours video { width: min(300px, 100%); aspect-ratio: 9/16; border-radius: 24px; background: #000; display: block; }
+  .ours p { margin-top: 10px; font-size: 15px; color: var(--grey); max-width: 320px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .step { background: var(--paper); border-radius: 24px; padding: 28px; }
+  .step b { display: block; font: 56px/1 Anton, Impact, sans-serif; color: var(--accent); margin-bottom: 8px; }
+  .step h4 { font-size: 20px; margin-bottom: 6px; }
+  ul.inc { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+  ul.inc li { padding-left: 30px; position: relative; font-size: 17px; }
+  ul.inc li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--accent); font-weight: 700; }
+  .note { margin-top: 22px; font-size: 14px; color: var(--grey); max-width: 760px; }
+  .final { text-align: center; }
+  .final h2 { margin-bottom: 18px; }
+  footer { padding: 30px 0 50px; text-align: center; font-size: 13px; color: var(--grey); }
+  @media (max-width: 860px) {
+    header.hero { grid-template-columns: 1fr; padding-top: 36px; }
+    h1 { font-size: 44px; }
+    h2 { font-size: 34px; }
+    .pair, .steps, ul.inc { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="ribbon">Seu acesso ao <b>Carrossell</b> está garantido. Antes de ir: uma oferta que só aparece agora.</div>
+
+  <div class="wrap">
+    <header class="hero">
+      <div>
+        <h1>Carrossel com IA já vende o seu SaaS. <em>Com vídeo, vende mais.</em></h1>
+        <p class="lead">O <b>CutRoom</b> é o editor de vídeo que o Claude Code e o Codex controlam. Você pede o vídeo; o agente escreve o roteiro, grava a narração, anima cada cena na batida da voz e entrega o Reels pronto, com a sua marca do Carrossell.</p>
+        <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o CutRoom <small>por R$ 97</small></a>
+        <p class="price">Pagamento único, só nesta página.</p>
+        <a class="no" href="#RECUSAR" data-cakto-downsell>Não, obrigado. Vou ficar só com os carrosséis.</a>
+      </div>
+      <div class="phone"><video src="videos/professor.mp4" poster="videos/professor.jpg" autoplay muted loop playsinline></video></div>
+    </header>
+  </div>
+
+  <section class="soft">
+    <div class="wrap">
+      <h2>Esses vídeos feitos em código <em>estão viralizando</em></h2>
+      <p class="sub">Criadores lá fora estão fazendo vídeos inteiros com o Claude, sem After Effects. À esquerda, o post original. À direita, o mesmo formato feito pelo CutRoom, com o seu agente, para vender um SaaS.</p>
+
+      <div class="pair">
+        <h3>Aula com apresentador <span>animado</span></h3>
+        <div><div class="col-label">Lá fora</div><span class="stat">60 mil visualizações · 1,8 mil salvos</span>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2116010421740007894">Ver o post de @finnardley no X</a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/professor.mp4" poster="videos/professor.jpg" controls muted playsinline preload="none"></video><p>Apresentador em pixel art com a boca na voz, cards na palavra falada e o número do seu resultado.</p></div>
+      </div>
+
+      <div class="pair">
+        <h3>O produto <span>funcionando</span> (UI motion)</h3>
+        <div><div class="col-label">Lá fora</div><span class="stat">144 mil visualizações · 3,8 mil salvos</span>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/twoclipping/status/2103835273813496100">Ver o post de @twoclipping no X</a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" controls muted playsinline preload="none"></video><p>Formas que viram a interface do seu app, cursor clicando e cada estado na batida da narração.</p></div>
+      </div>
+
+      <div class="pair">
+        <h3>Voo 3D pela sua <span>landing page</span></h3>
+        <div><div class="col-label">Lá fora</div><span class="stat">154 mil visualizações · 4,3 mil salvos</span>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/twoclipping/status/2110329502676951367">Ver o post de @twoclipping no X</a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" controls muted playsinline preload="none"></video><p>O CutRoom captura a sua página e a câmera voa por ela até o cartão com a frase da marca.</p></div>
+      </div>
+
+      <div class="pair">
+        <h3>História de <span>stickman</span></h3>
+        <div><div class="col-label">Lá fora</div><span class="stat">62 mil visualizações · 1,1 mil salvos</span>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2115786060231770351">Ver o post de @finnardley no X</a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/stickman.mp4" poster="videos/stickman.jpg" controls muted playsinline preload="none"></video><p>A transformação do seu cliente em quatro atos, com o traço se desenhando na tela.</p></div>
+      </div>
+
+      <div class="pair">
+        <h3>"E se…" em <span>2D</span></h3>
+        <div><div class="col-label">Lá fora</div><span class="stat">37 mil visualizações · 842 salvos</span>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2117997239125585942">Ver o post de @finnardley no X</a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/e-se.mp4" poster="videos/e-se.jpg" controls muted playsinline preload="none"></video><p>Uma pergunta que prende, o tempo passando e cada marco mudando o cenário.</p></div>
+      </div>
+
+      <div class="pair">
+        <h3>Explainer <span>ilustrado</span></h3>
+        <div><div class="col-label">Lá fora</div><span class="stat">258 mil visualizações · 5,3 mil salvos</span>
+          <blockquote class="twitter-tweet" data-media-max-width="380"><a href="https://x.com/finnardley/status/2114305886420086817">Ver o post de @finnardley no X</a></blockquote></div>
+        <div class="ours"><div class="col-label">O CutRoom faz igual</div><video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" controls muted playsinline preload="none"></video><p>Vetor chapado, profundidade e um mascote explicando um conceito do seu nicho.</p></div>
+      </div>
+      <p class="note">Números públicos dos posts no X em 06/11/2026. Os vídeos à direita foram feitos pelo CutRoom com a voz que roda no próprio computador e música livre de direitos.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Como <em>funciona</em></h2>
+      <div class="steps">
+        <div class="step soft"><b>1</b><h4>Sua marca</h4><p>Importe a marca do Carrossell com um clique (nome, tom, oferta, cores) ou preencha à mão.</p></div>
+        <div class="step soft"><b>2</b><h4>Escolha o formato</h4><p>Aula, UI motion, voo pela landing page, stickman, "e se…" ou explainer. Cada um já vem com um filme pronto como ponto de partida.</p></div>
+        <div class="step soft"><b>3</b><h4>O agente faz, você publica</h4><p>O Claude Code, o Codex ou o assistente do CutRoom monta, revisa e renderiza. Você confere e publica no Reels direto do app.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="soft">
+    <div class="wrap">
+      <h2>O que você <em>leva</em></h2>
+      <ul class="inc">
+        <li>CutRoom para o seu computador, com atualizações</li>
+        <li>6 formatos de vídeo com filme inicial e guia passo a passo</li>
+        <li>Narração natural que roda no seu computador, sem pagar por minuto</li>
+        <li>Vozes ElevenLabs ou OpenAI com a sua chave, se preferir</li>
+        <li>Música e efeitos livres de direitos, com o crédito pronto para a legenda</li>
+        <li>Publicação de Reels no Instagram pelo próprio app</li>
+        <li>Skill para o Claude Code e o Codex fazerem os vídeos sozinhos</li>
+        <li>Revisão automática de ritmo antes de renderizar</li>
+      </ul>
+      <p class="note">O CutRoom usa a IA que você já tem (Claude Code, Codex ou outra conectada no app). O uso dessas IAs e das vozes premium é cobrado pelos próprios serviços, na sua conta.</p>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <h2>Seu SaaS em vídeo, <em>hoje</em></h2>
+      <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o CutRoom <small>por R$ 97</small></a>
+      <p class="price">Oferta única desta página.</p>
+      <a class="no" href="#RECUSAR" data-cakto-downsell>Não, obrigado.</a>
+    </div>
+  </section>
+
+  <footer>CutRoom · Carrossell</footer>
+  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+</body>
+</html>
