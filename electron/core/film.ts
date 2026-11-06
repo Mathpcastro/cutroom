@@ -142,6 +142,8 @@ export class Films {
     await cp(join(this.kit, "fonts"), join(dir, "fonts"), { recursive: true });
     await mkdir(join(dir, "kit"), { recursive: true });
     await cp(join(this.kit, "cutroom-kit.js"), join(dir, "kit", "cutroom-kit.js"));
+    // three.js (MIT) for 3D sets and post-processing; use an import map: {"three": "./kit/three/three.module.min.js"}.
+    if (await stat(join(this.kit, "three")).then(() => true, () => false)) await cp(join(this.kit, "three"), join(dir, "kit", "three"), { recursive: true });
     await writeFile(join(dir, "kit", "gsap.min.js"), await readFile(this.gsap)); // may live inside app.asar
     const meta: FilmMeta = { id, name: options.name, width, height, fps: 30, format: options.format, createdAt: new Date().toISOString(), credits: [] };
     await this.save(meta);

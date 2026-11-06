@@ -139,27 +139,51 @@ A página do usuário vira um plano deitado num chão claro; uma câmera contín
   },
   {
     id: "stickman",
-    name: "História de stickman",
+    name: "Suspense de stickman (cenário 3D)",
     aspect: "9:16",
-    length: "35–55 s",
-    goodFor: "Contar uma história de transformação do cliente (antes → tentativa → virada → depois) com um boneco de palito desenhado em traço. Alto tempo de tela.",
-    needs: ["a história do cliente em 4 atos"],
-    guide: `# História de stickman
-Um boneco de palito (sempre o mesmo SVG) vive a história do cliente em 4 atos. O traço se desenha na tela, o cenário é mínimo (chão, objetos em linha) e os números contam.
+    length: "30–45 s",
+    goodFor: "Prender pela tensão: \"Imagine que você lançou o seu SaaS hoje…\" com dia e hora correndo, regras, uma ameaça que cresce e um final com escolha que enche os comentários.",
+    needs: ["a situação do cliente em 3–4 regras e uma virada"],
+    guide: `# Suspense de stickman (cenário 3D)
+Suspense em segunda pessoa: um boneco de palito 2D (contorno escuro grosso, corpo claro, olhos de ponto, um boné na cor da marca) vive dentro de um cenário 3D low-poly com luz de verdade (three.js no kit: \`kit/three\`). A atmosfera vem da luz: dia quente pela janela, noite fria com a tela e a fresta da porta.
 
-## Estrutura (≈ 45 s)
-1. **Gancho (0–3 s):** o boneco já em ação num problema visível (empurrando uma pedra, cercado de posts sem resposta) + frase curta.
-2. **Antes (3–14 s):** a rotina que não funciona: contador de dias subindo, ícones de curtida que somem, ombros caídos.
-3. **Virada (14–28 s):** ele encontra o método/produto: um objeto aparece (o celular com o app), lâmpada, cenário muda de cor.
-4. **Depois (28–40 s):** resultado concreto: notificações chegando, número contando, ele pulando.
-5. **Final (40–45 s):** pergunta para o público se colocar no lugar dele.
+## Estrutura (≈ 35 s)
+1. **Gancho (0–3 s):** "Imagine que você…" + HUD com DIA e hora (monoespaçada, canto superior esquerdo). A câmera começa no personagem e abre para o quarto.
+2. **Regras (3–12 s):** 3 regras curtas, cada uma num adesivo inclinado (título condensado) e paga na tela (o notebook mostra o post, o preço riscado, o relógio).
+3. **Ameaça (12–20 s):** o tempo pula (DIA 7, 14, 30), a luz cai, um número piora (caixa em dias, curtidas em zero).
+4. **Virada (20–27 s):** o celular em primeira pessoa vibra; a mensagem faz duas regras colidirem; contagem regressiva.
+5. **Escolha (27–33 s):** duas opções ruins (verde e vermelha) + "COMENTA AQUI EMBAIXO" + CTA do perfil.
 
 ## Como montar
-- Boneco: SVG com \`stroke-linecap:round\`, traço 12–16 px, cabeça círculo, partes em grupos com \`transform-origin\` nas juntas (ombro, quadril). Andar = pernas alternando \`rotation\` ±22° a cada 0,25 s; braço caído = rotation 15°, alegre = -140°.
-- Traços que se desenham: \`stroke-dasharray/dashoffset\` = comprimento, \`CR.draw(tl, sel, t)\`.
-- Cenário em linhas da cor da tinta sobre papel; a cor de destaque só no que importa (o produto, o resultado).
-- Mude o enquadramento a cada ato (\`CR.camera\` + escala/posição do grupo \`.mundo\`).`,
-    checklist: [...CHECK_COMMON, "O mesmo boneco do começo ao fim", "Os 4 atos são visíveis (antes, tentativa, virada, depois)"],
+- O filme inicial já traz o quarto, a câmera por cortes (\`SHOTS\`), o boneco com poses (\`poseAt\`), as telas vivas em canvas (notebook, relógio, calendário) e o acabamento (bloom, vinheta, grão, franja de cor). Troque a história; mantenha a linguagem.
+- Uma fala = um plano. Legenda de 1–3 palavras com a palavra-chave na cor da marca.
+- Escreva números por extenso no roteiro (para a voz) e em algarismos na tela.
+- Efeitos: vibração, coração, tique-taque, "impact" nos adesivos; música escura e sem vocal, baixa.
+- Render 3D é mais lento (≈ 25 min para 35 s): confira com \`film_stills\` antes.`,
+    checklist: [...CHECK_COMMON, "HUD de dia/hora sempre visível e atualizando", "Cada regra é paga na tela", "Final com escolha em que as duas opções parecem ruins"],
+  },
+  {
+    id: "pixel",
+    name: "Jogo em pixel art",
+    aspect: "9:16",
+    length: "25–35 s",
+    goodFor: "Contar o funil como uma fase de videogame: moedas viram seguidores, o chefão é o algoritmo, os poderes são o carrossel e o Reels, e a fase termina na primeira venda. Leve, nostálgico e compartilhável.",
+    needs: ["o obstáculo do público (o \"chefão\") e os 2 poderes do produto"],
+    guide: `# Jogo em pixel art
+Um jogo de plataforma desenhado num canvas de 180x320 em pixels inteiros e ampliado 6x sem suavização (\`image-rendering: pixelated\`), com HUD em fonte pixel (Press Start 2P), céu pontilhado, cidade em paralaxe e scanlines de CRT.
+
+## Estrutura (≈ 30 s)
+1. **Gancho:** "FASE 1" + o objetivo, o herói (boné na cor da marca) já correndo.
+2. **Coleta:** cada post é uma moeda; o contador de seguidores sobe a cada pulo.
+3. **Chefão:** o obstáculo do público com barra de vida; o post bonito quica nele; o herói perde uma vida (tremida de tela).
+4. **Poderes:** dois blocos "?" soltam os poderes do produto; juntos viram COMBO (herói dourado, tiros, chefão explode em pixels).
+5. **Funil:** placas PERFIL → LINK → VENDA passam e acendem; "FASE COMPLETA!" com fogos; CTA do perfil.
+
+## Como montar
+- Tudo em pixels inteiros (\`fillRect\` com coordenadas arredondadas); sprites como linhas de texto com paleta.
+- A fonte pixel não tem acentos em maiúsculas: prefira palavras sem acento nos títulos (COMPLETA em vez de CONCLUÍDA).
+- Efeitos: moeda, pulo, explosão, dano, power-up, laser, fanfarra; música chiptune.`,
+    checklist: [...CHECK_COMMON, "Sprites grandes o bastante para ler no celular", "Cada etapa do funil vira um elemento do jogo"],
   },
   {
     id: "e-se",
