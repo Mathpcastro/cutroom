@@ -789,6 +789,14 @@ async function executeTool(
     film_capture_page: (a) => filmStudio.capture(a),
     film_review: (a) => filmStudio.review(a),
     instagram_accounts: () => publisher.settings(),
+    open_studio: (a) => {
+      const { tab } = z.object({ tab: z.enum(["start", "brand", "voices", "films", "publish"]) }).strict().parse(a);
+      if (!window || window.isDestroyed()) throw new Error("A janela do CutRoom está fechada.");
+      window.webContents.send("editor:event", { type: "studio", tab });
+      if (window.isMinimized()) window.restore();
+      window.focus();
+      return { opened: tab, message: "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar." };
+    },
     publish_reel: async (a) => {
       // Publishing waits for Meta to process the video (can pass 60 s): answer within 40 s, keep going.
       const task = publisher.publish(a);
@@ -1053,6 +1061,8 @@ async function request(method: string, params?: unknown): Promise<unknown> {
           .object({ provider: z.enum(["elevenlabs", "openai", "kokoro", "local"]).optional() })
           .parse(params ?? {}).provider,
       );
+    case "listFormats":
+      return studio.listFormats();
     case "getPublishSettings":
       return publisher.settings();
     case "setComposioKey": {

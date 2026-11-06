@@ -232,6 +232,12 @@ export const STUDIO_TOOLS = [
     inputSchema: objectSchema({ film: string("Film id.") }, ["film"]),
   },
   {
+    name: "open_studio",
+    description:
+      "Open a screen of CutRoom's Estúdio de vídeos for the USER to fill in: brand (marca), voices (API keys, Kokoro install, default voice), publish (Composio key, Instagram account), films or start. Use it instead of asking for keys or long brand details in chat.",
+    inputSchema: objectSchema({ tab: { type: "string", enum: ["start", "brand", "voices", "films", "publish"] } }, ["tab"]),
+  },
+  {
     name: "instagram_accounts",
     description: "Instagram accounts the user connected for Reels publishing (Composio, set up in CutRoom › Estúdio › Publicar), the default account and recent posts. Never ask for the Composio key in chat.",
     inputSchema: objectSchema(),

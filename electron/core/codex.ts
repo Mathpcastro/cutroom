@@ -900,6 +900,7 @@ export function toolActivityLabel(
     film_capture_page: "Capturando a página",
     film_review: "Revisando o filme",
     instagram_accounts: "Lendo as contas do Instagram",
+    open_studio: "Abrindo o Estúdio para você",
     publish_reel: "Publicando o Reels",
     film_stills: "Gerando quadros do filme",
     render_film: "Renderizando o filme",

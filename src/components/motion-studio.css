@@ -283,3 +283,18 @@
     height: 238px;
   }
 }
+/* Audio lanes (narração, música, efeitos sonoros) */
+.audio-lane { position: relative; height: 26px; border-top: 1px solid var(--line); }
+.audio-block { position: absolute; top: 4px; height: 18px; min-width: 4px; display: flex; align-items: center; padding: 0 7px; border: 1px solid var(--line-strong); border-radius: 3px; color: var(--text); font: inherit; cursor: pointer; overflow: hidden; }
+.audio-block > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+.audio-voice { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.audio-music { background: color-mix(in srgb, #3fa7d6 22%, transparent); }
+.audio-sfx { background: color-mix(in srgb, #9be59b 25%, transparent); }
+.audio-block:is(:hover, .active) { border-color: var(--accent); }
+.timeline-section .track-labels > div.audio-track-label { height: 26px; flex-shrink: 0; }
+.timeline-section.has-audio.audio-lanes-1 { height: 271px; }
+.timeline-section.has-audio.audio-lanes-2 { height: 297px; }
+.timeline-section.has-audio.audio-lanes-3 { height: 323px; }
+.timeline-section.has-motions.has-audio.audio-lanes-1 { height: 303px; }
+.timeline-section.has-motions.has-audio.audio-lanes-2 { height: 329px; }
+.timeline-section.has-motions.has-audio.audio-lanes-3 { height: 355px; }

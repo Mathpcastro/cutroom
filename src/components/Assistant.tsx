@@ -426,6 +426,30 @@ export function Assistant({
         <>
           <div className="conversation-scroll">
             {!state.onboarding?.dismissed && desktop && (
+              <section className="setup-guide" aria-label="Vídeos do zero">
+                <div className="setup-guide-heading">
+                  <Package size={17} />
+                  <strong>Vídeos do zero com IA</strong>
+                </div>
+                <p>
+                  Marca, voz e formato: o agente cria aulas, UI motion, voo pela
+                  landing page, stickman e explainers, prontos para o Reels.
+                </p>
+                <button
+                  className="button primary full-width"
+                  onClick={() => window.dispatchEvent(new CustomEvent("cutroom:studio", { detail: "start" }))}
+                >
+                  Abrir o Estúdio de vídeos
+                </button>
+                <button
+                  className="button full-width"
+                  onClick={() => window.dispatchEvent(new CustomEvent("cutroom:studio", { detail: "brand" }))}
+                >
+                  Configurar a marca
+                </button>
+              </section>
+            )}
+            {!state.onboarding?.dismissed && desktop && (
               <section className="setup-guide" aria-label="Primeiros passos">
                 <div className="setup-guide-heading">
                   <Package size={17} />

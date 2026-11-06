@@ -235,10 +235,8 @@ export interface EditCommand {
   name: CommandName;
   args: Record<string, unknown>;
 }
-export interface EditorEvent {
-  type: "state";
-  state: AppSnapshot;
-}
+export type StudioTab = "start" | "brand" | "voices" | "films" | "publish";
+export type EditorEvent = { type: "state"; state: AppSnapshot } | { type: "studio"; tab: StudioTab };
 export interface CutroomAPI {
   request<T = AppSnapshot>(method: string, params?: unknown): Promise<T>;
   onEvent(callback: (event: EditorEvent) => void): () => void;
