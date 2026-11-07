@@ -4,11 +4,12 @@ import {
   open,
   readFile,
   readdir,
+  realpath,
   rename as fsRename,
   rm,
   rmdir,
 } from "node:fs/promises";
-import { dirname, resolve, sep } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import {
   avatarHash,
   canonicalAvatar,
@@ -58,10 +59,21 @@ function isMissing(error: unknown): boolean {
 export class AvatarStore {
   private static readonly approvalQueues = new Map<string, Promise<void>>();
 
-  private readonly root: string;
+  private root: string;
+  private initialization: Promise<void> | undefined;
 
   constructor(root: string) {
     this.root = resolve(root);
+  }
+
+  private async initializeRoot(): Promise<void> {
+    if (!this.initialization) {
+      this.initialization = (async () => {
+        await mkdir(this.root, { recursive: true });
+        this.root = await realpath(this.root);
+      })();
+    }
+    await this.initialization;
   }
 
   private async withApprovalLock<T>(
@@ -69,7 +81,10 @@ export class AvatarStore {
     candidateId: string,
     operation: () => Promise<T>,
   ): Promise<T> {
-    const key = `${this.root}\0${avatarId}\0${candidateId}`;
+    await this.initializeRoot();
+    const lockRoot =
+      process.platform === "win32" ? this.root.toLowerCase() : this.root;
+    const key = `${lockRoot}\0${avatarId}\0${candidateId}`;
     const previous = AvatarStore.approvalQueues.get(key) ?? Promise.resolve();
     let release: () => void = () => undefined;
     const current = new Promise<void>((resolve) => {
@@ -97,6 +112,7 @@ export class AvatarStore {
     const candidateId = `candidate-${randomUUID()}`;
     const canonical = canonicalAvatar(avatar);
     const hash = avatarHash(avatar);
+    await this.initializeRoot();
     await this.writeAtomic(
       this.candidatePath(avatarId, candidateId),
       canonical,
@@ -105,6 +121,7 @@ export class AvatarStore {
   }
 
   async selectCandidate(avatarId: string, candidateId: string): Promise<void> {
+    await this.initializeRoot();
     const candidate = await this.readCandidate(avatarId, candidateId);
     const selection: Selection = {
       candidateId: assertId(candidateId, "Candidate ID"),
@@ -169,15 +186,20 @@ export class AvatarStore {
     }
 
     const revisionsRoot = this.revisionsPath(validAvatarId);
+    await this.assertContained(revisionsRoot);
     await mkdir(revisionsRoot, { recursive: true });
+    await this.assertContained(revisionsRoot);
+    await this.syncDirectoryChain(revisionsRoot);
     const used = await this.revisionNumbers(validAvatarId);
     let revision = used.length ? Math.max(...used) + 1 : 1;
     let revisionDirectory: string;
     for (;;) {
       revisionDirectory = resolve(revisionsRoot, String(revision));
-      this.assertInsideRoot(revisionDirectory);
+      await this.assertContained(revisionDirectory);
       try {
         await mkdir(revisionDirectory);
+        await this.assertContained(revisionDirectory);
+        await this.syncDirectory(revisionsRoot);
         break;
       } catch (error) {
         if (
@@ -208,7 +230,9 @@ export class AvatarStore {
     } catch (error) {
       // Only an empty directory created by this attempt can be removed. A
       // completed avatar.json is retained as an incomplete, unapproved snapshot.
-      await rmdir(revisionDirectory).catch(() => undefined);
+      await this.assertContained(revisionDirectory)
+        .then(() => rmdir(revisionDirectory))
+        .catch(() => undefined);
       throw error;
     }
   }
@@ -217,6 +241,7 @@ export class AvatarStore {
     avatarId: string,
     revision: number,
   ): Promise<{ avatar: AvatarPackage; hash: string; path: string }> {
+    await this.initializeRoot();
     const path = this.revisionPath(avatarId, revision);
     try {
       const { avatar, hash } = await this.readAvatar(path);
@@ -275,6 +300,32 @@ export class AvatarStore {
     await handle.sync();
   }
 
+  protected async syncDirectory(path: string): Promise<void> {
+    if (process.platform === "win32") return;
+    const handle = await open(path, "r");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  }
+
+  private async syncDirectoryChain(path: string): Promise<void> {
+    this.assertInsideRoot(path);
+    const directories = [this.root];
+    let current = this.root;
+    for (const component of relative(this.root, path)
+      .split(sep)
+      .filter(Boolean)) {
+      current = resolve(current, component);
+      await this.assertContained(current);
+      directories.push(current);
+    }
+    for (const directory of directories) {
+      await this.syncDirectory(directory);
+    }
+  }
+
   private avatarPath(avatarId: string): string {
     const path = resolve(this.root, assertId(avatarId, "Avatar ID"));
     this.assertInsideRoot(path);
@@ -324,15 +375,52 @@ export class AvatarStore {
     return path;
   }
 
+  private pathForComparison(path: string): string {
+    const resolved = resolve(path);
+    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+  }
+
+  private isWithinRoot(path: string): boolean {
+    const root = this.pathForComparison(this.root);
+    const candidate = this.pathForComparison(path);
+    const prefix = root.endsWith(sep) ? root : `${root}${sep}`;
+    return candidate === root || candidate.startsWith(prefix);
+  }
+
   private assertInsideRoot(path: string): void {
-    if (!path.startsWith(`${this.root}${sep}`)) {
+    if (
+      this.pathForComparison(path) === this.pathForComparison(this.root) ||
+      !this.isWithinRoot(path)
+    ) {
       throw new Error("Caminho inválido fora do armazenamento de avatares.");
+    }
+  }
+
+  private async assertContained(path: string): Promise<void> {
+    this.assertInsideRoot(path);
+    let current = this.root;
+    for (const component of relative(this.root, path)
+      .split(sep)
+      .filter(Boolean)) {
+      current = resolve(current, component);
+      try {
+        const actual = await realpath(current);
+        if (!this.isWithinRoot(actual)) {
+          throw new Error(
+            "Caminho inválido: redirecionamento para fora do armazenamento.",
+          );
+        }
+      } catch (error) {
+        if (isMissing(error)) return;
+        throw error;
+      }
     }
   }
 
   private async readAvatar(
     path: string,
   ): Promise<{ avatar: AvatarPackage; hash: string }> {
+    await this.assertContained(path);
     const avatar = parseAvatar(JSON.parse(await readFile(path, "utf8")));
     return { avatar, hash: avatarHash(avatar) };
   }
@@ -358,8 +446,10 @@ export class AvatarStore {
 
   private async readSelection(avatarId: string): Promise<Selection> {
     let value: unknown;
+    const path = this.selectionPath(avatarId);
+    await this.assertContained(path);
     try {
-      value = JSON.parse(await readFile(this.selectionPath(avatarId), "utf8"));
+      value = JSON.parse(await readFile(path, "utf8"));
     } catch (error) {
       if (isMissing(error)) {
         throw new Error("Nenhum candidato selecionado para este avatar.");
@@ -386,10 +476,10 @@ export class AvatarStore {
     avatarId: string,
     revision: number,
   ): Promise<Approval | undefined> {
+    const path = this.approvalPath(avatarId, revision);
+    await this.assertContained(path);
     try {
-      const value: unknown = JSON.parse(
-        await readFile(this.approvalPath(avatarId, revision), "utf8"),
-      );
+      const value: unknown = JSON.parse(await readFile(path, "utf8"));
       if (
         typeof value !== "object" ||
         value === null ||
@@ -478,9 +568,12 @@ export class AvatarStore {
   }
 
   private async revisionNumbers(avatarId: string): Promise<number[]> {
+    await this.initializeRoot();
+    const path = this.revisionsPath(avatarId);
+    await this.assertContained(path);
     let entries;
     try {
-      entries = await readdir(this.revisionsPath(avatarId), {
+      entries = await readdir(path, {
         withFileTypes: true,
       });
     } catch (error) {
@@ -497,20 +590,30 @@ export class AvatarStore {
   }
 
   private async writeAtomic(path: string, contents: string): Promise<void> {
-    this.assertInsideRoot(path);
+    await this.initializeRoot();
+    await this.assertContained(path);
     await mkdir(dirname(path), { recursive: true });
+    await this.assertContained(path);
+    await this.syncDirectoryChain(dirname(path));
     const partial = `${path}.partial`;
     let handle: Awaited<ReturnType<typeof open>> | undefined;
+    let created = false;
     try {
       handle = await open(partial, "wx");
+      created = true;
       await this.writeFile(handle, contents);
       await this.sync(handle);
       await handle.close();
       handle = undefined;
       await this.rename(partial, path);
+      await this.syncDirectory(dirname(path));
     } finally {
       if (handle) await handle.close().catch(() => undefined);
-      await rm(partial, { force: true }).catch(() => undefined);
+      if (created) {
+        await this.assertContained(partial)
+          .then(() => rm(partial, { force: true }))
+          .catch(() => undefined);
+      }
     }
   }
 }

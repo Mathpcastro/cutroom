@@ -5,12 +5,13 @@ import {
   readFile,
   readdir,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, sep } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { dirname, join, sep } from "node:path";
+import { afterEach, describe, expect, it, type TestContext } from "vitest";
 import { AvatarStore } from "../electron/core/avatar-store";
 import { avatarHash, canonicalAvatar } from "../src/shared/avatar";
 import { avatarFixture } from "./fixtures/avatar-fixture";
@@ -21,6 +22,29 @@ async function temporaryRoot() {
   const root = await mkdtemp(join(tmpdir(), "avatar-store-"));
   roots.push(root);
   return root;
+}
+
+async function makeDirectoryRedirect(
+  target: string,
+  link: string,
+  context: TestContext,
+) {
+  await mkdir(dirname(link), { recursive: true });
+  try {
+    await symlink(
+      target,
+      link,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "EPERM" || code === "EACCES" || code === "ENOSYS") {
+      context.skip(`O SO não permite criar o redirecionamento: ${code}.`);
+      return false;
+    }
+    throw error;
+  }
 }
 
 afterEach(async () => {
@@ -35,6 +59,9 @@ class FailingRenameStore extends AvatarStore {
   failApprovalRename = false;
   failWrite = false;
   failSync = false;
+  failSecondRevisionDirectorySync = false;
+  syncedDirectories: string[] = [];
+  private revisionDirectorySyncs = 0;
 
   protected override async rename(source: string, target: string) {
     const shouldFail =
@@ -64,6 +91,21 @@ class FailingRenameStore extends AvatarStore {
       throw new Error("Falha de fsync simulada.");
     }
     await super.sync(handle);
+  }
+
+  protected override async syncDirectory(path: string) {
+    this.syncedDirectories.push(path);
+    if (
+      this.failSecondRevisionDirectorySync &&
+      path.endsWith(`${sep}revisions${sep}2`)
+    ) {
+      this.revisionDirectorySyncs += 1;
+      if (this.revisionDirectorySyncs === 2) {
+        this.failSecondRevisionDirectorySync = false;
+        throw new Error("Falha de fsync de diretório simulada.");
+      }
+    }
+    await super.syncDirectory(path);
   }
 }
 
@@ -518,4 +560,219 @@ describe("AvatarStore", () => {
       expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
     },
   );
+
+  it("rejects an avatar directory redirected outside the real root without creating external files", async (context) => {
+    const root = await temporaryRoot();
+    const outside = await temporaryRoot();
+    const fixture = avatarFixture();
+    if (
+      !(await makeDirectoryRedirect(outside, join(root, fixture.id), context))
+    ) {
+      return;
+    }
+
+    await expect(
+      new AvatarStore(root).createCandidate(fixture),
+    ).rejects.toThrow(/fora|redire/i);
+    expect(await readdir(outside)).toEqual([]);
+  });
+
+  it("rejects a candidates directory redirected outside the real root", async (context) => {
+    const root = await temporaryRoot();
+    const outside = await temporaryRoot();
+    const fixture = avatarFixture();
+    const candidateId = "candidate-external";
+    await mkdir(join(outside, candidateId), { recursive: true });
+    await writeFile(
+      join(outside, candidateId, "avatar.json"),
+      canonicalAvatar(fixture),
+      "utf8",
+    );
+    if (
+      !(await makeDirectoryRedirect(
+        outside,
+        join(root, fixture.id, "candidates"),
+        context,
+      ))
+    ) {
+      return;
+    }
+
+    const store = new AvatarStore(root);
+    await expect(
+      store.selectCandidate(fixture.id, candidateId),
+    ).rejects.toThrow(/fora|redire/i);
+    await expect(
+      access(join(root, fixture.id, "selection.json")),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a revisions directory redirected outside the real root without exposing its snapshot", async (context) => {
+    const root = await temporaryRoot();
+    const outside = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const candidate = await store.createCandidate(avatarFixture());
+    await mkdir(join(outside, "1"), { recursive: true });
+    const externalSnapshot = join(outside, "1", "avatar.json");
+    await writeFile(externalSnapshot, canonicalAvatar(avatarFixture()), "utf8");
+    await writeFile(
+      join(outside, "1", "approval.json"),
+      JSON.stringify({
+        candidateId: candidate.candidateId,
+        hash: candidate.hash,
+        revision: 1,
+      }),
+      "utf8",
+    );
+    if (
+      !(await makeDirectoryRedirect(
+        outside,
+        join(root, candidate.avatarId, "revisions"),
+        context,
+      ))
+    ) {
+      return;
+    }
+    const externalBytes = await readFile(externalSnapshot, "utf8");
+
+    await expect(store.loadRevision(candidate.avatarId, 1)).rejects.toThrow(
+      /fora|redire/i,
+    );
+    expect(await readFile(externalSnapshot, "utf8")).toBe(externalBytes);
+  });
+
+  it("does not remove an external partial file through a redirected avatar directory", async (context) => {
+    const root = await temporaryRoot();
+    const outside = await temporaryRoot();
+    const fixture = avatarFixture();
+    const candidateId = "candidate-external";
+    await mkdir(join(outside, "candidates", candidateId), { recursive: true });
+    await writeFile(
+      join(outside, "candidates", candidateId, "avatar.json"),
+      canonicalAvatar(fixture),
+      "utf8",
+    );
+    const externalPartial = join(outside, "selection.json.partial");
+    await writeFile(externalPartial, "outro-processo", "utf8");
+    if (
+      !(await makeDirectoryRedirect(outside, join(root, fixture.id), context))
+    ) {
+      return;
+    }
+
+    await expect(
+      new AvatarStore(root).selectCandidate(fixture.id, candidateId),
+    ).rejects.toThrow(/fora|redire/i);
+    expect(await readFile(externalPartial, "utf8")).toBe("outro-processo");
+    await expect(access(join(outside, "selection.json"))).rejects.toThrow();
+  });
+
+  it.skipIf(process.platform !== "win32")(
+    "serializes concurrent saves through Windows drive-letter root aliases",
+    async () => {
+      const root = await temporaryRoot();
+      const store = new AvatarStore(root);
+      const candidate = await store.createCandidate(avatarFixture());
+      await store.selectCandidate(candidate.avatarId, candidate.candidateId);
+      const alias = root.startsWith("C:")
+        ? `c:${root.slice(2)}`
+        : root.startsWith("c:")
+          ? `C:${root.slice(2)}`
+          : root;
+
+      const results = await Promise.all(
+        Array.from({ length: 6 }, (_, index) =>
+          new AvatarStore(index % 2 === 0 ? root : alias).saveRevision(
+            candidate.avatarId,
+            candidate.candidateId,
+          ),
+        ),
+      );
+      expect(new Set(results.map((result) => result.revision))).toEqual(
+        new Set([1]),
+      );
+      expect(new Set(results.map((result) => result.path))).toHaveLength(1);
+      expect(await store.listRevisions(candidate.avatarId)).toEqual([
+        { revision: 1, hash: candidate.hash, approved: true },
+      ]);
+    },
+  );
+
+  it("preserves a pre-existing selection partial owned by another operation", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const candidate = await store.createCandidate(avatarFixture());
+    const partial = join(root, candidate.avatarId, "selection.json.partial");
+    await writeFile(partial, "outro-processo", "utf8");
+
+    await expect(
+      store.selectCandidate(candidate.avatarId, candidate.candidateId),
+    ).rejects.toThrow();
+    expect(await readFile(partial, "utf8")).toBe("outro-processo");
+    await expect(
+      access(join(root, candidate.avatarId, "selection.json")),
+    ).rejects.toThrow();
+  });
+
+  it("syncs revision directories and recovers a pending snapshot after directory fsync failure", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const first = await store.createCandidate(avatarFixture());
+    await store.selectCandidate(first.avatarId, first.candidateId);
+    const approved = await store.saveRevision(
+      first.avatarId,
+      first.candidateId,
+    );
+    const approvedBytes = await readFile(approved.path, "utf8");
+    const changed = avatarFixture();
+    changed.artBible.notes = ["Directory sync recovery."];
+    const second = await store.createCandidate(changed);
+    await store.selectCandidate(second.avatarId, second.candidateId);
+    const selectionBytes = await readFile(
+      join(root, second.avatarId, "selection.json"),
+      "utf8",
+    );
+
+    const failing = new FailingRenameStore(root);
+    failing.failSecondRevisionDirectorySync = true;
+    await expect(
+      failing.saveRevision(second.avatarId, second.candidateId),
+    ).rejects.toThrow("Falha de fsync de diretório simulada.");
+
+    const revisionDirectory = join(root, second.avatarId, "revisions", "2");
+    const pendingPath = join(revisionDirectory, "avatar.json");
+    const pendingBytes = await readFile(pendingPath, "utf8");
+    expect(failing.syncedDirectories).toContain(revisionDirectory);
+    await expect(store.loadRevision(second.avatarId, 2)).rejects.toThrow(
+      /aprova|approval/i,
+    );
+    expect(await store.listRevisions(second.avatarId)).toEqual([
+      { revision: 1, hash: first.hash, approved: true },
+      { revision: 2, hash: second.hash, approved: false },
+    ]);
+    await expect(
+      access(join(revisionDirectory, "approval.json")),
+    ).rejects.toThrow();
+    await expect(access(`${pendingPath}.partial`)).rejects.toThrow();
+    expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+
+    const recovered = await new AvatarStore(root).saveRevision(
+      second.avatarId,
+      second.candidateId,
+    );
+    expect(recovered).toEqual({
+      revision: 2,
+      hash: second.hash,
+      path: pendingPath,
+    });
+    expect(await readFile(pendingPath, "utf8")).toBe(pendingBytes);
+    expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+    expect(
+      await readFile(join(root, second.avatarId, "selection.json"), "utf8"),
+    ).toBe(selectionBytes);
+    expect(await store.listRevisions(second.avatarId)).toEqual([
+      { revision: 1, hash: first.hash, approved: true },
+      { revision: 2, hash: second.hash, approved: true },
+    ]);
+  });
 });
