@@ -128,6 +128,52 @@ export class AvatarStore {
     return { avatarId, candidateId, hash };
   }
 
+  async loadCandidate(
+    avatarId: string,
+    candidateId: string,
+  ): Promise<{ avatar: AvatarPackage; hash: string; path: string }> {
+    await this.initializeRoot();
+    const candidate = await this.readCandidate(avatarId, candidateId);
+    return {
+      ...candidate,
+      path: this.candidatePath(avatarId, candidateId),
+    };
+  }
+
+  private metadataPath(avatarId: string, key: string): string {
+    const path = resolve(
+      this.avatarPath(avatarId),
+      "metadata",
+      `${assertId(key, "Metadata key")}.json`,
+    );
+    this.assertInsideRoot(path);
+    return path;
+  }
+
+  async readMetadata(avatarId: string, key: string): Promise<unknown> {
+    await this.initializeRoot();
+    const path = this.metadataPath(avatarId, key);
+    await this.assertContained(path);
+    try {
+      return JSON.parse(await readFile(path, "utf8")) as unknown;
+    } catch (error) {
+      if (isMissing(error)) return undefined;
+      throw error;
+    }
+  }
+
+  async writeMetadata(
+    avatarId: string,
+    key: string,
+    value: unknown,
+  ): Promise<void> {
+    const contents = JSON.stringify(value);
+    if (contents === undefined) {
+      throw new Error("Metadata de avatar deve ser serializável em JSON.");
+    }
+    await this.writeAtomic(this.metadataPath(avatarId, key), contents);
+  }
+
   async selectCandidate(avatarId: string, candidateId: string): Promise<void> {
     await this.initializeRoot();
     const candidate = await this.readCandidate(avatarId, candidateId);

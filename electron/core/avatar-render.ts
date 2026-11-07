@@ -30,6 +30,8 @@ export interface AvatarRenderOptions {
   engineDir: string;
   runner: FilmRunner;
   sheets?: readonly AvatarProofSheet[];
+  /** Per-job cancellation forwarded to the existing film worker. */
+  signal?: AbortSignal;
 }
 
 export interface AvatarSheetArtifact {
@@ -134,6 +136,7 @@ function stringArray(value: unknown, label: string): string[] {
 export async function renderAvatarRevision(
   options: AvatarRenderOptions,
 ): Promise<AvatarRenderResult> {
+  options.signal?.throwIfAborted();
   const revisionDir = await realpath(resolve(options.revisionDir));
   const engineDir = resolve(options.engineDir);
   const avatar = parseAvatar(
@@ -185,7 +188,7 @@ export async function renderAvatarRevision(
         proof: relative(revisionDir, proofDir).replaceAll("\\", "/"),
         sheets,
       },
-      options.runner,
+      { ...options.runner, signal: options.signal ?? options.runner.signal },
     )) as AvatarWorkerResult;
 
     if (!result.complete || !Array.isArray(result.files)) {

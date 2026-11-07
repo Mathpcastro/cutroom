@@ -180,6 +180,46 @@ describe("AvatarStore", () => {
     ]);
   });
 
+  it("loads an exact candidate and recovers namespaced metadata across instances", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const candidate = await store.createCandidate(avatarFixture());
+    const metadata = {
+      candidates: {
+        [candidate.candidateId]: {
+          quality: { ok: true, findings: [], hashes: { neutral: "abc" } },
+          correctionRounds: 2,
+        },
+      },
+    };
+
+    await store.writeMetadata(candidate.avatarId, "avatar-service", metadata);
+
+    const reopened = new AvatarStore(root);
+    await expect(
+      reopened.loadCandidate(candidate.avatarId, candidate.candidateId),
+    ).resolves.toEqual({
+      avatar: avatarFixture(),
+      hash: candidate.hash,
+      path: join(
+        root,
+        candidate.avatarId,
+        "candidates",
+        candidate.candidateId,
+        "avatar.json",
+      ),
+    });
+    await expect(
+      reopened.readMetadata(candidate.avatarId, "avatar-service"),
+    ).resolves.toEqual(metadata);
+    await expect(
+      reopened.readMetadata(candidate.avatarId, "missing"),
+    ).resolves.toBeUndefined();
+    await expect(
+      reopened.writeMetadata(candidate.avatarId, "../outside", {}),
+    ).rejects.toThrow(/inválido/);
+  });
+
   it("persists selection across instances and rejects a different or missing candidate", async () => {
     const root = await temporaryRoot();
     const store = new AvatarStore(root);

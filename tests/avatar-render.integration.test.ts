@@ -98,6 +98,20 @@ const expectedDimensions: Record<
 };
 
 describe("avatar review-sheet Chromium integration", () => {
+  it("honors an already aborted render signal before touching revision files", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("Render cancelado pelo job."));
+
+    await expect(
+      renderAvatarRevision({
+        revisionDir: join(process.cwd(), "missing-revision"),
+        engineDir: join(process.cwd(), "missing-engine"),
+        runner: { worker: "unused", browser: "unused" },
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow("Render cancelado pelo job.");
+  });
+
   it("writes native PNG sheets with identical RGBA hashes and no external network", async () => {
     const executablePath = requireChromium();
     const { root, revisionDir } = await fixtureRevision();
