@@ -51,7 +51,24 @@ class ConsistencyStore extends AvatarStore {
     | undefined;
   afterSaveRevision:
     ((avatarId: string, candidateId: string) => Promise<void>) | undefined;
+  afterArtifactRead: ((path: string) => Promise<void>) | undefined;
+  exclusiveFinished: (() => void) | undefined;
   failMetadataWrites = 0;
+
+  override async runExclusive<T>(
+    avatarId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const finished = this.exclusiveFinished;
+    this.exclusiveFinished = undefined;
+    const pending = super.runExclusive(avatarId, operation);
+    if (!finished) return pending;
+    try {
+      return await pending;
+    } finally {
+      finished();
+    }
+  }
 
   override async readMetadata(avatarId: string, key: string) {
     const value = await super.readMetadata(avatarId, key);
@@ -70,6 +87,18 @@ class ConsistencyStore extends AvatarStore {
       throw new Error("Falha de metadata simulada.");
     }
     await super.writeMetadata(avatarId, key, value);
+  }
+
+  override async readRevisionArtifact(
+    avatarId: string,
+    revision: number,
+    path: string,
+  ) {
+    const artifact = await super.readRevisionArtifact(avatarId, revision, path);
+    const hook = this.afterArtifactRead;
+    this.afterArtifactRead = undefined;
+    if (hook) await hook(artifact.path);
+    return artifact;
   }
 
   override async saveRevision(avatarId: string, candidateId: string) {
@@ -145,6 +174,20 @@ async function renderResult(
     errors: [],
     networkRequests: [],
   };
+}
+
+async function renderResultWithReview(
+  options: AvatarRenderOptions & { signal: AbortSignal },
+): Promise<AvatarRenderResult> {
+  const result = await renderResult(options);
+  const path = join(
+    options.revisionDir,
+    ".renders",
+    "consistency",
+    "review.jpg",
+  );
+  await writeFile(path, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  return { ...result, reviewJpeg: { path, width: 1, height: 1 } };
 }
 
 async function setup(
@@ -429,6 +472,96 @@ describe("AvatarService consistency", { timeout: 60_000 }, () => {
     expect(rejectedBeforeRelease).toBe(true);
     expect(calls).toBe(1);
   });
+
+  it.each(["png", "jpeg", "review", "readState", "writeState"] as const)(
+    "rolls back final render persistence when cancelled at the %s barrier",
+    async (barrier) => {
+      const reached = deferred();
+      const release = deferred();
+      const finished = deferred();
+      let store!: ConsistencyStore;
+      let armReadStateBarrier = false;
+      const hold = async () => {
+        reached.resolve();
+        await release.promise;
+      };
+      const holdArtifact = async (path: string) => {
+        const matches =
+          (barrier === "png" && path.endsWith("expressions.png")) ||
+          (barrier === "jpeg" && path.endsWith("expressions.jpg")) ||
+          (barrier === "review" && path.endsWith("review.jpg"));
+        if (matches) await hold();
+        else store.afterArtifactRead = holdArtifact;
+      };
+      const renderer = async (
+        options: AvatarRenderOptions & { signal: AbortSignal },
+      ) => {
+        const result =
+          barrier === "review"
+            ? await renderResultWithReview(options)
+            : await renderResult(options);
+        if (barrier === "readState" && armReadStateBarrier) {
+          store.afterMetadataRead = async (_avatarId, key) => {
+            if (key === "avatar-service") await hold();
+          };
+        }
+        return result;
+      };
+      const setupResult = await setup(renderer);
+      store = setupResult.store;
+      const { service } = setupResult;
+      const created = await createThree(service);
+      const candidate = created.candidates[0];
+      const { selected, evidence } = await prepareReview(
+        service,
+        created.avatarId,
+        candidate.candidateId,
+      );
+      await service.reviewCandidate({
+        avatarId: created.avatarId,
+        candidateId: candidate.candidateId,
+        rubric: validRubric(),
+        evidence,
+      });
+      const before = await readRawState(store, created.avatarId);
+      expect(
+        before.revisions[String(selected.revision)].artifacts,
+      ).toHaveLength(1);
+      expect(before.candidates[candidate.candidateId].review.evidence).toEqual(
+        evidence,
+      );
+
+      if (["png", "jpeg", "review"].includes(barrier)) {
+        store.afterArtifactRead = holdArtifact;
+      } else if (barrier === "writeState") {
+        store.beforeMetadataWrite = async (_avatarId, key) => {
+          if (key === "avatar-service") await hold();
+        };
+      } else {
+        armReadStateBarrier = true;
+      }
+      store.exclusiveFinished = finished.resolve;
+      const jobId = `consistency-cancel-${barrier}`;
+      const attempt = service.renderRevision({
+        jobId,
+        avatarId: created.avatarId,
+        revision: selected.revision,
+        engineDir: "/engine",
+        runner: { worker: "/worker", browser: "/browser" },
+        sheets: ["expressions"],
+      });
+      const rejection = expect(attempt).rejects.toMatchObject({
+        name: "AbortError",
+      });
+      await reached.promise;
+      expect(service.cancel(jobId)).toBe(true);
+      await rejection;
+      release.resolve();
+      await finished.promise;
+
+      expect(await readRawState(store, created.avatarId)).toEqual(before);
+    },
+  );
 
   it("does not block renders of different avatars", async () => {
     const rendererStarted = deferred();

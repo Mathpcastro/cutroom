@@ -123,6 +123,38 @@ export function mapApiModels(provider: ApiProvider, data: Json[]): Model[] {
     });
 }
 
+async function responseTextWithLimit(
+  response: Response,
+  limit: number,
+): Promise<string> {
+  const reader = response.body?.getReader?.();
+  if (!reader) {
+    const text = await response.text();
+    if (Buffer.byteLength(text, "utf8") > limit) {
+      throw new Error("Resposta de visão acima do limite.");
+    }
+    return text;
+  }
+
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      bytes += value.byteLength;
+      if (bytes > limit) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error("Resposta de visão acima do limite.");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock?.();
+  }
+}
+
 /** Decode SSE across arbitrary UTF-8 and network boundaries. Reject truncated/error streams upstream. */
 export async function* sse(response: Response): AsyncGenerator<Json> {
   if (!response.body) throw new Error("O provedor não retornou uma resposta.");
@@ -712,9 +744,7 @@ export class ApiAgentClient implements AgentClient {
         { method: "POST", body: JSON.stringify(body) },
         signal,
       );
-      const text = await response.text();
-      if (text.length > 2_000_000)
-        throw new Error("Resposta de visão acima do limite.");
+      const text = await responseTextWithLimit(response, 2_000_000);
       const payload = JSON.parse(text) as Json;
       const content = anthropic
         ? (payload.content || [])

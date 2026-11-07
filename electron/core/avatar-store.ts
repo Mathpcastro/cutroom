@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { constants, type Stats } from "node:fs";
 import {
   lstat,
   mkdir,
@@ -109,6 +110,29 @@ function isMissing(error: unknown): boolean {
     error !== null &&
     "code" in error &&
     error.code === "ENOENT"
+  );
+}
+
+function assertRegularReference(info: Stats): void {
+  if (!info.isFile() || info.isSymbolicLink()) {
+    throw new Error("A referência deve ser um arquivo local regular.");
+  }
+  if (info.size > AVATAR_REFERENCE_MAX_BYTES) {
+    throw new Error("Referência muito grande: limite de 10 MiB.");
+  }
+}
+
+function sameFileIdentity(left: Stats, right: Stats): boolean {
+  if (left.dev !== right.dev) return false;
+  return left.ino === 0 || right.ino === 0 || left.ino === right.ino;
+}
+
+function sameFileVersion(left: Stats, right: Stats): boolean {
+  return (
+    sameFileIdentity(left, right) &&
+    left.size === right.size &&
+    left.mtimeMs === right.mtimeMs &&
+    left.ctimeMs === right.ctimeMs
   );
 }
 
@@ -416,6 +440,66 @@ export class AvatarStore {
     return { path: actual, contents: await readFile(actual) };
   }
 
+  private async readBoundedReference(
+    path: string,
+    contained = false,
+  ): Promise<Buffer> {
+    if (contained) {
+      await this.assertNoRedirect(path);
+      await this.assertContained(path);
+    }
+    const before = await lstat(path);
+    assertRegularReference(before);
+    let handle: Awaited<ReturnType<typeof open>> | undefined;
+    try {
+      const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
+      handle = await open(path, constants.O_RDONLY | noFollow);
+      const opened = await handle.stat();
+      assertRegularReference(opened);
+      if (!sameFileVersion(before, opened)) {
+        throw new Error("A referência foi alterada durante a leitura.");
+      }
+
+      const chunks: Buffer[] = [];
+      const buffer = Buffer.allocUnsafe(64 * 1024);
+      let total = 0;
+      while (total <= AVATAR_REFERENCE_MAX_BYTES) {
+        const length = Math.min(
+          buffer.length,
+          AVATAR_REFERENCE_MAX_BYTES + 1 - total,
+        );
+        const { bytesRead } = await handle.read(buffer, 0, length, null);
+        if (bytesRead === 0) break;
+        chunks.push(Buffer.from(buffer.subarray(0, bytesRead)));
+        total += bytesRead;
+      }
+      if (total > AVATAR_REFERENCE_MAX_BYTES) {
+        throw new Error("Referência muito grande: limite de 10 MiB.");
+      }
+
+      const afterHandle = await handle.stat();
+      const afterPath = await lstat(path);
+      assertRegularReference(afterHandle);
+      assertRegularReference(afterPath);
+      if (
+        !sameFileVersion(before, afterHandle) ||
+        !sameFileVersion(opened, afterHandle) ||
+        !sameFileVersion(afterHandle, afterPath) ||
+        afterHandle.size !== total ||
+        afterPath.size !== total
+      ) {
+        throw new Error("A referência foi alterada durante a leitura.");
+      }
+      if (contained) {
+        await this.assertNoRedirect(path);
+        await this.assertContained(path);
+      }
+      return Buffer.concat(chunks, total);
+    } finally {
+      if (handle) await handle.close();
+    }
+  }
+
   async importReference(input: {
     avatarId: string;
     path: string;
@@ -429,28 +513,13 @@ export class AvatarStore {
       if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
         throw new Error("Use uma referência PNG, JPEG ou WebP.");
       }
-      const sourceInfo = await lstat(input.path);
-      if (!sourceInfo.isFile() || sourceInfo.isSymbolicLink()) {
-        throw new Error("A referência deve ser um arquivo local regular.");
-      }
-      const source = await open(input.path, "r");
-      let contents: Buffer;
-      try {
-        const info = await source.stat();
-        if (!info.isFile() || info.size > AVATAR_REFERENCE_MAX_BYTES) {
-          throw new Error("Referência muito grande: limite de 10 MiB.");
-        }
-        contents = await source.readFile();
-      } finally {
-        await source.close();
-      }
-      if (contents.length > AVATAR_REFERENCE_MAX_BYTES) {
-        throw new Error("Referência muito grande: limite de 10 MiB.");
-      }
+      const contents = await this.readBoundedReference(input.path);
       const format = referenceFormat(extension, contents);
       const assetId = `reference-${randomUUID()}-${format.format}`;
       const assets = resolve(this.avatarPath(avatarId), "assets");
       this.assertInsideRoot(assets);
+      await this.assertNoRedirect(assets);
+      await this.assertContained(assets);
       await mkdir(assets, { recursive: true });
       await this.assertNoRedirect(assets);
       await this.assertContained(assets);
@@ -462,6 +531,8 @@ export class AvatarStore {
       try {
         handle = await open(partial, "wx");
         created = true;
+        await this.assertNoRedirect(assets);
+        await this.assertContained(assets);
         await handle.writeFile(contents);
         await handle.sync();
         await handle.close();
@@ -507,17 +578,7 @@ export class AvatarStore {
       `${validAssetId}${extension}`,
     );
     this.assertInsideRoot(path);
-    await this.assertNoRedirect(path);
-    await this.assertContained(path);
-    const info = await lstat(path);
-    if (
-      !info.isFile() ||
-      info.isSymbolicLink() ||
-      info.size > AVATAR_REFERENCE_MAX_BYTES
-    ) {
-      throw new Error("Referência ausente, inválida ou acima do limite.");
-    }
-    const contents = await readFile(path);
+    const contents = await this.readBoundedReference(path, true);
     const detected = referenceFormat(extension, contents);
     return {
       avatarId: validAvatarId,

@@ -1125,12 +1125,14 @@ export class AvatarService {
               input.revision,
               file.png,
             );
+            controller.signal.throwIfAborted();
             // The JPEG is inspection-only, but it must be contained as well.
             await this.store.readRevisionArtifact(
               input.avatarId,
               input.revision,
               file.jpeg,
             );
+            controller.signal.throwIfAborted();
             const contentHash = createHash("sha256")
               .update(artifact.contents)
               .digest("hex");
@@ -1160,6 +1162,7 @@ export class AvatarService {
               input.revision,
               result.reviewJpeg.path,
             );
+            controller.signal.throwIfAborted();
             if (
               review.contents.length > 768 * 1024 ||
               review.contents[0] !== 0xff ||
@@ -1171,6 +1174,7 @@ export class AvatarService {
           }
 
           const latest = await this.readState(input.avatarId);
+          controller.signal.throwIfAborted();
           const latestRevision = latest.revisions[String(input.revision)];
           if (
             !latestRevision ||
@@ -1180,6 +1184,7 @@ export class AvatarService {
               "A revisão mudou durante o render; manifest não salvo.",
             );
           }
+          const beforeCommit = clone(latest);
           const previousArtifacts = latestRevision.artifacts ?? [];
           const reviewed = latest.candidates[candidate.candidateId];
           if (reviewed.review) {
@@ -1203,7 +1208,26 @@ export class AvatarService {
               !returnedSheets.has(artifact.sheet),
           );
           latestRevision.artifacts = [...retained, ...manifests];
-          await this.writeState(input.avatarId, latest);
+          controller.signal.throwIfAborted();
+          let commitError: unknown;
+          try {
+            await this.writeState(input.avatarId, latest);
+          } catch (error) {
+            commitError = error;
+          }
+          if (controller.signal.aborted) {
+            const abortError =
+              controller.signal.reason instanceof Error
+                ? controller.signal.reason
+                : renderAbortError(jobId);
+            try {
+              await this.writeState(input.avatarId, beforeCommit);
+            } catch (error) {
+              abortError.cause = error;
+            }
+            throw abortError;
+          }
+          if (commitError) throw commitError;
           return {
             jobId,
             ...result,

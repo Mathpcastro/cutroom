@@ -694,6 +694,33 @@ describe("AvatarStore", () => {
     expect(await readdir(outside)).toEqual([]);
   });
 
+  it("contains reference imports before mkdir when the avatar directory is a junction", async (context) => {
+    const root = await temporaryRoot();
+    const outside = await temporaryRoot();
+    const fixture = avatarFixture();
+    const source = join(root, "source.png");
+    await writeFile(
+      source,
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "base64",
+      ),
+    );
+    if (
+      !(await makeDirectoryRedirect(outside, join(root, fixture.id), context))
+    ) {
+      return;
+    }
+
+    await expect(
+      new AvatarStore(root).importReference({
+        avatarId: fixture.id,
+        path: source,
+      }),
+    ).rejects.toThrow(/fora|redire/i);
+    expect(await readdir(outside)).toEqual([]);
+  });
+
   it("rejects a candidates directory redirected outside the real root", async (context) => {
     const root = await temporaryRoot();
     const outside = await temporaryRoot();

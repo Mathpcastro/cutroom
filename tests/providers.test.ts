@@ -39,6 +39,48 @@ const options = (
   ) => Promise<unknown> = vi.fn(async () => ({ clips: [] })),
 ) => ({ workspace: ".", onText: vi.fn(), onTool, onActivity: vi.fn() });
 
+async function visionProvider(response: Response) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      url.endsWith("/models")
+        ? new Response(
+            JSON.stringify({
+              data: [
+                { id: "vision-stream", input_modalities: ["text", "image"] },
+              ],
+            }),
+          )
+        : response,
+    ),
+  );
+  const client = new ApiAgentClient(options(), {
+    provider: "openai-compatible",
+    baseUrl: "http://127.0.0.1:1234/v1",
+  });
+  await client.connect();
+  return {
+    client,
+    provider: client.avatarVisionProvider("vision-stream")!,
+  };
+}
+
+function analyzeReference(provider: {
+  analyze(request: {
+    prompt: string;
+    image: { mimeType: "image/png"; data: string };
+  }): Promise<unknown>;
+}) {
+  return provider.analyze({
+    prompt: "Analise a referência",
+    image: { mimeType: "image/png", data: "aW1hZ2Vt" },
+  });
+}
+
+function openAIVisionPayload(content: string) {
+  return JSON.stringify({ choices: [{ message: { content } }] });
+}
+
 describe("provider transport and editing", () => {
   it("maps actual OpenRouter reasoning metadata and mandatory defaults without inventing high effort", () => {
     const models = mapApiModels("openrouter", [
@@ -681,6 +723,70 @@ describe("provider transport and editing", () => {
     await client.send("second");
     expect(bodies[1].messages).toHaveLength(2);
     expect(JSON.stringify(bodies[1])).not.toContain("partial");
+    client.disconnect();
+  });
+  it("cancels an incremental vision response as soon as its chunks exceed 2 MB", async () => {
+    const chunks = [new Uint8Array(1_500_000), new Uint8Array(600_000)];
+    let reads = 0;
+    const cancel = vi.fn(async () => undefined);
+    const reader = {
+      read: vi.fn(async () =>
+        reads < chunks.length
+          ? { done: false, value: chunks[reads++] }
+          : { done: true, value: undefined },
+      ),
+      cancel,
+    };
+    const text = vi.fn(async () => "x".repeat(2_000_001));
+    const response = {
+      ok: true,
+      status: 200,
+      body: { getReader: () => reader },
+      text,
+    } as unknown as Response;
+    const { client, provider } = await visionProvider(response);
+
+    await expect(analyzeReference(provider)).rejects.toThrow(
+      "Resposta de visão acima do limite.",
+    );
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(text).not.toHaveBeenCalled();
+    client.disconnect();
+  });
+  it("accepts a streamed vision body exactly at the 2 MB limit", async () => {
+    const wrapper = openAIVisionPayload("");
+    const body = openAIVisionPayload("x".repeat(2_000_000 - wrapper.length));
+    expect(Buffer.byteLength(body)).toBe(2_000_000);
+    const bytes = new TextEncoder().encode(body);
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(bytes.subarray(0, 17));
+          controller.enqueue(bytes.subarray(17));
+          controller.close();
+        },
+      }),
+    );
+    const { client, provider } = await visionProvider(response);
+
+    await expect(analyzeReference(provider)).resolves.toHaveLength(
+      2_000_000 - wrapper.length,
+    );
+    client.disconnect();
+  });
+  it("keeps vision compatibility when the response has no stream reader", async () => {
+    const response = {
+      ok: true,
+      status: 200,
+      body: undefined,
+      text: vi.fn(async () => openAIVisionPayload("análise compatível")),
+    } as unknown as Response;
+    const { client, provider } = await visionProvider(response);
+
+    await expect(analyzeReference(provider)).resolves.toBe(
+      "análise compatível",
+    );
+    expect(response.text).toHaveBeenCalledTimes(1);
     client.disconnect();
   });
 });
