@@ -167,6 +167,25 @@ describe("deterministic avatar quality gates", () => {
     expectFinding(avatar, "BASELINE_FLOATING");
   });
 
+  it("measures baseline from rasterized pixels instead of a polygon vertex", () => {
+    const avatar = avatarFixture();
+    part(avatar, "body").primitives[1] = {
+      type: "polygon",
+      points: [
+        { x: 27, y: 76 },
+        { x: 28, y: 76 },
+        { x: 48, y: 90 },
+      ],
+      color: "shoe",
+    };
+
+    const report = expectFinding(avatar, "BASELINE_FLOATING");
+    expect(
+      report.findings.find((finding) => finding.code === "BASELINE_FLOATING")
+        ?.message,
+    ).toContain("y=86");
+  });
+
   it("rejects an empty neutral silhouette", () => {
     const avatar = avatarFixture();
     clearOverrides(avatar);

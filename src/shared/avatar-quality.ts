@@ -424,27 +424,21 @@ function silhouetteStats(pixels: AvatarPixels) {
   return { count, maximumY };
 }
 
-function primitiveMaximumY(primitive: AvatarPrimitive): number {
-  if (!canBeVisible(primitive)) return -1;
-  if (primitive.type === "matrix") {
-    for (let row = primitive.rows.length - 1; row >= 0; row -= 1) {
-      if (primitive.rows[row].some((color) => color !== null)) {
-        return primitive.y + row;
-      }
+function renderedMaximumY(pixels: AvatarPixels): number {
+  for (let y = pixels.height - 1; y >= 0; y -= 1) {
+    for (let x = 0; x < pixels.width; x += 1) {
+      if (pixels.data[(y * pixels.width + x) * 4 + 3] !== 0) return y;
     }
-    return -1;
   }
-  return primitiveBounds(primitive).bottom - 1;
+  return -1;
 }
 
 function baselineFindings(avatar: AvatarPackage): AvatarFinding[] {
   for (const state of composedStates()) {
-    let maximumY = -1;
-    for (const part of avatar.parts) {
-      for (const primitive of evaluatedPrimitives(avatar, part, state)) {
-        maximumY = Math.max(maximumY, primitiveMaximumY(primitive));
-      }
-    }
+    // The schema has no contact-part role, so use the rendered silhouette. Its
+    // greatest opaque y ignores aerial hair/accessories above the contact row.
+    const pixels = renderAvatarPixels(avatar, state);
+    const maximumY = renderedMaximumY(pixels);
     if (maximumY + 1 !== avatar.canvas.baseline) {
       return [
         {
