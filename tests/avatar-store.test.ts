@@ -7,6 +7,7 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -31,17 +32,38 @@ afterEach(async () => {
 class FailingRenameStore extends AvatarStore {
   failSelectionRename = false;
   failRevisionRename = false;
+  failApprovalRename = false;
+  failWrite = false;
+  failSync = false;
 
   protected override async rename(source: string, target: string) {
     const shouldFail =
       (this.failSelectionRename && target.endsWith("selection.json")) ||
-      (this.failRevisionRename && target.includes(`${sep}revisions${sep}`));
+      (this.failRevisionRename && target.includes(`${sep}revisions${sep}`)) ||
+      (this.failApprovalRename && target.endsWith("approval.json"));
     if (shouldFail) {
       this.failSelectionRename = false;
       this.failRevisionRename = false;
+      this.failApprovalRename = false;
       throw new Error("Falha de rename simulada.");
     }
     await super.rename(source, target);
+  }
+
+  protected override async writeFile(handle: FileHandle, contents: string) {
+    if (this.failWrite) {
+      this.failWrite = false;
+      throw new Error("Falha de writeFile simulada.");
+    }
+    await super.writeFile(handle, contents);
+  }
+
+  protected override async sync(handle: FileHandle) {
+    if (this.failSync) {
+      this.failSync = false;
+      throw new Error("Falha de fsync simulada.");
+    }
+    await super.sync(handle);
   }
 }
 
@@ -308,4 +330,192 @@ describe("AvatarStore", () => {
       new AvatarStore(root).saveRevision(first.avatarId, first.candidateId),
     ).resolves.toMatchObject({ revision: 1, hash: first.hash });
   });
+
+  it("serializes concurrent approvals of the same candidate across store instances", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const candidate = await store.createCandidate(avatarFixture());
+    await store.selectCandidate(candidate.avatarId, candidate.candidateId);
+
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        new AvatarStore(root).saveRevision(
+          candidate.avatarId,
+          candidate.candidateId,
+        ),
+      ),
+    );
+    const expected = {
+      revision: 1,
+      hash: candidate.hash,
+      path: join(root, candidate.avatarId, "revisions", "1", "avatar.json"),
+    };
+    expect(results).toEqual(Array.from({ length: 6 }, () => expected));
+    expect(await store.listRevisions(candidate.avatarId)).toEqual([
+      { revision: 1, hash: candidate.hash, approved: true },
+    ]);
+  });
+
+  it("rejects and then concurrently recovers a snapshot whose approval rename failed", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const first = await store.createCandidate(avatarFixture());
+    await store.selectCandidate(first.avatarId, first.candidateId);
+    const approved = await store.saveRevision(
+      first.avatarId,
+      first.candidateId,
+    );
+    const approvedBytes = await readFile(approved.path, "utf8");
+    const changed = avatarFixture();
+    changed.artBible.notes = ["Approval rename recovery."];
+    const second = await store.createCandidate(changed);
+    await store.selectCandidate(second.avatarId, second.candidateId);
+
+    const failing = new FailingRenameStore(root);
+    failing.failApprovalRename = true;
+    await expect(
+      failing.saveRevision(second.avatarId, second.candidateId),
+    ).rejects.toThrow("Falha de rename simulada.");
+
+    const pendingPath = join(
+      root,
+      second.avatarId,
+      "revisions",
+      "2",
+      "avatar.json",
+    );
+    const pendingBytes = await readFile(pendingPath, "utf8");
+    await expect(store.loadRevision(second.avatarId, 2)).rejects.toThrow(
+      /aprova|approval/i,
+    );
+    expect(await store.listRevisions(second.avatarId)).toEqual([
+      { revision: 1, hash: first.hash, approved: true },
+      { revision: 2, hash: second.hash, approved: false },
+    ]);
+    expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+    await expect(
+      access(
+        `${pendingPath.replace(/avatar\.json$/, "approval.json")}.partial`,
+      ),
+    ).rejects.toThrow();
+
+    const recovered = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        new AvatarStore(root).saveRevision(second.avatarId, second.candidateId),
+      ),
+    );
+    const expected = { revision: 2, hash: second.hash, path: pendingPath };
+    expect(recovered).toEqual(Array.from({ length: 6 }, () => expected));
+    expect((await store.loadRevision(second.avatarId, 2)).hash).toBe(
+      second.hash,
+    );
+    expect(await store.listRevisions(second.avatarId)).toEqual([
+      { revision: 1, hash: first.hash, approved: true },
+      { revision: 2, hash: second.hash, approved: true },
+    ]);
+    expect(await readFile(pendingPath, "utf8")).toBe(pendingBytes);
+    expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+  });
+
+  it.each(["write", "sync"] as const)(
+    "preserves selection and the last approved snapshot after revision %s failure",
+    async (kind) => {
+      const root = await temporaryRoot();
+      const store = new AvatarStore(root);
+      const first = await store.createCandidate(avatarFixture());
+      await store.selectCandidate(first.avatarId, first.candidateId);
+      const approved = await store.saveRevision(
+        first.avatarId,
+        first.candidateId,
+      );
+      const approvedBytes = await readFile(approved.path, "utf8");
+      const changed = avatarFixture();
+      changed.artBible.notes = [`Revision ${kind} failure.`];
+      const second = await store.createCandidate(changed);
+      await store.selectCandidate(second.avatarId, second.candidateId);
+      const selectionPath = join(root, second.avatarId, "selection.json");
+      const selectionBytes = await readFile(selectionPath, "utf8");
+
+      const failing = new FailingRenameStore(root);
+      if (kind === "write") failing.failWrite = true;
+      else failing.failSync = true;
+      await expect(
+        failing.saveRevision(second.avatarId, second.candidateId),
+      ).rejects.toThrow(
+        kind === "write"
+          ? "Falha de writeFile simulada."
+          : "Falha de fsync simulada.",
+      );
+
+      expect(await readFile(selectionPath, "utf8")).toBe(selectionBytes);
+      expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+      expect(await store.listRevisions(second.avatarId)).toEqual([
+        { revision: 1, hash: first.hash, approved: true },
+      ]);
+      await expect(
+        access(join(root, second.avatarId, "revisions", "2")),
+      ).rejects.toThrow();
+
+      const recovered = await new AvatarStore(root).saveRevision(
+        second.avatarId,
+        second.candidateId,
+      );
+      expect(recovered.revision).toBe(2);
+      expect(await store.listRevisions(second.avatarId)).toEqual([
+        { revision: 1, hash: first.hash, approved: true },
+        { revision: 2, hash: second.hash, approved: true },
+      ]);
+      expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+    },
+  );
+
+  it.each(["write", "sync"] as const)(
+    "keeps selection and approved bytes intact after selection %s failure",
+    async (kind) => {
+      const root = await temporaryRoot();
+      const store = new AvatarStore(root);
+      const first = await store.createCandidate(avatarFixture());
+      const second = await store.createCandidate(avatarFixture());
+      await store.selectCandidate(first.avatarId, first.candidateId);
+      const approved = await store.saveRevision(
+        first.avatarId,
+        first.candidateId,
+      );
+      const approvedBytes = await readFile(approved.path, "utf8");
+      const selectionPath = join(root, first.avatarId, "selection.json");
+      const selectionBytes = await readFile(selectionPath, "utf8");
+
+      const failing = new FailingRenameStore(root);
+      if (kind === "write") failing.failWrite = true;
+      else failing.failSync = true;
+      await expect(
+        failing.selectCandidate(second.avatarId, second.candidateId),
+      ).rejects.toThrow(
+        kind === "write"
+          ? "Falha de writeFile simulada."
+          : "Falha de fsync simulada.",
+      );
+
+      expect(await readFile(selectionPath, "utf8")).toBe(selectionBytes);
+      expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+      await expect(access(`${selectionPath}.partial`)).rejects.toThrow();
+      expect(await store.listRevisions(first.avatarId)).toEqual([
+        { revision: 1, hash: first.hash, approved: true },
+      ]);
+      await expect(
+        new AvatarStore(root).saveRevision(first.avatarId, first.candidateId),
+      ).resolves.toEqual(approved);
+
+      await new AvatarStore(root).selectCandidate(
+        second.avatarId,
+        second.candidateId,
+      );
+      const recovered = await new AvatarStore(root).saveRevision(
+        second.avatarId,
+        second.candidateId,
+      );
+      expect(recovered.revision).toBe(2);
+      expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+    },
+  );
 });

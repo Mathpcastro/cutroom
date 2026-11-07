@@ -56,10 +56,37 @@ function isMissing(error: unknown): boolean {
 }
 
 export class AvatarStore {
+  private static readonly approvalQueues = new Map<string, Promise<void>>();
+
   private readonly root: string;
 
   constructor(root: string) {
     this.root = resolve(root);
+  }
+
+  private async withApprovalLock<T>(
+    avatarId: string,
+    candidateId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const key = `${this.root}\0${avatarId}\0${candidateId}`;
+    const previous = AvatarStore.approvalQueues.get(key) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => current);
+    AvatarStore.approvalQueues.set(key, tail);
+
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (AvatarStore.approvalQueues.get(key) === tail) {
+        AvatarStore.approvalQueues.delete(key);
+      }
+    }
   }
 
   async createCandidate(
@@ -95,6 +122,15 @@ export class AvatarStore {
   ): Promise<{ revision: number; hash: string; path: string }> {
     const validAvatarId = assertId(avatarId, "Avatar ID");
     const validCandidateId = assertId(candidateId, "Candidate ID");
+    return this.withApprovalLock(validAvatarId, validCandidateId, () =>
+      this.saveRevisionLocked(validAvatarId, validCandidateId),
+    );
+  }
+
+  private async saveRevisionLocked(
+    validAvatarId: string,
+    validCandidateId: string,
+  ): Promise<{ revision: number; hash: string; path: string }> {
     const selection = await this.readSelection(validAvatarId);
     if (selection.candidateId !== validCandidateId) {
       throw new Error("Candidato não selecionado para este avatar.");
@@ -110,6 +146,27 @@ export class AvatarStore {
       candidate.hash,
     );
     if (existing) return existing;
+
+    const pending = await this.findPendingRevision(
+      validAvatarId,
+      candidate.hash,
+    );
+    if (pending !== undefined) {
+      const approval: Approval = {
+        candidateId: validCandidateId,
+        hash: candidate.hash,
+        revision: pending,
+      };
+      await this.writeAtomic(
+        this.approvalPath(validAvatarId, pending),
+        JSON.stringify(approval),
+      );
+      return {
+        revision: pending,
+        hash: candidate.hash,
+        path: this.revisionPath(validAvatarId, pending),
+      };
+    }
 
     const revisionsRoot = this.revisionsPath(validAvatarId);
     await mkdir(revisionsRoot, { recursive: true });
@@ -163,6 +220,9 @@ export class AvatarStore {
     const path = this.revisionPath(avatarId, revision);
     try {
       const { avatar, hash } = await this.readAvatar(path);
+      if (!(await this.hasIntegralApproval(avatarId, revision, hash))) {
+        throw new Error(`Revisão ${revision} sem aprovação íntegra.`);
+      }
       return { avatar, hash, path };
     } catch (error) {
       if (isMissing(error)) {
@@ -186,11 +246,10 @@ export class AvatarStore {
         const { hash } = await this.readAvatar(
           this.revisionPath(avatarId, revision),
         );
-        const approval = await this.readApproval(avatarId, revision);
         result.push({
           revision,
           hash,
-          approved: approval?.revision === revision && approval.hash === hash,
+          approved: await this.hasIntegralApproval(avatarId, revision, hash),
         });
       } catch {
         // Invalid or partial snapshots are not approved revision records.
@@ -201,6 +260,19 @@ export class AvatarStore {
 
   protected async rename(source: string, target: string): Promise<void> {
     await fsRename(source, target);
+  }
+
+  protected async writeFile(
+    handle: Awaited<ReturnType<typeof open>>,
+    contents: string,
+  ): Promise<void> {
+    await handle.writeFile(contents, "utf8");
+  }
+
+  protected async sync(
+    handle: Awaited<ReturnType<typeof open>>,
+  ): Promise<void> {
+    await handle.sync();
   }
 
   private avatarPath(avatarId: string): string {
@@ -339,6 +411,42 @@ export class AvatarStore {
     }
   }
 
+  private async hasIntegralApproval(
+    avatarId: string,
+    revision: number,
+    hash: string,
+  ): Promise<boolean> {
+    const approval = await this.readApproval(avatarId, revision);
+    if (approval?.revision !== revision || approval.hash !== hash) return false;
+    try {
+      const candidate = await this.readCandidate(
+        avatarId,
+        approval.candidateId,
+      );
+      return candidate.hash === hash;
+    } catch {
+      return false;
+    }
+  }
+
+  private async findPendingRevision(
+    avatarId: string,
+    hash: string,
+  ): Promise<number | undefined> {
+    for (const revision of await this.revisionNumbers(avatarId)) {
+      if (await this.readApproval(avatarId, revision)) continue;
+      try {
+        const snapshot = await this.readAvatar(
+          this.revisionPath(avatarId, revision),
+        );
+        if (snapshot.hash === hash) return revision;
+      } catch {
+        // Partial or damaged snapshots are not recoverable approvals.
+      }
+    }
+    return undefined;
+  }
+
   private async findApproval(
     avatarId: string,
     candidateId: string,
@@ -356,7 +464,12 @@ export class AvatarStore {
       const path = this.revisionPath(avatarId, revision);
       try {
         const snapshot = await this.readAvatar(path);
-        if (snapshot.hash === hash) return { revision, hash, path };
+        if (
+          snapshot.hash === hash &&
+          (await this.hasIntegralApproval(avatarId, revision, hash))
+        ) {
+          return { revision, hash, path };
+        }
       } catch {
         // A damaged approval is not a valid idempotent result.
       }
@@ -390,8 +503,8 @@ export class AvatarStore {
     let handle: Awaited<ReturnType<typeof open>> | undefined;
     try {
       handle = await open(partial, "wx");
-      await handle.writeFile(contents, "utf8");
-      await handle.sync();
+      await this.writeFile(handle, contents);
+      await this.sync(handle);
       await handle.close();
       handle = undefined;
       await this.rename(partial, path);
