@@ -271,6 +271,17 @@ describe("declarative avatar package", () => {
     expect(() => parseAvatar(avatar)).toThrow(/executable|unsafe|content/i);
   });
 
+  it("keeps zIndex absent when omitted", () => {
+    const parsed = parseAvatar(avatarFixture());
+    expect(parsed.parts.every((part) => !("zIndex" in part))).toBe(true);
+  });
+
+  it.each([-4097, 4097, 1.5])("rejects invalid part zIndex %s", (zIndex) => {
+    const avatar = avatarFixture();
+    part(avatar, "head").zIndex = zIndex;
+    expect(() => parseAvatar(avatar)).toThrow();
+  });
+
   it("rejects unknown fields and unsupported geometry", () => {
     const unknown = avatarFixture() as AvatarPackage & { unexpected?: boolean };
     unknown.unexpected = true;
@@ -461,6 +472,16 @@ describe("part-owned avatar revision", () => {
     expect(() => reviseAvatar(avatarFixture(), expression, ["head"])).toThrow(
       /mouth|allowed/i,
     );
+  });
+
+  it("protects zIndex changes on unauthorized parts", () => {
+    const next = avatarFixture();
+    part(next, "head").zIndex = 12;
+
+    expect(() => reviseAvatar(avatarFixture(), next, ["body"])).toThrow(
+      /head|allowed/i,
+    );
+    expect(reviseAvatar(avatarFixture(), next, ["head"])).toEqual(next);
   });
 
   it("allows moving an authorized part without authorizing index shifts", () => {

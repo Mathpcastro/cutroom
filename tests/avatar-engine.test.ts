@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { AvatarPackage, AvatarPrimitive } from "../src/shared/avatar";
+import {
+  parseAvatar,
+  type AvatarPackage,
+  type AvatarPrimitive,
+} from "../src/shared/avatar";
 import {
   avatarPixelHash,
   renderAvatarPixels,
@@ -38,11 +41,93 @@ function rgba(hex: string): number[] {
   ];
 }
 
-function polygonPixels(points: { x: number; y: number }[]): AvatarPixels {
+type TestPoint = { x: number; y: number };
+
+function polygonPixels(points: TestPoint[]): AvatarPixels {
   return renderAvatarPixels(
     avatarWithPrimitives([{ type: "polygon", points, color: "accent" }]),
     neutralState,
   );
+}
+
+function bigIntPolygonOracle(points: TestPoint[]): AvatarPixels {
+  const width = 96;
+  const height = 96;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const vertices = points.map(({ x, y }) => ({ x: BigInt(x), y: BigInt(y) }));
+  let twiceArea = 0n;
+  for (let index = 0; index < vertices.length; index += 1) {
+    const start = vertices[index];
+    const end = vertices[(index + 1) % vertices.length];
+    twiceArea += start.x * end.y - end.x * start.y;
+  }
+  if (twiceArea === 0n) return { width, height, data };
+
+  for (let y = 0; y < height; y += 1) {
+    const scan = 2n * BigInt(y) + 1n;
+    const intersections: {
+      numerator: bigint;
+      denominator: bigint;
+      edge: number;
+    }[] = [];
+    for (let index = 0; index < vertices.length; index += 1) {
+      const start = vertices[index];
+      const end = vertices[(index + 1) % vertices.length];
+      if (start.y === end.y) continue;
+      const minimumY = 2n * (start.y < end.y ? start.y : end.y);
+      const maximumY = 2n * (start.y > end.y ? start.y : end.y);
+      if (scan < minimumY || scan >= maximumY) continue;
+
+      let denominator = 2n * (end.y - start.y);
+      let numerator =
+        start.x * denominator + (scan - 2n * start.y) * (end.x - start.x);
+      if (denominator < 0n) {
+        numerator = -numerator;
+        denominator = -denominator;
+      }
+      intersections.push({ numerator, denominator, edge: index });
+    }
+    intersections.sort((left, right) => {
+      const leftProduct = left.numerator * right.denominator;
+      const rightProduct = right.numerator * left.denominator;
+      if (leftProduct < rightProduct) return -1;
+      if (leftProduct > rightProduct) return 1;
+      return left.edge - right.edge;
+    });
+
+    for (let index = 0; index + 1 < intersections.length; index += 2) {
+      const left = intersections[index];
+      const right = intersections[index + 1];
+      for (let x = 0; x < width; x += 1) {
+        const center = 2n * BigInt(x) + 1n;
+        if (center * left.denominator < 2n * left.numerator) continue;
+        if (center * right.denominator > 2n * right.numerator) continue;
+        const offset = (y * width + x) * 4;
+        data[offset] = 244;
+        data[offset + 1] = 201;
+        data[offset + 2] = 93;
+        data[offset + 3] = 255;
+      }
+    }
+  }
+  return { width, height, data };
+}
+
+function expectBigIntOracle(points: TestPoint[], label: string): void {
+  const actual = polygonPixels(points);
+  const expected = bigIntPolygonOracle(points);
+  expect(
+    Buffer.from(actual.data).equals(Buffer.from(expected.data)),
+    label,
+  ).toBe(true);
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
 }
 
 function expectPolygonRows(
@@ -264,27 +349,140 @@ describe("native avatar pixel renderer", () => {
       ).toBe(true);
     });
 
-    it("uses doubled integer scanlines and cross-products, never float intersections", () => {
-      const source = readFileSync(
-        new URL("../resources/avatar-engine/avatar-engine.js", import.meta.url),
-        "utf8",
-      );
-      const scanline = source.slice(
-        source.indexOf("function fillPolygon"),
-        source.indexOf("export function renderAvatarPixels"),
-      );
+    it("matches the BigInt rational oracle on deterministic full canvases", () => {
+      const cases: [string, TestPoint[]][] = [
+        [
+          "triangle",
+          [
+            { x: 1, y: 1 },
+            { x: 6, y: 1 },
+            { x: 1, y: 6 },
+          ],
+        ],
+        [
+          "concave",
+          [
+            { x: 1, y: 1 },
+            { x: 5, y: 1 },
+            { x: 5, y: 3 },
+            { x: 3, y: 3 },
+            { x: 3, y: 5 },
+            { x: 1, y: 5 },
+          ],
+        ],
+        [
+          "negative",
+          [
+            { x: -3, y: -2 },
+            { x: 2, y: -2 },
+            { x: 2, y: 3 },
+            { x: -3, y: 3 },
+          ],
+        ],
+        [
+          "shared vertices",
+          [
+            { x: 1, y: 1 },
+            { x: 3, y: 1 },
+            { x: 6, y: 1 },
+            { x: 6, y: 1 },
+            { x: 1, y: 6 },
+            { x: 1, y: 6 },
+          ],
+        ],
+        [
+          "coordinate limits",
+          [
+            { x: -4096, y: -4096 },
+            { x: 4096, y: -4096 },
+            { x: 4096, y: 4096 },
+            { x: -4096, y: 4096 },
+          ],
+        ],
+      ];
 
-      expect(scanline).toContain("const scan = 2 * y + 1");
-      expect(scanline).not.toMatch(/\d+\.\d+/);
-      expect(scanline).not.toMatch(/\bconst x\s*=/);
-      expect(source).toContain("left.numerator * right.denominator");
-      expect(source).toContain("right.numerator * left.denominator");
+      for (const [name, points] of cases) {
+        expectBigIntOracle(points, name);
+      }
     });
+
+    it("matches the BigInt rational oracle on seeded random full canvases", () => {
+      const random = seededRandom(0x5eed1234);
+      for (let caseIndex = 0; caseIndex < 16; caseIndex += 1) {
+        const pointCount = 3 + Math.floor(random() * 6);
+        const points = Array.from({ length: pointCount }, () => ({
+          x: Math.floor(random() * 25) - 8,
+          y: Math.floor(random() * 25) - 8,
+        }));
+        expectBigIntOracle(points, `seeded polygon ${caseIndex}`);
+      }
+    });
+
+    it.each([
+      [
+        "collinear diagonal",
+        [
+          { x: 1, y: 1 },
+          { x: 5, y: 5 },
+          { x: 3, y: 3 },
+        ],
+      ],
+      [
+        "repeated diagonal",
+        [
+          { x: 1, y: 1 },
+          { x: 5, y: 5 },
+          { x: 1, y: 1 },
+          { x: 5, y: 5 },
+          { x: 3, y: 3 },
+        ],
+      ],
+      [
+        "horizontal",
+        [
+          { x: 1, y: 3 },
+          { x: 5, y: 3 },
+          { x: 3, y: 3 },
+        ],
+      ],
+      [
+        "vertical",
+        [
+          { x: 3, y: 1 },
+          { x: 3, y: 5 },
+          { x: 3, y: 3 },
+        ],
+      ],
+    ] as [string, TestPoint[]][])(
+      "produces zero pixels for %s polygons with zero signed area",
+      (_name, points) => {
+        expect(
+          polygonPixels(points).data.every((channel) => channel === 0),
+        ).toBe(true);
+      },
+    );
+  });
+
+  it("parses and renders a valid package with explicit zIndex bounds", () => {
+    const candidate = avatarFixture();
+    candidate.parts[0].zIndex = 4096;
+    candidate.parts[1].zIndex = -4096;
+
+    const avatar = parseAvatar(candidate);
+    expect(avatar.parts.slice(0, 2).map((part) => part.zIndex)).toEqual([
+      4096, -4096,
+    ]);
+    expect(pixel(renderAvatarPixels(avatar, neutralState), 31, 43)).toEqual(
+      rgba("#2878b5"),
+    );
   });
 
   it("orders layers by zIndex and breaks ties by original part index", () => {
-    type LayeredPart = AvatarPackage["parts"][number] & { zIndex?: number };
-    const layer = (id: string, color: string, zIndex: number): LayeredPart => ({
+    const layer = (
+      id: string,
+      color: string,
+      zIndex: number,
+    ): AvatarPackage["parts"][number] => ({
       id,
       zIndex,
       primitives: [{ type: "rect", x: 0, y: 0, width: 1, height: 1, color }],

@@ -66,6 +66,7 @@ export interface AvatarPartState {
 export interface AvatarPart {
   id: string;
   parent?: string;
+  zIndex?: number;
   primitives: AvatarPrimitive[];
 }
 
@@ -174,6 +175,7 @@ const partStates = z
 const partSchema = z.strictObject({
   id: token,
   parent: token.optional(),
+  zIndex: coordinate.optional(),
   primitives,
 });
 

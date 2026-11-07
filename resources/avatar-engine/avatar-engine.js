@@ -61,6 +61,14 @@ function fillPolygon(context, primitive) {
     x: Math.round(x),
     y: Math.round(y),
   }));
+  let twiceSignedArea = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    const start = points[index];
+    const end = points[(index + 1) % points.length];
+    twiceSignedArea += start.x * end.y - end.x * start.y;
+  }
+  if (twiceSignedArea === 0) return;
+
   const { data, width, height, palette } = context;
   const [red, green, blue] = paletteRgb(palette, primitive.color);
   const firstY = Math.max(0, Math.min(...points.map((point) => point.y)));
