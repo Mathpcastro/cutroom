@@ -273,6 +273,64 @@ describe("deterministic avatar quality gates", () => {
     ).toContain("y=86");
   });
 
+  it.each([2, 4])(
+    "ignores a disconnected %ix1 primitive when measuring contact",
+    (width) => {
+      const avatar = avatarFixture();
+      const body = part(avatar, "body");
+      body.primitives[1] = {
+        type: "polygon",
+        points: [
+          { x: 27, y: 76 },
+          { x: 28, y: 76 },
+          { x: 48, y: 90 },
+        ],
+        color: "shoe",
+      };
+      body.primitives.push({
+        type: "rect",
+        x: 48,
+        y: 89,
+        width,
+        height: 1,
+        color: "shoe",
+      });
+
+      const report = expectFinding(avatar, "BASELINE_FLOATING");
+      expect(
+        report.findings.find((finding) => finding.code === "BASELINE_FLOATING")
+          ?.message,
+      ).toContain("y=86");
+    },
+  );
+
+  it("accepts a small primitive connected to the ground-contact silhouette", () => {
+    const avatar = avatarFixture();
+    const body = part(avatar, "body");
+    firstRect(avatar, "body").height = 46;
+    body.primitives[1] = {
+      type: "polygon",
+      points: [
+        { x: 27, y: 76 },
+        { x: 28, y: 76 },
+        { x: 48, y: 90 },
+      ],
+      color: "shoe",
+    };
+    body.primitives.push({
+      type: "rect",
+      x: 48,
+      y: 89,
+      width: 2,
+      height: 1,
+      color: "shoe",
+    });
+
+    const report = validateAvatarPackage(avatar);
+    expect(report.ok).toBe(true);
+    expect(report.findings).toEqual([]);
+  });
+
   it("rejects an empty neutral silhouette", () => {
     const avatar = avatarFixture();
     clearOverrides(avatar);

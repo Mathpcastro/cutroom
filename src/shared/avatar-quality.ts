@@ -357,6 +357,88 @@ function emptyStateGroup<T extends string>(values: readonly T[]) {
   return Object.fromEntries(values.map((value) => [value, {}]));
 }
 
+interface SilhouetteRun {
+  startX: number;
+  endX: number;
+  parent: number;
+  count: number;
+  maximumY: number;
+}
+
+function findRun(runs: SilhouetteRun[], index: number): number {
+  const parent = runs[index].parent;
+  if (parent === index) return index;
+  const root = findRun(runs, parent);
+  runs[index].parent = root;
+  return root;
+}
+
+function joinRuns(runs: SilhouetteRun[], left: number, right: number): void {
+  let leftRoot = findRun(runs, left);
+  let rightRoot = findRun(runs, right);
+  if (leftRoot === rightRoot) return;
+  if (runs[leftRoot].count < runs[rightRoot].count) {
+    [leftRoot, rightRoot] = [rightRoot, leftRoot];
+  }
+  runs[rightRoot].parent = leftRoot;
+  runs[leftRoot].count += runs[rightRoot].count;
+  runs[leftRoot].maximumY = Math.max(
+    runs[leftRoot].maximumY,
+    runs[rightRoot].maximumY,
+  );
+}
+
+function mainComponentMaximumY(pixels: AvatarPixels): number {
+  // One-pixel dilation plus 8-connectivity links original pixels up to three
+  // Chebyshev units apart. Horizontal runs compute those components without
+  // visiting pixels introduced only by the dilation.
+  const runs: SilhouetteRun[] = [];
+  const rows: number[][] = Array.from({ length: pixels.height }, () => []);
+  for (let y = 0; y < pixels.height; y += 1) {
+    const row = rows[y];
+    for (let x = 0; x < pixels.width; x += 1) {
+      if (pixels.data[(y * pixels.width + x) * 4 + 3] === 0) continue;
+      const last = runs[row[row.length - 1]];
+      if (last && x - last.endX <= 3) {
+        last.endX = x;
+        last.count += 1;
+      } else {
+        runs.push({
+          startX: x,
+          endX: x,
+          parent: runs.length,
+          count: 1,
+          maximumY: y,
+        });
+        row.push(runs.length - 1);
+      }
+    }
+
+    for (const currentIndex of row) {
+      const current = runs[currentIndex];
+      for (let previousY = Math.max(0, y - 3); previousY < y; previousY += 1) {
+        for (const previousIndex of rows[previousY]) {
+          const previous = runs[previousIndex];
+          if (current.startX > previous.endX + 3) continue;
+          if (previous.startX > current.endX + 3) break;
+          joinRuns(runs, currentIndex, previousIndex);
+        }
+      }
+    }
+  }
+
+  let mainCount = 0;
+  let mainMaximumY = -1;
+  for (let index = 0; index < runs.length; index += 1) {
+    if (findRun(runs, index) !== index || runs[index].count <= mainCount) {
+      continue;
+    }
+    mainCount = runs[index].count;
+    mainMaximumY = runs[index].maximumY;
+  }
+  return mainMaximumY;
+}
+
 function baselineFindings(avatar: AvatarPackage): AvatarFinding[] {
   // Render already-evaluated primitives without applying their states twice.
   const rasterAvatar: AvatarPackage = {
@@ -368,35 +450,68 @@ function baselineFindings(avatar: AvatarPackage): AvatarFinding[] {
     ) as AvatarPackage["expressions"],
     mouths: emptyStateGroup(AVATAR_MOUTHS) as AvatarPackage["mouths"],
   };
-  const cache = new Map<string, { count: number; maximumY: number }>();
-  const rasterStats = (primitive: AvatarPrimitive) => {
-    const key = JSON.stringify(primitive);
+  const cache = new Map<string, AvatarPixels>();
+  const opaqueOffsetsCache = new Map<string, number[]>();
+  const rasterPixels = (primitive: AvatarPrimitive, key: string) => {
     const cached = cache.get(key);
-    if (cached) return cached;
+    const cachedOffsets = opaqueOffsetsCache.get(key);
+    if (cached && cachedOffsets) {
+      return { pixels: cached, opaqueOffsets: cachedOffsets };
+    }
 
     rasterAvatar.parts[0].primitives = [primitive];
     const pixels = renderAvatarPixels(rasterAvatar, NEUTRAL_STATE);
-    let count = 0;
-    let maximumY = -1;
+    const opaqueOffsets: number[] = [];
     for (let offset = 0; offset < pixels.data.length; offset += 4) {
-      if (pixels.data[offset + 3] === 0) continue;
-      count += 1;
-      maximumY = Math.max(maximumY, Math.floor(offset / 4 / pixels.width));
+      if (pixels.data[offset + 3] !== 0) opaqueOffsets.push(offset);
     }
-    const stats = { count, maximumY };
-    cache.set(key, stats);
-    return stats;
+    cache.set(key, pixels);
+    opaqueOffsetsCache.set(key, opaqueOffsets);
+    return { pixels, opaqueOffsets };
   };
+  const orderedParts = avatar.parts
+    .map((part, index) => ({
+      part,
+      index,
+      zIndex:
+        typeof part.zIndex === "number" && Number.isFinite(part.zIndex)
+          ? part.zIndex
+          : 0,
+    }))
+    .sort(
+      (left, right) => left.zIndex - right.zIndex || left.index - right.index,
+    );
+  const maximumYCache = new Map<string, number>();
 
   for (const state of composedStates()) {
-    let maximumY = -1;
-    for (const part of avatar.parts) {
+    const stateKeys: string[] = [];
+    const statePrimitives: ReturnType<typeof rasterPixels>[] = [];
+    for (const { part } of orderedParts) {
       for (const primitive of evaluatedPrimitives(avatar, part, state)) {
-        const stats = rasterStats(primitive);
-        // A one-pixel primitive is a distractor, not a ground-contact shape.
-        // Sparse pixels from a larger polygon retain their primitive provenance.
-        if (stats.count > 1) maximumY = Math.max(maximumY, stats.maximumY);
+        const key = JSON.stringify(primitive);
+        stateKeys.push(key);
+        statePrimitives.push(rasterPixels(primitive, key));
       }
+    }
+
+    const stateKey = stateKeys.join("\n");
+    let maximumY = maximumYCache.get(stateKey);
+    if (maximumY === undefined) {
+      const size = avatar.canvas.full;
+      const composite: AvatarPixels = {
+        width: size,
+        height: size,
+        data: new Uint8ClampedArray(size * size * 4),
+      };
+      for (const { pixels, opaqueOffsets } of statePrimitives) {
+        for (const offset of opaqueOffsets) {
+          for (let channel = 0; channel < 4; channel += 1) {
+            composite.data[offset + channel] = pixels.data[offset + channel];
+          }
+        }
+      }
+      maximumY = mainComponentMaximumY(composite);
+      maximumYCache.set(stateKey, maximumY);
     }
     if (maximumY + 1 !== avatar.canvas.baseline) {
       return [
