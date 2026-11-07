@@ -555,11 +555,14 @@ describe("AvatarStore", () => {
       ),
     ).rejects.toThrow();
 
+    const staleApprovalPartial = `${pendingPath.replace(/avatar\.json$/, "approval.json")}.partial`;
+    await writeFile(staleApprovalPartial, "approval-stale", "utf8");
     const recovered = await Promise.all(
       Array.from({ length: 6 }, () =>
         new AvatarStore(root).saveRevision(second.avatarId, second.candidateId),
       ),
     );
+    expect(await readFile(staleApprovalPartial, "utf8")).toBe("approval-stale");
     const expected = { revision: 2, hash: second.hash, path: pendingPath };
     expect(recovered).toEqual(Array.from({ length: 6 }, () => expected));
     expect((await store.loadRevision(second.avatarId, 2)).hash).toBe(
@@ -812,7 +815,7 @@ describe("AvatarStore", () => {
     },
   );
 
-  it("preserves a pre-existing selection partial owned by another operation", async () => {
+  it("retries selection with a unique partial and preserves a stale legacy partial", async () => {
     const root = await temporaryRoot();
     const store = new AvatarStore(root);
     const candidate = await store.createCandidate(avatarFixture());
@@ -820,12 +823,40 @@ describe("AvatarStore", () => {
     await writeFile(partial, "outro-processo", "utf8");
 
     await expect(
-      store.selectCandidate(candidate.avatarId, candidate.candidateId),
-    ).rejects.toThrow();
+      new AvatarStore(root).selectCandidate(
+        candidate.avatarId,
+        candidate.candidateId,
+      ),
+    ).resolves.toBeUndefined();
     expect(await readFile(partial, "utf8")).toBe("outro-processo");
+    const selection = JSON.parse(
+      await readFile(join(root, candidate.avatarId, "selection.json"), "utf8"),
+    );
+    expect(selection).toMatchObject({ candidateId: candidate.candidateId });
+  });
+
+  it("retries metadata with a stale legacy partial in a new instance", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const candidate = await store.createCandidate(avatarFixture());
+    const partial = join(
+      root,
+      candidate.avatarId,
+      "metadata",
+      "avatar-service.json.partial",
+    );
+    await mkdir(dirname(partial), { recursive: true });
+    await writeFile(partial, "metadata-stale", "utf8");
+
+    await new AvatarStore(root).writeMetadata(
+      candidate.avatarId,
+      "avatar-service",
+      { version: 1, recovered: true },
+    );
+    expect(await readFile(partial, "utf8")).toBe("metadata-stale");
     await expect(
-      access(join(root, candidate.avatarId, "selection.json")),
-    ).rejects.toThrow();
+      new AvatarStore(root).readMetadata(candidate.avatarId, "avatar-service"),
+    ).resolves.toEqual({ version: 1, recovered: true });
   });
 
   it("syncs revision directories and recovers a pending snapshot after directory fsync failure", async () => {

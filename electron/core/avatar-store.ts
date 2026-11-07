@@ -57,6 +57,7 @@ function isMissing(error: unknown): boolean {
 }
 
 export class AvatarStore {
+  private static readonly avatarQueues = new Map<string, Promise<void>>();
   private static readonly approvalQueues = new Map<string, Promise<void>>();
 
   private root: string;
@@ -84,32 +85,60 @@ export class AvatarStore {
     }
   }
 
+  private lockKey(...parts: string[]): string {
+    const lockRoot =
+      process.platform === "win32" ? this.root.toLowerCase() : this.root;
+    return [lockRoot, ...parts].join("\0");
+  }
+
+  private static enqueue<T>(
+    queues: Map<string, Promise<void>>,
+    key: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous = queues.get(key) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => current);
+    queues.set(key, tail);
+    return (async () => {
+      await previous;
+      try {
+        return await operation();
+      } finally {
+        release();
+        if (queues.get(key) === tail) queues.delete(key);
+      }
+    })();
+  }
+
+  /** Serializes a complete logical avatar transaction across store instances. */
+  async runExclusive<T>(
+    avatarId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const validAvatarId = assertId(avatarId, "Avatar ID");
+    await this.initializeRoot();
+    return AvatarStore.enqueue(
+      AvatarStore.avatarQueues,
+      this.lockKey(validAvatarId),
+      operation,
+    );
+  }
+
   private async withApprovalLock<T>(
     avatarId: string,
     candidateId: string,
     operation: () => Promise<T>,
   ): Promise<T> {
     await this.initializeRoot();
-    const lockRoot =
-      process.platform === "win32" ? this.root.toLowerCase() : this.root;
-    const key = `${lockRoot}\0${avatarId}\0${candidateId}`;
-    const previous = AvatarStore.approvalQueues.get(key) ?? Promise.resolve();
-    let release: () => void = () => undefined;
-    const current = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const tail = previous.then(() => current);
-    AvatarStore.approvalQueues.set(key, tail);
-
-    await previous;
-    try {
-      return await operation();
-    } finally {
-      release();
-      if (AvatarStore.approvalQueues.get(key) === tail) {
-        AvatarStore.approvalQueues.delete(key);
-      }
-    }
+    return AvatarStore.enqueue(
+      AvatarStore.approvalQueues,
+      this.lockKey(avatarId, candidateId),
+      operation,
+    );
   }
 
   async createCandidate(
@@ -669,7 +698,8 @@ export class AvatarStore {
     await mkdir(dirname(path), { recursive: true });
     await this.assertContained(path);
     await this.syncDirectoryChain(dirname(path));
-    const partial = `${path}.partial`;
+    // A unique suffix lets retries coexist with stale or foreign .partial files.
+    const partial = `${path}.${randomUUID()}.partial`;
     let handle: Awaited<ReturnType<typeof open>> | undefined;
     let created = false;
     try {

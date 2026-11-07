@@ -21,6 +21,7 @@ import {
 } from "./avatar-render";
 
 const METADATA_KEY = "avatar-service";
+const RECOVERY_KEY = "avatar-service-recovery";
 const MAX_CORRECTION_ROUNDS = 3;
 const JOB_ID = /^[A-Za-z][A-Za-z0-9._-]{0,63}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -124,6 +125,7 @@ interface SavedRevision {
 }
 
 export interface AvatarServiceStore {
+  runExclusive<T>(avatarId: string, operation: () => Promise<T>): Promise<T>;
   createCandidate(input: unknown): Promise<CandidateReference>;
   loadCandidate(avatarId: string, candidateId: string): Promise<LoadedAvatar>;
   selectCandidate(avatarId: string, candidateId: string): Promise<void>;
@@ -211,6 +213,16 @@ interface AvatarServiceState {
   candidates: Record<string, AvatarCandidate>;
   bestCandidateId?: string;
   revisions: Record<string, RevisionState>;
+}
+
+interface RevisionIntent {
+  version: 1;
+  avatarId: string;
+  candidateId: string;
+  select: boolean;
+  candidate: AvatarCandidate;
+  previousRevision?: number;
+  result?: AvatarRevisionResult;
 }
 
 function emptyState(): AvatarServiceState {
@@ -343,23 +355,137 @@ function assertDescription(value: unknown): asserts value is string {
   }
 }
 
-function parseState(value: unknown): AvatarServiceState {
+function parseState(value: unknown, avatarId: string): AvatarServiceState {
   if (value === undefined) return emptyState();
   if (
     typeof value !== "object" ||
     value === null ||
+    Array.isArray(value) ||
     !("version" in value) ||
     value.version !== 1 ||
     !("candidates" in value) ||
     typeof value.candidates !== "object" ||
     value.candidates === null ||
+    Array.isArray(value.candidates) ||
     !("revisions" in value) ||
     typeof value.revisions !== "object" ||
-    value.revisions === null
+    value.revisions === null ||
+    Array.isArray(value.revisions)
   ) {
     throw new Error("Metadados do AvatarService inválidos.");
   }
-  return clone(value as AvatarServiceState);
+  const state = clone(value as AvatarServiceState);
+  for (const [key, candidate] of Object.entries(state.candidates)) {
+    if (
+      !JOB_ID.test(key) ||
+      typeof candidate !== "object" ||
+      candidate === null ||
+      candidate.avatarId !== avatarId ||
+      candidate.candidateId !== key ||
+      typeof candidate.hash !== "string" ||
+      !SHA256.test(candidate.hash) ||
+      typeof candidate.description !== "string" ||
+      typeof candidate.rootCandidateId !== "string" ||
+      !JOB_ID.test(candidate.rootCandidateId) ||
+      !Number.isSafeInteger(candidate.correctionRounds) ||
+      candidate.correctionRounds < 0 ||
+      candidate.correctionRounds > MAX_CORRECTION_ROUNDS ||
+      typeof candidate.manualApproved !== "boolean" ||
+      typeof candidate.quality !== "object" ||
+      candidate.quality === null ||
+      typeof candidate.quality.ok !== "boolean" ||
+      !Array.isArray(candidate.quality.findings)
+    ) {
+      throw new Error(`Metadados inválidos no candidato ${key}.`);
+    }
+    if (
+      candidate.revision !== undefined &&
+      (!Number.isSafeInteger(candidate.revision) || candidate.revision < 1)
+    ) {
+      throw new Error(`Revisão inválida no candidato ${key}.`);
+    }
+    if (candidate.manualApproved && !candidate.review) {
+      throw new Error(`Aprovação sem review no candidato ${key}.`);
+    }
+    if (candidate.review !== undefined) {
+      const review = candidate.review;
+      if (
+        typeof review !== "object" ||
+        review === null ||
+        review.avatarId !== avatarId ||
+        review.candidateId !== key ||
+        typeof review.total !== "number" ||
+        !Number.isFinite(review.total)
+      ) {
+        throw new Error(`Review ou vínculo inválido no candidato ${key}.`);
+      }
+      // Numeric totals are derived data: repair tampering from the valid rubric.
+      const validated = validateRubric(review.rubric);
+      review.rubric = validated.rubric;
+      review.total = validated.total;
+      review.evidence = validateEvidence(review.rubric, review.evidence);
+    }
+  }
+  for (const [key, revision] of Object.entries(state.revisions)) {
+    const revisionNumber = Number(key);
+    if (
+      !Number.isSafeInteger(revisionNumber) ||
+      revisionNumber < 1 ||
+      String(revisionNumber) !== key ||
+      typeof revision !== "object" ||
+      revision === null ||
+      !state.candidates[revision.candidateId] ||
+      typeof revision.quality !== "object" ||
+      revision.quality === null ||
+      typeof revision.quality.ok !== "boolean" ||
+      !Array.isArray(revision.quality.findings)
+    ) {
+      throw new Error(`Metadados inválidos na revisão ${key}.`);
+    }
+    const candidate = state.candidates[revision.candidateId];
+    if (revision.artifacts !== undefined) {
+      if (
+        !Array.isArray(revision.artifacts) ||
+        revision.artifacts.some(
+          (artifact) =>
+            !isIntegralManifest(artifact) ||
+            artifact.avatarId !== avatarId ||
+            artifact.candidateId !== candidate.candidateId ||
+            artifact.revision !== revisionNumber ||
+            artifact.avatarHash !== candidate.hash,
+        )
+      ) {
+        throw new Error(`Manifest inválido na revisão ${key}.`);
+      }
+    }
+  }
+  for (const candidate of Object.values(state.candidates)) {
+    if (candidate.revision !== undefined) {
+      const revision = state.revisions[String(candidate.revision)];
+      if (!revision || revision.candidateId !== candidate.candidateId) {
+        throw new Error(
+          `Vínculo de revisão inválido em ${candidate.candidateId}.`,
+        );
+      }
+    }
+    if (candidate.review) {
+      const artifacts = candidate.revision
+        ? (state.revisions[String(candidate.revision)]?.artifacts ?? [])
+        : [];
+      for (const evidence of candidate.review.evidence) {
+        if (!artifacts.some((artifact) => samePath(artifact.path, evidence))) {
+          throw new Error(`Evidência inelegível em ${candidate.candidateId}.`);
+        }
+      }
+    }
+  }
+  if (state.bestCandidateId !== undefined) {
+    const best = state.candidates[state.bestCandidateId];
+    if (!best?.quality.ok || !best.review) {
+      throw new Error("Melhor candidato persistido sem review elegível.");
+    }
+  }
+  return state;
 }
 
 function validateRubric(value: unknown): {
@@ -484,55 +610,63 @@ export class AvatarService {
       hashes.add(candidate.hash);
     }
 
-    const state = await this.readState(avatarId);
-    const created: AvatarCandidate[] = [];
-    for (const candidate of prepared) {
-      const reference = await this.store.createCandidate(candidate.avatar);
-      if (
-        reference.avatarId !== avatarId ||
-        reference.hash !== candidate.hash
-      ) {
-        throw new Error("Store divergiu do hash ou avatar validado.");
+    return this.store.runExclusive(avatarId, async () => {
+      const state = await this.readState(avatarId);
+      const created: AvatarCandidate[] = [];
+      for (const candidate of prepared) {
+        const reference = await this.store.createCandidate(candidate.avatar);
+        if (
+          reference.avatarId !== avatarId ||
+          reference.hash !== candidate.hash
+        ) {
+          throw new Error("Store divergiu do hash ou avatar validado.");
+        }
+        const record: AvatarCandidate = {
+          ...reference,
+          description,
+          quality: candidate.quality,
+          correctionRounds: 0,
+          manualApproved: false,
+          rootCandidateId: reference.candidateId,
+        };
+        state.candidates[reference.candidateId] = record;
+        created.push(clone(record));
       }
-      const record: AvatarCandidate = {
-        ...reference,
-        description,
-        quality: candidate.quality,
-        correctionRounds: 0,
-        manualApproved: false,
-        rootCandidateId: reference.candidateId,
-      };
-      state.candidates[reference.candidateId] = record;
-      created.push(clone(record));
-    }
-    await this.writeState(avatarId, state);
-    return { avatarId, description, candidates: created };
+      await this.writeState(avatarId, state);
+      return { avatarId, description, candidates: created };
+    });
   }
 
   async selectCandidate(
     avatarId: string,
     candidateId: string,
   ): Promise<AvatarSelectedCandidate> {
-    const state = await this.readState(avatarId);
-    const candidate = this.requireCandidate(state, candidateId);
-    const validation = await this.validateStoredCandidate(avatarId, candidate);
-    await this.store.selectCandidate(avatarId, candidateId);
-    const saved = await this.store.saveRevision(avatarId, candidateId);
-    candidate.revision = saved.revision;
-    candidate.identityAnchors = clone(validation.avatar.identity.anchors);
-    candidate.quality = validation.quality;
-    state.revisions[String(saved.revision)] = {
-      candidateId,
-      quality: validation.quality,
-      artifacts: state.revisions[String(saved.revision)]?.artifacts,
-    };
-    await this.writeState(avatarId, state);
-    return {
-      ...clone(candidate),
-      revision: saved.revision,
-      identityAnchors: clone(validation.avatar.identity.anchors),
-      path: saved.path,
-    };
+    return this.store.runExclusive(avatarId, async () => {
+      const state = await this.readState(avatarId);
+      await this.refreshBestCandidate(avatarId, state);
+      const candidate = this.requireCandidate(state, candidateId);
+      const validation = await this.validateStoredCandidate(
+        avatarId,
+        candidate,
+      );
+      const intended = clone(candidate);
+      intended.identityAnchors = clone(validation.avatar.identity.anchors);
+      intended.quality = validation.quality;
+      const committed = await this.commitRevision(avatarId, {
+        version: 1,
+        avatarId,
+        candidateId,
+        select: true,
+        candidate: intended,
+        previousRevision: candidate.revision,
+      });
+      return {
+        ...clone(committed.candidate),
+        revision: committed.saved.revision,
+        identityAnchors: clone(committed.candidate.identityAnchors!),
+        path: committed.saved.path,
+      };
+    });
   }
 
   async saveRevision(input: {
@@ -540,108 +674,119 @@ export class AvatarService {
     candidateId: string;
   }): Promise<AvatarSelectedCandidate> {
     const { avatarId, candidateId } = input;
-    const state = await this.readState(avatarId);
-    const candidate = this.requireCandidate(state, candidateId);
-    const validation = await this.validateStoredCandidate(avatarId, candidate);
-    const saved = await this.store.saveRevision(avatarId, candidateId);
-    candidate.revision = saved.revision;
-    candidate.identityAnchors ??= clone(validation.avatar.identity.anchors);
-    candidate.quality = validation.quality;
-    state.revisions[String(saved.revision)] = {
-      candidateId,
-      quality: validation.quality,
-      result: state.revisions[String(saved.revision)]?.result,
-      artifacts: state.revisions[String(saved.revision)]?.artifacts,
-    };
-    await this.writeState(avatarId, state);
-    return {
-      ...clone(candidate),
-      revision: saved.revision,
-      identityAnchors: clone(candidate.identityAnchors),
-      path: saved.path,
-    };
+    return this.store.runExclusive(avatarId, async () => {
+      const state = await this.readState(avatarId);
+      await this.refreshBestCandidate(avatarId, state);
+      const candidate = this.requireCandidate(state, candidateId);
+      const validation = await this.validateStoredCandidate(
+        avatarId,
+        candidate,
+      );
+      const intended = clone(candidate);
+      intended.identityAnchors ??= clone(validation.avatar.identity.anchors);
+      intended.quality = validation.quality;
+      const committed = await this.commitRevision(avatarId, {
+        version: 1,
+        avatarId,
+        candidateId,
+        select: true,
+        candidate: intended,
+        previousRevision: candidate.revision,
+      });
+      return {
+        ...clone(committed.candidate),
+        revision: committed.saved.revision,
+        identityAnchors: clone(committed.candidate.identityAnchors!),
+        path: committed.saved.path,
+      };
+    });
   }
 
   async revisePart(input: RevisePartInput): Promise<AvatarRevisedCandidate> {
     const { avatarId, revision, package: nextPackage } = input;
-    const state = await this.readState(avatarId);
-    const revisionState = state.revisions[String(revision)];
-    if (!revisionState) throw new Error(`Revisão ${revision} não gerenciada.`);
-    const candidate = this.requireCandidate(state, revisionState.candidateId);
-    const previous = await this.store.loadRevision(avatarId, revision);
-    this.assertAllowedPartIds(input.allowedPartIds, previous.avatar);
+    return this.store.runExclusive(avatarId, async () => {
+      const state = await this.readState(avatarId);
+      await this.refreshBestCandidate(avatarId, state);
+      const revisionState = state.revisions[String(revision)];
+      if (!revisionState)
+        throw new Error(`Revisão ${revision} não gerenciada.`);
+      const candidate = this.requireCandidate(state, revisionState.candidateId);
+      const previous = await this.store.loadRevision(avatarId, revision);
+      this.assertAllowedPartIds(input.allowedPartIds, previous.avatar);
 
-    const lineage = Object.values(state.candidates).filter(
-      (item) => item.rootCandidateId === candidate.rootCandidateId,
-    );
-    if (lineage.some((item) => item.manualApproved)) {
-      throw new Error("Correções bloqueadas após aprovação manual explícita.");
-    }
-    const rounds = Math.max(...lineage.map((item) => item.correctionRounds));
-    if (rounds >= MAX_CORRECTION_ROUNDS) {
-      throw new Error(
-        "Limite de três rodadas de correção por candidato atingido.",
+      const lineage = Object.values(state.candidates).filter(
+        (item) => item.rootCandidateId === candidate.rootCandidateId,
       );
-    }
+      if (lineage.some((item) => item.manualApproved)) {
+        throw new Error(
+          "Correções bloqueadas após aprovação manual explícita.",
+        );
+      }
+      const rounds = Math.max(...lineage.map((item) => item.correctionRounds));
+      if (rounds >= MAX_CORRECTION_ROUNDS) {
+        throw new Error(
+          "Limite de três rodadas de correção por candidato atingido.",
+        );
+      }
 
-    const validation = this.validatePackage(nextPackage, {
-      previous: previous.avatar,
-      allowedPartIds: input.allowedPartIds,
+      const validation = this.validatePackage(nextPackage, {
+        previous: previous.avatar,
+        allowedPartIds: input.allowedPartIds,
+      });
+      const changed = validation.avatar
+        ? changedPartIds(previous.avatar, validation.avatar)
+        : [];
+      const result: AvatarRevisionResult = {
+        ok: validation.ok,
+        previousRevision: revision,
+        previousHash: previous.hash,
+        allowedPartIds: [...input.allowedPartIds],
+        changedPartIds: changed,
+        correctionRounds: rounds + 1,
+        quality: validation.quality,
+      };
+      if (!validation.ok || !validation.avatar || !validation.hash) {
+        candidate.correctionRounds = rounds + 1;
+        candidate.lastRevisionResult = result;
+        await this.writeState(avatarId, state);
+        throw qualityError("Revisão", validation.quality);
+      }
+
+      const reference = await this.store.createCandidate(validation.avatar);
+      if (
+        reference.hash !== validation.hash ||
+        reference.avatarId !== avatarId
+      ) {
+        throw new Error("Store divergiu do hash ou avatar validado.");
+      }
+      const revised: AvatarCandidate = {
+        ...reference,
+        description: candidate.description,
+        quality: validation.quality,
+        correctionRounds: rounds + 1,
+        manualApproved: false,
+        rootCandidateId: candidate.rootCandidateId,
+        parentCandidateId: candidate.candidateId,
+        identityAnchors: clone(previous.avatar.identity.anchors),
+        lastRevisionResult: result,
+      };
+      const committed = await this.commitRevision(avatarId, {
+        version: 1,
+        avatarId,
+        candidateId: reference.candidateId,
+        select: true,
+        candidate: revised,
+        previousRevision: revision,
+        result,
+      });
+      return {
+        ...clone(committed.candidate),
+        revision: committed.saved.revision,
+        identityAnchors: clone(previous.avatar.identity.anchors),
+        path: committed.saved.path,
+        changedPartIds: changed,
+      };
     });
-    const changed = validation.avatar
-      ? changedPartIds(previous.avatar, validation.avatar)
-      : [];
-    const result: AvatarRevisionResult = {
-      ok: validation.ok,
-      previousRevision: revision,
-      previousHash: previous.hash,
-      allowedPartIds: [...input.allowedPartIds],
-      changedPartIds: changed,
-      correctionRounds: rounds + 1,
-      quality: validation.quality,
-    };
-    if (!validation.ok || !validation.avatar || !validation.hash) {
-      candidate.correctionRounds = rounds + 1;
-      candidate.lastRevisionResult = result;
-      await this.writeState(avatarId, state);
-      throw qualityError("Revisão", validation.quality);
-    }
-
-    const reference = await this.store.createCandidate(validation.avatar);
-    if (reference.hash !== validation.hash || reference.avatarId !== avatarId) {
-      throw new Error("Store divergiu do hash ou avatar validado.");
-    }
-    await this.store.selectCandidate(avatarId, reference.candidateId);
-    const saved = await this.store.saveRevision(
-      avatarId,
-      reference.candidateId,
-    );
-    const revised: AvatarCandidate = {
-      ...reference,
-      description: candidate.description,
-      quality: validation.quality,
-      correctionRounds: rounds + 1,
-      manualApproved: false,
-      rootCandidateId: candidate.rootCandidateId,
-      parentCandidateId: candidate.candidateId,
-      revision: saved.revision,
-      identityAnchors: clone(previous.avatar.identity.anchors),
-      lastRevisionResult: result,
-    };
-    state.candidates[reference.candidateId] = revised;
-    state.revisions[String(saved.revision)] = {
-      candidateId: reference.candidateId,
-      quality: validation.quality,
-      result,
-    };
-    await this.writeState(avatarId, state);
-    return {
-      ...clone(revised),
-      revision: saved.revision,
-      identityAnchors: clone(previous.avatar.identity.anchors),
-      path: saved.path,
-      changedPartIds: changed,
-    };
   }
 
   async reviewCandidate(
@@ -658,76 +803,91 @@ export class AvatarService {
     }
     const { rubric, total } = validateRubric(input.rubric);
     const evidence = validateEvidence(rubric, input.evidence);
-    const state = await this.readState(avatarId);
-    const candidate = this.requireCandidate(state, candidateId);
-    await this.validateStoredCandidate(avatarId, candidate);
-    await this.verifyEvidence(avatarId, candidate, evidence, state);
-    const review: AvatarReviewRecord = {
-      avatarId,
-      candidateId,
-      rubric,
-      evidence,
-      total,
-    };
-    candidate.review = review;
-    if (input.manualApproved === true) candidate.manualApproved = true;
-
-    const evaluated = Object.values(state.candidates).filter(
-      (item) => item.quality.ok && item.review,
-    );
-    const highest = Math.max(...evaluated.map((item) => item.review!.total));
-    const incumbent = state.bestCandidateId
-      ? state.candidates[state.bestCandidateId]
-      : undefined;
-    state.bestCandidateId =
-      incumbent?.review?.total === highest
-        ? incumbent.candidateId
-        : evaluated.find((item) => item.review!.total === highest)!.candidateId;
-    // A tie keeps the incumbent only while it still shares the highest score;
-    // otherwise persisted creation order is the stable deterministic tie-break.
-    await this.writeState(avatarId, state);
-    return {
-      ...clone(review),
-      bestCandidateId: state.bestCandidateId,
-      manualApproved: candidate.manualApproved,
-    };
+    return this.store.runExclusive(avatarId, async () => {
+      const state = await this.readState(avatarId);
+      const candidate = this.requireCandidate(state, candidateId);
+      await this.validateStoredCandidate(avatarId, candidate);
+      await this.verifyEvidence(avatarId, candidate, evidence, state);
+      const review: AvatarReviewRecord = {
+        avatarId,
+        candidateId,
+        rubric,
+        evidence,
+        total,
+      };
+      const beforeReview = clone(state);
+      candidate.review = review;
+      if (input.manualApproved === true) candidate.manualApproved = true;
+      await this.refreshBestCandidate(avatarId, state);
+      await this.writeState(avatarId, state);
+      try {
+        // Evidence is external mutable content: verify all winners again after commit.
+        await this.refreshBestCandidate(avatarId, state);
+      } catch (error) {
+        await this.writeState(avatarId, beforeReview).catch(() => undefined);
+        throw error;
+      }
+      return {
+        ...clone(review),
+        bestCandidateId: state.bestCandidateId!,
+        manualApproved: candidate.manualApproved,
+      };
+    });
   }
 
   async getCandidate(
     avatarId: string,
     candidateId: string,
   ): Promise<AvatarCandidate> {
-    const state = await this.readState(avatarId);
-    return clone(this.requireCandidate(state, candidateId));
+    return this.store.runExclusive(avatarId, async () => {
+      const state = await this.readState(avatarId);
+      const candidate = this.requireCandidate(state, candidateId);
+      if (candidate.review || candidate.manualApproved) {
+        await this.validateStoredCandidate(avatarId, candidate);
+        await this.verifyEvidence(
+          avatarId,
+          candidate,
+          candidate.review?.evidence ?? [],
+          state,
+        );
+      }
+      return clone(candidate);
+    });
   }
 
   async getBestCandidate(
     avatarId: string,
   ): Promise<AvatarCandidate | undefined> {
-    const state = await this.readState(avatarId);
-    return state.bestCandidateId
-      ? clone(this.requireCandidate(state, state.bestCandidateId))
-      : undefined;
+    return this.store.runExclusive(avatarId, async () => {
+      const state = await this.readState(avatarId);
+      await this.refreshBestCandidate(avatarId, state);
+      await this.writeState(avatarId, state);
+      return state.bestCandidateId
+        ? clone(this.requireCandidate(state, state.bestCandidateId))
+        : undefined;
+    });
   }
 
   async validateRevision(input: {
     avatarId: string;
     revision: number;
   }): Promise<AvatarValidationResult> {
-    const loaded = await this.store.loadRevision(
-      input.avatarId,
-      input.revision,
-    );
-    const validation = this.validatePackage(loaded.avatar);
-    if (
-      !validation.ok ||
-      validation.hash !== loaded.hash ||
-      !validation.avatar ||
-      !validation.hash
-    ) {
-      throw qualityError("Revisão", validation.quality);
-    }
-    return validation;
+    return this.store.runExclusive(input.avatarId, async () => {
+      const loaded = await this.store.loadRevision(
+        input.avatarId,
+        input.revision,
+      );
+      const validation = this.validatePackage(loaded.avatar);
+      if (
+        !validation.ok ||
+        validation.hash !== loaded.hash ||
+        !validation.avatar ||
+        !validation.hash
+      ) {
+        throw qualityError("Revisão", validation.quality);
+      }
+      return validation;
+    });
   }
 
   async compareRevisions(input: {
@@ -749,51 +909,53 @@ export class AvatarService {
     changedPartIds: string[];
     quality: { left: AvatarQualityReport; right: AvatarQualityReport };
   }> {
-    const left = await this.store.loadRevision(
-      input.avatarId,
-      input.leftRevision,
-    );
-    const right = await this.store.loadRevision(
-      input.avatarId,
-      input.rightRevision,
-    );
-    const leftValidation = this.validatePackage(left.avatar);
-    const rightValidation = this.validatePackage(right.avatar);
-    if (
-      !leftValidation.ok ||
-      !rightValidation.ok ||
-      leftValidation.hash !== left.hash ||
-      rightValidation.hash !== right.hash
-    ) {
-      throw new Error(
-        "Não é possível comparar revisões com schema ou qualidade inválidos.",
+    return this.store.runExclusive(input.avatarId, async () => {
+      const left = await this.store.loadRevision(
+        input.avatarId,
+        input.leftRevision,
       );
-    }
-    const state = await this.readState(input.avatarId);
-    const leftQuality =
-      state.revisions[String(input.leftRevision)]?.quality ??
-      leftValidation.quality;
-    const rightQuality =
-      state.revisions[String(input.rightRevision)]?.quality ??
-      rightValidation.quality;
-    return {
-      avatarId: input.avatarId,
-      leftRevision: input.leftRevision,
-      rightRevision: input.rightRevision,
-      leftHash: left.hash,
-      rightHash: right.hash,
-      hashesEqual: left.hash === right.hash,
-      anchorsEqual: sameValue(
-        left.avatar.identity.anchors,
-        right.avatar.identity.anchors,
-      ),
-      identityAnchors: {
-        left: clone(left.avatar.identity.anchors),
-        right: clone(right.avatar.identity.anchors),
-      },
-      changedPartIds: changedPartIds(left.avatar, right.avatar),
-      quality: { left: clone(leftQuality), right: clone(rightQuality) },
-    };
+      const right = await this.store.loadRevision(
+        input.avatarId,
+        input.rightRevision,
+      );
+      const leftValidation = this.validatePackage(left.avatar);
+      const rightValidation = this.validatePackage(right.avatar);
+      if (
+        !leftValidation.ok ||
+        !rightValidation.ok ||
+        leftValidation.hash !== left.hash ||
+        rightValidation.hash !== right.hash
+      ) {
+        throw new Error(
+          "Não é possível comparar revisões com schema ou qualidade inválidos.",
+        );
+      }
+      const state = await this.readState(input.avatarId);
+      const leftQuality =
+        state.revisions[String(input.leftRevision)]?.quality ??
+        leftValidation.quality;
+      const rightQuality =
+        state.revisions[String(input.rightRevision)]?.quality ??
+        rightValidation.quality;
+      return {
+        avatarId: input.avatarId,
+        leftRevision: input.leftRevision,
+        rightRevision: input.rightRevision,
+        leftHash: left.hash,
+        rightHash: right.hash,
+        hashesEqual: left.hash === right.hash,
+        anchorsEqual: sameValue(
+          left.avatar.identity.anchors,
+          right.avatar.identity.anchors,
+        ),
+        identityAnchors: {
+          left: clone(left.avatar.identity.anchors),
+          right: clone(right.avatar.identity.anchors),
+        },
+        changedPartIds: changedPartIds(left.avatar, right.avatar),
+        quality: { left: clone(leftQuality), right: clone(rightQuality) },
+      };
+    });
   }
 
   async renderRevision(
@@ -806,111 +968,154 @@ export class AvatarService {
     }
     const controller = new AbortController();
     this.renderJobs.set(jobId, controller);
+    let rejectCancelled!: (reason: Error) => void;
+    const cancelled = new Promise<never>((_resolve, reject) => {
+      rejectCancelled = reject;
+    });
+    const onAbort = () =>
+      rejectCancelled(
+        controller.signal.reason ?? new Error(`Render ${jobId} cancelado.`),
+      );
+    controller.signal.addEventListener("abort", onAbort, { once: true });
     try {
-      const loaded = await this.store.loadRevision(
-        input.avatarId,
-        input.revision,
-      );
-      controller.signal.throwIfAborted();
-      const state = await this.readState(input.avatarId);
-      const revisionState = state.revisions[String(input.revision)];
-      if (!revisionState) {
-        throw new Error(`Revisão ${input.revision} não gerenciada.`);
-      }
-      const candidate = this.requireCandidate(state, revisionState.candidateId);
-      const avatar = parseAvatar(loaded.avatar);
-      const hash = avatarHash(avatar);
-      if (
-        !revisionState.quality.ok ||
-        hash !== loaded.hash ||
-        candidate.hash !== hash
-      ) {
-        throw new Error("Revisão persistida diverge do candidato aprovado.");
-      }
+      return await Promise.race([
+        this.store.runExclusive(input.avatarId, async () => {
+          controller.signal.throwIfAborted();
+          const loaded = await this.store.loadRevision(
+            input.avatarId,
+            input.revision,
+          );
+          controller.signal.throwIfAborted();
+          const state = await this.readState(input.avatarId);
+          const revisionState = state.revisions[String(input.revision)];
+          if (!revisionState) {
+            throw new Error(`Revisão ${input.revision} não gerenciada.`);
+          }
+          const candidate = this.requireCandidate(
+            state,
+            revisionState.candidateId,
+          );
+          const avatar = parseAvatar(loaded.avatar);
+          const hash = avatarHash(avatar);
+          if (
+            !revisionState.quality.ok ||
+            hash !== loaded.hash ||
+            candidate.hash !== hash
+          ) {
+            throw new Error(
+              "Revisão persistida diverge do candidato aprovado.",
+            );
+          }
 
-      const result = await this.renderer({
-        revisionDir: dirname(loaded.path),
-        engineDir: input.engineDir,
-        runner: input.runner,
-        sheets: input.sheets,
-        signal: controller.signal,
-      });
-      controller.signal.throwIfAborted();
-      const expectedSheets = new Set(input.sheets ?? AVATAR_PROOF_SHEETS);
-      if (
-        !result.complete ||
-        !Array.isArray(result.files) ||
-        expectedSheets.size === 0 ||
-        result.files.length !== expectedSheets.size
-      ) {
-        throw new Error(
-          "Renderer não retornou o conjunto íntegro de evidências.",
-        );
-      }
+          const result = await this.renderer({
+            revisionDir: dirname(loaded.path),
+            engineDir: input.engineDir,
+            runner: input.runner,
+            sheets: input.sheets,
+            signal: controller.signal,
+          });
+          controller.signal.throwIfAborted();
+          const expectedSheets = new Set(input.sheets ?? AVATAR_PROOF_SHEETS);
+          if (
+            !result.complete ||
+            !Array.isArray(result.files) ||
+            expectedSheets.size === 0 ||
+            result.files.length !== expectedSheets.size
+          ) {
+            throw new Error(
+              "Renderer não retornou o conjunto íntegro de evidências.",
+            );
+          }
 
-      const returnedSheets = new Set<AvatarProofSheet>();
-      const manifests: AvatarArtifactManifest[] = [];
-      for (const file of result.files) {
-        controller.signal.throwIfAborted();
-        if (
-          !expectedSheets.has(file.sheet) ||
-          returnedSheets.has(file.sheet) ||
-          !SHA256.test(file.hash) ||
-          !SHA256.test(file.contentHash) ||
-          result.hashes[file.sheet] !== file.hash
-        ) {
-          throw new Error(`Integridade inválida na evidência ${file.sheet}.`);
-        }
-        returnedSheets.add(file.sheet);
-        const artifact = await this.store.readRevisionArtifact(
-          input.avatarId,
-          input.revision,
-          file.png,
-        );
-        // The JPEG is inspection-only, but it must be contained as well.
-        await this.store.readRevisionArtifact(
-          input.avatarId,
-          input.revision,
-          file.jpeg,
-        );
-        const contentHash = createHash("sha256")
-          .update(artifact.contents)
-          .digest("hex");
-        if (contentHash !== file.contentHash) {
-          throw new Error(`Integridade de conteúdo inválida em ${file.sheet}.`);
-        }
-        manifests.push(
-          signedManifest({
-            avatarId: input.avatarId,
-            candidateId: candidate.candidateId,
-            revision: input.revision,
-            avatarHash: hash,
-            sheet: file.sheet,
-            path: artifact.path,
-            pixelHash: file.hash,
-            contentHash,
-          }),
-        );
-      }
+          const returnedSheets = new Set<AvatarProofSheet>();
+          const manifests: AvatarArtifactManifest[] = [];
+          for (const file of result.files) {
+            controller.signal.throwIfAborted();
+            if (
+              !expectedSheets.has(file.sheet) ||
+              returnedSheets.has(file.sheet) ||
+              !SHA256.test(file.hash) ||
+              !SHA256.test(file.contentHash) ||
+              result.hashes[file.sheet] !== file.hash
+            ) {
+              throw new Error(
+                `Integridade inválida na evidência ${file.sheet}.`,
+              );
+            }
+            returnedSheets.add(file.sheet);
+            const artifact = await this.store.readRevisionArtifact(
+              input.avatarId,
+              input.revision,
+              file.png,
+            );
+            // The JPEG is inspection-only, but it must be contained as well.
+            await this.store.readRevisionArtifact(
+              input.avatarId,
+              input.revision,
+              file.jpeg,
+            );
+            const contentHash = createHash("sha256")
+              .update(artifact.contents)
+              .digest("hex");
+            if (contentHash !== file.contentHash) {
+              throw new Error(
+                `Integridade de conteúdo inválida em ${file.sheet}.`,
+              );
+            }
+            manifests.push(
+              signedManifest({
+                avatarId: input.avatarId,
+                candidateId: candidate.candidateId,
+                revision: input.revision,
+                avatarHash: hash,
+                sheet: file.sheet,
+                path: artifact.path,
+                pixelHash: file.hash,
+                contentHash,
+              }),
+            );
+          }
 
-      const latest = await this.readState(input.avatarId);
-      const latestRevision = latest.revisions[String(input.revision)];
-      if (
-        !latestRevision ||
-        latestRevision.candidateId !== candidate.candidateId
-      ) {
-        throw new Error(
-          "A revisão mudou durante o render; manifest não salvo.",
-        );
-      }
-      const retained = (latestRevision.artifacts ?? []).filter(
-        (artifact) =>
-          isIntegralManifest(artifact) && !returnedSheets.has(artifact.sheet),
-      );
-      latestRevision.artifacts = [...retained, ...manifests];
-      await this.writeState(input.avatarId, latest);
-      return { jobId, ...result, manifest: clone(manifests) };
+          const latest = await this.readState(input.avatarId);
+          const latestRevision = latest.revisions[String(input.revision)];
+          if (
+            !latestRevision ||
+            latestRevision.candidateId !== candidate.candidateId
+          ) {
+            throw new Error(
+              "A revisão mudou durante o render; manifest não salvo.",
+            );
+          }
+          const previousArtifacts = latestRevision.artifacts ?? [];
+          const reviewed = latest.candidates[candidate.candidateId];
+          if (reviewed.review) {
+            reviewed.review.evidence = reviewed.review.evidence.map(
+              (reference) => {
+                const previous = previousArtifacts.find((artifact) =>
+                  samePath(artifact.path, reference),
+                );
+                const replacement = previous
+                  ? manifests.find(
+                      (artifact) => artifact.sheet === previous.sheet,
+                    )
+                  : undefined;
+                return replacement?.path ?? reference;
+              },
+            );
+          }
+          const retained = previousArtifacts.filter(
+            (artifact) =>
+              isIntegralManifest(artifact) &&
+              !returnedSheets.has(artifact.sheet),
+          );
+          latestRevision.artifacts = [...retained, ...manifests];
+          await this.writeState(input.avatarId, latest);
+          return { jobId, ...result, manifest: clone(manifests) };
+        }),
+        cancelled,
+      ]);
     } finally {
+      controller.signal.removeEventListener("abort", onAbort);
       if (this.renderJobs.get(jobId) === controller) {
         this.renderJobs.delete(jobId);
       }
@@ -1021,8 +1226,8 @@ export class AvatarService {
       avatarId,
       candidate.candidateId,
     );
-    // Candidates are immutable. Reuse their persisted gate report after proving
-    // that the exact approved bytes still produce the persisted hash.
+    // The package was quality-gated on creation. Reuse that structurally
+    // validated report after proving the immutable bytes and hash are unchanged.
     const avatar = parseAvatar(loaded.avatar);
     const hash = avatarHash(avatar);
     if (
@@ -1035,6 +1240,138 @@ export class AvatarService {
     return { ok: true, quality: clone(candidate.quality), avatar, hash };
   }
 
+  private async refreshBestCandidate(
+    avatarId: string,
+    state: AvatarServiceState,
+  ): Promise<void> {
+    const evaluated: AvatarCandidate[] = [];
+    for (const candidate of Object.values(state.candidates)) {
+      if (!candidate.quality.ok || !candidate.review) continue;
+      const validated = validateRubric(candidate.review.rubric);
+      candidate.review.rubric = validated.rubric;
+      candidate.review.total = validated.total;
+      candidate.review.evidence = validateEvidence(
+        validated.rubric,
+        candidate.review.evidence,
+      );
+      await this.validateStoredCandidate(avatarId, candidate);
+      await this.verifyEvidence(
+        avatarId,
+        candidate,
+        candidate.review.evidence,
+        state,
+      );
+      evaluated.push(candidate);
+    }
+    if (evaluated.length === 0) {
+      delete state.bestCandidateId;
+      return;
+    }
+    const highest = Math.max(...evaluated.map((item) => item.review!.total));
+    const incumbent = state.bestCandidateId
+      ? state.candidates[state.bestCandidateId]
+      : undefined;
+    state.bestCandidateId =
+      incumbent?.quality.ok && incumbent.review?.total === highest
+        ? incumbent.candidateId
+        : evaluated.find((item) => item.review!.total === highest)!.candidateId;
+    // Otherwise Object.values preserves creation order as the stable tie-break.
+  }
+
+  private parseRevisionIntent(
+    value: unknown,
+    avatarId: string,
+  ): RevisionIntent {
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !("version" in value) ||
+      value.version !== 1 ||
+      !("avatarId" in value) ||
+      value.avatarId !== avatarId ||
+      !("candidateId" in value) ||
+      typeof value.candidateId !== "string" ||
+      !JOB_ID.test(value.candidateId) ||
+      !("select" in value) ||
+      typeof value.select !== "boolean" ||
+      !("candidate" in value) ||
+      typeof value.candidate !== "object" ||
+      value.candidate === null
+    ) {
+      throw new Error("Journal de revisão do AvatarService inválido.");
+    }
+    const intent = clone(value as RevisionIntent);
+    if (
+      intent.candidate.avatarId !== avatarId ||
+      intent.candidate.candidateId !== intent.candidateId ||
+      !SHA256.test(intent.candidate.hash)
+    ) {
+      throw new Error("Vínculo inválido no journal de revisão.");
+    }
+    return intent;
+  }
+
+  private async commitRevision(
+    avatarId: string,
+    intent: RevisionIntent,
+  ): Promise<{
+    candidate: AvatarCandidate;
+    saved: SavedRevision;
+  }> {
+    await this.store.writeMetadata(avatarId, RECOVERY_KEY, intent);
+    try {
+      return await this.finishRevisionIntent(avatarId, intent);
+    } catch (error) {
+      // Preserve the original failure, but converge immediately when possible.
+      await this.recoverRevisionIntent(avatarId).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async finishRevisionIntent(
+    avatarId: string,
+    intent: RevisionIntent,
+  ): Promise<{
+    candidate: AvatarCandidate;
+    saved: SavedRevision;
+  }> {
+    const validation = await this.validateStoredCandidate(
+      avatarId,
+      intent.candidate,
+    );
+    if (intent.select) {
+      await this.store.selectCandidate(avatarId, intent.candidateId);
+    }
+    const saved = await this.store.saveRevision(avatarId, intent.candidateId);
+    const state = await this.readStateDirect(avatarId);
+    const candidate = clone(intent.candidate);
+    candidate.quality = validation.quality;
+    candidate.revision = saved.revision;
+    candidate.identityAnchors ??= clone(validation.avatar.identity.anchors);
+    state.candidates[intent.candidateId] = candidate;
+    const previous = state.revisions[String(saved.revision)];
+    const sameRevision = intent.previousRevision === saved.revision;
+    state.revisions[String(saved.revision)] = {
+      candidateId: intent.candidateId,
+      quality: validation.quality,
+      result: intent.result ?? (sameRevision ? previous?.result : undefined),
+      artifacts: sameRevision ? previous?.artifacts : undefined,
+    };
+    parseState(state, avatarId);
+    await this.writeState(avatarId, state);
+    await this.store.writeMetadata(avatarId, RECOVERY_KEY, null);
+    return { candidate: clone(candidate), saved };
+  }
+
+  private async recoverRevisionIntent(avatarId: string): Promise<void> {
+    const pending = await this.store.readMetadata(avatarId, RECOVERY_KEY);
+    if (pending === undefined || pending === null) return;
+    await this.finishRevisionIntent(
+      avatarId,
+      this.parseRevisionIntent(pending, avatarId),
+    );
+  }
+
   private requireCandidate(
     state: AvatarServiceState,
     candidateId: string,
@@ -1044,8 +1381,17 @@ export class AvatarService {
     return candidate;
   }
 
+  private async readStateDirect(avatarId: string): Promise<AvatarServiceState> {
+    return parseState(
+      await this.store.readMetadata(avatarId, METADATA_KEY),
+      avatarId,
+    );
+  }
+
   private async readState(avatarId: string): Promise<AvatarServiceState> {
-    return parseState(await this.store.readMetadata(avatarId, METADATA_KEY));
+    const state = await this.readStateDirect(avatarId);
+    await this.recoverRevisionIntent(avatarId);
+    return this.readStateDirect(avatarId);
   }
 
   private async writeState(

@@ -10,7 +10,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
   AVATAR_PROOF_SHEETS,
   type AvatarRenderOptions,
@@ -47,6 +47,7 @@ afterEach(() => {
 });
 
 class FakeAvatarStore {
+  private static readonly avatarQueues = new Map<string, Promise<void>>();
   readonly root = mkdtempSync(join(tmpdir(), "avatar-service-"));
   readonly candidates = new Map<string, StoredCandidate>();
   readonly revisions = new Map<string, StoredRevision>();
@@ -54,8 +55,57 @@ class FakeAvatarStore {
   private readonly selections = new Map<string, string>();
   private nextCandidate = 1;
 
-  constructor() {
-    roots.push(this.root);
+  constructor(trackForCleanup = true) {
+    if (trackForCleanup) roots.push(this.root);
+  }
+
+  seedFrom(template: FakeAvatarStore) {
+    const rebase = (path: string) =>
+      join(this.root, relative(template.root, path));
+    for (const [key, candidate] of template.candidates) {
+      this.candidates.set(key, {
+        ...structuredClone(candidate),
+        path: rebase(candidate.path),
+      });
+    }
+    for (const [key, revision] of template.revisions) {
+      this.revisions.set(key, {
+        ...structuredClone(revision),
+        path: rebase(revision.path),
+      });
+    }
+    for (const [key, value] of template.metadata) {
+      this.metadata.set(key, structuredClone(value));
+    }
+    for (const [key, value] of template.selections) {
+      this.selections.set(key, value);
+    }
+    this.nextCandidate = template.nextCandidate;
+  }
+
+  async runExclusive<T>(avatarId: string, operation: () => Promise<T>) {
+    const canonicalRoot = await realpath(this.root);
+    const lockRoot =
+      process.platform === "win32"
+        ? canonicalRoot.toLowerCase()
+        : canonicalRoot;
+    const key = `${lockRoot}\0${avatarId}`;
+    const previous = FakeAvatarStore.avatarQueues.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => current);
+    FakeAvatarStore.avatarQueues.set(key, tail);
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (FakeAvatarStore.avatarQueues.get(key) === tail) {
+        FakeAvatarStore.avatarQueues.delete(key);
+      }
+    }
   }
 
   private candidateKey(avatarId: string, candidateId: string) {
@@ -269,10 +319,44 @@ function setup(
 ) {
   const store = new FakeAvatarStore();
   const service = new AvatarService({ store, renderer });
+  storesByService.set(service, store);
   return { service, store };
 }
 
+const storesByService = new WeakMap<AvatarService, FakeAvatarStore>();
+let candidateTemplate:
+  | Promise<{
+      store: FakeAvatarStore;
+      created: Awaited<ReturnType<AvatarService["createCandidates"]>>;
+    }>
+  | undefined;
+
+function baseCandidates() {
+  candidateTemplate ??= (async () => {
+    const store = new FakeAvatarStore(false);
+    const service = new AvatarService({ store, renderer: renderResult });
+    const created = await service.createCandidates({
+      description: "Mascote de um SaaS financeiro",
+      packages: packages(),
+    });
+    return { store, created };
+  })();
+  return candidateTemplate;
+}
+
+afterAll(async () => {
+  if (!candidateTemplate) return;
+  const { store } = await candidateTemplate;
+  rmSync(store.root, { recursive: true, force: true });
+});
+
 async function createThree(service: AvatarService) {
+  const store = storesByService.get(service);
+  if (store) {
+    const template = await baseCandidates();
+    store.seedFrom(template.store);
+    return structuredClone(template.created);
+  }
   return service.createCandidates({
     description: "Mascote de um SaaS financeiro",
     packages: packages(),
@@ -1100,12 +1184,13 @@ describe("AvatarService", { timeout: 60_000 }, () => {
       runner: { worker: "/worker", browser: "/browser" },
     };
     const first = service.renderRevision({ ...common, jobId: "job-one" });
+    await vi.waitFor(() => expect(renderers).toHaveLength(1));
     const second = service.renderRevision({ ...common, jobId: "job-two" });
     const firstRejection = expect(first).rejects.toThrow(/cancel/i);
-    await vi.waitFor(() => expect(renderers).toHaveLength(2));
 
     expect(service.cancel("job-one")).toBe(true);
     await firstRejection;
+    await vi.waitFor(() => expect(renderers).toHaveLength(2));
     expect(renderers[0].options.signal.aborted).toBe(true);
     expect(renderers[1].options.signal.aborted).toBe(false);
 
