@@ -7,10 +7,10 @@ import {
   reviseAvatar,
   type AvatarPackage,
   type AvatarPart,
-  type AvatarPartState,
   type AvatarPrimitive,
 } from "./avatar";
 import {
+  evaluatePart,
   renderAvatarPixels,
   type AvatarPixels,
   type AvatarRenderState,
@@ -207,13 +207,25 @@ function primitiveBounds(primitive: AvatarPrimitive): PrimitiveBounds {
         right: primitive.x + primitive.length,
         bottom: primitive.y + 1,
       };
-    case "matrix":
-      return {
-        left: primitive.x,
-        top: primitive.y,
-        right: primitive.x + primitive.rows[0].length,
-        bottom: primitive.y + primitive.rows.length,
-      };
+    case "matrix": {
+      let left = Infinity;
+      let top = Infinity;
+      let right = -Infinity;
+      let bottom = -Infinity;
+      for (const [row, cells] of primitive.rows.entries()) {
+        for (const [column, color] of cells.entries()) {
+          if (color === null) continue;
+          left = Math.min(left, primitive.x + column);
+          top = Math.min(top, primitive.y + row);
+          right = Math.max(right, primitive.x + column + 1);
+          bottom = Math.max(bottom, primitive.y + row + 1);
+        }
+      }
+      if (left === Infinity) {
+        return { left: 0, top: 0, right: 0, bottom: 0 };
+      }
+      return { left, top, right, bottom };
+    }
     case "polygon":
       return {
         left: Math.min(...primitive.points.map((point) => point.x)),
@@ -238,6 +250,7 @@ function boundsFindings(avatar: AvatarPackage): AvatarFinding[] {
   const checked = new Set<AvatarPrimitive>();
   const check = (partId: string, primitives: AvatarPrimitive[]) => {
     for (const primitive of primitives) {
+      if (!canBeVisible(primitive)) continue;
       if (checked.has(primitive)) continue;
       checked.add(primitive);
       if (outsideCanvas(primitiveBounds(primitive), avatar.canvas.full)) {
@@ -262,97 +275,13 @@ function boundsFindings(avatar: AvatarPackage): AvatarFinding[] {
   return findings;
 }
 
-function translatePrimitive(
-  primitive: AvatarPrimitive,
-  dx: number,
-  dy: number,
-): AvatarPrimitive {
-  if (primitive.type === "polygon") {
-    return {
-      ...primitive,
-      points: primitive.points.map((point) => ({
-        x: point.x + dx,
-        y: point.y + dy,
-      })),
-    };
-  }
-  return { ...primitive, x: primitive.x + dx, y: primitive.y + dy };
-}
-
-function applyState(
-  evaluation: {
-    primitives: AvatarPrimitive[];
-    hidden: boolean;
-    dx: number;
-    dy: number;
-  },
-  override: AvatarPartState | undefined,
-): void {
-  if (!override) return;
-  if (override.primitives) evaluation.primitives = override.primitives;
-  if (override.hidden !== undefined) evaluation.hidden = override.hidden;
-  evaluation.dx += override.dx ?? 0;
-  evaluation.dy += override.dy ?? 0;
-}
-
-function breathingOffset(partId: string, frame: number): number {
-  if (partId === "body") return 0;
-  const delay =
-    partId === "hair" || partId.startsWith("hair.")
-      ? 2
-      : partId === "accessory" || partId.startsWith("accessory.")
-        ? 4
-        : 0;
-  return BREATHING_CYCLE[Math.max(0, Math.trunc(frame) - delay) % 16];
-}
-
-// This mirrors the approved rasterizer's state resolution, without drawing pixels.
 function evaluatedPrimitives(
   avatar: AvatarPackage,
   part: AvatarPart,
   state: AvatarRenderState,
 ): AvatarPrimitive[] {
-  const evaluation = {
-    primitives: part.primitives,
-    hidden: false,
-    dx: 0,
-    dy: 0,
-  };
-  applyState(evaluation, avatar.poses[state.pose][part.id]);
-  applyState(evaluation, avatar.expressions[state.expression][part.id]);
-  applyState(evaluation, avatar.mouths[state.mouth][part.id]);
-
-  if (state.blink !== 0) {
-    if (part.id === "eyes") {
-      if (state.blink === 1) {
-        evaluation.hidden = true;
-      } else {
-        evaluation.primitives = evaluation.primitives.map((primitive) =>
-          primitive.type === "rect" && primitive.height > 2
-            ? {
-                ...primitive,
-                y: primitive.y + 1,
-                height: primitive.height - 2,
-              }
-            : translatePrimitive(primitive, 0, 1),
-        );
-      }
-    } else if (part.id === "pupils") {
-      evaluation.hidden = true;
-    } else if (part.id === "lids") {
-      evaluation.primitives = evaluation.primitives.map((primitive) =>
-        translatePrimitive(primitive, 0, state.blink * 4),
-      );
-    }
-  }
-  evaluation.dy += breathingOffset(part.id, state.frame);
-  if (evaluation.hidden) return [];
-
-  const dx = Math.round(evaluation.dx);
-  const dy = Math.round(evaluation.dy);
-  return evaluation.primitives.map((primitive) =>
-    translatePrimitive(primitive, dx, dy),
-  );
+  const evaluation = evaluatePart(avatar, state, part);
+  return evaluation.hidden ? [] : evaluation.primitives;
 }
 
 function canBeVisible(primitive: AvatarPrimitive): boolean {
@@ -424,21 +353,51 @@ function silhouetteStats(pixels: AvatarPixels) {
   return { count, maximumY };
 }
 
-function renderedMaximumY(pixels: AvatarPixels): number {
-  for (let y = pixels.height - 1; y >= 0; y -= 1) {
-    for (let x = 0; x < pixels.width; x += 1) {
-      if (pixels.data[(y * pixels.width + x) * 4 + 3] !== 0) return y;
-    }
-  }
-  return -1;
+function emptyStateGroup<T extends string>(values: readonly T[]) {
+  return Object.fromEntries(values.map((value) => [value, {}]));
 }
 
 function baselineFindings(avatar: AvatarPackage): AvatarFinding[] {
+  // Render already-evaluated primitives without applying their states twice.
+  const rasterAvatar: AvatarPackage = {
+    ...avatar,
+    parts: [{ id: "body", primitives: [] }],
+    poses: emptyStateGroup(AVATAR_POSES) as AvatarPackage["poses"],
+    expressions: emptyStateGroup(
+      AVATAR_EXPRESSIONS,
+    ) as AvatarPackage["expressions"],
+    mouths: emptyStateGroup(AVATAR_MOUTHS) as AvatarPackage["mouths"],
+  };
+  const cache = new Map<string, { count: number; maximumY: number }>();
+  const rasterStats = (primitive: AvatarPrimitive) => {
+    const key = JSON.stringify(primitive);
+    const cached = cache.get(key);
+    if (cached) return cached;
+
+    rasterAvatar.parts[0].primitives = [primitive];
+    const pixels = renderAvatarPixels(rasterAvatar, NEUTRAL_STATE);
+    let count = 0;
+    let maximumY = -1;
+    for (let offset = 0; offset < pixels.data.length; offset += 4) {
+      if (pixels.data[offset + 3] === 0) continue;
+      count += 1;
+      maximumY = Math.max(maximumY, Math.floor(offset / 4 / pixels.width));
+    }
+    const stats = { count, maximumY };
+    cache.set(key, stats);
+    return stats;
+  };
+
   for (const state of composedStates()) {
-    // The schema has no contact-part role, so use the rendered silhouette. Its
-    // greatest opaque y ignores aerial hair/accessories above the contact row.
-    const pixels = renderAvatarPixels(avatar, state);
-    const maximumY = renderedMaximumY(pixels);
+    let maximumY = -1;
+    for (const part of avatar.parts) {
+      for (const primitive of evaluatedPrimitives(avatar, part, state)) {
+        const stats = rasterStats(primitive);
+        // A one-pixel primitive is a distractor, not a ground-contact shape.
+        // Sparse pixels from a larger polygon retain their primitive provenance.
+        if (stats.count > 1) maximumY = Math.max(maximumY, stats.maximumY);
+      }
+    }
     if (maximumY + 1 !== avatar.canvas.baseline) {
       return [
         {
@@ -486,6 +445,14 @@ function masksTouch(accessory: AvatarPixels, parent: AvatarPixels): boolean {
   return false;
 }
 
+function accessoryIsHidden(
+  avatar: AvatarPackage,
+  part: AvatarPart,
+  state: AvatarRenderState,
+): boolean {
+  return evaluatePart(avatar, state, part).hidden;
+}
+
 function accessoryFindings(avatar: AvatarPackage): AvatarFinding[] {
   const findings: AvatarFinding[] = [];
   const reported = new Set<string>();
@@ -517,6 +484,7 @@ function accessoryFindings(avatar: AvatarPackage): AvatarFinding[] {
   for (const state of composedStates()) {
     for (const part of accessories) {
       if (reported.has(part.id) || !part.parent) continue;
+      if (accessoryIsHidden(avatar, part, state)) continue;
       const parent = avatar.parts.find(
         (candidate) => candidate.id === part.parent,
       );

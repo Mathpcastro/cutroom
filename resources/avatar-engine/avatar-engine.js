@@ -186,7 +186,7 @@ function breathingOffset(partId, frame) {
   return BREATHING_CYCLE[index];
 }
 
-function evaluatePart(avatar, state, part) {
+export function evaluatePart(avatar, state, part) {
   const evaluation = {
     primitives: part.primitives,
     hidden: false,

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AVATAR_EXPRESSIONS,
   AVATAR_MOUTHS,
@@ -10,6 +10,26 @@ import {
 import { validateAvatarPackage } from "../src/shared/avatar-quality";
 import { renderAvatarPixels } from "../resources/avatar-engine/avatar-engine.js";
 import { avatarFixture } from "./fixtures/avatar-fixture";
+
+const renderCalls = vi.hoisted(() => ({ count: 0 }));
+vi.mock(
+  "../resources/avatar-engine/avatar-engine.js",
+  async (importOriginal) => {
+    const engine =
+      await importOriginal<
+        typeof import("../resources/avatar-engine/avatar-engine.js")
+      >();
+    return {
+      ...engine,
+      renderAvatarPixels: (
+        ...args: Parameters<typeof engine.renderAvatarPixels>
+      ) => {
+        renderCalls.count += 1;
+        return engine.renderAvatarPixels(...args);
+      },
+    };
+  },
+);
 
 const neutralState = {
   pose: "neutral",
@@ -84,9 +104,36 @@ describe("deterministic avatar quality gates", () => {
       "mouthSheet",
       "motionLoop",
     ]);
+    expect(report.hashes).toEqual({
+      neutral:
+        "1757ab2b79b22636bf82d28b82be13dc588ea6c07ed224dca2e8a2a7f9b3d324",
+      silhouette:
+        "8f97bc73b7e3c7702037fb9697b5cb022523fdf1798ed77174fce254de0464dd",
+      grayscale:
+        "e97a6926d2b4022686229a34ca09afb5d17c9b4795d0ae3eee1d95419301209c",
+      backgroundLight:
+        "4597813ea4faaaee3b0f0cc21d41782288a29f4fc22fd325b77b794bebf02fe4",
+      backgroundDark:
+        "a5f08ae109ffa07e71623f50853214fad96d2c72bb388f9b58ef5d69e831725d",
+      expressionSheet:
+        "9c0f22c671655162ed9512debadbbeb2725a66e9c7b0dd0287f04ce29beda81c",
+      mouthSheet:
+        "68dcaa8622f19b03eebcdb1860cdaeb886fd222287d9e4a3081814f72bd9b31a",
+      motionLoop:
+        "312996dcc85c6d46fe1313e15e9bb663432dd477ad785dee196195ddfb8a67da",
+    });
     expect(report.hashes.neutral).toBe(expectedNeutral);
     expect(new Set(Object.values(report.hashes)).size).toBe(8);
     expect(validateAvatarPackage(avatar).hashes).toEqual(report.hashes);
+  });
+
+  it("deduplicates equivalent geometry across all composed states", () => {
+    renderCalls.count = 0;
+
+    const report = validateAvatarPackage(avatarFixture());
+
+    expect(report.ok).toBe(true);
+    expect(renderCalls.count).toBeLessThan(1000);
   });
 
   it("rejects non-integer geometry as an invalid schema", () => {
@@ -139,6 +186,18 @@ describe("deterministic avatar quality gates", () => {
     expectFinding(avatar, "VISUAL_CLIPPING");
   });
 
+  it("ignores null matrix cells when checking composed clipping", () => {
+    const avatar = avatarFixture();
+    part(avatar, "hair.front").primitives = [
+      { type: "matrix", x: 94, y: 12, rows: [["hair", null]] },
+    ];
+    avatar.poses.pointing["hair.front"] = { dx: 1 };
+
+    const report = validateAvatarPackage(avatar);
+    expect(report.ok).toBe(true);
+    expect(report.findings).toEqual([]);
+  });
+
   it("rejects a hierarchy cycle with a stable code", () => {
     const avatar = avatarFixture();
     part(avatar, "body").parent = "hand.right";
@@ -186,6 +245,34 @@ describe("deterministic avatar quality gates", () => {
     ).toContain("y=86");
   });
 
+  it("ignores an isolated one-pixel primitive when measuring contact", () => {
+    const avatar = avatarFixture();
+    const body = part(avatar, "body");
+    body.primitives[1] = {
+      type: "polygon",
+      points: [
+        { x: 27, y: 76 },
+        { x: 28, y: 76 },
+        { x: 48, y: 90 },
+      ],
+      color: "shoe",
+    };
+    body.primitives.push({
+      type: "rect",
+      x: 48,
+      y: 89,
+      width: 1,
+      height: 1,
+      color: "shoe",
+    });
+
+    const report = expectFinding(avatar, "BASELINE_FLOATING");
+    expect(
+      report.findings.find((finding) => finding.code === "BASELINE_FLOATING")
+        ?.message,
+    ).toContain("y=86");
+  });
+
   it("rejects an empty neutral silhouette", () => {
     const avatar = avatarFixture();
     clearOverrides(avatar);
@@ -217,6 +304,22 @@ describe("deterministic avatar quality gates", () => {
   it("rejects an accessory detached only in a non-neutral pose", () => {
     const avatar = avatarFixture();
     avatar.poses.celebrating.accessory = { dx: 30 };
+
+    expectFinding(avatar, "ACCESSORY_DETACHED");
+  });
+
+  it("ignores an accessory deliberately hidden in a composed state", () => {
+    const avatar = avatarFixture();
+    avatar.poses.pointing.accessory = { hidden: true };
+
+    const report = validateAvatarPackage(avatar);
+    expect(report.ok).toBe(true);
+    expect(report.findings).toEqual([]);
+  });
+
+  it("rejects a visible accessory when its parent is hidden", () => {
+    const avatar = avatarFixture();
+    avatar.poses.pointing.body = { hidden: true };
 
     expectFinding(avatar, "ACCESSORY_DETACHED");
   });

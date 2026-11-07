@@ -1,6 +1,9 @@
 import type {
   AvatarExpression,
+  AvatarPackage,
+  AvatarPart,
   AvatarPose,
+  AvatarPrimitive,
   MouthShape,
 } from "../../src/shared/avatar";
 
@@ -17,6 +20,17 @@ export interface AvatarPixels {
   height: number;
   data: Uint8ClampedArray;
 }
+
+export interface AvatarPartEvaluation {
+  hidden: boolean;
+  primitives: AvatarPrimitive[];
+}
+
+export function evaluatePart(
+  avatar: AvatarPackage,
+  state: AvatarRenderState,
+  part: AvatarPart,
+): AvatarPartEvaluation;
 
 export function renderAvatarPixels(
   avatar: unknown,
