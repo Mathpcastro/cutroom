@@ -76,6 +76,12 @@ import { motionBrowser, motionPackageInfo } from "./core/motion-package";
 import { createRequire } from "node:module";
 import { localSpeech, localVoices } from "./core/local-voice";
 import type { MotionAssets } from "./core/motion-document";
+import { AvatarStore } from "./core/avatar-store";
+import { AvatarService } from "./core/avatar-service";
+import { renderAvatarRevision } from "./core/avatar-render";
+import { AvatarVision } from "./core/avatar-vision";
+import { createAvatarToolDispatcher } from "./core/avatar-mcp";
+import { isAvatarTool } from "./core/avatar-tool-defs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -114,6 +120,7 @@ let filmStudio: FilmStudio;
 let publisher: Publisher;
 let secretStore: SecretStore;
 let brandStore: BrandStore;
+let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
 /** Host images for scenes: the brand logo as data-asset="logo". */
 async function motionAssets(): Promise<MotionAssets> {
   const brand = await brandStore?.get();
@@ -196,8 +203,12 @@ const isCanvas = (path: string) =>
 async function requireTranscription(signal?: AbortSignal) {
   // Narrated canvases caption the voice track, which already has word timings.
   if (
-    (state.project.audio ?? []).some((t) => t.kind === "voice" && t.words?.length) &&
-    state.project.media.every((media) => !media.hasAudio || isCanvas(media.path))
+    (state.project.audio ?? []).some(
+      (t) => t.kind === "voice" && t.words?.length,
+    ) &&
+    state.project.media.every(
+      (media) => !media.hasAudio || isCanvas(media.path),
+    )
   )
     return;
   const missing = state.project.media.some(
@@ -717,6 +728,7 @@ async function executeTool(
   name: string,
   args: Record<string, unknown>,
 ): Promise<unknown> {
+  if (isAvatarTool(name)) return dispatchAvatarTool(name, args);
   if (name === "get_project") return structuredClone(state.project);
   if (name === "edit_project") {
     await executeCommand(args);
@@ -728,15 +740,19 @@ async function executeTool(
   }
   if (name === "job_status")
     return {
-      jobs: state.jobs.slice(-6).map(({ kind, label, progress, status, error, output, finishedAt }) => ({
-        kind,
-        label,
-        progress: Math.round(progress),
-        status,
-        ...(error ? { error } : {}),
-        ...(output ? { output } : {}),
-        ...(finishedAt ? { finishedAt } : {}),
-      })),
+      jobs: state.jobs
+        .slice(-6)
+        .map(
+          ({ kind, label, progress, status, error, output, finishedAt }) => ({
+            kind,
+            label,
+            progress: Math.round(progress),
+            status,
+            ...(error ? { error } : {}),
+            ...(output ? { output } : {}),
+            ...(finishedAt ? { finishedAt } : {}),
+          }),
+        ),
     };
   if (name === "export_video" && args.destination === "videos") {
     // MCP clients cut tool calls at ~60 s; a long export keeps running and job_status reports it.
@@ -793,21 +809,46 @@ async function executeTool(
     instagram_accounts: () => publisher.settings(),
     schedule_reel: (a) => publisher.schedule(a),
     schedule_reels_daily: (a) => publisher.scheduleSeries(a),
-    cancel_scheduled_reel: (a) => publisher.cancelScheduled(z.object({ id: z.string().max(40) }).strict().parse(a).id),
+    cancel_scheduled_reel: (a) =>
+      publisher.cancelScheduled(
+        z
+          .object({ id: z.string().max(40) })
+          .strict()
+          .parse(a).id,
+      ),
     open_studio: (a) => {
-      const { tab } = z.object({ tab: z.enum(["start", "brand", "voices", "films", "publish"]) }).strict().parse(a);
-      if (!window || window.isDestroyed()) throw new Error("A janela do CutRoom está fechada.");
+      const { tab } = z
+        .object({
+          tab: z.enum(["start", "brand", "voices", "films", "publish"]),
+        })
+        .strict()
+        .parse(a);
+      if (!window || window.isDestroyed())
+        throw new Error("A janela do CutRoom está fechada.");
       window.webContents.send("editor:event", { type: "studio", tab });
       if (window.isMinimized()) window.restore();
       window.focus();
-      return { opened: tab, message: "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar." };
+      return {
+        opened: tab,
+        message:
+          "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar.",
+      };
     },
     publish_reel: async (a) => {
       // Publishing waits for Meta to process the video (can pass 60 s): answer within 40 s, keep going.
       const task = publisher.publish(a);
       task.catch(() => undefined);
-      const done = await Promise.race([task.then((r) => ({ status: "published", ...r })), new Promise<undefined>((r) => setTimeout(() => r(undefined), 40_000))]);
-      return done ?? { status: "publishing", message: "O Reels está sendo publicado. Consulte job_status (job publish) em 30–60 s; não publique de novo." };
+      const done = await Promise.race([
+        task.then((r) => ({ status: "published", ...r })),
+        new Promise<undefined>((r) => setTimeout(() => r(undefined), 40_000)),
+      ]);
+      return (
+        done ?? {
+          status: "publishing",
+          message:
+            "O Reels está sendo publicado. Consulte job_status (job publish) em 30–60 s; não publique de novo.",
+        }
+      );
     },
     film_stills: (a) => filmStudio.stills(a),
     render_film: (a) => filmStudio.render(a),
@@ -1063,7 +1104,11 @@ async function request(method: string, params?: unknown): Promise<unknown> {
     case "listVoices":
       return studio.listVoices(
         z
-          .object({ provider: z.enum(["elevenlabs", "openai", "kokoro", "local"]).optional() })
+          .object({
+            provider: z
+              .enum(["elevenlabs", "openai", "kokoro", "local"])
+              .optional(),
+          })
           .parse(params ?? {}).provider,
       );
     case "listFormats":
@@ -1071,13 +1116,17 @@ async function request(method: string, params?: unknown): Promise<unknown> {
     case "getPublishSettings":
       return publisher.settings();
     case "setComposioKey": {
-      const { key } = z.object({ key: z.string().max(500).optional() }).parse(params ?? {});
+      const { key } = z
+        .object({ key: z.string().max(500).optional() })
+        .parse(params ?? {});
       return publisher.setKey(key);
     }
     case "refreshInstagram":
       return publisher.refresh();
     case "setDefaultInstagram":
-      return publisher.setDefault(z.object({ id: z.string().max(100) }).parse(params).id);
+      return publisher.setDefault(
+        z.object({ id: z.string().max(100) }).parse(params).id,
+      );
     case "listVideos":
       return { videos: await publisher.videos() };
     case "publishReel":
@@ -1087,25 +1136,46 @@ async function request(method: string, params?: unknown): Promise<unknown> {
     case "scheduleReelSeries":
       return publisher.scheduleSeries(params);
     case "cancelScheduledReel":
-      return publisher.cancelScheduled(z.object({ id: z.string().max(40) }).parse(params).id);
+      return publisher.cancelScheduled(
+        z.object({ id: z.string().max(40) }).parse(params).id,
+      );
     case "publishLateReel":
-      return publisher.publishLate(z.object({ id: z.string().max(40) }).parse(params).id);
+      return publisher.publishLate(
+        z.object({ id: z.string().max(40) }).parse(params).id,
+      );
     case "listFilms":
       return filmStudio.list();
     case "openFilmFolder": {
-      const { id } = z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) }).parse(params);
-      await shell.openPath(join(app.getPath("videos"), "CutRoom", "filmes", id));
+      const { id } = z
+        .object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) })
+        .parse(params);
+      await shell.openPath(
+        join(app.getPath("videos"), "CutRoom", "filmes", id),
+      );
       return { ok: true };
     }
     case "latestFilmRender": {
       // Newest MP4 rendered from this film (Videos/CutRoom/<slug>-<date>.mp4), playable in the Studio.
-      const { id } = z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) }).parse(params);
+      const { id } = z
+        .object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) })
+        .parse(params);
       const folder = join(app.getPath("videos"), "CutRoom");
       const films = (await filmStudio.list()).films;
       const film = films.find((f) => f.id === id);
       if (!film) throw new Error("Filme não encontrado.");
-      const prefix = film.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
-      const names = (await readdir(folder).catch(() => [] as string[])).filter((n) => n.startsWith(`${prefix}-`) && n.endsWith(".mp4") && !n.includes(".partial"));
+      const prefix = film.name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60);
+      const names = (await readdir(folder).catch(() => [] as string[])).filter(
+        (n) =>
+          n.startsWith(`${prefix}-`) &&
+          n.endsWith(".mp4") &&
+          !n.includes(".partial"),
+      );
       if (!names.length) return { path: null };
       names.sort();
       const path = await realpath(join(folder, names[names.length - 1]));
@@ -1113,16 +1183,21 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return { path };
     }
     case "renderFilm":
-      return filmStudio.render({ film: z.object({ id: z.string() }).parse(params).id });
+      return filmStudio.render({
+        film: z.object({ id: z.string() }).parse(params).id,
+      });
     case "revealVideo": {
       const { path } = z.object({ path: z.string() }).parse(params);
       const base = resolve(join(app.getPath("videos"), "CutRoom"));
-      if (!resolve(path).startsWith(base)) throw new Error("O vídeo precisa estar em Vídeos/CutRoom.");
+      if (!resolve(path).startsWith(base))
+        throw new Error("O vídeo precisa estar em Vídeos/CutRoom.");
       shell.showItemInFolder(resolve(path));
       return { ok: true };
     }
     case "installAgentSkill":
-      return { files: await installSkill(app.getPath("home"), app.getVersion()) };
+      return {
+        files: await installSkill(app.getPath("home"), app.getVersion()),
+      };
     case "getBrand":
       return { brand: (await brandStore.get()) ?? null };
     case "saveBrand":
@@ -1411,7 +1486,8 @@ app.on("second-instance", (_event, argv) => {
     if (window.isMinimized()) window.restore();
     if (!argv.includes(SCHEDULE_FLAG)) window.focus();
   }
-  if (argv.includes(SCHEDULE_FLAG)) void publisher?.runDue().then(emit, () => undefined);
+  if (argv.includes(SCHEDULE_FLAG))
+    void publisher?.runDue().then(emit, () => undefined);
 });
 app.whenReady().then(async () => {
   userDir = process.env.CUTROOM_USER_DATA || app.getPath("userData");
@@ -1450,10 +1526,16 @@ app.whenReady().then(async () => {
     kokoroReady: () => packages.kokoroInstalled(),
     ...(["win32", "darwin"].includes(process.platform)
       ? {
-          localSpeech: async (text: string, voice: string | undefined, signal: AbortSignal) => {
+          localSpeech: async (
+            text: string,
+            voice: string | undefined,
+            signal: AbortSignal,
+          ) => {
             const dir = join(cacheDir, "voice");
             await mkdir(dir, { recursive: true });
-            return localSpeech(text, voice, signal, dir, (path) => probeAudio(path, signal));
+            return localSpeech(text, voice, signal, dir, (path) =>
+              probeAudio(path, signal),
+            );
           },
           localVoices,
         }
@@ -1471,8 +1553,22 @@ app.whenReady().then(async () => {
   });
   // Reels autopilot: due posts go out every minute while CutRoom is open (and right away when the
   // operating system opened it for a scheduled post).
-  setInterval(() => void publisher.runDue().then((r) => r.length && emit(), () => undefined), 60_000);
-  setTimeout(() => void publisher.runDue().then((r) => r.length && emit(), () => undefined), process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000);
+  setInterval(
+    () =>
+      void publisher.runDue().then(
+        (r) => r.length && emit(),
+        () => undefined,
+      ),
+    60_000,
+  );
+  setTimeout(
+    () =>
+      void publisher.runDue().then(
+        (r) => r.length && emit(),
+        () => undefined,
+      ),
+    process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000,
+  );
   filmStudio = new FilmStudio(
     {
       films: new Films(
@@ -1485,13 +1581,48 @@ app.whenReady().then(async () => {
       videosDir: join(app.getPath("videos"), "CutRoom"),
       runner: async () => {
         if (!(await motionPackageInfo(packages.root)).installed)
-          throw new Error("Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.");
-        return { worker: join(here, "render-motion.js"), browser: motionBrowser(packages.root) };
+          throw new Error(
+            "Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.",
+          );
+        return {
+          worker: join(here, "render-motion.js"),
+          browser: motionBrowser(packages.root),
+        };
       },
       job: (kind, label, run) => job(kind, label, run),
     },
     studio,
   );
+  const avatarStore = new AvatarStore(join(userDir, "avatars"));
+  const avatarService = new AvatarService({
+    store: avatarStore,
+    renderer: renderAvatarRevision,
+  });
+  const avatarVision = new AvatarVision({
+    store: avatarStore,
+    provider: (providerId) =>
+      codex instanceof ApiAgentClient
+        ? codex.avatarVisionProvider(providerId)
+        : undefined,
+  });
+  dispatchAvatarTool = createAvatarToolDispatcher({
+    service: avatarService,
+    store: avatarStore,
+    vision: avatarVision,
+    render: {
+      engineDir: join(resources, "avatar-engine"),
+      runner: async () => {
+        if (!(await motionPackageInfo(packages.root)).installed)
+          throw new Error(
+            "Instale Efeitos e animações na aba Pacotes do CutRoom: os avatares usam esse renderizador.",
+          );
+        return {
+          worker: join(here, "render-motion.js"),
+          browser: motionBrowser(packages.root),
+        };
+      },
+    },
+  });
   state.packages = await packages.list();
   try {
     const preferences = JSON.parse(

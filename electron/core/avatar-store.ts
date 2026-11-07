@@ -1,5 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
+  lstat,
   mkdir,
   open,
   readFile,
@@ -9,7 +10,14 @@ import {
   rm,
   rmdir,
 } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import {
+  dirname,
+  extname,
+  isAbsolute,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import {
   avatarHash,
   canonicalAvatar,
@@ -28,6 +36,54 @@ interface Approval extends Selection {
 
 const ID_PATTERN = /^[A-Za-z][A-Za-z0-9._-]{0,63}$/;
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
+export const AVATAR_REFERENCE_MAX_BYTES = 10 * 1024 * 1024;
+
+export interface AvatarReferenceAsset {
+  avatarId: string;
+  assetId: string;
+  path: string;
+  mimeType: "image/png" | "image/jpeg" | "image/webp";
+  size: number;
+  contentHash: string;
+}
+
+export interface AvatarReferenceContents extends AvatarReferenceAsset {
+  contents: Buffer;
+}
+
+type ReferenceFormat = Pick<AvatarReferenceAsset, "mimeType"> & {
+  format: "png" | "jpeg" | "webp";
+  extension: ".png" | ".jpg" | ".webp";
+};
+
+function referenceFormat(extension: string, contents: Buffer): ReferenceFormat {
+  const png =
+    contents.length >= 8 &&
+    contents
+      .subarray(0, 8)
+      .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const jpeg =
+    contents.length >= 3 &&
+    contents[0] === 0xff &&
+    contents[1] === 0xd8 &&
+    contents[2] === 0xff;
+  const webp =
+    contents.length >= 12 &&
+    contents.subarray(0, 4).toString("ascii") === "RIFF" &&
+    contents.subarray(8, 12).toString("ascii") === "WEBP";
+  const detected = png ? "png" : jpeg ? "jpeg" : webp ? "webp" : undefined;
+  if (!detected) throw new Error("Assinatura de imagem inválida.");
+  const expected =
+    extension === ".png" ? "png" : extension === ".webp" ? "webp" : "jpeg";
+  if (detected !== expected) {
+    throw new Error("Extensão e assinatura da referência não são coerentes.");
+  }
+  return detected === "png"
+    ? { format: "png", extension: ".png", mimeType: "image/png" }
+    : detected === "jpeg"
+      ? { format: "jpeg", extension: ".jpg", mimeType: "image/jpeg" }
+      : { format: "webp", extension: ".webp", mimeType: "image/webp" };
+}
 
 function assertId(value: unknown, label: string): string {
   if (typeof value !== "string" || !ID_PATTERN.test(value)) {
@@ -358,6 +414,138 @@ export class AvatarStore {
       throw new Error("Artefato fora da revisão aprovada do avatar.");
     }
     return { path: actual, contents: await readFile(actual) };
+  }
+
+  async importReference(input: {
+    avatarId: string;
+    path: string;
+  }): Promise<AvatarReferenceAsset> {
+    const avatarId = assertId(input.avatarId, "Avatar ID");
+    return this.runExclusive(avatarId, async () => {
+      if (typeof input.path !== "string" || !isAbsolute(input.path)) {
+        throw new Error("A referência deve usar um caminho absoluto.");
+      }
+      const extension = extname(input.path).toLowerCase();
+      if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
+        throw new Error("Use uma referência PNG, JPEG ou WebP.");
+      }
+      const sourceInfo = await lstat(input.path);
+      if (!sourceInfo.isFile() || sourceInfo.isSymbolicLink()) {
+        throw new Error("A referência deve ser um arquivo local regular.");
+      }
+      const source = await open(input.path, "r");
+      let contents: Buffer;
+      try {
+        const info = await source.stat();
+        if (!info.isFile() || info.size > AVATAR_REFERENCE_MAX_BYTES) {
+          throw new Error("Referência muito grande: limite de 10 MiB.");
+        }
+        contents = await source.readFile();
+      } finally {
+        await source.close();
+      }
+      if (contents.length > AVATAR_REFERENCE_MAX_BYTES) {
+        throw new Error("Referência muito grande: limite de 10 MiB.");
+      }
+      const format = referenceFormat(extension, contents);
+      const assetId = `reference-${randomUUID()}-${format.format}`;
+      const assets = resolve(this.avatarPath(avatarId), "assets");
+      this.assertInsideRoot(assets);
+      await mkdir(assets, { recursive: true });
+      await this.assertNoRedirect(assets);
+      await this.assertContained(assets);
+      const path = resolve(assets, `${assetId}${format.extension}`);
+      this.assertInsideRoot(path);
+      const partial = `${path}.${randomUUID()}.partial`;
+      let handle: Awaited<ReturnType<typeof open>> | undefined;
+      let created = false;
+      try {
+        handle = await open(partial, "wx");
+        created = true;
+        await handle.writeFile(contents);
+        await handle.sync();
+        await handle.close();
+        handle = undefined;
+        await this.assertNoRedirect(partial);
+        await this.rename(partial, path);
+        created = false;
+        await this.assertNoRedirect(path);
+        await this.assertContained(path);
+        await this.syncDirectory(assets);
+      } finally {
+        if (handle) await handle.close().catch(() => undefined);
+        if (created) await rm(partial, { force: true }).catch(() => undefined);
+      }
+      return {
+        avatarId,
+        assetId,
+        path,
+        mimeType: format.mimeType,
+        size: contents.length,
+        contentHash: createHash("sha256").update(contents).digest("hex"),
+      };
+    });
+  }
+
+  async readReference(
+    avatarId: string,
+    assetId: string,
+  ): Promise<AvatarReferenceContents> {
+    const validAvatarId = assertId(avatarId, "Avatar ID");
+    const validAssetId = assertId(assetId, "Asset ID");
+    const match = /-(png|jpeg|webp)$/.exec(validAssetId);
+    if (!validAssetId.startsWith("reference-") || !match) {
+      throw new Error("Asset ID de referência inválido.");
+    }
+    await this.initializeRoot();
+    const format = match[1] as ReferenceFormat["format"];
+    const extension =
+      format === "png" ? ".png" : format === "jpeg" ? ".jpg" : ".webp";
+    const path = resolve(
+      this.avatarPath(validAvatarId),
+      "assets",
+      `${validAssetId}${extension}`,
+    );
+    this.assertInsideRoot(path);
+    await this.assertNoRedirect(path);
+    await this.assertContained(path);
+    const info = await lstat(path);
+    if (
+      !info.isFile() ||
+      info.isSymbolicLink() ||
+      info.size > AVATAR_REFERENCE_MAX_BYTES
+    ) {
+      throw new Error("Referência ausente, inválida ou acima do limite.");
+    }
+    const contents = await readFile(path);
+    const detected = referenceFormat(extension, contents);
+    return {
+      avatarId: validAvatarId,
+      assetId: validAssetId,
+      path,
+      mimeType: detected.mimeType,
+      size: contents.length,
+      contentHash: createHash("sha256").update(contents).digest("hex"),
+      contents,
+    };
+  }
+
+  private async assertNoRedirect(path: string): Promise<void> {
+    this.assertInsideRoot(path);
+    let current = this.root;
+    for (const component of relative(this.root, path)
+      .split(sep)
+      .filter(Boolean)) {
+      current = resolve(current, component);
+      try {
+        if ((await lstat(current)).isSymbolicLink()) {
+          throw new Error("Destino contém redirecionamento symlink/junction.");
+        }
+      } catch (error) {
+        if (isMissing(error)) return;
+        throw error;
+      }
+    }
   }
 
   async listRevisions(

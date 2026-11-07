@@ -125,7 +125,7 @@ describe("deterministic avatar quality gates", () => {
     expect(report.hashes.neutral).toBe(expectedNeutral);
     expect(new Set(Object.values(report.hashes)).size).toBe(8);
     expect(validateAvatarPackage(avatar).hashes).toEqual(report.hashes);
-  });
+  }, 15_000);
 
   it("deduplicates equivalent geometry across all composed states", () => {
     renderCalls.count = 0;

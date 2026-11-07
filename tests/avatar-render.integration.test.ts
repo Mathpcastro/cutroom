@@ -84,6 +84,9 @@ const expectedDimensions: Record<
   { width: number; height: number; nativeWidth: number; nativeHeight: number }
 > = {
   neutral: { width: 384, height: 384, nativeWidth: 96, nativeHeight: 96 },
+  silhouette: { width: 1920, height: 384, nativeWidth: 480, nativeHeight: 96 },
+  grayscale: { width: 2304, height: 384, nativeWidth: 576, nativeHeight: 96 },
+  backgrounds: { width: 1536, height: 384, nativeWidth: 384, nativeHeight: 96 },
   expressions: {
     width: 2304,
     height: 384,
@@ -96,6 +99,7 @@ const expectedDimensions: Record<
     nativeWidth: 672,
     nativeHeight: 96,
   },
+  motion: { width: 6144, height: 384, nativeWidth: 1536, nativeHeight: 96 },
 };
 
 describe("avatar review-sheet Chromium integration", () => {
@@ -137,8 +141,12 @@ describe("avatar review-sheet Chromium integration", () => {
     expect(second.networkRequests).toEqual([]);
     expect(first.files.map((artifact) => artifact.sheet)).toEqual([
       "neutral",
+      "silhouette",
+      "grayscale",
+      "backgrounds",
       "expressions",
       "mouths",
+      "motion",
     ]);
     expect(second.hashes).toEqual(first.hashes);
     expect(second.files.map((artifact) => artifact.hash)).toEqual(
@@ -169,7 +177,7 @@ describe("avatar review-sheet Chromium integration", () => {
       expect(artifact.jpeg).not.toBe(artifact.png);
       expect(artifact.hash).toMatch(/^[a-f0-9]{64}$/);
     }
-    expect(first.hashes).toEqual({
+    expect(first.hashes).toMatchObject({
       neutral: qualityHashes.neutral,
       expressions: qualityHashes.expressionSheet,
       mouths: qualityHashes.mouthSheet,
@@ -177,6 +185,12 @@ describe("avatar review-sheet Chromium integration", () => {
     expect(first.files.every((artifact) => artifact.png.startsWith(root))).toBe(
       true,
     );
+    expect(first.reviewJpeg).toBeDefined();
+    const review = await readFile(first.reviewJpeg!.path);
+    expect(review.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
+    expect(review.length).toBeLessThan(768 * 1024);
+    expect(first.reviewJpeg!.path.startsWith(root)).toBe(true);
+    expect(first.hashes).not.toHaveProperty("reviewJpeg");
     console.info(
       `Avatar integration artifacts: ${first.files
         .map(

@@ -12,6 +12,10 @@ import {
   type CodexStatus,
 } from "./codex";
 import { AgentTools, cancelled, httpError, type AgentClient } from "./agent";
+import type {
+  AvatarVisionProvider,
+  AvatarVisionRequest,
+} from "./avatar-vision";
 
 type Model = Connection["models"][number];
 type Json = Record<string, any>;
@@ -172,6 +176,7 @@ export class ApiAgentClient implements AgentClient {
   private history: Json[] = [];
   private models: Model[] = [];
   private controller?: AbortController;
+  private visionController?: AbortController;
   private connected = false;
   private selected?: string;
   private activeModel = "";
@@ -629,11 +634,107 @@ export class ApiAgentClient implements AgentClient {
     if (results.length) this.history.push({ role: "user", content: results });
     return results.length > 0;
   }
+  /** Narrow one-shot vision adapter used only by avatar_analyze_reference. */
+  avatarVisionProvider(providerId: string): AvatarVisionProvider | undefined {
+    const model = this.models.find((item) => item.id === providerId);
+    if (!this.connected || !model) return undefined;
+    return {
+      id: model.id,
+      supportsVision: model.supportsVision === true,
+      analyze: (request) => this.analyzeVision(model, request),
+    };
+  }
+
+  private async analyzeVision(
+    model: Model,
+    request: AvatarVisionRequest,
+  ): Promise<unknown> {
+    if (!this.connected || model.supportsVision !== true) {
+      throw new Error("O modelo selecionado não oferece visão.");
+    }
+    if (this.visionController) {
+      throw new Error("Aguarde a análise visual atual terminar.");
+    }
+    const controller = (this.visionController = new AbortController());
+    const signal = AbortSignal.any([
+      controller.signal,
+      AbortSignal.timeout(120_000),
+    ]);
+    try {
+      const dataUrl = `data:${request.image.mimeType};base64,${request.image.data}`;
+      const anthropic = this.provider === "anthropic";
+      const body: Json = anthropic
+        ? {
+            model: model.id,
+            max_tokens: 4096,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: request.prompt },
+                  {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: request.image.mimeType,
+                      data: request.image.data,
+                    },
+                  },
+                ],
+              },
+            ],
+          }
+        : {
+            model: model.id,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: request.prompt },
+                  { type: "image_url", image_url: { url: dataUrl } },
+                ],
+              },
+            ],
+          };
+      const response = await this.fetch(
+        anthropic ? "/messages" : "/chat/completions",
+        { method: "POST", body: JSON.stringify(body) },
+        signal,
+      );
+      const text = await response.text();
+      if (text.length > 2_000_000)
+        throw new Error("Resposta de visão acima do limite.");
+      const payload = JSON.parse(text) as Json;
+      const content = anthropic
+        ? (payload.content || [])
+            .filter((block: Json) => block.type === "text")
+            .map((block: Json) => block.text)
+            .join("\n")
+        : payload.choices?.[0]?.message?.content;
+      if (Array.isArray(content)) {
+        return content.map((item) => item.text || "").join("\n");
+      }
+      if (typeof content !== "string" || !content.trim()) {
+        throw new Error("O provedor não retornou uma análise visual.");
+      }
+      return content;
+    } catch (error) {
+      if (cancelled(error, signal)) throw new Error("Operação cancelada.");
+      throw error;
+    } finally {
+      if (this.visionController === controller)
+        this.visionController = undefined;
+    }
+  }
+
   async interrupt() {
     this.controller?.abort();
+    this.visionController?.abort();
   }
   disconnect() {
     this.controller?.abort();
+    this.visionController?.abort();
     this.connected = false;
     this.key = "";
     this.history = [];

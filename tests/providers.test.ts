@@ -554,6 +554,18 @@ describe("Claude loopback bridge", () => {
       "cancel_scheduled_reel",
       "publish_reel",
       "render_film",
+      "avatar_get_contract",
+      "avatar_create_candidate",
+      "avatar_render",
+      "avatar_validate",
+      "avatar_review",
+      "avatar_select_candidate",
+      "avatar_revise_part",
+      "avatar_save_revision",
+      "avatar_compare_revisions",
+      "avatar_cancel",
+      "avatar_import_reference",
+      "avatar_analyze_reference",
     ]);
     expect(
       (await (await rpc("tools/call", { name: "shell", arguments: {} })).json())

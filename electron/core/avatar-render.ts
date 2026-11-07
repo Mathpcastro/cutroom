@@ -12,6 +12,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   AVATAR_EXPRESSIONS,
   AVATAR_MOUTHS,
+  AVATAR_POSES,
   parseAvatar,
 } from "../../src/shared/avatar";
 import type { AvatarRenderState } from "../../resources/avatar-engine/avatar-engine.js";
@@ -19,8 +20,12 @@ import { runFilmWorker, type FilmRunner } from "./film";
 
 export const AVATAR_PROOF_SHEETS = [
   "neutral",
+  "silhouette",
+  "grayscale",
+  "backgrounds",
   "expressions",
   "mouths",
+  "motion",
 ] as const;
 export type AvatarProofSheet = (typeof AVATAR_PROOF_SHEETS)[number];
 
@@ -50,12 +55,22 @@ export interface AvatarSheetArtifact {
   contentHash: string;
 }
 
+export interface AvatarReviewJpeg {
+  path: string;
+  width: number;
+  height: number;
+}
+
 export interface AvatarRenderResult {
   complete: true;
   files: AvatarSheetArtifact[];
   hashes: Partial<Record<AvatarProofSheet, string>>;
   errors: string[];
   networkRequests: string[];
+  /** One downscaled contact sheet for model inspection; never pixel evidence. */
+  reviewJpeg?: AvatarReviewJpeg;
+  /** Host-owned data URL populated by AvatarService after containment checks. */
+  imageUrl?: string;
 }
 
 interface AvatarWorkerFile {
@@ -74,6 +89,7 @@ interface AvatarWorkerResult {
   hashes?: Record<string, string>;
   errors?: string[];
   networkRequests?: string[];
+  reviewJpeg?: { preview: string; width: number; height: number };
 }
 
 const NEUTRAL_STATE: AvatarRenderState = {
@@ -86,11 +102,24 @@ const NEUTRAL_STATE: AvatarRenderState = {
 
 const PROOF_STATES: Record<AvatarProofSheet, AvatarRenderState[]> = {
   neutral: [NEUTRAL_STATE],
+  silhouette: AVATAR_POSES.map((pose) => ({ ...NEUTRAL_STATE, pose })),
+  grayscale: AVATAR_EXPRESSIONS.map((expression) => ({
+    ...NEUTRAL_STATE,
+    expression,
+  })),
+  backgrounds: Array.from({ length: 4 }, () => ({ ...NEUTRAL_STATE })),
   expressions: AVATAR_EXPRESSIONS.map((expression) => ({
     ...NEUTRAL_STATE,
     expression,
   })),
   mouths: AVATAR_MOUTHS.map((mouth) => ({ ...NEUTRAL_STATE, mouth })),
+  motion: Array.from({ length: 16 }, (_, frame) => ({
+    ...NEUTRAL_STATE,
+    pose: AVATAR_POSES[frame % AVATAR_POSES.length],
+    mouth: AVATAR_MOUTHS[frame % AVATAR_MOUTHS.length],
+    blink: frame === 6 || frame === 7 ? 1 : 0,
+    frame,
+  })),
 };
 
 function samePath(left: string, right: string): boolean {
@@ -255,12 +284,37 @@ export async function renderAvatarRevision(
       });
     }
 
+    const workerReview = result.reviewJpeg;
+    if (!workerReview)
+      throw new Error("O worker não retornou o JPEG composto.");
+    const reviewPath = join(output, "review.jpg");
+    assertInsideRevision(revisionDir, workerReview.preview);
+    if (!samePath(workerReview.preview, reviewPath)) {
+      throw new Error("Destino do JPEG composto inválido.");
+    }
+    await assertRealPathInsideRevision(revisionDir, reviewPath);
+    const reviewBytes = await readFile(reviewPath);
+    if (
+      workerReview.width !== 1200 ||
+      !Number.isSafeInteger(workerReview.height) ||
+      workerReview.height < 1 ||
+      reviewBytes.length > 768 * 1024 ||
+      reviewBytes[0] !== 0xff ||
+      reviewBytes[1] !== 0xd8
+    ) {
+      throw new Error("JPEG composto de revisão inválido ou acima do limite.");
+    }
     const response = {
       complete: true as const,
       files,
       hashes,
       errors,
       networkRequests,
+      reviewJpeg: {
+        path: reviewPath,
+        width: workerReview.width,
+        height: workerReview.height,
+      },
     };
     succeeded = true;
     return response;

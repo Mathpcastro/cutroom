@@ -4,6 +4,7 @@ import {
   AVATAR_EXPRESSIONS,
   AVATAR_MOUTHS,
   AVATAR_POSES,
+  AVATAR_SCHEMA_VERSION,
   avatarHash,
   parseAvatar,
   type AvatarPackage,
@@ -84,6 +85,7 @@ export interface AvatarCandidate {
   rootCandidateId: string;
   parentCandidateId?: string;
   revision?: number;
+  referenceAssetId?: string;
   identityAnchors?: Record<string, AvatarPoint>;
   review?: AvatarReviewRecord;
   lastRevisionResult?: AvatarRevisionResult;
@@ -158,6 +160,8 @@ export interface CreateCandidatesInput {
 export interface CreateCandidateInput {
   description: string;
   package: unknown;
+  /** Optional metadata link to an already contained imported reference. */
+  referenceAssetId?: string;
 }
 
 export interface CreatedCandidates {
@@ -556,6 +560,45 @@ export class AvatarService {
     this.renderer = adapters.renderer;
   }
 
+  getContract() {
+    return {
+      schemaVersion: AVATAR_SCHEMA_VERSION,
+      package: {
+        requiredFields: [
+          "schemaVersion",
+          "id",
+          "revision",
+          "canvas",
+          "identity",
+          "artBible",
+          "palette",
+          "parts",
+          "poses",
+          "expressions",
+          "mouths",
+        ],
+        maxCanonicalBytes: 256 * 1024,
+        executableContent: false,
+      },
+      canvas: { full: 96, portrait: 64 },
+      poses: [...AVATAR_POSES],
+      expressions: [...AVATAR_EXPRESSIONS],
+      mouths: [...AVATAR_MOUTHS],
+      proofSheets: [...AVATAR_PROOF_SHEETS],
+      rubric: { ...AVATAR_RUBRIC_LIMITS },
+      maxCorrectionRounds: MAX_CORRECTION_ROUNDS,
+      references: {
+        formats: ["png", "jpeg", "webp"],
+        maxBytes: 10 * 1024 * 1024,
+        vision: {
+          requiredCapability: "supportsVision",
+          result: ["identityAnchors", "inferredFields"],
+          ambiguousTraits: "inferredFields",
+        },
+      },
+    } as const;
+  }
+
   validatePackage(
     input: unknown,
     context: { previous?: AvatarPackage; allowedPartIds?: string[] } = {},
@@ -582,12 +625,17 @@ export class AvatarService {
     input: CreateCandidateInput,
   ): Promise<CreatedCandidates> {
     assertDescription(input.description);
-    return this.create(input.description, [input.package]);
+    return this.create(
+      input.description,
+      [input.package],
+      input.referenceAssetId,
+    );
   }
 
   private async create(
     description: string,
     packages: readonly unknown[],
+    referenceAssetId?: string,
   ): Promise<CreatedCandidates> {
     const prepared = packages.map((input) => {
       const validation = this.validatePackage(input);
@@ -628,6 +676,7 @@ export class AvatarService {
           correctionRounds: 0,
           manualApproved: false,
           rootCandidateId: reference.candidateId,
+          ...(referenceAssetId ? { referenceAssetId } : {}),
         };
         state.candidates[reference.candidateId] = record;
         created.push(clone(record));
@@ -1076,6 +1125,23 @@ export class AvatarService {
             );
           }
 
+          let imageUrl: string | undefined;
+          if (result.reviewJpeg) {
+            const review = await this.store.readRevisionArtifact(
+              input.avatarId,
+              input.revision,
+              result.reviewJpeg.path,
+            );
+            if (
+              review.contents.length > 768 * 1024 ||
+              review.contents[0] !== 0xff ||
+              review.contents[1] !== 0xd8
+            ) {
+              throw new Error("JPEG composto de revisão inválido.");
+            }
+            imageUrl = `data:image/jpeg;base64,${review.contents.toString("base64")}`;
+          }
+
           const latest = await this.readState(input.avatarId);
           const latestRevision = latest.revisions[String(input.revision)];
           if (
@@ -1110,7 +1176,12 @@ export class AvatarService {
           );
           latestRevision.artifacts = [...retained, ...manifests];
           await this.writeState(input.avatarId, latest);
-          return { jobId, ...result, manifest: clone(manifests) };
+          return {
+            jobId,
+            ...result,
+            ...(imageUrl ? { imageUrl } : {}),
+            manifest: clone(manifests),
+          };
         }),
         cancelled,
       ]);
