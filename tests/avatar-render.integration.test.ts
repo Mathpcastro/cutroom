@@ -1,12 +1,13 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   renderAvatarRevision,
   type AvatarProofSheet,
 } from "../electron/core/avatar-render";
+import { renderAvatarProof } from "../electron/render-motion";
 import { canonicalAvatar } from "../src/shared/avatar";
 import { validateAvatarPackage } from "../src/shared/avatar-quality";
 import { avatarFixture } from "./fixtures/avatar-fixture";
@@ -167,6 +168,69 @@ describe("avatar review-sheet Chromium integration", () => {
         .join("\n")}`,
     );
   }, 60_000);
+
+  it("closes the proof server exactly once when Chromium launch fails", async () => {
+    const { root } = await fixtureRevision();
+    const close = vi.fn();
+    const createServer = vi.fn().mockResolvedValue({
+      url: "http://127.0.0.1:49152",
+      close,
+    });
+    const launch = vi.fn().mockRejectedValue(new Error("invalid Chromium"));
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(
+        () => reject(new Error("launch did not reject promptly")),
+        1_000,
+      );
+    });
+
+    try {
+      await expect(
+        Promise.race([
+          renderAvatarProof(
+            {
+              mode: "avatar",
+              browser: join(root, "missing-chromium.exe"),
+              fps: 30,
+              directory: root,
+              output: join(root, "output"),
+              proof: ".renders/proof",
+            },
+            { createServer, launch },
+          ),
+          timeout,
+        ]),
+      ).rejects.toThrow("invalid Chromium");
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("cleans staging when proof preparation fails before the worker", async () => {
+    const { root, revisionDir } = await fixtureRevision();
+    const previousDir = join(revisionDir, ".renders", "previous");
+    const previousArtifact = join(previousDir, "neutral.png");
+    await mkdir(previousDir, { recursive: true });
+    await writeFile(previousArtifact, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+
+    await expect(
+      renderAvatarRevision({
+        revisionDir,
+        engineDir: join(root, "missing-engine"),
+        runner: { worker: join(root, "must-not-run.mjs"), browser: "unused" },
+      }),
+    ).rejects.toThrow(/ENOENT/);
+
+    expect(await readdir(join(revisionDir, ".renders"))).toEqual(["previous"]);
+    expect(await readFile(previousArtifact)).toEqual(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    );
+    expect(await readFile(join(revisionDir, "avatar.json"), "utf8")).toBe(
+      canonicalAvatar(avatarFixture()),
+    );
+  });
 
   it("rejects worker artifacts outside the avatar revision", async () => {
     const { root, revisionDir } = await fixtureRevision();

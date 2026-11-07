@@ -1,11 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { promises as fs } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { Films, envelopeFromSamples, filmStills, remoteReferences, slug, withCsp } from "../electron/core/film";
+import { Films, envelopeFromSamples, filmStills, remoteReferences, runFilmWorker, slug, withCsp } from "../electron/core/film";
 import { ffmpegPath } from "../electron/core/media";
 
 const exec = promisify(execFile);
@@ -113,6 +113,50 @@ describe("films", () => {
     expect(path.dirname(request.directory)).toBe(path.join(films.dir("curtida-ou-assinatura"), ".renders"));
     expect(path.basename(request.directory)).toMatch(/^palco-/);
   });
+
+  it("isolates concurrent worker requests with different specs", async () => {
+    const jobDir = path.join(dir, "concurrent-worker");
+    const barrier = path.join(jobDir, "barrier");
+    const worker = path.join(jobDir, "concurrent-worker.mjs");
+    await fs.mkdir(barrier, { recursive: true });
+    await fs.writeFile(
+      worker,
+      `import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+const barrier = ${JSON.stringify(barrier)};
+mkdirSync(barrier, { recursive: true });
+const waitFor = async (extension) => {
+  const deadline = Date.now() + 5000;
+  while (readdirSync(barrier).filter((file) => file.endsWith(extension)).length < 2) {
+    if (Date.now() > deadline) throw new Error("Timed out waiting for concurrent workers");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+};
+writeFileSync(join(barrier, process.pid + ".ready"), "");
+await waitFor(".ready");
+const requestPath = process.argv[2];
+const received = JSON.parse(readFileSync(requestPath, "utf8"));
+writeFileSync(join(barrier, process.pid + ".read"), "");
+await waitFor(".read");
+console.log(JSON.stringify({ complete: true, received, requestPath }));
+`,
+    );
+    const browser = path.join(jobDir, "chromium.exe");
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    try {
+      const [first, second] = (await Promise.all([
+        runFilmWorker(jobDir, { mode: "stills", job: "first" }, { worker, browser }),
+        runFilmWorker(jobDir, { mode: "stills", job: "second" }, { worker, browser }),
+      ])) as { received: Record<string, unknown>; requestPath: string }[];
+
+      expect(first.received).toMatchObject({ job: "first", browser, fps: 30, directory: jobDir });
+      expect(second.received).toMatchObject({ job: "second", browser, fps: 30, directory: jobDir });
+      expect(first.requestPath).not.toBe(second.requestPath);
+    } finally {
+      now.mockRestore();
+    }
+  }, 15_000);
 });
 
 describe("film helpers", () => {

@@ -2,7 +2,9 @@
 // Modes: "scene" (one motion scene → MOV with alpha), "film" (a HyperFrames project → MP4 with audio),
 // "stills" (seek the film and screenshot chosen seconds) and "lint" (HyperFrames static checks).
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { Browser, LaunchOptions } from "puppeteer-core";
 import {
   createFileServer,
   createRenderJob,
@@ -165,21 +167,27 @@ interface AvatarProofResult {
   jpeg: string;
 }
 
+interface AvatarProofDependencies {
+  createServer: typeof createFileServer;
+  launch: (options: LaunchOptions) => Promise<Browser>;
+}
+
 /** Native RGBA review sheets from the isolated, data-only avatar proof document. */
-async function avatar(spec: Spec) {
+export async function renderAvatarProof(spec: Spec, dependencies?: AvatarProofDependencies) {
   if (!spec.proof || !/^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/.test(spec.proof) || spec.proof.split("/").includes(".."))
     throw new Error("Caminho do proof de avatar inválido.");
   const { default: puppeteer } = await import("puppeteer-core");
   await mkdir(spec.output, { recursive: true });
-  const server = await createFileServer({ projectDir: spec.directory, fps: { num: spec.fps, den: 1 } });
-  const browser = await puppeteer.launch({
-    executablePath: spec.browser,
-    headless: true,
-    args: ["--no-sandbox", "--disable-dev-shm-usage", "--mute-audio"],
-  });
+  const server = await (dependencies?.createServer ?? createFileServer)({ projectDir: spec.directory, fps: { num: spec.fps, den: 1 } });
   const errors: string[] = [];
   const networkRequests: string[] = [];
+  let browser: Browser | undefined;
   try {
+    browser = await (dependencies?.launch ?? puppeteer.launch)({
+      executablePath: spec.browser,
+      headless: true,
+      args: ["--no-sandbox", "--disable-dev-shm-usage", "--mute-audio"],
+    });
     const page = await browser.newPage();
     page.on("pageerror", (error) => errors.push(`Erro de script: ${error instanceof Error ? error.message : String(error)}`));
     page.on("console", (message) => {
@@ -234,8 +242,11 @@ async function avatar(spec: Spec) {
     }
     return { files, hashes, errors: [...new Set(errors)].slice(0, 20), networkRequests: [...new Set(networkRequests)] };
   } finally {
-    await browser.close();
-    server.close();
+    try {
+      await browser?.close();
+    } finally {
+      server.close();
+    }
   }
 }
 
@@ -265,39 +276,41 @@ async function capture(spec: Spec & { url: string; maxHeight?: number }) {
   }
 }
 
-try {
-  const spec: Spec = JSON.parse(await readFile(process.argv[2], "utf8"));
-  const mode = spec.mode ?? "scene";
-  if (mode === "lint") say({ complete: true, findings: await lint(spec) });
-  else if (mode === "analyze") say({ complete: true, ...(await analyze(spec)) });
-  else if (mode === "capture") say({ complete: true, ...(await capture(spec as Spec & { url: string })) });
-  else if (mode === "stills") say({ complete: true, ...(await stills(spec)) });
-  else if (mode === "avatar") say({ complete: true, ...(await avatar(spec)) });
-  else {
-    const film = mode === "film",
-      workers = film ? Math.max(1, spec.workers ?? 2) : 1;
-    const config = resolveConfig({
-      chromePath: spec.browser,
-      concurrency: workers,
-      enableBrowserPool: false,
-      ...(film ? {} : { forceScreenshot: true, useDrawElement: false, enablePageSideCompositing: false }),
-    });
-    const job = createRenderJob({
-      fps: spec.fps,
-      format: film ? "mp4" : "mov",
-      quality: spec.quality ?? "high",
-      workers,
-      hdrMode: "force-sdr",
-      // Films are written by agents: render what is renderable and report the rest.
-      strictness: film ? "best-effort" : "strict",
-      producerConfig: config,
-    });
-    await executeRenderJob(job, spec.directory, spec.output, (job, message) => {
-      say({ progress: job.progress, label: message });
-    });
-    say({ complete: true });
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+  try {
+    const spec: Spec = JSON.parse(await readFile(process.argv[2], "utf8"));
+    const mode = spec.mode ?? "scene";
+    if (mode === "lint") say({ complete: true, findings: await lint(spec) });
+    else if (mode === "analyze") say({ complete: true, ...(await analyze(spec)) });
+    else if (mode === "capture") say({ complete: true, ...(await capture(spec as Spec & { url: string })) });
+    else if (mode === "stills") say({ complete: true, ...(await stills(spec)) });
+    else if (mode === "avatar") say({ complete: true, ...(await renderAvatarProof(spec)) });
+    else {
+      const film = mode === "film",
+        workers = film ? Math.max(1, spec.workers ?? 2) : 1;
+      const config = resolveConfig({
+        chromePath: spec.browser,
+        concurrency: workers,
+        enableBrowserPool: false,
+        ...(film ? {} : { forceScreenshot: true, useDrawElement: false, enablePageSideCompositing: false }),
+      });
+      const job = createRenderJob({
+        fps: spec.fps,
+        format: film ? "mp4" : "mov",
+        quality: spec.quality ?? "high",
+        workers,
+        hdrMode: "force-sdr",
+        // Films are written by agents: render what is renderable and report the rest.
+        strictness: film ? "best-effort" : "strict",
+        producerConfig: config,
+      });
+      await executeRenderJob(job, spec.directory, spec.output, (job, message) => {
+        say({ progress: job.progress, label: message });
+      });
+      say({ complete: true });
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.stack : String(error));
+    process.exitCode = 1;
   }
-} catch (error) {
-  console.error(error instanceof Error ? error.stack : String(error));
-  process.exitCode = 1;
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { copyFile, cp, link, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { availableParallelism } from "node:os";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
@@ -318,7 +319,7 @@ async function stageFilm(films: Films, id: string) {
 export async function runFilmWorker(dir: string, spec: Record<string, unknown>, runner: FilmRunner, directory = dir) {
   const work = join(dir, ".renders");
   await mkdir(work, { recursive: true });
-  const file = join(work, `request-${Date.now()}.json`);
+  const file = join(work, `request-${randomUUID()}.json`);
   await writeFile(file, JSON.stringify({ browser: runner.browser, fps: 30, directory, ...spec }), "utf8");
   let result: Record<string, unknown> = {};
   try {

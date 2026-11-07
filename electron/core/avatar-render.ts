@@ -149,33 +149,35 @@ export async function renderAvatarRevision(
 
   const renders = join(revisionDir, ".renders");
   await mkdir(renders, { recursive: true });
-  const output = await mkdtemp(join(renders, "avatar-"));
-  const proofDir = join(output, "proof");
-  await mkdir(proofDir, { recursive: true });
-  const proofTemplate = await readFile(join(engineDir, "proof.html"), "utf8");
-  const states = Object.fromEntries(
-    sheets.map((sheet) => [sheet, PROOF_STATES[sheet]]),
-  );
-  const proofHtml = proofTemplate.replace(
-    /(<script id="avatar-proof-data" type="application\/json">)[\s\S]*?(<\/script>)/,
-    (_match, start: string, end: string) =>
-      `${start}${safeProofData({ avatar, states })}${end}`,
-  );
-  if (proofHtml === proofTemplate) {
-    throw new Error("O proof de avatar não contém seu payload JSON.");
-  }
-  await writeFile(join(proofDir, "proof.html"), proofHtml, "utf8");
-  await Promise.all([
-    copyFile(
-      join(engineDir, "avatar-engine.js"),
-      join(proofDir, "avatar-engine.js"),
-    ),
-    copyFile(join(engineDir, "proof.js"), join(proofDir, "proof.js")),
-  ]);
-
-  let result: AvatarWorkerResult;
+  let output: string | undefined;
+  let proofDir: string | undefined;
+  let succeeded = false;
   try {
-    result = (await runFilmWorker(
+    output = await mkdtemp(join(renders, "avatar-"));
+    proofDir = join(output, "proof");
+    await mkdir(proofDir, { recursive: true });
+    const proofTemplate = await readFile(join(engineDir, "proof.html"), "utf8");
+    const states = Object.fromEntries(
+      sheets.map((sheet) => [sheet, PROOF_STATES[sheet]]),
+    );
+    const proofHtml = proofTemplate.replace(
+      /(<script id="avatar-proof-data" type="application\/json">)[\s\S]*?(<\/script>)/,
+      (_match, start: string, end: string) =>
+        `${start}${safeProofData({ avatar, states })}${end}`,
+    );
+    if (proofHtml === proofTemplate) {
+      throw new Error("O proof de avatar não contém seu payload JSON.");
+    }
+    await writeFile(join(proofDir, "proof.html"), proofHtml, "utf8");
+    await Promise.all([
+      copyFile(
+        join(engineDir, "avatar-engine.js"),
+        join(proofDir, "avatar-engine.js"),
+      ),
+      copyFile(join(engineDir, "proof.js"), join(proofDir, "proof.js")),
+    ]);
+
+    const result = (await runFilmWorker(
       revisionDir,
       {
         mode: "avatar",
@@ -185,67 +187,79 @@ export async function renderAvatarRevision(
       },
       options.runner,
     )) as AvatarWorkerResult;
+
+    if (!result.complete || !Array.isArray(result.files)) {
+      throw new Error("O worker não concluiu o proof de avatar.");
+    }
+    const rawHashes = result.hashes;
+    if (!rawHashes || typeof rawHashes !== "object") {
+      throw new Error("O worker não retornou hashes RGBA do avatar.");
+    }
+    const errors = stringArray(result.errors ?? [], "errors");
+    const networkRequests = stringArray(
+      result.networkRequests ?? [],
+      "networkRequests",
+    );
+    const files: AvatarSheetArtifact[] = [];
+    const hashes: Partial<Record<AvatarProofSheet, string>> = {};
+
+    for (const sheet of sheets) {
+      const matches = result.files.filter((file) => file.sheet === sheet);
+      if (matches.length !== 1) {
+        throw new Error(`O worker não retornou exatamente uma folha ${sheet}.`);
+      }
+      const file = matches[0];
+      const png = join(output, `${sheet}.png`);
+      const jpeg = join(output, `${sheet}.jpg`);
+      assertInsideRevision(revisionDir, file.file);
+      assertInsideRevision(revisionDir, file.preview);
+      if (!samePath(file.file, png) || !samePath(file.preview, jpeg)) {
+        throw new Error("Destino de artefato do worker inválido.");
+      }
+      await assertRealPathInsideRevision(revisionDir, png);
+      await assertRealPathInsideRevision(revisionDir, jpeg);
+
+      const nativeWidth = avatar.canvas.full * PROOF_STATES[sheet].length;
+      const nativeHeight = avatar.canvas.full;
+      if (
+        file.nativeWidth !== nativeWidth ||
+        file.nativeHeight !== nativeHeight ||
+        file.width !== nativeWidth * 4 ||
+        file.height !== nativeHeight * 4
+      ) {
+        throw new Error(`Dimensões inválidas para a folha ${sheet}.`);
+      }
+      const hash = rawHashes[sheet];
+      if (typeof hash !== "string" || !/^[a-f0-9]{64}$/.test(hash)) {
+        throw new Error(`Hash RGBA inválido para a folha ${sheet}.`);
+      }
+      hashes[sheet] = hash;
+      files.push({
+        sheet,
+        png,
+        jpeg,
+        width: file.width,
+        height: file.height,
+        nativeWidth: file.nativeWidth,
+        nativeHeight: file.nativeHeight,
+        hash,
+      });
+    }
+
+    const response = {
+      complete: true as const,
+      files,
+      hashes,
+      errors,
+      networkRequests,
+    };
+    succeeded = true;
+    return response;
   } finally {
-    await rm(proofDir, { recursive: true, force: true });
-  }
-
-  if (!result.complete || !Array.isArray(result.files)) {
-    throw new Error("O worker não concluiu o proof de avatar.");
-  }
-  const rawHashes = result.hashes;
-  if (!rawHashes || typeof rawHashes !== "object") {
-    throw new Error("O worker não retornou hashes RGBA do avatar.");
-  }
-  const errors = stringArray(result.errors ?? [], "errors");
-  const networkRequests = stringArray(
-    result.networkRequests ?? [],
-    "networkRequests",
-  );
-  const files: AvatarSheetArtifact[] = [];
-  const hashes: Partial<Record<AvatarProofSheet, string>> = {};
-
-  for (const sheet of sheets) {
-    const matches = result.files.filter((file) => file.sheet === sheet);
-    if (matches.length !== 1) {
-      throw new Error(`O worker não retornou exatamente uma folha ${sheet}.`);
+    if (output) {
+      if (succeeded && proofDir)
+        await rm(proofDir, { recursive: true, force: true });
+      else if (!succeeded) await rm(output, { recursive: true, force: true });
     }
-    const file = matches[0];
-    const png = join(output, `${sheet}.png`);
-    const jpeg = join(output, `${sheet}.jpg`);
-    assertInsideRevision(revisionDir, file.file);
-    assertInsideRevision(revisionDir, file.preview);
-    if (!samePath(file.file, png) || !samePath(file.preview, jpeg)) {
-      throw new Error("Destino de artefato do worker inválido.");
-    }
-    await assertRealPathInsideRevision(revisionDir, png);
-    await assertRealPathInsideRevision(revisionDir, jpeg);
-
-    const nativeWidth = avatar.canvas.full * PROOF_STATES[sheet].length;
-    const nativeHeight = avatar.canvas.full;
-    if (
-      file.nativeWidth !== nativeWidth ||
-      file.nativeHeight !== nativeHeight ||
-      file.width !== nativeWidth * 4 ||
-      file.height !== nativeHeight * 4
-    ) {
-      throw new Error(`Dimensões inválidas para a folha ${sheet}.`);
-    }
-    const hash = rawHashes[sheet];
-    if (typeof hash !== "string" || !/^[a-f0-9]{64}$/.test(hash)) {
-      throw new Error(`Hash RGBA inválido para a folha ${sheet}.`);
-    }
-    hashes[sheet] = hash;
-    files.push({
-      sheet,
-      png,
-      jpeg,
-      width: file.width,
-      height: file.height,
-      nativeWidth: file.nativeWidth,
-      nativeHeight: file.nativeHeight,
-      hash,
-    });
   }
-
-  return { complete: true, files, hashes, errors, networkRequests };
 }
