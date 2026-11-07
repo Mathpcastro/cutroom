@@ -372,24 +372,27 @@ function canBeVisible(primitive: AvatarPrimitive): boolean {
   );
 }
 
-function clippingStates(): AvatarRenderState[] {
-  return [
-    ...AVATAR_POSES.map((pose) => ({ ...NEUTRAL_STATE, pose })),
-    ...AVATAR_EXPRESSIONS.map((expression) => ({
-      ...NEUTRAL_STATE,
-      expression,
-    })),
-    ...AVATAR_MOUTHS.map((mouth) => ({ ...NEUTRAL_STATE, mouth })),
-    ...BREATHING_CYCLE.map((_, frame) => ({ ...NEUTRAL_STATE, frame })),
-    { ...NEUTRAL_STATE, blink: 0.5 },
-    { ...NEUTRAL_STATE, blink: 1 },
-  ];
+const BLINK_LIMITS = [0, 0.5, 1] as const;
+
+// Every pose x expression x mouth x blink x motionLoop frame: 10,080 states.
+function* composedStates(): Generator<AvatarRenderState> {
+  for (const pose of AVATAR_POSES) {
+    for (const expression of AVATAR_EXPRESSIONS) {
+      for (const mouth of AVATAR_MOUTHS) {
+        for (const blink of BLINK_LIMITS) {
+          for (let frame = 0; frame < BREATHING_CYCLE.length; frame += 1) {
+            yield { pose, expression, mouth, blink, frame };
+          }
+        }
+      }
+    }
+  }
 }
 
 function clippingFindings(avatar: AvatarPackage): AvatarFinding[] {
   const findings: AvatarFinding[] = [];
   const reported = new Set<string>();
-  for (const state of clippingStates()) {
+  for (const state of composedStates()) {
     for (const part of avatar.parts) {
       if (reported.has(part.id)) continue;
       const clipped = evaluatedPrimitives(avatar, part, state).some(
@@ -421,13 +424,47 @@ function silhouetteStats(pixels: AvatarPixels) {
   return { count, maximumY };
 }
 
+function primitiveMaximumY(primitive: AvatarPrimitive): number {
+  if (!canBeVisible(primitive)) return -1;
+  if (primitive.type === "matrix") {
+    for (let row = primitive.rows.length - 1; row >= 0; row -= 1) {
+      if (primitive.rows[row].some((color) => color !== null)) {
+        return primitive.y + row;
+      }
+    }
+    return -1;
+  }
+  return primitiveBounds(primitive).bottom - 1;
+}
+
+function baselineFindings(avatar: AvatarPackage): AvatarFinding[] {
+  for (const state of composedStates()) {
+    let maximumY = -1;
+    for (const part of avatar.parts) {
+      for (const primitive of evaluatedPrimitives(avatar, part, state)) {
+        maximumY = Math.max(maximumY, primitiveMaximumY(primitive));
+      }
+    }
+    if (maximumY + 1 !== avatar.canvas.baseline) {
+      return [
+        {
+          code: "BASELINE_FLOATING",
+          message: `Silhouette ends at y=${maximumY + 1}, but the declared baseline is y=${avatar.canvas.baseline} in ${state.pose}/${state.expression}/${state.mouth}, blink=${state.blink}, frame=${state.frame}.`,
+        },
+      ];
+    }
+  }
+  return [];
+}
+
 function isolatedPartPixels(
   avatar: AvatarPackage,
   partId: string,
+  state: AvatarRenderState,
 ): AvatarPixels {
   return renderAvatarPixels(
     { ...avatar, parts: avatar.parts.filter((part) => part.id === partId) },
-    NEUTRAL_STATE,
+    state,
   );
 }
 
@@ -457,30 +494,47 @@ function masksTouch(accessory: AvatarPixels, parent: AvatarPixels): boolean {
 
 function accessoryFindings(avatar: AvatarPackage): AvatarFinding[] {
   const findings: AvatarFinding[] = [];
-  const parentMasks = new Map<string, AvatarPixels>();
-  for (const part of avatar.parts) {
-    if (part.id !== "accessory" && !part.id.startsWith("accessory.")) continue;
-    const parent = part.parent
-      ? avatar.parts.find((candidate) => candidate.id === part.parent)
-      : undefined;
-    let touching = false;
-    if (parent) {
-      if (!parentMasks.has(parent.id)) {
-        parentMasks.set(parent.id, isolatedPartPixels(avatar, parent.id));
-      }
-      touching = masksTouch(
-        isolatedPartPixels(avatar, part.id),
-        parentMasks.get(parent.id)!,
-      );
-    }
-    if (!touching) {
+  const reported = new Set<string>();
+  const accessories = avatar.parts.filter(
+    (part) => part.id === "accessory" || part.id.startsWith("accessory."),
+  );
+  for (const part of accessories) {
+    if (!part.parent) {
       findings.push({
         code: "ACCESSORY_DETACHED",
-        message: parent
-          ? `Accessory "${part.id}" has no opaque-pixel contact with parent "${parent.id}".`
-          : `Accessory "${part.id}" has no declared parent anchor.`,
+        message: `Accessory "${part.id}" has no declared parent anchor.`,
         partId: part.id,
       });
+      reported.add(part.id);
+    }
+  }
+
+  const maskCache = new Map<string, AvatarPixels>();
+  const maskFor = (part: AvatarPart, state: AvatarRenderState) => {
+    const primitives = evaluatedPrimitives(avatar, part, state);
+    const key = `${part.id}:${JSON.stringify(primitives)}`;
+    const cached = maskCache.get(key);
+    if (cached) return cached;
+    const pixels = isolatedPartPixels(avatar, part.id, state);
+    maskCache.set(key, pixels);
+    return pixels;
+  };
+
+  for (const state of composedStates()) {
+    for (const part of accessories) {
+      if (reported.has(part.id) || !part.parent) continue;
+      const parent = avatar.parts.find(
+        (candidate) => candidate.id === part.parent,
+      );
+      if (!parent) continue;
+      if (!masksTouch(maskFor(part, state), maskFor(parent, state))) {
+        findings.push({
+          code: "ACCESSORY_DETACHED",
+          message: `Accessory "${part.id}" has no opaque-pixel contact with parent "${parent.id}" in ${state.pose}/${state.expression}/${state.mouth}, blink=${state.blink}, frame=${state.frame}.`,
+          partId: part.id,
+        });
+        reported.add(part.id);
+      }
     }
   }
   return findings;
@@ -639,12 +693,6 @@ export function validateAvatarPackage(
       message: `Neutral silhouette has ${silhouette.count} opaque pixels; at least ${MINIMUM_SILHOUETTE_PIXELS} (one 8x8 block) are required.`,
     });
   }
-  if (silhouette.maximumY + 1 !== parsed.canvas.baseline) {
-    findings.push({
-      code: "BASELINE_FLOATING",
-      message: `Neutral silhouette ends at y=${silhouette.maximumY + 1}, but the declared baseline is y=${parsed.canvas.baseline}.`,
-    });
-  }
   const baselineAnchor = parsed.identity.anchors.baseline;
   if (baselineAnchor && baselineAnchor.y !== parsed.canvas.baseline) {
     findings.push({
@@ -652,7 +700,7 @@ export function validateAvatarPackage(
       message: "Identity baseline anchor does not match the canvas baseline.",
     });
   }
-  findings.push(...accessoryFindings(parsed));
+  findings.push(...baselineFindings(parsed), ...accessoryFindings(parsed));
   if (findings.length > 0) return failed(findings);
 
   return { ok: true, findings: [], hashes: qualityHashes(parsed, neutral) };

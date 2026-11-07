@@ -131,6 +131,14 @@ describe("deterministic avatar quality gates", () => {
     expectFinding(avatar, "VISUAL_CLIPPING");
   });
 
+  it("rejects clipping when pose and expression offsets accumulate", () => {
+    const avatar = avatarFixture();
+    avatar.poses.celebrating.head = { dx: 20 };
+    avatar.expressions.confident.head = { dx: 20 };
+
+    expectFinding(avatar, "VISUAL_CLIPPING");
+  });
+
   it("rejects a hierarchy cycle with a stable code", () => {
     const avatar = avatarFixture();
     part(avatar, "body").parent = "hand.right";
@@ -148,6 +156,13 @@ describe("deterministic avatar quality gates", () => {
   it("rejects a silhouette floating above the declared baseline", () => {
     const avatar = avatarFixture();
     avatar.poses.neutral.body = { dy: -1 };
+
+    expectFinding(avatar, "BASELINE_FLOATING");
+  });
+
+  it("rejects a baseline shift introduced by a non-neutral pose", () => {
+    const avatar = avatarFixture();
+    avatar.poses.explaining.body = { dy: -1 };
 
     expectFinding(avatar, "BASELINE_FLOATING");
   });
@@ -176,6 +191,13 @@ describe("deterministic avatar quality gates", () => {
     for (const primitive of part(avatar, "accessory").primitives) {
       translateX(primitive, 30);
     }
+
+    expectFinding(avatar, "ACCESSORY_DETACHED");
+  });
+
+  it("rejects an accessory detached only in a non-neutral pose", () => {
+    const avatar = avatarFixture();
+    avatar.poses.celebrating.accessory = { dx: 30 };
 
     expectFinding(avatar, "ACCESSORY_DETACHED");
   });
