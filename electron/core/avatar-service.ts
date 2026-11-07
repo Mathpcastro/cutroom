@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import {
   AVATAR_EXPRESSIONS,
@@ -203,6 +203,29 @@ export interface RenderRevisionInput extends Omit<
 export interface AvatarRenderedRevision extends AvatarRenderResult {
   jobId: string;
   manifest: AvatarArtifactManifest[];
+}
+
+/** Public deterministic formula mirrored by getContract().renderJobId. */
+export function avatarRenderJobId(
+  input: Pick<RenderRevisionInput, "avatarId" | "revision" | "sheets">,
+): string {
+  const sheets = [...new Set(input.sheets ?? AVATAR_PROOF_SHEETS)].sort();
+  const canonical = JSON.stringify({
+    avatarId: input.avatarId,
+    revision: input.revision,
+    sheets,
+  });
+  const digest = createHash("sha256")
+    .update(canonical, "utf8")
+    .digest("hex")
+    .slice(0, 56);
+  return `render-${digest}`;
+}
+
+function renderAbortError(jobId: string): Error {
+  const error = new Error(`Render job ${jobId} cancelado.`);
+  error.name = "AbortError";
+  return error;
 }
 
 interface RevisionState {
@@ -585,6 +608,13 @@ export class AvatarService {
       expressions: [...AVATAR_EXPRESSIONS],
       mouths: [...AVATAR_MOUTHS],
       proofSheets: [...AVATAR_PROOF_SHEETS],
+      renderJobId: {
+        formula:
+          "render- + sha256(JSON.stringify({ avatarId, revision, sheets: [...new Set(sheets ?? proofSheets)].sort() })).hex().slice(0, 56)",
+        sheets:
+          "Sorted unique sheets; proofSheets from this contract when omitted.",
+        concurrentDuplicate: "reject",
+      },
       rubric: { ...AVATAR_RUBRIC_LIMITS },
       maxCorrectionRounds: MAX_CORRECTION_ROUNDS,
       references: {
@@ -1010,7 +1040,7 @@ export class AvatarService {
   async renderRevision(
     input: RenderRevisionInput,
   ): Promise<AvatarRenderedRevision> {
-    const jobId = input.jobId ?? `render-${randomUUID()}`;
+    const jobId = input.jobId ?? avatarRenderJobId(input);
     if (!JOB_ID.test(jobId)) throw new Error("Render jobId inválido.");
     if (this.renderJobs.has(jobId)) {
       throw new Error(`Render job ${jobId} já está ativo.`);
@@ -1022,9 +1052,7 @@ export class AvatarService {
       rejectCancelled = reject;
     });
     const onAbort = () =>
-      rejectCancelled(
-        controller.signal.reason ?? new Error(`Render ${jobId} cancelado.`),
-      );
+      rejectCancelled(controller.signal.reason ?? renderAbortError(jobId));
     controller.signal.addEventListener("abort", onAbort, { once: true });
     try {
       return await Promise.race([
@@ -1196,7 +1224,7 @@ export class AvatarService {
   cancel(jobId: string): boolean {
     const controller = this.renderJobs.get(jobId);
     if (!controller) return false;
-    controller.abort(new Error(`Render job ${jobId} cancelado.`));
+    controller.abort(renderAbortError(jobId));
     return true;
   }
 

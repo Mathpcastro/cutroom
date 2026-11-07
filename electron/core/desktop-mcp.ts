@@ -76,13 +76,19 @@ export class DesktopMcpServer {
           result = { tools: EDITOR_TOOLS };
         } else if (rpc.method === "tools/call") {
           // One tool at a time: concurrent edits/transcriptions would race on the project state.
-          const task = this.queue.then(() =>
-            this.executeTool(rpc.params?.name, rpc.params?.arguments || {}),
-          );
-          this.queue = task.then(
-            () => {},
-            () => {},
-          );
+          // Cancellation must bypass that queue or it could never cancel the active render.
+          const name = rpc.params?.name;
+          const args = rpc.params?.arguments || {};
+          const task =
+            name === "avatar_cancel"
+              ? this.executeTool(name, args)
+              : this.queue.then(() => this.executeTool(name, args));
+          if (name !== "avatar_cancel") {
+            this.queue = task.then(
+              () => {},
+              () => {},
+            );
+          }
           try {
             const value = await task;
             result = {

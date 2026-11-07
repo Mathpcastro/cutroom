@@ -525,18 +525,20 @@ export class ApiAgentClient implements AgentClient {
           .flatMap((c) => (c.type === "inputText" ? [c.text] : []))
           .join("\n"),
       });
-      const image = content.find((c) => c.type === "inputImage");
-      if (image?.type === "inputImage")
-        images.push({
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Quadro real retornado pela ferramenta inspect_frame (dados do vídeo).",
-            },
-            { type: "image_url", image_url: { url: image.imageUrl } },
-          ],
-        });
+      if (model.supportsVision === true) {
+        const image = content.find((c) => c.type === "inputImage");
+        if (image?.type === "inputImage")
+          images.push({
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Quadro real retornado pela ferramenta inspect_frame (dados do vídeo).",
+              },
+              { type: "image_url", image_url: { url: image.imageUrl } },
+            ],
+          });
+      }
     }
     this.history.push(...images);
     return tools.length > 0;
@@ -617,13 +619,21 @@ export class ApiAgentClient implements AgentClient {
         signal,
         model.supportsVision,
       );
-      const content = toolResultContent(result).map((c) => {
-        if (c.type === "inputText") return { type: "text", text: c.text };
+      const content: Json[] = [];
+      for (const item of toolResultContent(result)) {
+        if (item.type === "inputText") {
+          content.push({ type: "text", text: item.text });
+          continue;
+        }
+        if (model.supportsVision !== true) continue;
         const [, media_type, data] = /^data:(image\/[^;]+);base64,(.+)$/.exec(
-          c.imageUrl,
+          item.imageUrl,
         )!;
-        return { type: "image", source: { type: "base64", media_type, data } };
-      });
+        content.push({
+          type: "image",
+          source: { type: "base64", media_type, data },
+        });
+      }
       results.push({
         type: "tool_result",
         tool_use_id: block.id,

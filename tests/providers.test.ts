@@ -446,6 +446,194 @@ describe("provider transport and editing", () => {
     expect(callbacks.onText).toHaveBeenCalledWith("Projeto lido");
     client.disconnect();
   });
+  it.each([false, true])(
+    "gates avatar_render images by supportsVision=%s in OpenAI-compatible history",
+    async (supportsVision) => {
+      const bodies: any[] = [];
+      const avatarImage = "data:image/jpeg;base64,YXZhdGFyLWpwZWc=";
+      let round = 0;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string, init: RequestInit) => {
+          if (url.endsWith("/models")) {
+            return new Response(
+              JSON.stringify({
+                data: [
+                  {
+                    id: "avatar-model",
+                    input_modalities: supportsVision
+                      ? ["text", "image"]
+                      : ["text"],
+                  },
+                ],
+              }),
+            );
+          }
+          bodies.push(JSON.parse(String(init.body)));
+          return stream(
+            round++ === 0
+              ? [
+                  delta(
+                    {
+                      tool_calls: [
+                        {
+                          index: 0,
+                          id: "render",
+                          function: {
+                            name: "avatar_render",
+                            arguments:
+                              '{"avatarId":"videosell-presenter","revision":1,"sheets":["neutral"]}',
+                          },
+                        },
+                      ],
+                    },
+                    "tool_calls",
+                  ),
+                ]
+              : [delta({ content: "Render concluído" }, "stop")],
+          );
+        }),
+      );
+      const callbacks = options(
+        vi.fn(async () => ({
+          jobId: "render-known",
+          complete: true,
+          files: [{ sheet: "neutral", png: "native.png" }],
+          imageUrl: avatarImage,
+        })),
+      );
+      const client = new ApiAgentClient(callbacks, {
+        provider: "openai-compatible",
+        baseUrl: "http://127.0.0.1:1234/v1",
+      });
+      await client.connect();
+      await client.send("Renderize o avatar", "avatar-model");
+
+      const serialized = JSON.stringify(bodies[1]);
+      expect(callbacks.onTool).toHaveBeenCalledWith("avatar_render", {
+        avatarId: "videosell-presenter",
+        revision: 1,
+        sheets: ["neutral"],
+      });
+      expect(serialized).toContain("native.png");
+      expect(serialized).toContain("render-known");
+      if (supportsVision) {
+        expect(serialized).toContain(avatarImage);
+        expect(serialized).toContain("image_url");
+      } else {
+        expect(serialized).not.toContain(avatarImage);
+        expect(serialized).not.toContain("image_url");
+        expect(serialized).not.toContain("base64");
+      }
+      client.disconnect();
+    },
+  );
+  it.each([false, true])(
+    "gates avatar_render images by supportsVision=%s in Anthropic tool results",
+    async (supportsVision) => {
+      const bodies: any[] = [];
+      const avatarImage = "data:image/jpeg;base64,YXZhdGFyLWpwZWc=";
+      let round = 0;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string, init: RequestInit) => {
+          if (url.includes("/models")) {
+            return new Response(
+              JSON.stringify({
+                data: [
+                  {
+                    id: "claude-avatar",
+                    capabilities: {
+                      image_input: { supported: supportsVision },
+                    },
+                  },
+                ],
+              }),
+            );
+          }
+          bodies.push(JSON.parse(String(init.body)));
+          return stream(
+            round++ === 0
+              ? [
+                  {
+                    type: "content_block_start",
+                    index: 0,
+                    content_block: {
+                      type: "tool_use",
+                      id: "render",
+                      name: "avatar_render",
+                      input: {},
+                    },
+                  },
+                  {
+                    type: "content_block_delta",
+                    index: 0,
+                    delta: {
+                      type: "input_json_delta",
+                      partial_json:
+                        '{"avatarId":"videosell-presenter","revision":1,"sheets":["neutral"]}',
+                    },
+                  },
+                  {
+                    type: "message_delta",
+                    delta: { stop_reason: "tool_use" },
+                  },
+                  { type: "message_stop" },
+                ]
+              : [
+                  {
+                    type: "content_block_start",
+                    index: 0,
+                    content_block: { type: "text", text: "" },
+                  },
+                  {
+                    type: "content_block_delta",
+                    index: 0,
+                    delta: {
+                      type: "text_delta",
+                      text: "Render concluído",
+                    },
+                  },
+                  {
+                    type: "message_delta",
+                    delta: { stop_reason: "end_turn" },
+                  },
+                  { type: "message_stop" },
+                ],
+          );
+        }),
+      );
+      const callbacks = options(
+        vi.fn(async () => ({
+          jobId: "render-known",
+          complete: true,
+          files: [{ sheet: "neutral", png: "native.png" }],
+          imageUrl: avatarImage,
+        })),
+      );
+      const client = new ApiAgentClient(callbacks, { provider: "anthropic" });
+      await client.connect("test-key");
+      await client.send("Renderize o avatar", "claude-avatar");
+
+      const serialized = JSON.stringify(bodies[1]);
+      expect(callbacks.onTool).toHaveBeenCalledWith("avatar_render", {
+        avatarId: "videosell-presenter",
+        revision: 1,
+        sheets: ["neutral"],
+      });
+      expect(serialized).toContain("native.png");
+      expect(serialized).toContain("render-known");
+      if (supportsVision) {
+        expect(serialized).toContain("YXZhdGFyLWpwZWc=");
+        expect(serialized).toContain('"type":"image"');
+      } else {
+        expect(serialized).not.toContain("YXZhdGFyLWpwZWc=");
+        expect(serialized).not.toContain('"type":"image"');
+        expect(serialized).not.toContain("base64");
+      }
+      client.disconnect();
+    },
+  );
   it("aborts a real open HTTP stream and completes the same activity as cancelled", async () => {
     let started!: () => void;
     const ready = new Promise<void>((resolve) => (started = resolve));

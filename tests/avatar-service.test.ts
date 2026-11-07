@@ -1204,4 +1204,94 @@ describe("AvatarService", { timeout: 60_000 }, () => {
       store.revisions.get(`${created.avatarId}/${selected.revision}`)?.bytes,
     ).toBe(bytes);
   });
+
+  it("publishes one deterministic jobId formula for MCP callers", () => {
+    const { service } = setup();
+    expect(service.getContract().renderJobId).toEqual({
+      formula:
+        "render- + sha256(JSON.stringify({ avatarId, revision, sheets: [...new Set(sheets ?? proofSheets)].sort() })).hex().slice(0, 56)",
+      sheets:
+        "Sorted unique sheets; proofSheets from this contract when omitted.",
+      concurrentDuplicate: "reject",
+    });
+  });
+
+  it("cancels deterministic jobs queued behind the store lock without touching a different request", async () => {
+    const renderers: Array<{
+      options: AvatarRenderOptions & { signal: AbortSignal };
+      reject: (error: unknown) => void;
+    }> = [];
+    const renderer = vi.fn(
+      (options: AvatarRenderOptions & { signal: AbortSignal }) =>
+        new Promise<AvatarRenderResult>((_resolve, reject) => {
+          renderers.push({ options, reject });
+          const abort = () =>
+            reject(options.signal.reason ?? new Error("Render cancelado."));
+          if (options.signal.aborted) abort();
+          else options.signal.addEventListener("abort", abort, { once: true });
+        }),
+    );
+    const { service } = setup(renderer);
+    const created = await createThree(service);
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      created.candidates[0].candidateId,
+    );
+    const common = {
+      avatarId: created.avatarId,
+      revision: selected.revision,
+      engineDir: "/engine",
+      runner: { worker: "/worker", browser: "/browser" },
+    };
+    const expectedJobId = (sheets: string[]) =>
+      `render-${createHash("sha256")
+        .update(
+          JSON.stringify({
+            avatarId: created.avatarId,
+            revision: selected.revision,
+            sheets: [...new Set(sheets)].sort(),
+          }),
+          "utf8",
+        )
+        .digest("hex")
+        .slice(0, 56)}`;
+    const firstId = expectedJobId(["neutral", "motion"]);
+    const queuedId = expectedJobId(["neutral"]);
+    expect(queuedId).not.toBe(firstId);
+
+    const first = service.renderRevision({
+      ...common,
+      sheets: ["motion", "neutral"],
+    });
+    await vi.waitFor(() => expect(renderers).toHaveLength(1));
+    const duplicateOutcome = await Promise.race([
+      service.renderRevision({ ...common, sheets: ["neutral", "motion"] }).then(
+        () => "resolved",
+        () => "rejected",
+      ),
+      new Promise<"pending">((resolve) =>
+        setTimeout(() => resolve("pending"), 100),
+      ),
+    ]);
+    expect(duplicateOutcome).toBe("rejected");
+
+    const queued = service.renderRevision({ ...common, sheets: ["neutral"] });
+    const queuedRejection = expect(queued).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(service.cancel(queuedId)).toBe(true);
+    const rejectedBeforeFirstFinished = await Promise.race([
+      queuedRejection.then(() => true),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 100)),
+    ]);
+    expect(rejectedBeforeFirstFinished).toBe(true);
+    expect(renderers).toHaveLength(1);
+    expect(renderers[0].options.signal.aborted).toBe(false);
+
+    expect(service.cancel(firstId)).toBe(true);
+    await expect(first).rejects.toMatchObject({ name: "AbortError" });
+    expect(renderers[0].options.signal.aborted).toBe(true);
+    expect(service.cancel(queuedId)).toBe(false);
+    expect(service.cancel(firstId)).toBe(false);
+  });
 });

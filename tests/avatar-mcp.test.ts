@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   mkdtemp,
   mkdir,
@@ -14,6 +15,11 @@ import {
   createAvatarToolDispatcher,
   type AvatarToolService,
 } from "../electron/core/avatar-mcp";
+import type {
+  AvatarRenderOptions,
+  AvatarRenderResult,
+} from "../electron/core/avatar-render";
+import { AvatarService } from "../electron/core/avatar-service";
 import { AvatarStore } from "../electron/core/avatar-store";
 import { EDITOR_TOOLS, toolResultContent } from "../electron/core/codex";
 import { DesktopMcpServer } from "../electron/core/desktop-mcp";
@@ -386,6 +392,110 @@ describe("avatar MCP contract", () => {
     });
     expect(response.status).toBe(413);
   });
+
+  it("cancels a blocked real render concurrently through authenticated Desktop MCP", async () => {
+    const root = await tempRoot();
+    let rejectRenderer!: (error: unknown) => void;
+    let rendererSignal: AbortSignal | undefined;
+    const renderer = vi.fn(
+      (options: AvatarRenderOptions & { signal: AbortSignal }) =>
+        new Promise<AvatarRenderResult>((_resolve, reject) => {
+          rejectRenderer = reject;
+          rendererSignal = options.signal;
+          const abort = () =>
+            reject(options.signal.reason ?? new Error("Render cancelado."));
+          if (options.signal.aborted) abort();
+          else options.signal.addEventListener("abort", abort, { once: true });
+        }),
+    );
+    const store = new AvatarStore(join(root, "avatars"));
+    const service = new AvatarService({ store, renderer });
+    const created = await service.createCandidate({
+      description: "Cancelamento MCP",
+      package: avatarFixture(),
+    });
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      created.candidates[0].candidateId,
+    );
+    const call = createAvatarToolDispatcher({
+      service,
+      store,
+      vision: { analyzeReference: async () => ({}) },
+      render: {
+        engineDir: "/engine",
+        runner: async () => ({ worker: "/worker", browser: "/browser" }),
+      },
+    });
+    const contract = (await call("avatar_get_contract", {})) as any;
+    const sheets = ["motion", "neutral"];
+    const jobId = `render-${createHash("sha256")
+      .update(
+        JSON.stringify({
+          avatarId: created.avatarId,
+          revision: selected.revision,
+          sheets: [...sheets].sort(),
+        }),
+        "utf8",
+      )
+      .digest("hex")
+      .slice(0, 56)}`;
+
+    const server = new DesktopMcpServer(call, root);
+    servers.push(server);
+    const url = await server.start();
+    let requestId = 0;
+    const rpc = async (name: string, args: Record<string, unknown>) => {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${server.token}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: ++requestId,
+          method: "tools/call",
+          params: { name, arguments: args },
+        }),
+      });
+      return (await response.json()) as any;
+    };
+    const renderResponse = rpc("avatar_render", {
+      avatarId: created.avatarId,
+      revision: selected.revision,
+      sheets,
+    });
+    await vi.waitFor(() => expect(renderer).toHaveBeenCalledTimes(1));
+
+    const cancelResponse = rpc("avatar_cancel", { jobId });
+    const respondedBeforeRenderFinished = await Promise.race([
+      cancelResponse.then(() => true),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 150)),
+    ]);
+    if (!respondedBeforeRenderFinished) {
+      // Let the RED case finish without waiting for Vitest's timeout.
+      rejectRenderer(new Error("Renderer liberado após o RED."));
+      await renderResponse;
+      await cancelResponse;
+    }
+    expect(respondedBeforeRenderFinished).toBe(true);
+    expect((await cancelResponse).result).toMatchObject({
+      content: [{ type: "text", text: "true" }],
+    });
+    const rendered = await renderResponse;
+    expect(rendered.result).toMatchObject({ isError: true });
+    expect(rendered.result.content[0].text).toContain(jobId);
+    expect(rendered.result.content[0].text).toMatch(/cancelado/i);
+    expect(rendererSignal?.aborted).toBe(true);
+
+    expect(contract.renderJobId.formula).toBe(
+      "render- + sha256(JSON.stringify({ avatarId, revision, sheets: [...new Set(sheets ?? proofSheets)].sort() })).hex().slice(0, 56)",
+    );
+    const unrelated = await rpc("avatar_get_contract", {});
+    expect(unrelated.result.isError).toBeFalsy();
+    expect(JSON.parse(unrelated.result.content[0].text).schemaVersion).toBe(1);
+  }, 20_000);
 });
 
 describe("avatar reference import", () => {
