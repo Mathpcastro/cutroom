@@ -1,15 +1,15 @@
-# CutRoom Avatar Studio — Design
+# Videosell Avatar Studio — Design
 
 - Data: 2026-11-06
-- Estado: aprovado pelo usuário nas seções de produto, motor, arquitetura e validação
+- Estado: aprovado pelo usuário, incluindo produto, motor, arquitetura, validação, identidade Palco digital e destino da página de upsell
 - Base de implementação: branch `feat/formatos`
-- Produto: estúdio visual local para criar mascotes ilustrados e Reels, com ou sem avatar
+- Produto: Videosell, estúdio visual local para criar mascotes ilustrados e Reels, com ou sem avatar
 
 ## 1. Contexto
 
-O CutRoom começou como um editor de vídeo desktop controlado por texto. A branch `feat/formatos` já contém um motor de filmes em código, formatos visuais, vozes, faixas de áudio, marca, publicação de Reels, editor e integrações MCP. O trabalho atual deve preservar essas capacidades, mas mudar a porta de entrada e o centro do produto.
+O CutRoom, agora Videosell, começou como um editor de vídeo desktop controlado por texto. A branch `feat/formatos` já contém um motor de filmes em código, formatos visuais, vozes, faixas de áudio, marca, publicação de Reels, editor e integrações MCP. O trabalho atual deve preservar essas capacidades, mas mudar a porta de entrada e o centro do produto.
 
-O novo CutRoom será um estúdio no qual uma pessoa cria um mascote ilustrado personalizável, dá voz e personalidade a ele e produz Reels para divulgar ou vender SaaS, aplicativos, consultorias, mentorias, serviços ou outros produtos. A criação sem avatar continuará disponível para todos os formatos que não precisam de personagem.
+O novo Videosell será um estúdio no qual uma pessoa cria um mascote ilustrado personalizável, dá voz e personalidade a ele e produz Reels para divulgar ou vender SaaS, aplicativos, consultorias, mentorias, serviços ou outros produtos. A criação sem avatar continuará disponível para todos os formatos que não precisam de personagem.
 
 A referência visual enviada pelo usuário mostra um perfil de conteúdo com um mesmo personagem ilustrado em muitas situações. O requisito de qualidade não é apenas reproduzir uma interface de criação: o motor precisa gerar pixel art autoral, detalhada, consistente e visualmente aprovada pelo usuário.
 
@@ -30,7 +30,7 @@ A referência visual enviada pelo usuário mostra um perfil de conteúdo com um 
 
 - Avatar fotorrealista ou no estilo HeyGen/Higgsfield.
 - Clonagem nativa de voz; vozes clonadas já existentes na conta ElevenLabs continuam utilizáveis.
-- Backend CutRoom, conta CutRoom ou telemetria própria.
+- Backend Videosell, conta Videosell ou telemetria própria.
 - Geração de avatar por modelos externos de imagem neste ciclo.
 - Publicação imediata sem confirmação.
 - Suporte a Linux neste ciclo.
@@ -95,11 +95,11 @@ Ações essenciais:
 - Salvar rascunho ou finalizar uma revisão.
 - Usar o avatar em um Reel.
 
-## 6. CutRoom Avatar Engine
+## 6. Videosell Avatar Engine
 
 ### 6.1 Princípio
 
-O motor não será uma simples ampliação do `CR.pixelPresenter` atual. Claude/ChatGPT produzirá código-fonte e dados do personagem dentro de um contrato restrito; o CutRoom renderizará esse pacote localmente.
+O motor não será uma simples ampliação do `CR.pixelPresenter` atual. Claude/ChatGPT produzirá código-fonte e dados do personagem dentro de um contrato restrito; o Videosell renderizará esse pacote localmente.
 
 A mesma revisão deve gerar exatamente os mesmos pixels. Prévia, folhas de sprites, MCP e MP4 compartilharão o mesmo rig e renderizador.
 
@@ -329,11 +329,67 @@ Revisões por modelos reais serão testes de integração separados, com provedo
 1. Prova do motor: um avatar, três candidatos, folhas de expressões/bocas, movimentos e revisão. Implementação completa da interface fica condicionada à aprovação da qualidade.
 2. Estúdio e perfis: nova entrada, criador visual, criação sem avatar e MCP.
 3. Reels integrados: voz, formatos, efeitos, revisão, render e ajustes avançados.
-4. Migração e acabamento: projetos antigos, configurações atuais, testes ponta a ponta e build.
+4. Identidade e upsell: aplicar Videosell às superfícies visíveis e refazer a página pública de upsell do Carrossell.
+5. Migração e acabamento: projetos antigos, configurações atuais, testes ponta a ponta e build.
 
 Cada marco preserva trabalho alheio e alterações locais existentes. A implementação começará pela leitura das quatro modificações não commitadas atuais, sem sobrescrevê-las.
 
-## 14. Referências pesquisadas
+## 14. Identidade Videosell
+
+A direção aprovada é **Palco digital**: profissional e criativa, com interface neutra e avatares expressivos. O nome forma um ecossistema com Carrossell: `vídeo + sell`, assim como Carrossell combina `carrossel + sell`.
+
+- Assinatura de produto: **Avatares de IA para apresentar e vender seu produto**.
+- Conceito verbal: **Seu produto ganha rosto, voz e presença**.
+- Símbolo: um `V` construído por traços arredondados, acompanhado por um ponto que representa presença e o olhar do avatar; não usar um botão de play genérico como marca principal.
+- Wordmark: `Videosell`, com `sell` destacado; a família Carrossell/Videosell deve compartilhar o tratamento do sufixo sem perder símbolos próprios.
+- Cores principais: grafite `#141318`, violeta `#7C5CFF`, lima `#C8FF5A`, branco quente `#F7F6F1` e branco `#FFFFFF`.
+- Tipografia: Sora para marca e títulos; Inter para interface e textos. Fontes precisam ser empacotadas localmente no aplicativo e ter licença preservada.
+- A interface escura usa predominantemente neutros; violeta identifica ações principais e lima é um acento, não uma cor de texto sobre fundo claro.
+- O gerador de marca e os ícones existentes serão atualizados para produzir os novos assets, sem transformar o mockup do mascote em asset oficial do motor.
+
+A renomeação visual não autoriza substituir indiscriminadamente identificadores internos. `window.cutroom`, eventos `cutroom:*`, protocolos, extensões, pastas de projetos e contratos MCP persistidos permanecem compatíveis; mudanças de `productName`, títulos e textos visíveis serão feitas separadamente.
+
+A checagem preliminar de nome não comprovou disponibilidade jurídica. Não será exibida nenhuma declaração de marca registrada ou domínio assegurado.
+
+## 15. Página pública de upsell do Carrossell
+
+A página de upsell é a oferta pública do **Videosell apresentada após o acesso ao Carrossell**, não uma tela de planos dentro do aplicativo. A implementação acontece em `site/upsell/index.html` e reutiliza os vídeos e posters locais existentes.
+
+### 15.1 Oferta e posicionamento
+
+- Manter o aviso de que o acesso ao Carrossell está garantido.
+- Apresentar o Videosell como o complemento em vídeo do Carrossell: avatares de IA, formatos em código, narração e publicação para apresentar produtos e abrir caminho para vendas.
+- Manter o preço já existente de **R$ 97, pagamento único**, sem criar planos, assinatura do Videosell, trial, desconto ou garantia inexistentes.
+- Não prometer viralidade, faturamento ou vendas. Resultados citados continuam identificados como resultados individuais, não garantia.
+- Explicar que Claude, Codex, provedores de IA e vozes premium podem ter custos próprios nas contas do usuário.
+
+### 15.2 Estrutura
+
+1. Hero com a proposta Carrossell + Videosell, CTA principal e uma demonstração vertical real.
+2. Formatos e efeitos produzidos no Videosell, incluindo criação com e sem avatar somente quando o recurso correspondente estiver implementado.
+3. Comparativo visual entre referências/originais e resultados gerados, restaurando o uso dos elementos `.orig` e mantendo links e créditos quando exigidos.
+4. Funil orgânico: Reels, visita ao perfil, clique no link e oferta, sem apresentar a última etapa como resultado garantido.
+5. O que está incluído, limitações, custos de terceiros e fechamento da oferta.
+
+A copy será reescrita para a nova proposta, mas preço, integrações e afirmações factuais não serão inventados. Recursos ainda não disponíveis não serão anunciados como entregues.
+
+### 15.3 Cakto e comportamento
+
+- Preservar `href="#COMPRAR"` e `data-cakto-upsell` nos CTAs principais, e `href="#RECUSAR"` e `data-cakto-downsell` na recusa, para a integração da Cakto.
+- Não adicionar checkout falso, confirmação de compra, contador regressivo falso ou publicação automática.
+- Não alterar o curso, a oferta ou qualquer configuração na Cakto; a entrega é somente o arquivo e seus assets locais.
+- Vídeos tocam sem som somente quando visíveis, pausam fora da viewport e oferecem controle de áudio acessível.
+- Respeitar `prefers-reduced-motion`, navegação por teclado, foco visível, contraste, textos alternativos e layout móvel sem overflow horizontal acidental.
+
+### 15.4 Aceite da página
+
+- Identidade Videosell consistente com a direção Palco digital e relação visual clara com Carrossell.
+- Todos os vídeos, posters e links locais resolvem sem erro.
+- CTAs mantêm os atributos esperados pela Cakto.
+- Desktop e celular apresentam hero, comparativos e oferta sem sobreposição ou corte.
+- Nenhum erro de console, promessa comercial não suportada ou recurso futuro apresentado como atual.
+
+## 16. Referências pesquisadas
 
 - `Gamezxz/pixel-art-studio`, MIT: build script como fonte da arte, primitivas de pixel, ramps, outlines, revisão see → critique → fix e exportação determinística. https://github.com/Gamezxz/pixel-art-studio
 - `dbinky/claude-fairy-pixel-art`, MIT: exemplo de Claude produzindo assets determinísticos por código, sem gerador de imagem. https://github.com/dbinky/claude-fairy-pixel-art
