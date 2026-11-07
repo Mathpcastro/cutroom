@@ -5,7 +5,7 @@ import { promises as fs } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { Films, envelopeFromSamples, remoteReferences, slug, withCsp } from "../electron/core/film";
+import { Films, envelopeFromSamples, filmStills, remoteReferences, slug, withCsp } from "../electron/core/film";
 import { ffmpegPath } from "../electron/core/media";
 
 const exec = promisify(execFile);
@@ -95,6 +95,23 @@ describe("films", () => {
     expect(Math.min(...value.envelope.db.slice(16))).toBeGreaterThan(-30);
     const check = await films.check("curtida-ou-assinatura");
     expect(check.warnings.join("\n")).toMatch(/assets\/voice\.wav/);
+  });
+
+  it("keeps browser, fps and directory in existing still worker requests", async () => {
+    const worker = path.join(dir, "record-stills.mjs");
+    const captured = path.join(dir, "stills-request.json");
+    await fs.writeFile(
+      worker,
+      `import { readFileSync, writeFileSync } from "node:fs";\nconst request = JSON.parse(readFileSync(process.argv[2], "utf8"));\nwriteFileSync(${JSON.stringify(captured)}, JSON.stringify(request));\nconsole.log(JSON.stringify({ complete: true, duration: 1, files: [], errors: [] }));\n`,
+    );
+    const browser = path.join(dir, "chromium.exe");
+
+    await filmStills(films, "curtida-ou-assinatura", [0], { worker, browser });
+
+    const request = JSON.parse(await fs.readFile(captured, "utf8"));
+    expect(request).toMatchObject({ mode: "stills", browser, fps: 30 });
+    expect(path.dirname(request.directory)).toBe(path.join(films.dir("curtida-ou-assinatura"), ".renders"));
+    expect(path.basename(request.directory)).toMatch(/^palco-/);
   });
 });
 

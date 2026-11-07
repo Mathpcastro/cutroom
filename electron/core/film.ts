@@ -315,7 +315,7 @@ async function stageFilm(films: Films, id: string) {
 }
 
 /** Runs the HyperFrames worker (Electron in Node mode) and returns its final JSON line. */
-async function runFilmWorker(dir: string, spec: Record<string, unknown>, runner: FilmRunner, directory = dir) {
+export async function runFilmWorker(dir: string, spec: Record<string, unknown>, runner: FilmRunner, directory = dir) {
   const work = join(dir, ".renders");
   await mkdir(work, { recursive: true });
   const file = join(work, `request-${Date.now()}.json`);

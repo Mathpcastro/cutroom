@@ -1,7 +1,7 @@
 // Runs in the application's private Node utility process, never the UI process.
 // Modes: "scene" (one motion scene → MOV with alpha), "film" (a HyperFrames project → MP4 with audio),
 // "stills" (seek the film and screenshot chosen seconds) and "lint" (HyperFrames static checks).
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   createFileServer,
@@ -12,7 +12,7 @@ import {
 } from "@hyperframes/producer";
 
 interface Spec {
-  mode?: "scene" | "film" | "stills" | "lint" | "capture" | "analyze";
+  mode?: "scene" | "film" | "stills" | "lint" | "capture" | "analyze" | "avatar";
   browser: string;
   fps: number;
   directory: string;
@@ -23,6 +23,8 @@ interface Spec {
   height?: number;
   times?: number[];
   scale?: number;
+  proof?: string;
+  sheets?: string[];
 }
 const say = (value: unknown) => console.log(JSON.stringify(value));
 
@@ -152,6 +154,91 @@ async function analyze(spec: Spec & { step?: number }) {
   }
 }
 
+interface AvatarProofResult {
+  sheet: string;
+  width: number;
+  height: number;
+  nativeWidth: number;
+  nativeHeight: number;
+  hash: string;
+  png: string;
+  jpeg: string;
+}
+
+/** Native RGBA review sheets from the isolated, data-only avatar proof document. */
+async function avatar(spec: Spec) {
+  if (!spec.proof || !/^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/.test(spec.proof) || spec.proof.split("/").includes(".."))
+    throw new Error("Caminho do proof de avatar inválido.");
+  const { default: puppeteer } = await import("puppeteer-core");
+  await mkdir(spec.output, { recursive: true });
+  const server = await createFileServer({ projectDir: spec.directory, fps: { num: spec.fps, den: 1 } });
+  const browser = await puppeteer.launch({
+    executablePath: spec.browser,
+    headless: true,
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--mute-audio"],
+  });
+  const errors: string[] = [];
+  const networkRequests: string[] = [];
+  try {
+    const page = await browser.newPage();
+    page.on("pageerror", (error) => errors.push(`Erro de script: ${error instanceof Error ? error.message : String(error)}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(`Console: ${message.text()} (${message.location().url})`);
+    });
+    await page.setRequestInterception(true);
+    const origin = new URL(server.url).origin;
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("data:") || url.startsWith("blob:") || new URL(url).origin === origin) void request.continue();
+      else {
+        networkRequests.push(url.slice(0, 200));
+        errors.push(`Bloqueado (rede externa no proof): ${url.slice(0, 120)}`);
+        void request.abort();
+      }
+    });
+    page.on("requestfailed", (request) => {
+      if (new URL(request.url()).origin === origin && request.failure()?.errorText !== "net::ERR_ABORTED")
+        errors.push(`Arquivo não carregou: ${request.url().replace(server.url, "")}`);
+    });
+
+    const proofPath = spec.proof.split("/").map(encodeURIComponent).join("/");
+    await page.goto(`${server.url}/${proofPath}/proof.html`, { waitUntil: "load" });
+    await page.waitForFunction(
+      () => typeof (window as unknown as { __avatarProof?: { render?: unknown } }).__avatarProof?.render === "function",
+      { timeout: 30_000 },
+    );
+    const files: (Omit<AvatarProofResult, "png" | "jpeg" | "hash"> & { file: string; preview: string })[] = [];
+    const hashes: Record<string, string> = {};
+    for (const sheet of spec.sheets ?? ["neutral", "expressions", "mouths"]) {
+      if (!/^[a-z][a-z0-9-]*$/.test(sheet)) throw new Error("Nome de folha de avatar inválido.");
+      const result = await page.evaluate(
+        async (name) =>
+          (window as unknown as { __avatarProof: { render(sheet: string): Promise<AvatarProofResult> } }).__avatarProof.render(name),
+        sheet,
+      );
+      if (!result || typeof result.png !== "string" || typeof result.jpeg !== "string") throw new Error(`Proof de avatar inválido: ${sheet}`);
+      const file = join(spec.output, `${sheet}.png`);
+      const preview = join(spec.output, `${sheet}.jpg`);
+      await writeFile(file, Buffer.from(result.png, "base64"));
+      await writeFile(preview, Buffer.from(result.jpeg, "base64"));
+      files.push({
+        sheet,
+        file,
+        preview,
+        width: result.width,
+        height: result.height,
+        nativeWidth: result.nativeWidth,
+        nativeHeight: result.nativeHeight,
+      });
+      hashes[sheet] = result.hash;
+    }
+    return { files, hashes, errors: [...new Set(errors)].slice(0, 20), networkRequests: [...new Set(networkRequests)] };
+  } finally {
+    await browser.close();
+    server.close();
+  }
+}
+
 /** Full-page screenshot of a public page (the user's landing page) for the fly-over format. */
 async function capture(spec: Spec & { url: string; maxHeight?: number }) {
   const { default: puppeteer } = await import("puppeteer-core");
@@ -185,6 +272,7 @@ try {
   else if (mode === "analyze") say({ complete: true, ...(await analyze(spec)) });
   else if (mode === "capture") say({ complete: true, ...(await capture(spec as Spec & { url: string })) });
   else if (mode === "stills") say({ complete: true, ...(await stills(spec)) });
+  else if (mode === "avatar") say({ complete: true, ...(await avatar(spec)) });
   else {
     const film = mode === "film",
       workers = film ? Math.max(1, spec.workers ?? 2) : 1;
