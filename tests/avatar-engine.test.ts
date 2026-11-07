@@ -55,13 +55,19 @@ function bigIntPolygonOracle(points: TestPoint[]): AvatarPixels {
   const height = 96;
   const data = new Uint8ClampedArray(width * height * 4);
   const vertices = points.map(({ x, y }) => ({ x: BigInt(x), y: BigInt(y) }));
-  let twiceArea = 0n;
-  for (let index = 0; index < vertices.length; index += 1) {
-    const start = vertices[index];
-    const end = vertices[(index + 1) % vertices.length];
-    twiceArea += start.x * end.y - end.x * start.y;
-  }
-  if (twiceArea === 0n) return { width, height, data };
+  const first = vertices[0];
+  const second = vertices.find(
+    (point) => point.x !== first.x || point.y !== first.y,
+  );
+  if (!second) return { width, height, data };
+  const directionX = second.x - first.x;
+  const directionY = second.y - first.y;
+  const collinear = vertices.every(
+    (point) =>
+      directionX * (point.y - first.y) - directionY * (point.x - first.x) ===
+      0n,
+  );
+  if (collinear) return { width, height, data };
 
   for (let y = 0; y < height; y += 1) {
     const scan = 2n * BigInt(y) + 1n;
@@ -416,6 +422,29 @@ describe("native avatar pixel renderer", () => {
         }));
         expectBigIntOracle(points, `seeded polygon ${caseIndex}`);
       }
+    });
+
+    it("preserves the 17-pixel even-odd fill of a self-intersecting bow-tie", () => {
+      const points = [
+        { x: 1, y: 1 },
+        { x: 6, y: 6 },
+        { x: 1, y: 6 },
+        { x: 6, y: 1 },
+      ];
+      const polygon = polygonPixels(points);
+
+      expectPolygonRows(
+        polygon,
+        [".#####", "..###.", "...#..", "..###.", ".#####"],
+        0,
+        1,
+      );
+      let painted = 0;
+      for (let offset = 3; offset < polygon.data.length; offset += 4) {
+        if (polygon.data[offset] === 255) painted += 1;
+      }
+      expect(painted).toBe(17);
+      expectBigIntOracle(points, "bow-tie");
     });
 
     it.each([
