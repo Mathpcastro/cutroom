@@ -128,6 +128,16 @@ describe("declarative avatar package", () => {
     expect(avatarHash(changed)).not.toBe(avatarHash(avatar));
   });
 
+  it("pins the fixture canonical JSON and SHA-256 golden values", () => {
+    const avatar = avatarFixture();
+    expect(canonicalAvatar(avatar)).toBe(
+      `{"artBible":{"light":"top-left","notes":["Integer pixels only; do not anti-alias geometry.","Use the semantic palette and preserve the silhouette at portrait size."],"outline":"outline"},"canvas":{"baseline":90,"full":96,"portrait":64},"expressions":{"confident":{"brows":{"dx":1},"head":{"dx":1},"mouth":{"primitives":[{"rows":[["mouth","mouth","mouth",null],[null,"mouth","mouth","mouth"]],"type":"matrix","x":39,"y":34}]}},"happy":{"lids":{"dy":1},"mouth":{"primitives":[{"rows":[[null,"mouth","mouth",null],["mouth","tongue","tongue","mouth"]],"type":"matrix","x":39,"y":34}]}},"neutral":{},"serious":{"brows":{"dy":1},"lids":{"dy":1},"mouth":{"primitives":[{"rows":[["mouth","mouth","mouth","mouth"]],"type":"matrix","x":39,"y":34}]}},"surprised":{"eyes":{"dy":-1},"mouth":{"primitives":[{"rows":[[null,"mouth","mouth",null],["mouth","mouth","mouth","mouth"],[null,"mouth","mouth",null]],"type":"matrix","x":39,"y":34}]},"pupils":{"dy":-1}},"thinking":{"brows":{"dx":1},"mouth":{"dx":1},"pupils":{"dx":2,"dy":1}}},"id":"videosell-presenter","identity":{"anchors":{"baseline":{"x":48,"y":90},"eye.left":{"x":40,"y":27},"eye.right":{"x":55,"y":27},"hand.left":{"x":21,"y":70},"hand.right":{"x":74,"y":70},"head":{"x":48,"y":28},"mouth":{"x":48,"y":36}},"inferred":["symmetric-face","two-handed","front-facing"]},"mouths":{"A":{"mouth":{"primitives":[{"rows":[["mouth","mouth","mouth","mouth"],["mouth","tongue","tongue","mouth"]],"type":"matrix","x":39,"y":34}]}},"B":{"mouth":{"primitives":[{"rows":[[null,"mouth","mouth",null],["mouth","mouth","mouth","mouth"],[null,"mouth","mouth",null]],"type":"matrix","x":39,"y":34}]}},"C":{"mouth":{"primitives":[{"rows":[["mouth","mouth","mouth",null],[null,"mouth","mouth","mouth"]],"type":"matrix","x":39,"y":34}]}},"D":{"mouth":{"primitives":[{"rows":[[null,null,"mouth","mouth"],[null,"mouth","mouth","mouth"],[null,null,"mouth","mouth"]],"type":"matrix","x":39,"y":34}]}},"E":{"mouth":{"primitives":[{"rows":[["mouth","mouth","mouth","mouth"],[null,"tongue","tongue",null]],"type":"matrix","x":39,"y":34}]}},"F":{"mouth":{"primitives":[{"rows":[["mouth","mouth","mouth","mouth"],["mouth","eye","eye","mouth"],["mouth","mouth","mouth","mouth"]],"type":"matrix","x":39,"y":34}]}},"X":{"mouth":{"hidden":true}}},"palette":{"accent":"#f4c95d","brow":"#3b2545","cheek":"#e9957f","eye":"#ffffff","hair":"#3b2545","hair.light":"#65405f","mouth":"#7f3148","outline":"#19152a","pupil":"#172038","shirt":"#2878b5","shirt.light":"#48a9c5","shoe":"#25223a","skin":"#f2b28c","skin.shadow":"#d9896a","sleeve":"#23618f","tongue":"#e76f51"},"parts":[{"id":"body","primitives":[{"color":"shirt","height":39,"type":"rect","width":34,"x":31,"y":43},{"color":"shoe","points":[{"x":31,"y":76},{"x":65,"y":76},{"x":69,"y":90},{"x":27,"y":90}],"type":"polygon"},{"color":"shirt.light","length":25,"type":"run","x":35,"y":46}]},{"id":"head","parent":"body","primitives":[{"color":"outline","height":32,"type":"rect","width":38,"x":29,"y":12},{"color":"skin","height":28,"type":"rect","width":34,"x":31,"y":14},{"color":"skin.shadow","length":27,"type":"run","x":34,"y":40}]},{"id":"hair.back","parent":"head","primitives":[{"color":"hair","height":10,"type":"rect","width":42,"x":27,"y":11},{"color":"hair","length":5,"type":"run","x":28,"y":20},{"color":"hair","length":4,"type":"run","x":64,"y":20}]},{"id":"hair.front","parent":"head","primitives":[{"rows":[["hair","hair","hair.light","hair.light","hair","hair"],["hair","hair.light","hair.light","hair","hair",null],["hair","hair",null,null,null,null]],"type":"matrix","x":30,"y":12}]},{"id":"eyes","parent":"head","primitives":[{"color":"eye","height":5,"type":"rect","width":8,"x":36,"y":25},{"color":"eye","height":5,"type":"rect","width":8,"x":52,"y":25}]},{"id":"pupils","parent":"eyes","primitives":[{"color":"pupil","length":3,"type":"run","x":39,"y":27},{"color":"pupil","length":3,"type":"run","x":55,"y":27}]},{"id":"brows","parent":"head","primitives":[{"color":"brow","length":8,"type":"run","x":36,"y":22},{"color":"brow","length":8,"type":"run","x":52,"y":22}]},{"id":"lids","parent":"eyes","primitives":[{"color":"skin.shadow","length":8,"type":"run","x":36,"y":24},{"color":"skin.shadow","length":8,"type":"run","x":52,"y":24}]},{"id":"nose","parent":"head","primitives":[{"color":"skin.shadow","points":[{"x":47,"y":28},{"x":45,"y":33},{"x":50,"y":33}],"type":"polygon"}]},{"id":"mouth","parent":"head","primitives":[{"rows":[["mouth","mouth","mouth","mouth"],[null,"mouth","mouth",null]],"type":"matrix","x":39,"y":34}]},{"id":"ears","parent":"head","primitives":[{"color":"skin.shadow","height":8,"type":"rect","width":4,"x":27,"y":26},{"color":"skin","height":8,"type":"rect","width":4,"x":65,"y":26}]},{"id":"arm.left","parent":"body","primitives":[{"color":"sleeve","height":19,"type":"rect","width":8,"x":23,"y":45}]},{"id":"arm.right","parent":"body","primitives":[{"color":"sleeve","height":19,"type":"rect","width":8,"x":65,"y":45}]},{"id":"forearm.left","parent":"arm.left","primitives":[{"color":"skin.shadow","height":12,"type":"rect","width":7,"x":20,"y":60}]},{"id":"forearm.right","parent":"arm.right","primitives":[{"color":"skin","height":12,"type":"rect","width":7,"x":70,"y":60}]},{"id":"hand.left","parent":"forearm.left","primitives":[{"color":"skin.shadow","height":7,"type":"rect","width":9,"x":18,"y":69}]},{"id":"hand.right","parent":"forearm.right","primitives":[{"color":"skin","height":7,"type":"rect","width":9,"x":70,"y":69}]},{"id":"accessory","parent":"body","primitives":[{"color":"accent","points":[{"x":46,"y":45},{"x":52,"y":45},{"x":49,"y":54}],"type":"polygon"},{"color":"accent","height":8,"type":"rect","width":4,"x":47,"y":54}]}],"poses":{"celebrating":{"arm.left":{"dx":-4,"dy":-12},"arm.right":{"dx":4,"dy":-12},"forearm.left":{"dx":-6,"dy":-18},"forearm.right":{"dx":6,"dy":-18},"hand.left":{"dx":-6,"dy":-20},"hand.right":{"dx":6,"dy":-20}},"explaining":{"forearm.left":{"dx":-3,"dy":-4},"hand.left":{"dx":-3,"dy":-4}},"neutral":{},"pointing":{"arm.right":{"dx":3,"dy":-5},"forearm.right":{"dx":7,"dy":-9},"hand.right":{"dx":9,"dy":-10}},"surprised":{"arm.left":{"dx":-2,"dy":-2},"arm.right":{"dx":2,"dy":-2},"brows":{"dy":-2},"head":{"dy":-2}}},"revision":1,"schemaVersion":1}`,
+    );
+    expect(avatarHash(avatar)).toBe(
+      "9cb2f3ab4a2b69fb7069abb500aae1e9061ddaaa3fa7f80c52be35614758a2d6",
+    );
+  });
+
   it.each([
     [
       "rect",
@@ -188,6 +198,62 @@ describe("declarative avatar package", () => {
     outline.artBible.outline = "not-in-palette";
     expect(() => parseAvatar(outline)).toThrow(/palette|color/i);
   });
+
+  const stateErrorCases: {
+    name: string;
+    mutate: (avatar: AvatarPackage) => void;
+    path: (string | number)[];
+  }[] = [
+    {
+      name: "poses",
+      mutate: (avatar) => {
+        avatar.poses.explaining["forearm.left"] = {
+          primitives: [
+            { type: "rect", x: 0, y: 0, width: 1, height: 1, color: "missing" },
+          ],
+        };
+      },
+      path: ["poses", "explaining", "forearm.left", "primitives", 0, "color"],
+    },
+    {
+      name: "expressions",
+      mutate: (avatar) => {
+        avatar.expressions.happy.mouth = {
+          primitives: [
+            { type: "rect", x: 0, y: 0, width: 1, height: 1, color: "missing" },
+          ],
+        };
+      },
+      path: ["expressions", "happy", "mouth", "primitives", 0, "color"],
+    },
+    {
+      name: "mouths",
+      mutate: (avatar) => {
+        avatar.mouths.A.mouth = {
+          primitives: [{ type: "matrix", x: 0, y: 0, rows: [["missing"]] }],
+        };
+      },
+      path: ["mouths", "A", "mouth", "primitives", 0, "rows", 0, 0],
+    },
+  ];
+
+  it.each(stateErrorCases)(
+    "reports precise $name state error paths",
+    ({ mutate, path }) => {
+      const avatar = avatarFixture();
+      mutate(avatar);
+      let issues: { path: (string | number)[] }[] = [];
+      try {
+        parseAvatar(avatar);
+      } catch (error) {
+        issues = (error as { issues: { path: (string | number)[] }[] }).issues;
+      }
+
+      expect(issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path })]),
+      );
+    },
+  );
 
   it.each([
     "<script>alert(1)</script>",
@@ -266,6 +332,101 @@ describe("declarative avatar package", () => {
     ).toBeGreaterThan(256 * 1024);
     expect(() => parseAvatar(canonicalSize)).toThrow(/256|size|json/i);
   });
+
+  it("rejects oversize JSON before structural validation", () => {
+    const input = { invalid: "á".repeat(140_000) };
+    expect(Buffer.byteLength(JSON.stringify(input), "utf8")).toBeGreaterThan(
+      256 * 1024,
+    );
+    expect(() => parseAvatar(input)).toThrow(
+      "Avatar JSON exceeds the 256 KiB input limit.",
+    );
+  });
+
+  const extremeCases: {
+    name: string;
+    mutate: (avatar: AvatarPackage) => void;
+  }[] = [
+    {
+      name: "rect coordinate",
+      mutate: (avatar) => {
+        (part(avatar, "body").primitives[0] as { x: number }).x = 4097;
+      },
+    },
+    {
+      name: "rect dimension",
+      mutate: (avatar) => {
+        (part(avatar, "body").primitives[0] as { width: number }).width = 4097;
+      },
+    },
+    {
+      name: "polygon coordinate",
+      mutate: (avatar) => {
+        (
+          part(avatar, "nose").primitives[0] as { points: { y: number }[] }
+        ).points[0].y = -4097;
+      },
+    },
+    {
+      name: "polygon point count",
+      mutate: (avatar) => {
+        (
+          part(avatar, "nose").primitives[0] as {
+            points: { x: number; y: number }[];
+          }
+        ).points = Array.from({ length: 257 }, () => ({ x: 0, y: 0 }));
+      },
+    },
+    {
+      name: "matrix height",
+      mutate: (avatar) => {
+        (
+          part(avatar, "hair.front").primitives[0] as {
+            rows: (string | null)[][];
+          }
+        ).rows = Array.from({ length: 97 }, () => [null]);
+      },
+    },
+    {
+      name: "matrix width",
+      mutate: (avatar) => {
+        (
+          part(avatar, "hair.front").primitives[0] as {
+            rows: (string | null)[][];
+          }
+        ).rows = [Array.from({ length: 97 }, () => null)];
+      },
+    },
+    {
+      name: "anchor count",
+      mutate: (avatar) => {
+        for (let index = 0; index < 58; index += 1) {
+          avatar.identity.anchors[`anchor.${index}`] = { x: 0, y: 0 };
+        }
+      },
+    },
+    {
+      name: "inferred count",
+      mutate: (avatar) => {
+        avatar.identity.inferred = Array.from(
+          { length: 65 },
+          (_, index) => `inference-${index}`,
+        );
+      },
+    },
+    {
+      name: "state offset",
+      mutate: (avatar) => {
+        avatar.poses.neutral.head = { dx: 4097 };
+      },
+    },
+  ];
+
+  it.each(extremeCases)("rejects extreme $name", ({ mutate }) => {
+    const avatar = avatarFixture();
+    mutate(avatar);
+    expect(() => parseAvatar(avatar)).toThrow();
+  });
 });
 
 describe("part-owned avatar revision", () => {
@@ -299,6 +460,29 @@ describe("part-owned avatar revision", () => {
     expression.mouths.A.mouth = { hidden: true };
     expect(() => reviseAvatar(avatarFixture(), expression, ["head"])).toThrow(
       /mouth|allowed/i,
+    );
+  });
+
+  it("allows moving an authorized part without authorizing index shifts", () => {
+    const next = avatarFixture();
+    const headIndex = next.parts.findIndex(({ id }) => id === "head");
+    const [head] = next.parts.splice(headIndex, 1);
+    next.parts.push(head);
+
+    expect(reviseAvatar(avatarFixture(), next, ["head"])).toEqual(next);
+  });
+
+  it("rejects changing the relative order of two unauthorized parts", () => {
+    const next = avatarFixture();
+    const eyesIndex = next.parts.findIndex(({ id }) => id === "eyes");
+    const mouthIndex = next.parts.findIndex(({ id }) => id === "mouth");
+    [next.parts[eyesIndex], next.parts[mouthIndex]] = [
+      next.parts[mouthIndex],
+      next.parts[eyesIndex],
+    ];
+
+    expect(() => reviseAvatar(avatarFixture(), next, ["head"])).toThrow(
+      /order|eyes|mouth/i,
     );
   });
 

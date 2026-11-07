@@ -100,6 +100,9 @@ export interface AvatarPackage {
 const MAX_PARTS = 256;
 const MAX_PRIMITIVES_PER_PART = 2048;
 const MAX_PALETTE_COLORS = 64;
+const MAX_POLYGON_POINTS = 256;
+const MAX_MATRIX_SIZE = 96;
+const MAX_ANCHORS = 64;
 const MAX_CANONICAL_BYTES = 256 * 1024;
 const unsafeContent =
   /<script|javascript:|eval\(|Function\(|require\(|import\(|process\.|document\./i;
@@ -109,13 +112,20 @@ const token = z
   .max(64)
   .regex(/^[A-Za-z][A-Za-z0-9._-]*$/);
 const text = z.string().max(4096);
-const integer = z.number().int().finite();
-const point = z.strictObject({ x: integer, y: integer });
+const coordinate = z.number().int().finite().min(-4096).max(4096);
+const dimension = z.number().int().finite().min(0).max(4096);
+const point = z.strictObject({ x: coordinate, y: coordinate });
 const paletteColor = z.string().regex(/^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$/);
 
 const matrixRows = z
-  .array(z.array(z.union([token, z.null()])).min(1))
+  .array(
+    z
+      .array(z.union([token, z.null()]))
+      .min(1)
+      .max(MAX_MATRIX_SIZE),
+  )
   .min(1)
+  .max(MAX_MATRIX_SIZE)
   .refine((rows) => rows.every((row) => row.length === rows[0].length), {
     message: "Avatar matrix rows must have equal lengths.",
   });
@@ -123,40 +133,44 @@ const matrixRows = z
 const primitive = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("rect"),
-    x: integer,
-    y: integer,
-    width: integer.positive(),
-    height: integer.positive(),
+    x: coordinate,
+    y: coordinate,
+    width: dimension.positive(),
+    height: dimension.positive(),
     color: token,
   }),
   z.strictObject({
     type: z.literal("polygon"),
-    points: z.array(point).min(3),
+    points: z.array(point).min(3).max(MAX_POLYGON_POINTS),
     color: token,
   }),
   z.strictObject({
     type: z.literal("run"),
-    x: integer,
-    y: integer,
-    length: integer.positive(),
+    x: coordinate,
+    y: coordinate,
+    length: dimension.positive(),
     color: token,
   }),
   z.strictObject({
     type: z.literal("matrix"),
-    x: integer,
-    y: integer,
+    x: coordinate,
+    y: coordinate,
     rows: matrixRows,
   }),
 ]);
 
 const primitives = z.array(primitive).max(MAX_PRIMITIVES_PER_PART);
 const partState = z.strictObject({
-  dx: integer.optional(),
-  dy: integer.optional(),
+  dx: coordinate.optional(),
+  dy: coordinate.optional(),
   hidden: z.boolean().optional(),
   primitives: primitives.optional(),
 });
-const partStates = z.record(token, partState);
+const partStates = z
+  .record(token, partState)
+  .refine((states) => Object.keys(states).length <= MAX_PARTS, {
+    message: "Avatar state cannot exceed 256 part overrides.",
+  });
 const partSchema = z.strictObject({
   id: token,
   parent: token.optional(),
@@ -191,7 +205,11 @@ export const avatarPackageSchema = z
       baseline: z.number().int().min(0).max(96),
     }),
     identity: z.strictObject({
-      anchors: z.record(token, point),
+      anchors: z
+        .record(token, point)
+        .refine((anchors) => Object.keys(anchors).length <= MAX_ANCHORS, {
+          message: "Avatar identity cannot exceed 64 anchors.",
+        }),
       inferred: z.array(text).max(64),
     }),
     artBible: z.strictObject({
@@ -270,21 +288,33 @@ export const avatarPackageSchema = z
       items: (typeof avatar.parts)[number]["primitives"],
       path: (string | number)[],
     ) => {
+      const checkColor = (color: string, colorPath: (string | number)[]) => {
+        if (!palette.has(color)) {
+          context.addIssue({
+            code: "custom",
+            message: `Primitive color "${color}" is outside the palette.`,
+            path: colorPath,
+          });
+        }
+      };
+
       items.forEach((item, index) => {
-        const colors =
-          item.type === "matrix"
-            ? item.rows
-                .flat()
-                .filter((color): color is string => color !== null)
-            : [item.color];
-        for (const color of colors) {
-          if (!palette.has(color)) {
-            context.addIssue({
-              code: "custom",
-              message: `Primitive color "${color}" is outside the palette.`,
-              path: [...path, index],
+        if (item.type === "matrix") {
+          item.rows.forEach((row, rowIndex) => {
+            row.forEach((color, columnIndex) => {
+              if (color !== null) {
+                checkColor(color, [
+                  ...path,
+                  index,
+                  "rows",
+                  rowIndex,
+                  columnIndex,
+                ]);
+              }
             });
-          }
+          });
+        } else {
+          checkColor(item.color, [...path, index, "color"]);
         }
       });
     };
@@ -325,18 +355,25 @@ export const avatarPackageSchema = z
       }
     }
 
-    const groups = [avatar.poses, avatar.expressions, avatar.mouths];
-    for (const group of groups) {
-      for (const states of Object.values(group)) {
+    const groups = [
+      ["poses", avatar.poses],
+      ["expressions", avatar.expressions],
+      ["mouths", avatar.mouths],
+    ] as const;
+    for (const [groupName, group] of groups) {
+      for (const [stateName, states] of Object.entries(group)) {
         for (const [partId, state] of Object.entries(states)) {
+          const statePath = [groupName, stateName, partId];
           if (!parts.has(partId)) {
             context.addIssue({
               code: "custom",
               message: `State references unknown avatar part "${partId}".`,
+              path: statePath,
             });
           }
-          if (state.primitives)
-            checkPrimitives(state.primitives, ["states", partId]);
+          if (state.primitives) {
+            checkPrimitives(state.primitives, [...statePath, "primitives"]);
+          }
         }
       }
     }
@@ -353,6 +390,13 @@ export const avatarPackageSchema = z
   });
 
 export function parseAvatar(input: unknown): AvatarPackage {
+  const json = JSON.stringify(input);
+  if (
+    json !== undefined &&
+    Buffer.byteLength(json, "utf8") > MAX_CANONICAL_BYTES
+  ) {
+    throw new Error("Avatar JSON exceeds the 256 KiB input limit.");
+  }
   return avatarPackageSchema.parse(input) as AvatarPackage;
 }
 
@@ -367,10 +411,8 @@ export function avatarHash(input: unknown): string {
 }
 
 function partRevisionSnapshot(avatar: AvatarPackage, partId: string) {
-  const index = avatar.parts.findIndex((part) => part.id === partId);
   return {
-    index,
-    part: avatar.parts[index],
+    part: avatar.parts.find((part) => part.id === partId),
     poses: Object.fromEntries(
       AVATAR_POSES.map((pose) => [pose, avatar.poses[pose][partId]]),
     ),
@@ -417,6 +459,25 @@ export function reviseAvatar(
     throw new Error(
       "Avatar revision must preserve id, revision, canvas, identity, art bible and palette tokens.",
     );
+  }
+
+  const beforeOrder = before.parts
+    .filter((part) => !allowed.has(part.id))
+    .map((part) => part.id);
+  const afterOrder = after.parts
+    .filter((part) => !allowed.has(part.id))
+    .map((part) => part.id);
+  for (
+    let index = 0;
+    index < Math.max(beforeOrder.length, afterOrder.length);
+    index += 1
+  ) {
+    if (beforeOrder[index] !== afterOrder[index]) {
+      const partId = beforeOrder[index] ?? afterOrder[index];
+      throw new Error(
+        `Part "${partId}" changed relative order outside allowedPartIds.`,
+      );
+    }
   }
 
   const partIds = new Set([
