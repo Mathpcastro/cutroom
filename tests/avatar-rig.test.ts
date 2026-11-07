@@ -118,6 +118,65 @@ function changedCoordinates(
   return changed;
 }
 
+function pixel(pixels: AvatarPixels, x: number, y: number): number[] {
+  const offset = (y * pixels.width + x) * 4;
+  return Array.from(pixels.data.subarray(offset, offset + 4));
+}
+
+function rgba(hex: string): number[] {
+  return [
+    Number.parseInt(hex.slice(1, 3), 16),
+    Number.parseInt(hex.slice(3, 5), 16),
+    Number.parseInt(hex.slice(5, 7), 16),
+    255,
+  ];
+}
+
+function measureBreathingOffset(partId: string, frame: number): number {
+  const avatar = avatarFixture();
+  const actual = renderAvatarPixels(isolatedAvatar(partId), state({ frame }));
+  const matches: number[] = [];
+
+  for (const dy of [-1, 0, 1]) {
+    const expectedAvatar = withoutOverrides(isolatedAvatar(partId));
+    const expectedPart = expectedAvatar.parts[0];
+    const mouth = avatar.mouths.A[partId];
+    if (mouth?.primitives) {
+      expectedPart.primitives = structuredClone(mouth.primitives);
+    }
+    expectedPart.primitives = expectedPart.primitives.map((primitive) =>
+      translatePrimitive(primitive, 0, dy),
+    );
+    if (mouth?.hidden) expectedAvatar.parts = [];
+    if (samePixels(actual, renderAvatarPixels(expectedAvatar, neutralState))) {
+      matches.push(dy);
+    }
+  }
+
+  expect(
+    matches,
+    `${partId} must have one exact dy at frame ${frame}`,
+  ).toHaveLength(1);
+  return matches[0];
+}
+
+const breathingExpectations = [
+  { frame: 0, head: 0, hair: 0, accessory: 0 },
+  { frame: 1, head: 0, hair: 0, accessory: 0 },
+  { frame: 2, head: 1, hair: 0, accessory: 0 },
+  { frame: 3, head: 1, hair: 0, accessory: 0 },
+  { frame: 4, head: 1, hair: 1, accessory: 0 },
+  { frame: 5, head: 1, hair: 1, accessory: 0 },
+  { frame: 6, head: 0, hair: 1, accessory: 1 },
+  { frame: 8, head: 0, hair: 0, accessory: 1 },
+  { frame: 10, head: -1, hair: 0, accessory: 0 },
+  { frame: 12, head: -1, hair: -1, accessory: 0 },
+  { frame: 14, head: 0, hair: -1, accessory: -1 },
+  { frame: 16, head: 0, hair: 0, accessory: -1 },
+  { frame: 18, head: 1, hair: 0, accessory: 0 },
+  { frame: 20, head: 1, hair: 1, accessory: 0 },
+] as const;
+
 describe("avatar rig evaluation", () => {
   describe.each(AVATAR_POSES)("pose %s", (pose) => {
     it("applies every part override and preserves all other base geometry", () => {
@@ -237,49 +296,67 @@ describe("avatar rig evaluation", () => {
     },
   );
 
-  it("keeps frame breathing within one integer pixel and preserves the baseline", () => {
+  it("uses exact per-part breathing offsets and really moves head but not body", () => {
     const avatar = avatarFixture();
-    for (const part of avatar.parts) {
-      const partAvatar = isolatedAvatar(part.id);
-      const baseline = renderAvatarPixels(partAvatar, neutralState);
-      for (let frame = 1; frame < 32; frame += 1) {
-        const current = renderAvatarPixels(partAvatar, state({ frame }));
-        const shifts: string[] = [];
-        for (let dx = -1; dx <= 1; dx += 1) {
-          for (let dy = -1; dy <= 1; dy += 1) {
-            const expectedAvatar = withoutOverrides(isolatedAvatar(part.id));
-            const expectedPart = expectedAvatar.parts[0];
-            const mouth = avatar.mouths.A[part.id];
-            if (mouth?.primitives) {
-              expectedPart.primitives = structuredClone(mouth.primitives);
-            }
-            expectedPart.primitives = expectedPart.primitives.map((primitive) =>
-              translatePrimitive(primitive, dx, dy),
-            );
-            if (mouth?.hidden) expectedAvatar.parts = [];
-            if (
-              samePixels(
-                current,
-                renderAvatarPixels(expectedAvatar, neutralState),
-              )
-            ) {
-              shifts.push(`${dx},${dy}`);
-            }
-          }
-        }
-        expect(shifts.length, `${part.id} at frame ${frame}`).toBeGreaterThan(
-          0,
+    const observed = new Map<string, number>();
+
+    for (const expectation of breathingExpectations) {
+      for (const part of avatar.parts) {
+        const expected =
+          part.id === "body"
+            ? 0
+            : part.id.startsWith("hair.")
+              ? expectation.hair
+              : part.id === "accessory"
+                ? expectation.accessory
+                : expectation.head;
+        const actual = measureBreathingOffset(part.id, expectation.frame);
+        observed.set(`${part.id}:${expectation.frame}`, actual);
+        expect(actual, `${part.id} at frame ${expectation.frame}`).toBe(
+          expected,
         );
       }
     }
 
-    const body = isolatedAvatar("body");
-    const baseline = renderAvatarPixels(body, neutralState);
-    for (let frame = 1; frame < 32; frame += 1) {
-      expect(
-        samePixels(renderAvatarPixels(body, state({ frame })), baseline),
-      ).toBe(true);
+    const headOffsets = breathingExpectations.map(({ frame }) =>
+      observed.get(`head:${frame}`),
+    );
+    expect(headOffsets).toContain(1);
+    expect(headOffsets).toContain(-1);
+    expect(
+      breathingExpectations.map(({ frame }) => observed.get(`body:${frame}`)),
+    ).toEqual(breathingExpectations.map(() => 0));
+  });
+
+  it("delays both hair parts by two frames and accessory by four at exact boundaries", () => {
+    for (const { frame } of breathingExpectations) {
+      const headForHair = measureBreathingOffset(
+        "head",
+        Math.max(0, frame - 2),
+      );
+      const headForAccessory = measureBreathingOffset(
+        "head",
+        Math.max(0, frame - 4),
+      );
+      expect(measureBreathingOffset("hair.back", frame)).toBe(headForHair);
+      expect(measureBreathingOffset("hair.front", frame)).toBe(headForHair);
+      expect(measureBreathingOffset("accessory", frame)).toBe(headForAccessory);
     }
+
+    for (const partId of ["hair.back", "hair.front"]) {
+      expect(measureBreathingOffset(partId, 3)).toBe(
+        measureBreathingOffset("head", 1),
+      );
+      expect(measureBreathingOffset(partId, 4)).toBe(
+        measureBreathingOffset("head", 2),
+      );
+    }
+    expect(measureBreathingOffset("accessory", 5)).toBe(
+      measureBreathingOffset("head", 1),
+    );
+    expect(measureBreathingOffset("accessory", 6)).toBe(
+      measureBreathingOffset("head", 2),
+    );
   });
 
   it("animates breathing and delayed hair/accessory motion deterministically", () => {
@@ -301,6 +378,108 @@ describe("avatar rig evaluation", () => {
         expect(samePixels(first, repeated)).toBe(true);
       }
     }
+  });
+
+  it("clips composed pose, expression, mouth and blink geometry in full and portrait", () => {
+    const avatar = avatarFixture();
+    avatar.parts = [
+      {
+        id: "body",
+        zIndex: 0,
+        primitives: [
+          { type: "rect", x: 61, y: 61, width: 5, height: 5, color: "shirt" },
+        ],
+      },
+      {
+        id: "mouth",
+        zIndex: 1,
+        primitives: [{ type: "run", x: 0, y: 0, length: 1, color: "mouth" }],
+      },
+      {
+        id: "eyes",
+        zIndex: 2,
+        primitives: [
+          { type: "rect", x: 0, y: 0, width: 4, height: 5, color: "eye" },
+        ],
+      },
+      {
+        id: "pupils",
+        zIndex: 3,
+        primitives: [{ type: "run", x: 1, y: 4, length: 2, color: "pupil" }],
+      },
+      {
+        id: "lids",
+        zIndex: 4,
+        primitives: [
+          { type: "run", x: 0, y: 0, length: 4, color: "skin.shadow" },
+        ],
+      },
+    ];
+    avatar.poses.pointing = {
+      body: { dx: 1 },
+      eyes: { dx: -1, dy: -1 },
+      pupils: { dx: -1, dy: -1 },
+      lids: { dx: -1, dy: -1 },
+    };
+    avatar.expressions.serious = {
+      body: { dx: 1, dy: 1 },
+      eyes: { dy: 1 },
+      pupils: { dy: 1 },
+      lids: { dy: 1 },
+    };
+    avatar.mouths.F = {
+      mouth: {
+        dx: 1,
+        dy: 1,
+        primitives: [
+          { type: "rect", x: 62, y: 0, width: 3, height: 2, color: "mouth" },
+        ],
+      },
+    };
+    const renderState = state({
+      pose: "pointing",
+      expression: "serious",
+      mouth: "F",
+      blink: 0.5,
+    });
+
+    const full = renderAvatarPixels(avatar, renderState, "full");
+    const fullRepeated = renderAvatarPixels(avatar, renderState, "full");
+    const portrait = renderAvatarPixels(avatar, renderState, "portrait");
+    const portraitRepeated = renderAvatarPixels(
+      avatar,
+      renderState,
+      "portrait",
+    );
+
+    expect(full.data).toHaveLength(96 * 96 * 4);
+    expect(portrait.data).toHaveLength(64 * 64 * 4);
+    expect(samePixels(full, fullRepeated)).toBe(true);
+    expect(samePixels(portrait, portraitRepeated)).toBe(true);
+
+    for (const pixels of [full, portrait]) {
+      expect(pixel(pixels, 0, 1)).toEqual(rgba(avatar.palette.eye));
+      expect(pixel(pixels, 0, 2)).toEqual(rgba(avatar.palette["skin.shadow"]));
+      expect(pixel(pixels, 0, 3)).toEqual(rgba(avatar.palette.eye));
+      expect(pixel(pixels, 3, 1)).toEqual([0, 0, 0, 0]);
+      expect(pixel(pixels, 0, 4)).toEqual([0, 0, 0, 0]);
+      expect(pixel(pixels, 63, 1)).toEqual(rgba(avatar.palette.mouth));
+      expect(pixel(pixels, 63, 62)).toEqual(rgba(avatar.palette.shirt));
+    }
+    expect(pixel(full, 65, 1)).toEqual(rgba(avatar.palette.mouth));
+    expect(pixel(full, 67, 66)).toEqual(rgba(avatar.palette.shirt));
+    expect(pixel(portrait, 62, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixel(portrait, 63, 63)).toEqual(rgba(avatar.palette.shirt));
+
+    const painted = (pixels: AvatarPixels) => {
+      let count = 0;
+      for (let offset = 3; offset < pixels.data.length; offset += 4) {
+        if (pixels.data[offset] === 255) count += 1;
+      }
+      return count;
+    };
+    expect(painted(full)).toBe(40);
+    expect(painted(portrait)).toBe(13);
   });
 
   it("returns identical hashes for repeated states without mutating the package", async () => {
