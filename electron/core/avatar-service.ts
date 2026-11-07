@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { basename, dirname } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
+import { dirname, resolve } from "node:path";
 import {
   AVATAR_EXPRESSIONS,
   AVATAR_MOUTHS,
@@ -13,16 +13,17 @@ import {
   validateAvatarPackage,
   type AvatarQualityReport,
 } from "../../src/shared/avatar-quality";
-import type { AvatarRenderOptions, AvatarRenderResult } from "./avatar-render";
+import {
+  AVATAR_PROOF_SHEETS,
+  type AvatarProofSheet,
+  type AvatarRenderOptions,
+  type AvatarRenderResult,
+} from "./avatar-render";
 
 const METADATA_KEY = "avatar-service";
 const MAX_CORRECTION_ROUNDS = 3;
-const ALLOWED_EVIDENCE = new Set([
-  "neutral.png",
-  "expressions.png",
-  "mouths.png",
-]);
 const JOB_ID = /^[A-Za-z][A-Za-z0-9._-]{0,63}$/;
+const SHA256 = /^[a-f0-9]{64}$/;
 
 export const AVATAR_RUBRIC_LIMITS = {
   identity: 20,
@@ -53,6 +54,22 @@ export interface AvatarReviewRecord {
   rubric: AvatarRubric;
   evidence: AvatarEvidence;
   total: number;
+}
+
+export interface AvatarArtifactManifest {
+  avatarId: string;
+  candidateId: string;
+  revision: number;
+  avatarHash: string;
+  sheet: AvatarProofSheet;
+  /** Real PNG path, verified as contained by AvatarStore. */
+  path: string;
+  /** Native RGBA hash returned by the renderer. */
+  pixelHash: string;
+  /** SHA-256 of the exact PNG bytes accepted as evidence. */
+  contentHash: string;
+  /** Deterministic integrity signature over all preceding manifest fields. */
+  signature: string;
 }
 
 export interface AvatarCandidate {
@@ -112,6 +129,11 @@ export interface AvatarServiceStore {
   selectCandidate(avatarId: string, candidateId: string): Promise<void>;
   saveRevision(avatarId: string, candidateId: string): Promise<SavedRevision>;
   loadRevision(avatarId: string, revision: number): Promise<LoadedAvatar>;
+  readRevisionArtifact(
+    avatarId: string,
+    revision: number,
+    path: string,
+  ): Promise<{ path: string; contents: Buffer }>;
   readMetadata(avatarId: string, key: string): Promise<unknown>;
   writeMetadata(avatarId: string, key: string, value: unknown): Promise<void>;
 }
@@ -172,11 +194,16 @@ export interface RenderRevisionInput extends Omit<
   jobId?: string;
 }
 
+export interface AvatarRenderedRevision extends AvatarRenderResult {
+  jobId: string;
+  manifest: AvatarArtifactManifest[];
+}
+
 interface RevisionState {
   candidateId: string;
   quality: AvatarQualityReport;
   result?: AvatarRevisionResult;
-  artifacts?: string[];
+  artifacts?: AvatarArtifactManifest[];
 }
 
 interface AvatarServiceState {
@@ -211,6 +238,52 @@ function sameValue(left: unknown, right: unknown): boolean {
     JSON.stringify(canonicalValue(left)) ===
     JSON.stringify(canonicalValue(right))
   );
+}
+
+type UnsignedArtifactManifest = Omit<AvatarArtifactManifest, "signature">;
+
+function manifestSignature(value: UnsignedArtifactManifest): string {
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalValue(value)), "utf8")
+    .digest("hex");
+}
+
+function signedManifest(
+  value: UnsignedArtifactManifest,
+): AvatarArtifactManifest {
+  return { ...value, signature: manifestSignature(value) };
+}
+
+function isIntegralManifest(value: unknown): value is AvatarArtifactManifest {
+  if (typeof value !== "object" || value === null) return false;
+  const manifest = value as Partial<AvatarArtifactManifest>;
+  if (
+    typeof manifest.avatarId !== "string" ||
+    typeof manifest.candidateId !== "string" ||
+    !Number.isSafeInteger(manifest.revision) ||
+    typeof manifest.avatarHash !== "string" ||
+    !SHA256.test(manifest.avatarHash) ||
+    !AVATAR_PROOF_SHEETS.includes(manifest.sheet as AvatarProofSheet) ||
+    typeof manifest.path !== "string" ||
+    typeof manifest.pixelHash !== "string" ||
+    !SHA256.test(manifest.pixelHash) ||
+    typeof manifest.contentHash !== "string" ||
+    !SHA256.test(manifest.contentHash) ||
+    typeof manifest.signature !== "string" ||
+    !SHA256.test(manifest.signature)
+  ) {
+    return false;
+  }
+  const { signature, ...unsigned } = manifest as AvatarArtifactManifest;
+  return manifestSignature(unsigned) === signature;
+}
+
+function samePath(left: string, right: string): boolean {
+  const a = resolve(left);
+  const b = resolve(right);
+  return process.platform === "win32"
+    ? a.toLowerCase() === b.toLowerCase()
+    : a === b;
 }
 
 function partSnapshot(avatar: AvatarPackage, partId: string): unknown {
@@ -339,12 +412,10 @@ function validateEvidence(rubric: AvatarRubric, evidence: unknown): string[] {
   if (aestheticScore > 0 && evidence.length === 0) {
     throw new Error("Evidência visual obrigatória para scores estéticos.");
   }
-  for (const artifact of evidence) {
-    if (!ALLOWED_EVIDENCE.has(artifact)) {
-      throw new Error(
-        `Evidência não referencia um artefato permitido: ${artifact}.`,
-      );
-    }
+  if (evidence.some((artifact) => !artifact.trim())) {
+    throw new Error(
+      "Evidência visual deve usar caminhos registrados não vazios.",
+    );
   }
   return [...evidence];
 }
@@ -590,6 +661,7 @@ export class AvatarService {
     const state = await this.readState(avatarId);
     const candidate = this.requireCandidate(state, candidateId);
     await this.validateStoredCandidate(avatarId, candidate);
+    await this.verifyEvidence(avatarId, candidate, evidence, state);
     const review: AvatarReviewRecord = {
       avatarId,
       candidateId,
@@ -600,15 +672,19 @@ export class AvatarService {
     candidate.review = review;
     if (input.manualApproved === true) candidate.manualApproved = true;
 
-    if (!state.bestCandidateId) {
-      state.bestCandidateId = candidateId;
-    } else {
-      const best = this.requireCandidate(state, state.bestCandidateId);
-      if (!best.review || total > best.review.total) {
-        state.bestCandidateId = candidateId;
-      }
-      // Ties deliberately keep the incumbent, making review order deterministic.
-    }
+    const evaluated = Object.values(state.candidates).filter(
+      (item) => item.quality.ok && item.review,
+    );
+    const highest = Math.max(...evaluated.map((item) => item.review!.total));
+    const incumbent = state.bestCandidateId
+      ? state.candidates[state.bestCandidateId]
+      : undefined;
+    state.bestCandidateId =
+      incumbent?.review?.total === highest
+        ? incumbent.candidateId
+        : evaluated.find((item) => item.review!.total === highest)!.candidateId;
+    // A tie keeps the incumbent only while it still shares the highest score;
+    // otherwise persisted creation order is the stable deterministic tie-break.
     await this.writeState(avatarId, state);
     return {
       ...clone(review),
@@ -722,7 +798,7 @@ export class AvatarService {
 
   async renderRevision(
     input: RenderRevisionInput,
-  ): Promise<AvatarRenderResult & { jobId: string }> {
+  ): Promise<AvatarRenderedRevision> {
     const jobId = input.jobId ?? `render-${randomUUID()}`;
     if (!JOB_ID.test(jobId)) throw new Error("Render jobId inválido.");
     if (this.renderJobs.has(jobId)) {
@@ -736,10 +812,22 @@ export class AvatarService {
         input.revision,
       );
       controller.signal.throwIfAborted();
-      const validation = this.validatePackage(loaded.avatar);
-      if (!validation.ok || validation.hash !== loaded.hash) {
-        throw qualityError("Revisão", validation.quality);
+      const state = await this.readState(input.avatarId);
+      const revisionState = state.revisions[String(input.revision)];
+      if (!revisionState) {
+        throw new Error(`Revisão ${input.revision} não gerenciada.`);
       }
+      const candidate = this.requireCandidate(state, revisionState.candidateId);
+      const avatar = parseAvatar(loaded.avatar);
+      const hash = avatarHash(avatar);
+      if (
+        !revisionState.quality.ok ||
+        hash !== loaded.hash ||
+        candidate.hash !== hash
+      ) {
+        throw new Error("Revisão persistida diverge do candidato aprovado.");
+      }
+
       const result = await this.renderer({
         revisionDir: dirname(loaded.path),
         engineDir: input.engineDir,
@@ -748,16 +836,80 @@ export class AvatarService {
         signal: controller.signal,
       });
       controller.signal.throwIfAborted();
-
-      const state = await this.readState(input.avatarId);
-      const revisionState = state.revisions[String(input.revision)];
-      if (revisionState) {
-        revisionState.artifacts = result.files.map((file) =>
-          basename(file.png),
+      const expectedSheets = new Set(input.sheets ?? AVATAR_PROOF_SHEETS);
+      if (
+        !result.complete ||
+        !Array.isArray(result.files) ||
+        expectedSheets.size === 0 ||
+        result.files.length !== expectedSheets.size
+      ) {
+        throw new Error(
+          "Renderer não retornou o conjunto íntegro de evidências.",
         );
-        await this.writeState(input.avatarId, state);
       }
-      return { jobId, ...result };
+
+      const returnedSheets = new Set<AvatarProofSheet>();
+      const manifests: AvatarArtifactManifest[] = [];
+      for (const file of result.files) {
+        controller.signal.throwIfAborted();
+        if (
+          !expectedSheets.has(file.sheet) ||
+          returnedSheets.has(file.sheet) ||
+          !SHA256.test(file.hash) ||
+          !SHA256.test(file.contentHash) ||
+          result.hashes[file.sheet] !== file.hash
+        ) {
+          throw new Error(`Integridade inválida na evidência ${file.sheet}.`);
+        }
+        returnedSheets.add(file.sheet);
+        const artifact = await this.store.readRevisionArtifact(
+          input.avatarId,
+          input.revision,
+          file.png,
+        );
+        // The JPEG is inspection-only, but it must be contained as well.
+        await this.store.readRevisionArtifact(
+          input.avatarId,
+          input.revision,
+          file.jpeg,
+        );
+        const contentHash = createHash("sha256")
+          .update(artifact.contents)
+          .digest("hex");
+        if (contentHash !== file.contentHash) {
+          throw new Error(`Integridade de conteúdo inválida em ${file.sheet}.`);
+        }
+        manifests.push(
+          signedManifest({
+            avatarId: input.avatarId,
+            candidateId: candidate.candidateId,
+            revision: input.revision,
+            avatarHash: hash,
+            sheet: file.sheet,
+            path: artifact.path,
+            pixelHash: file.hash,
+            contentHash,
+          }),
+        );
+      }
+
+      const latest = await this.readState(input.avatarId);
+      const latestRevision = latest.revisions[String(input.revision)];
+      if (
+        !latestRevision ||
+        latestRevision.candidateId !== candidate.candidateId
+      ) {
+        throw new Error(
+          "A revisão mudou durante o render; manifest não salvo.",
+        );
+      }
+      const retained = (latestRevision.artifacts ?? []).filter(
+        (artifact) =>
+          isIntegralManifest(artifact) && !returnedSheets.has(artifact.sheet),
+      );
+      latestRevision.artifacts = [...retained, ...manifests];
+      await this.writeState(input.avatarId, latest);
+      return { jobId, ...result, manifest: clone(manifests) };
     } finally {
       if (this.renderJobs.get(jobId) === controller) {
         this.renderJobs.delete(jobId);
@@ -770,6 +922,70 @@ export class AvatarService {
     if (!controller) return false;
     controller.abort(new Error(`Render job ${jobId} cancelado.`));
     return true;
+  }
+
+  private async verifyEvidence(
+    avatarId: string,
+    candidate: AvatarCandidate,
+    evidence: string[],
+    state: AvatarServiceState,
+  ): Promise<void> {
+    if (evidence.length === 0) return;
+    if (candidate.revision === undefined) {
+      throw new Error("Evidência exige uma revisão aprovada para o candidato.");
+    }
+    const revisionState = state.revisions[String(candidate.revision)];
+    if (!revisionState || revisionState.candidateId !== candidate.candidateId) {
+      throw new Error("Evidência sem vínculo com o mesmo candidato e revisão.");
+    }
+    const loaded = await this.store.loadRevision(avatarId, candidate.revision);
+    const hash = avatarHash(parseAvatar(loaded.avatar));
+    if (loaded.hash !== hash || candidate.hash !== hash) {
+      throw new Error(
+        "Evidência rejeitada: hash do candidato/revisão divergente.",
+      );
+    }
+    const manifests = (revisionState.artifacts ?? []).filter(
+      (artifact) =>
+        isIntegralManifest(artifact) &&
+        artifact.avatarId === avatarId &&
+        artifact.candidateId === candidate.candidateId &&
+        artifact.revision === candidate.revision &&
+        artifact.avatarHash === candidate.hash,
+    );
+
+    for (const reference of evidence) {
+      const manifest = manifests.find((artifact) =>
+        samePath(artifact.path, reference),
+      );
+      if (!manifest) {
+        throw new Error(
+          "Evidência sem caminho registrado para o mesmo candidato e revisão.",
+        );
+      }
+      let contents: Buffer;
+      try {
+        const artifact = await this.store.readRevisionArtifact(
+          avatarId,
+          candidate.revision,
+          manifest.path,
+        );
+        if (!samePath(artifact.path, manifest.path)) {
+          throw new Error("Caminho real da evidência diverge do manifest.");
+        }
+        contents = artifact.contents;
+      } catch (error) {
+        throw new Error("Evidência ausente, inexistente ou fora da revisão.", {
+          cause: error,
+        });
+      }
+      const contentHash = createHash("sha256").update(contents).digest("hex");
+      if (contentHash !== manifest.contentHash) {
+        throw new Error(
+          "Integridade da evidência falhou: conteúdo adulterado.",
+        );
+      }
+    }
   }
 
   private assertAllowedPartIds(

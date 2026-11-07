@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   copyFile,
   mkdir,
@@ -45,6 +46,8 @@ export interface AvatarSheetArtifact {
   nativeWidth: number;
   nativeHeight: number;
   hash: string;
+  /** SHA-256 of the PNG bytes, bound into AvatarService's artifact manifest. */
+  contentHash: string;
 }
 
 export interface AvatarRenderResult {
@@ -246,6 +249,9 @@ export async function renderAvatarRevision(
         nativeWidth: file.nativeWidth,
         nativeHeight: file.nativeHeight,
         hash,
+        contentHash: createHash("sha256")
+          .update(await readFile(png))
+          .digest("hex"),
       });
     }
 

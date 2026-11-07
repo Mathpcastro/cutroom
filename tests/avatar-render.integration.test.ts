@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -159,6 +160,9 @@ describe("avatar review-sheet Chromium integration", () => {
       );
       expect(png.readUInt32BE(16)).toBe(dimensions.width);
       expect(png.readUInt32BE(20)).toBe(dimensions.height);
+      expect(artifact.contentHash).toBe(
+        createHash("sha256").update(png).digest("hex"),
+      );
 
       const jpeg = await readFile(artifact.jpeg);
       expect(jpeg.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));

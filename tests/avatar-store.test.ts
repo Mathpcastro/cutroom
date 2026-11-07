@@ -4,6 +4,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -218,6 +219,43 @@ describe("AvatarStore", () => {
     await expect(
       reopened.writeMetadata(candidate.avatarId, "../outside", {}),
     ).rejects.toThrow(/inválido/);
+  });
+
+  it("reads artifacts only when their real paths stay inside the approved revision", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const candidate = await store.createCandidate(avatarFixture());
+    await store.selectCandidate(candidate.avatarId, candidate.candidateId);
+    const approved = await store.saveRevision(
+      candidate.avatarId,
+      candidate.candidateId,
+    );
+    const artifact = join(
+      dirname(approved.path),
+      ".renders",
+      "proof",
+      "neutral.png",
+    );
+    const contents = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    await mkdir(dirname(artifact), { recursive: true });
+    await writeFile(artifact, contents);
+    const outside = join(dirname(dirname(approved.path)), "outside.png");
+    await writeFile(outside, contents);
+
+    await expect(
+      store.readRevisionArtifact(
+        candidate.avatarId,
+        approved.revision,
+        artifact,
+      ),
+    ).resolves.toEqual({ path: await realpath(artifact), contents });
+    await expect(
+      store.readRevisionArtifact(
+        candidate.avatarId,
+        approved.revision,
+        outside,
+      ),
+    ).rejects.toThrow(/fora|conten/i);
   });
 
   it("persists selection across instances and rejects a different or missing candidate", async () => {

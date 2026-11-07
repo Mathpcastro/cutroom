@@ -9,7 +9,7 @@ import {
   rm,
   rmdir,
 } from "node:fs/promises";
-import { dirname, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import {
   avatarHash,
   canonicalAvatar,
@@ -309,6 +309,26 @@ export class AvatarStore {
       }
       throw error;
     }
+  }
+
+  async readRevisionArtifact(
+    avatarId: string,
+    revision: number,
+    path: string,
+  ): Promise<{ path: string; contents: Buffer }> {
+    const approved = await this.loadRevision(avatarId, revision);
+    const root = await realpath(dirname(approved.path));
+    const actual = await realpath(resolve(path));
+    const relation = relative(root, actual);
+    if (
+      !relation ||
+      relation === ".." ||
+      relation.startsWith(`..${sep}`) ||
+      isAbsolute(relation)
+    ) {
+      throw new Error("Artefato fora da revisão aprovada do avatar.");
+    }
+    return { path: actual, contents: await readFile(actual) };
   }
 
   async listRevisions(

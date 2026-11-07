@@ -1,8 +1,21 @@
-import { dirname, join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
-import type {
-  AvatarRenderOptions,
-  AvatarRenderResult,
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  AVATAR_PROOF_SHEETS,
+  type AvatarRenderOptions,
+  type AvatarRenderResult,
+  type AvatarSheetArtifact,
 } from "../electron/core/avatar-render";
 import { AvatarService } from "../electron/core/avatar-service";
 import {
@@ -25,12 +38,25 @@ interface StoredRevision extends StoredCandidate {
   bytes: string;
 }
 
+const roots: string[] = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 class FakeAvatarStore {
+  readonly root = mkdtempSync(join(tmpdir(), "avatar-service-"));
   readonly candidates = new Map<string, StoredCandidate>();
   readonly revisions = new Map<string, StoredRevision>();
   readonly metadata = new Map<string, unknown>();
   private readonly selections = new Map<string, string>();
   private nextCandidate = 1;
+
+  constructor() {
+    roots.push(this.root);
+  }
 
   private candidateKey(avatarId: string, candidateId: string) {
     return `${avatarId}/${candidateId}`;
@@ -57,13 +83,7 @@ class FakeAvatarStore {
       candidateId,
       avatar,
       hash: avatarHash(avatar),
-      path: join(
-        "/fake-store",
-        avatarId,
-        "candidates",
-        candidateId,
-        "avatar.json",
-      ),
+      path: join(this.root, avatarId, "candidates", candidateId, "avatar.json"),
     };
     this.candidates.set(this.candidateKey(avatarId, candidateId), candidate);
     return { avatarId, candidateId, hash: candidate.hash };
@@ -115,13 +135,15 @@ class FakeAvatarStore {
       revision,
       bytes: canonicalAvatar(candidate.avatar),
       path: join(
-        "/fake-store",
+        this.root,
         avatarId,
         "revisions",
         String(revision),
         "avatar.json",
       ),
     };
+    mkdirSync(dirname(stored.path), { recursive: true });
+    writeFileSync(stored.path, stored.bytes, "utf8");
     this.revisions.set(this.revisionKey(avatarId, revision), stored);
     return { revision, hash: stored.hash, path: stored.path };
   }
@@ -134,6 +156,23 @@ class FakeAvatarStore {
       hash: stored.hash,
       path: stored.path,
     };
+  }
+
+  async readRevisionArtifact(avatarId: string, revision: number, path: string) {
+    const stored = this.revisions.get(this.revisionKey(avatarId, revision));
+    if (!stored) throw new Error(`Revisão ${revision} não encontrada.`);
+    const root = await realpath(dirname(stored.path));
+    const actual = await realpath(resolve(path));
+    const relation = relative(root, actual);
+    if (
+      !relation ||
+      relation === ".." ||
+      relation.startsWith(`..${sep}`) ||
+      isAbsolute(relation)
+    ) {
+      throw new Error("Artefato fora da revisão do avatar.");
+    }
+    return { path: actual, contents: await readFile(actual) };
   }
 
   async readMetadata(avatarId: string, key: string) {
@@ -182,11 +221,42 @@ function changedHair(avatar: AvatarPackage) {
   return changed;
 }
 
-function renderResult(): AvatarRenderResult {
+const FAKE_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+async function renderResult(
+  options: AvatarRenderOptions & { signal: AbortSignal },
+): Promise<AvatarRenderResult> {
+  const sheets = options.sheets ?? AVATAR_PROOF_SHEETS;
+  const renders = join(options.revisionDir, ".renders");
+  await mkdir(renders, { recursive: true });
+  const output = await mkdtemp(join(renders, "fake-"));
+  const files: AvatarSheetArtifact[] = [];
+  for (const sheet of sheets) {
+    const png = join(output, `${sheet}.png`);
+    const jpeg = join(output, `${sheet}.jpg`);
+    await writeFile(png, FAKE_PNG);
+    await writeFile(jpeg, FAKE_PNG);
+    files.push({
+      sheet,
+      png,
+      jpeg,
+      width: 1,
+      height: 1,
+      nativeWidth: 1,
+      nativeHeight: 1,
+      hash: createHash("sha256")
+        .update(`${options.revisionDir}:${sheet}`)
+        .digest("hex"),
+      contentHash: createHash("sha256").update(FAKE_PNG).digest("hex"),
+    });
+  }
   return {
     complete: true,
-    files: [],
-    hashes: {},
+    files,
+    hashes: Object.fromEntries(files.map((file) => [file.sheet, file.hash])),
     errors: [],
     networkRequests: [],
   };
@@ -195,7 +265,7 @@ function renderResult(): AvatarRenderResult {
 function setup(
   renderer: (
     options: AvatarRenderOptions & { signal: AbortSignal },
-  ) => Promise<AvatarRenderResult> = async () => renderResult(),
+  ) => Promise<AvatarRenderResult> = renderResult,
 ) {
   const store = new FakeAvatarStore();
   const service = new AvatarService({ store, renderer });
@@ -209,6 +279,8 @@ async function createThree(service: AvatarService) {
   });
 }
 
+let reviewRenderJob = 0;
+
 async function review(
   service: AvatarService,
   avatarId: string,
@@ -217,11 +289,23 @@ async function review(
   rubric: any = validRubric(),
   manualApproved?: boolean,
 ) {
+  let candidate = await service.getCandidate(avatarId, candidateId);
+  if (candidate.revision === undefined) {
+    candidate = await service.selectCandidate(avatarId, candidateId);
+  }
+  const rendered = await service.renderRevision({
+    jobId: `review-render-${++reviewRenderJob}`,
+    avatarId,
+    revision: candidate.revision!,
+    engineDir: "/engine",
+    runner: { worker: "/worker", browser: "/browser" },
+    sheets: ["neutral", "expressions"],
+  });
   return service.reviewCandidate({
     avatarId,
     candidateId,
     rubric,
-    evidence: ["neutral.png", "expressions.png"],
+    evidence: rendered.files.map((file) => file.png),
     ...(manualApproved === undefined ? {} : { manualApproved }),
   });
 }
@@ -248,11 +332,20 @@ describe("AvatarService", { timeout: 60_000 }, () => {
       }),
     ).rejects.toThrow(/não autorizada/);
 
-    const reviewed = await review(
-      service,
-      created.avatarId,
-      created.candidates[0].candidateId,
-    );
+    const rendered = await service.renderRevision({
+      jobId: "base-review-render",
+      avatarId: created.avatarId,
+      revision: selected.revision,
+      engineDir: "/engine",
+      runner: { worker: "/worker", browser: "/browser" },
+      sheets: ["neutral", "expressions"],
+    });
+    const reviewed = await service.reviewCandidate({
+      avatarId: created.avatarId,
+      candidateId: created.candidates[0].candidateId,
+      rubric: validRubric(),
+      evidence: rendered.files.map((file) => file.png),
+    });
     expect(reviewed.total).toBe(93);
   });
 
@@ -503,8 +596,50 @@ describe("AvatarService", { timeout: 60_000 }, () => {
       (await service.getCandidate(created.avatarId, tied.candidateId)).review,
     ).toMatchObject({
       total: 93,
-      evidence: ["neutral.png", "expressions.png"],
+      evidence: [expect.any(String), expect.any(String)],
     });
+  });
+
+  it("recalculates the best candidate after re-review and preserves only a leading tie", async () => {
+    const { service } = setup();
+    const created = await createThree(service);
+    const [a, b] = created.candidates;
+
+    await review(service, created.avatarId, a.candidateId, {
+      ...validRubric(),
+      identity: 20,
+    });
+    await review(service, created.avatarId, b.candidateId, {
+      ...validRubric(),
+      identity: 15,
+    });
+    expect(
+      (await service.getBestCandidate(created.avatarId))?.candidateId,
+    ).toBe(a.candidateId);
+
+    await review(service, created.avatarId, a.candidateId, {
+      ...validRubric(),
+      identity: 5,
+    });
+    expect(
+      (await service.getBestCandidate(created.avatarId))?.candidateId,
+    ).toBe(b.candidateId);
+
+    await review(service, created.avatarId, a.candidateId, {
+      ...validRubric(),
+      identity: 15,
+    });
+    expect(
+      (await service.getBestCandidate(created.avatarId))?.candidateId,
+    ).toBe(b.candidateId);
+
+    await review(service, created.avatarId, b.candidateId, {
+      ...validRubric(),
+      identity: 5,
+    });
+    expect(
+      (await service.getBestCandidate(created.avatarId))?.candidateId,
+    ).toBe(a.candidateId);
   });
 
   it("requires real proof-sheet evidence and rejects arbitrary paths", async () => {
@@ -536,6 +671,211 @@ describe("AvatarService", { timeout: 60_000 }, () => {
       ).rejects.toThrow(/evidência|artefato/i);
     }
     expect(await service.getBestCandidate(created.avatarId)).toBeUndefined();
+  });
+
+  it("rejects a basename even when a real artifact was rendered", async () => {
+    const { service } = setup();
+    const created = await createThree(service);
+    const candidate = created.candidates[0];
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      candidate.candidateId,
+    );
+    await service.renderRevision({
+      jobId: "basename-render",
+      avatarId: created.avatarId,
+      revision: selected.revision,
+      engineDir: "/engine",
+      runner: { worker: "/worker", browser: "/browser" },
+      sheets: ["neutral"],
+    });
+
+    await expect(
+      service.reviewCandidate({
+        avatarId: created.avatarId,
+        candidateId: candidate.candidateId,
+        rubric: validRubric(),
+        evidence: ["neutral.png"],
+      }),
+    ).rejects.toThrow(/registrad|caminho|vínculo/i);
+  });
+
+  it("rejects a missing evidence file even with manual approval", async () => {
+    const { service } = setup();
+    const created = await createThree(service);
+    const candidate = created.candidates[0];
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      candidate.candidateId,
+    );
+    const rendered = await service.renderRevision({
+      jobId: "missing-evidence-render",
+      avatarId: created.avatarId,
+      revision: selected.revision,
+      engineDir: "/engine",
+      runner: { worker: "/worker", browser: "/browser" },
+      sheets: ["neutral"],
+    });
+    await rm(rendered.files[0].png);
+
+    await expect(
+      service.reviewCandidate({
+        avatarId: created.avatarId,
+        candidateId: candidate.candidateId,
+        rubric: validRubric(),
+        evidence: [rendered.files[0].png],
+        manualApproved: true,
+      }),
+    ).rejects.toThrow(/ausente|inexistente|integridade/i);
+    expect(
+      (await service.getCandidate(created.avatarId, candidate.candidateId))
+        .manualApproved,
+    ).toBe(false);
+  });
+
+  it("rejects tampered evidence content", async () => {
+    const { service } = setup();
+    const created = await createThree(service);
+    const candidate = created.candidates[0];
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      candidate.candidateId,
+    );
+    const rendered = await service.renderRevision({
+      jobId: "tampered-evidence-render",
+      avatarId: created.avatarId,
+      revision: selected.revision,
+      engineDir: "/engine",
+      runner: { worker: "/worker", browser: "/browser" },
+      sheets: ["neutral"],
+    });
+    await writeFile(rendered.files[0].png, "adulterado");
+
+    await expect(
+      service.reviewCandidate({
+        avatarId: created.avatarId,
+        candidateId: candidate.candidateId,
+        rubric: validRubric(),
+        evidence: [rendered.files[0].png],
+      }),
+    ).rejects.toThrow(/integridade|adulter/i);
+  });
+
+  it("rejects evidence rendered for another candidate", async () => {
+    const { service } = setup();
+    const created = await createThree(service);
+    const [candidate, other] = created.candidates;
+    await service.selectCandidate(created.avatarId, candidate.candidateId);
+    const otherSelected = await service.selectCandidate(
+      created.avatarId,
+      other.candidateId,
+    );
+    const otherRender = await service.renderRevision({
+      jobId: "other-candidate-render",
+      avatarId: created.avatarId,
+      revision: otherSelected.revision,
+      engineDir: "/engine",
+      runner: { worker: "/worker", browser: "/browser" },
+      sheets: ["neutral"],
+    });
+
+    await expect(
+      service.reviewCandidate({
+        avatarId: created.avatarId,
+        candidateId: candidate.candidateId,
+        rubric: validRubric(),
+        evidence: [otherRender.files[0].png],
+      }),
+    ).rejects.toThrow(/candidato|revisão|vínculo/i);
+  });
+
+  it("rejects evidence rendered for another revision", async () => {
+    const { service } = setup();
+    const created = await createThree(service);
+    const candidate = created.candidates[0];
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      candidate.candidateId,
+    );
+    const revised = await service.revisePart({
+      avatarId: created.avatarId,
+      revision: selected.revision,
+      allowedPartIds: ["mouth"],
+      package: changedMouth(packages()[0]),
+    });
+    const otherRevision = await service.renderRevision({
+      jobId: "other-revision-render",
+      avatarId: created.avatarId,
+      revision: revised.revision,
+      engineDir: "/engine",
+      runner: { worker: "/worker", browser: "/browser" },
+      sheets: ["neutral"],
+    });
+
+    await expect(
+      service.reviewCandidate({
+        avatarId: created.avatarId,
+        candidateId: candidate.candidateId,
+        rubric: validRubric(),
+        evidence: [otherRevision.files[0].png],
+      }),
+    ).rejects.toThrow(/candidato|revisão|vínculo/i);
+  });
+
+  it("rejects a renderer artifact whose content hash does not match the file", async () => {
+    const renderer = async (
+      options: AvatarRenderOptions & { signal: AbortSignal },
+    ) => {
+      const result = await renderResult(options);
+      result.files[0].contentHash = "0".repeat(64);
+      return result;
+    };
+    const { service } = setup(renderer);
+    const created = await createThree(service);
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      created.candidates[0].candidateId,
+    );
+
+    await expect(
+      service.renderRevision({
+        jobId: "invalid-content-hash-render",
+        avatarId: created.avatarId,
+        revision: selected.revision,
+        engineDir: "/engine",
+        runner: { worker: "/worker", browser: "/browser" },
+        sheets: ["neutral"],
+      }),
+    ).rejects.toThrow(/integridade|conteúdo/i);
+  });
+
+  it("rejects a renderer artifact outside the persisted revision", async () => {
+    const renderer = async (
+      options: AvatarRenderOptions & { signal: AbortSignal },
+    ) => {
+      const result = await renderResult(options);
+      const outside = join(dirname(options.revisionDir), "outside.png");
+      await writeFile(outside, FAKE_PNG);
+      result.files[0].png = outside;
+      return result;
+    };
+    const { service } = setup(renderer);
+    const created = await createThree(service);
+    const selected = await service.selectCandidate(
+      created.avatarId,
+      created.candidates[0].candidateId,
+    );
+
+    await expect(
+      service.renderRevision({
+        jobId: "outside-artifact-render",
+        avatarId: created.avatarId,
+        revision: selected.revision,
+        engineDir: "/engine",
+        runner: { worker: "/worker", browser: "/browser" },
+        sheets: ["neutral"],
+      }),
+    ).rejects.toThrow(/fora|conten/i);
   });
 
   it("validates rubric keys, integer types, bounds and the 100-point total", async () => {
@@ -692,7 +1032,7 @@ describe("AvatarService", { timeout: 60_000 }, () => {
   });
 
   it("validates and renders persisted revisions through the shared adapters", async () => {
-    const renderer = vi.fn(async () => renderResult());
+    const renderer = vi.fn(renderResult);
     const { service } = setup(renderer);
     const created = await createThree(service);
     const selected = await service.selectCandidate(
@@ -769,7 +1109,7 @@ describe("AvatarService", { timeout: 60_000 }, () => {
     expect(renderers[0].options.signal.aborted).toBe(true);
     expect(renderers[1].options.signal.aborted).toBe(false);
 
-    renderers[1].resolve(renderResult());
+    renderers[1].resolve(await renderResult(renderers[1].options));
     const secondResult = await second;
     expect(secondResult.jobId).toBe("job-two");
     expect(renderers[1].options.signal.aborted).toBe(false);
