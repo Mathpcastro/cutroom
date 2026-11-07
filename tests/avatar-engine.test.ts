@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AvatarPackage, AvatarPrimitive } from "../src/shared/avatar";
 import {
@@ -35,6 +36,30 @@ function rgba(hex: string): number[] {
     Number.parseInt(hex.slice(5, 7), 16),
     255,
   ];
+}
+
+function polygonPixels(points: { x: number; y: number }[]): AvatarPixels {
+  return renderAvatarPixels(
+    avatarWithPrimitives([{ type: "polygon", points, color: "accent" }]),
+    neutralState,
+  );
+}
+
+function expectPolygonRows(
+  pixels: AvatarPixels,
+  rows: string[],
+  originX = 0,
+  originY = 0,
+): void {
+  for (const [rowIndex, row] of rows.entries()) {
+    for (const [columnIndex, cell] of [...row].entries()) {
+      const x = originX + columnIndex;
+      const y = originY + rowIndex;
+      expect(pixel(pixels, x, y), `pixel ${x},${y}`).toEqual(
+        cell === "#" ? rgba("#f4c95d") : [0, 0, 0, 0],
+      );
+    }
+  }
 }
 
 describe("native avatar pixel renderer", () => {
@@ -136,33 +161,125 @@ describe("native avatar pixel renderer", () => {
     expect(pixel(matrix, 2, 2)).toEqual(rgba("#ffffff"));
   });
 
-  it("scanline-fills polygons deterministically with vertex tie-breaking", () => {
-    const points = [
-      { x: 1, y: 1 },
-      { x: 6, y: 1 },
-      { x: 1, y: 6 },
-    ];
-    const polygon = renderAvatarPixels(
-      avatarWithPrimitives([{ type: "polygon", points, color: "accent" }]),
-      neutralState,
-    );
-    const reversed = renderAvatarPixels(
-      avatarWithPrimitives([
-        { type: "polygon", points: [...points].reverse(), color: "accent" },
-      ]),
-      neutralState,
-    );
+  describe("integer polygon scanlines", () => {
+    it("fills triangles deterministically with vertex tie-breaking", () => {
+      const points = [
+        { x: 1, y: 1 },
+        { x: 6, y: 1 },
+        { x: 1, y: 6 },
+      ];
+      const polygon = polygonPixels(points);
+      const reversed = polygonPixels([...points].reverse());
 
-    const rows = [1, 2, 3, 4, 5].map((y) =>
-      Array.from({ length: 6 }, (_, x) =>
-        pixel(polygon, x, y)[3] === 255 ? "#" : ".",
-      ).join(""),
-    );
-    expect(rows).toEqual([".#####", ".####.", ".###..", ".##...", ".#...."]);
-    expect(pixel(polygon, 1, 6)).toEqual([0, 0, 0, 0]);
-    expect(Buffer.from(polygon.data).equals(Buffer.from(reversed.data))).toBe(
-      true,
-    );
+      expectPolygonRows(
+        polygon,
+        [".#####", ".####.", ".###..", ".##...", ".#...."],
+        0,
+        1,
+      );
+      expect(pixel(polygon, 1, 6)).toEqual([0, 0, 0, 0]);
+      expect(Buffer.from(polygon.data).equals(Buffer.from(reversed.data))).toBe(
+        true,
+      );
+    });
+
+    it("normalizes negative edge denominators without changing triangle bytes", () => {
+      const points = [
+        { x: 1, y: 1 },
+        { x: 1, y: 6 },
+        { x: 6, y: 6 },
+      ];
+      const polygon = polygonPixels(points);
+      const reversed = polygonPixels([...points].reverse());
+
+      expectPolygonRows(
+        polygon,
+        [".#....", ".##...", ".###..", ".####.", ".#####"],
+        0,
+        1,
+      );
+      expect(Buffer.from(polygon.data).equals(Buffer.from(reversed.data))).toBe(
+        true,
+      );
+    });
+
+    it("fills concave polygons and skips horizontal edges exactly", () => {
+      const polygon = polygonPixels([
+        { x: 1, y: 1 },
+        { x: 5, y: 1 },
+        { x: 5, y: 3 },
+        { x: 3, y: 3 },
+        { x: 3, y: 5 },
+        { x: 1, y: 5 },
+      ]);
+
+      expectPolygonRows(
+        polygon,
+        [".####.", ".####.", ".##...", ".##...", "......"],
+        0,
+        1,
+      );
+    });
+
+    it("keeps shared, collinear and repeated vertices deterministic", () => {
+      const polygon = polygonPixels([
+        { x: 1, y: 1 },
+        { x: 3, y: 1 },
+        { x: 6, y: 1 },
+        { x: 6, y: 1 },
+        { x: 1, y: 6 },
+        { x: 1, y: 6 },
+      ]);
+
+      expectPolygonRows(
+        polygon,
+        [".#####", ".####.", ".###..", ".##...", ".#...."],
+        0,
+        1,
+      );
+    });
+
+    it("clips negative coordinates while preserving exact RGBA bytes", () => {
+      const polygon = polygonPixels([
+        { x: -3, y: -2 },
+        { x: 2, y: -2 },
+        { x: 2, y: 3 },
+        { x: -3, y: 3 },
+      ]);
+
+      expectPolygonRows(polygon, ["##..", "##..", "##..", "...."]);
+    });
+
+    it("keeps rational products safe at the schema coordinate limits", () => {
+      const polygon = polygonPixels([
+        { x: -4096, y: -4096 },
+        { x: 4096, y: -4096 },
+        { x: 4096, y: 4096 },
+        { x: -4096, y: 4096 },
+      ]);
+      const expected = rgba("#f4c95d");
+
+      expect(
+        polygon.data.every((channel, index) => channel === expected[index % 4]),
+      ).toBe(true);
+    });
+
+    it("uses doubled integer scanlines and cross-products, never float intersections", () => {
+      const source = readFileSync(
+        new URL("../resources/avatar-engine/avatar-engine.js", import.meta.url),
+        "utf8",
+      );
+      const scanline = source.slice(
+        source.indexOf("function fillPolygon"),
+        source.indexOf("export function renderAvatarPixels"),
+      );
+
+      expect(scanline).toContain("const scan = 2 * y + 1");
+      expect(scanline).not.toMatch(/\d+\.\d+/);
+      expect(scanline).not.toMatch(/\bconst x\s*=/);
+      expect(source).toContain("left.numerator * right.denominator");
+      expect(source).toContain("right.numerator * left.denominator");
+    });
   });
 
   it("orders layers by zIndex and breaks ties by original part index", () => {

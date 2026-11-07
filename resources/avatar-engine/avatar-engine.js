@@ -49,6 +49,13 @@ function fillMatrix(context, primitive) {
   }
 }
 
+function compareIntersections(left, right) {
+  // Schema bounds keep each product below 2^42, safely within 2^53.
+  const difference =
+    left.numerator * right.denominator - right.numerator * left.denominator;
+  return difference || left.edge - right.edge;
+}
+
 function fillPolygon(context, primitive) {
   const points = primitive.points.map(({ x, y }) => ({
     x: Math.round(x),
@@ -60,28 +67,34 @@ function fillPolygon(context, primitive) {
   const endY = Math.min(height, Math.max(...points.map((point) => point.y)));
 
   for (let y = firstY; y < endY; y += 1) {
-    const scanY = y + 0.5;
+    const scan = 2 * y + 1;
     const intersections = [];
     for (let index = 0; index < points.length; index += 1) {
       const start = points[index];
       const end = points[(index + 1) % points.length];
       if (start.y === end.y) continue;
-      const minimumY = Math.min(start.y, end.y);
-      const maximumY = Math.max(start.y, end.y);
-      if (scanY < minimumY || scanY >= maximumY) continue;
-      const x =
-        start.x + ((scanY - start.y) * (end.x - start.x)) / (end.y - start.y);
-      intersections.push(x);
+      const minimumY = 2 * Math.min(start.y, end.y);
+      const maximumY = 2 * Math.max(start.y, end.y);
+      if (scan < minimumY || scan >= maximumY) continue;
+
+      let denominator = 2 * (end.y - start.y);
+      let numerator =
+        start.x * denominator + (scan - 2 * start.y) * (end.x - start.x);
+      if (denominator < 0) {
+        numerator = -numerator;
+        denominator = -denominator;
+      }
+      intersections.push({ numerator, denominator, edge: index });
     }
-    intersections.sort((left, right) => left - right);
+    intersections.sort(compareIntersections);
 
     for (let index = 0; index + 1 < intersections.length; index += 2) {
-      const left = Math.max(0, Math.ceil(intersections[index] - 0.5));
-      const right = Math.min(
-        width - 1,
-        Math.floor(intersections[index + 1] - 0.5),
-      );
-      for (let x = left; x <= right; x += 1) {
+      const left = intersections[index];
+      const right = intersections[index + 1];
+      for (let x = 0; x < width; x += 1) {
+        const center = 2 * x + 1;
+        if (center * left.denominator < 2 * left.numerator) continue;
+        if (center * right.denominator > 2 * right.numerator) continue;
         const offset = (y * width + x) * 4;
         data[offset] = red;
         data[offset + 1] = green;
