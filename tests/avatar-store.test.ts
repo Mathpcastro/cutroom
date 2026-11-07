@@ -60,8 +60,10 @@ class FailingRenameStore extends AvatarStore {
   failWrite = false;
   failSync = false;
   failSecondRevisionDirectorySync = false;
+  failSecondRevisionsRootSync = false;
   syncedDirectories: string[] = [];
   private revisionDirectorySyncs = 0;
+  private revisionsRootSyncs = 0;
 
   protected override async rename(source: string, target: string) {
     const shouldFail =
@@ -105,8 +107,42 @@ class FailingRenameStore extends AvatarStore {
         throw new Error("Falha de fsync de diretório simulada.");
       }
     }
+    if (this.failSecondRevisionsRootSync && path.endsWith(`${sep}revisions`)) {
+      this.revisionsRootSyncs += 1;
+      if (this.revisionsRootSyncs === 2) {
+        this.failSecondRevisionsRootSync = false;
+        throw new Error("Falha transitória de fsync do diretório pai.");
+      }
+    }
     await super.syncDirectory(path);
   }
+}
+
+class CoordinatedSelectionStore extends AvatarStore {
+  afterSelectionRename: (() => Promise<void>) | undefined;
+  beforeSelectionWrite: (() => Promise<void>) | undefined;
+
+  protected override async rename(source: string, target: string) {
+    await super.rename(source, target);
+    const hook = this.afterSelectionRename;
+    this.afterSelectionRename = undefined;
+    if (hook && target.endsWith("selection.json")) await hook();
+  }
+
+  protected override async writeFile(handle: FileHandle, contents: string) {
+    const hook = this.beforeSelectionWrite;
+    this.beforeSelectionWrite = undefined;
+    if (hook) await hook();
+    await super.writeFile(handle, contents);
+  }
+}
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
 }
 
 describe("AvatarStore", () => {
@@ -774,5 +810,108 @@ describe("AvatarStore", () => {
       { revision: 1, hash: first.hash, approved: true },
       { revision: 2, hash: second.hash, approved: true },
     ]);
+  });
+
+  it("does not remove another instance's partial after a successful selection rename", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const first = await store.createCandidate(avatarFixture());
+    const changed = avatarFixture();
+    changed.artBible.notes = ["Second selection owner."];
+    const second = await store.createCandidate(changed);
+    const bPartialCreated = deferred();
+    const finishB = deferred();
+    const a = new CoordinatedSelectionStore(root);
+    const b = new CoordinatedSelectionStore(root);
+    let bSelection!: Promise<void>;
+
+    b.beforeSelectionWrite = async () => {
+      bPartialCreated.resolve();
+      await finishB.promise;
+    };
+    a.afterSelectionRename = async () => {
+      bSelection = b.selectCandidate(second.avatarId, second.candidateId);
+      await bPartialCreated.promise;
+    };
+
+    await a.selectCandidate(first.avatarId, first.candidateId);
+    finishB.resolve();
+    await bSelection;
+
+    const selection = JSON.parse(
+      await readFile(join(root, first.avatarId, "selection.json"), "utf8"),
+    );
+    expect(selection.candidateId).toBe(second.candidateId);
+    await expect(
+      access(join(root, first.avatarId, "selection.json.partial")),
+    ).rejects.toThrow();
+  });
+
+  it("retries initialization on the same instance after a transient root failure", async () => {
+    const parent = await temporaryRoot();
+    const root = join(parent, "avatar-root");
+    await writeFile(root, "not-a-directory", "utf8");
+    const store = new AvatarStore(root);
+
+    const initial = await Promise.allSettled([
+      store.createCandidate(avatarFixture()),
+      store.createCandidate(avatarFixture()),
+    ]);
+    expect(initial.map((result) => result.status)).toEqual([
+      "rejected",
+      "rejected",
+    ]);
+
+    await rm(root);
+    await mkdir(root);
+    const candidates = await Promise.all(
+      Array.from({ length: 4 }, () => store.createCandidate(avatarFixture())),
+    );
+    expect(
+      new Set(candidates.map((candidate) => candidate.candidateId)),
+    ).toHaveLength(4);
+    expect(
+      await readdir(join(root, avatarFixture().id, "candidates")),
+    ).toHaveLength(4);
+  });
+
+  it("cleans an empty new revision when parent directory sync fails and reuses its number", async () => {
+    const root = await temporaryRoot();
+    const store = new AvatarStore(root);
+    const first = await store.createCandidate(avatarFixture());
+    await store.selectCandidate(first.avatarId, first.candidateId);
+    const approved = await store.saveRevision(
+      first.avatarId,
+      first.candidateId,
+    );
+    const approvedBytes = await readFile(approved.path, "utf8");
+    const changed = avatarFixture();
+    changed.artBible.notes = ["Parent directory sync retry."];
+    const second = await store.createCandidate(changed);
+    await store.selectCandidate(second.avatarId, second.candidateId);
+    const revisionDirectory = join(root, second.avatarId, "revisions", "2");
+
+    const failing = new FailingRenameStore(root);
+    failing.failSecondRevisionsRootSync = true;
+    await expect(
+      failing.saveRevision(second.avatarId, second.candidateId),
+    ).rejects.toThrow("Falha transitória de fsync do diretório pai.");
+    await expect(access(revisionDirectory)).rejects.toThrow();
+    expect(await store.listRevisions(second.avatarId)).toEqual([
+      { revision: 1, hash: first.hash, approved: true },
+    ]);
+    expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
+
+    const recovered = await new AvatarStore(root).saveRevision(
+      second.avatarId,
+      second.candidateId,
+    );
+    expect(recovered.revision).toBe(2);
+    expect(recovered.path).toBe(join(revisionDirectory, "avatar.json"));
+    expect(await store.listRevisions(second.avatarId)).toEqual([
+      { revision: 1, hash: first.hash, approved: true },
+      { revision: 2, hash: second.hash, approved: true },
+    ]);
+    expect(await readFile(approved.path, "utf8")).toBe(approvedBytes);
   });
 });

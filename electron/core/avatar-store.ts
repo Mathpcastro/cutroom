@@ -73,7 +73,15 @@ export class AvatarStore {
         this.root = await realpath(this.root);
       })();
     }
-    await this.initialization;
+    const initialization = this.initialization;
+    try {
+      await initialization;
+    } catch (error) {
+      if (this.initialization === initialization) {
+        this.initialization = undefined;
+      }
+      throw error;
+    }
   }
 
   private async withApprovalLock<T>(
@@ -199,7 +207,6 @@ export class AvatarStore {
       try {
         await mkdir(revisionDirectory);
         await this.assertContained(revisionDirectory);
-        await this.syncDirectory(revisionsRoot);
         break;
       } catch (error) {
         if (
@@ -221,6 +228,7 @@ export class AvatarStore {
       revision,
     };
     try {
+      await this.syncDirectory(revisionsRoot);
       await this.writeAtomic(path, canonicalAvatar(candidate.avatar));
       await this.writeAtomic(
         this.approvalPath(validAvatarId, revision),
@@ -606,6 +614,7 @@ export class AvatarStore {
       await handle.close();
       handle = undefined;
       await this.rename(partial, path);
+      created = false;
       await this.syncDirectory(dirname(path));
     } finally {
       if (handle) await handle.close().catch(() => undefined);
