@@ -351,4 +351,42 @@ describe("part-owned avatar revision", () => {
       /preserv|protected|revision/i,
     );
   });
+
+  describe.each([
+    ["empty", [] as string[]],
+    ["valid", ["head", "arm.left"]],
+  ])("with %s allowedPartIds", (_authorization, allowedPartIds) => {
+    it.each([
+      [
+        "identity.inferred",
+        (avatar: AvatarPackage) => {
+          avatar.identity.inferred = ["different-inference"];
+        },
+      ],
+      [
+        "artBible.light",
+        (avatar: AvatarPackage) => {
+          avatar.artBible.light = "top-right";
+        },
+      ],
+      [
+        "artBible.outline",
+        (avatar: AvatarPackage) => {
+          avatar.artBible.outline = "hair";
+        },
+      ],
+      [
+        "artBible.notes",
+        (avatar: AvatarPackage) => {
+          avatar.artBible.notes = ["Different visual direction."];
+        },
+      ],
+    ])("preserves %s", (_field, mutate) => {
+      const next = avatarFixture();
+      mutate(next);
+      expect(() => reviseAvatar(avatarFixture(), next, allowedPartIds)).toThrow(
+        /preserv|protected|revision/i,
+      );
+    });
+  });
 });

@@ -399,21 +399,23 @@ export function reviseAvatar(
     id: before.id,
     revision: before.revision,
     canvas: before.canvas,
-    anchors: before.identity.anchors,
+    identity: before.identity,
+    artBible: before.artBible,
     palette: before.palette,
   };
   const protectedAfter = {
     id: after.id,
     revision: after.revision,
     canvas: after.canvas,
-    anchors: after.identity.anchors,
+    identity: after.identity,
+    artBible: after.artBible,
     palette: after.palette,
   };
   if (
     canonicalStringify(protectedBefore) !== canonicalStringify(protectedAfter)
   ) {
     throw new Error(
-      "Avatar revision must preserve id, revision, canvas, identity anchors and palette tokens.",
+      "Avatar revision must preserve id, revision, canvas, identity, art bible and palette tokens.",
     );
   }
 
