@@ -118,8 +118,98 @@ function fillPolygon(context, primitive) {
   }
 }
 
+function translatePrimitive(primitive, dx, dy) {
+  if (primitive.type === "polygon") {
+    return {
+      ...primitive,
+      points: primitive.points.map((point) => ({
+        x: point.x + dx,
+        y: point.y + dy,
+      })),
+    };
+  }
+  return { ...primitive, x: primitive.x + dx, y: primitive.y + dy };
+}
+
+function applyPartState(evaluation, override) {
+  if (!override) return;
+  if (override.primitives) evaluation.primitives = override.primitives;
+  if (override.hidden !== undefined) evaluation.hidden = override.hidden;
+  evaluation.dx += override.dx ?? 0;
+  evaluation.dy += override.dy ?? 0;
+}
+
+function quantizedBlink(value) {
+  const finite = Number.isFinite(value) ? value : 0;
+  const clamped = Math.min(1, Math.max(0, finite));
+  return Math.round(clamped * 2) / 2;
+}
+
+function applyBlink(partId, evaluation, blink) {
+  if (blink === 0) return;
+  if (partId === "eyes") {
+    if (blink === 1) {
+      evaluation.hidden = true;
+    } else {
+      evaluation.primitives = evaluation.primitives.map((primitive) =>
+        primitive.type === "rect" && primitive.height > 2
+          ? {
+              ...primitive,
+              y: primitive.y + 1,
+              height: primitive.height - 2,
+            }
+          : translatePrimitive(primitive, 0, 1),
+      );
+    }
+  } else if (partId === "pupils") {
+    evaluation.hidden = true;
+  } else if (partId === "lids") {
+    evaluation.primitives = evaluation.primitives.map((primitive) =>
+      translatePrimitive(primitive, 0, blink * 4),
+    );
+  }
+}
+
+const BREATHING_CYCLE = [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, -1, -1, -1, -1, 0, 0];
+
+function breathingOffset(partId, frame) {
+  if (partId === "body") return 0;
+  const delay =
+    partId === "hair" || partId.startsWith("hair.")
+      ? 2
+      : partId === "accessory" || partId.startsWith("accessory.")
+        ? 4
+        : 0;
+  const finiteFrame = Number.isFinite(frame) ? Math.trunc(frame) : 0;
+  const delayedFrame = Math.max(0, finiteFrame - delay);
+  const index = delayedFrame % BREATHING_CYCLE.length;
+  return BREATHING_CYCLE[index];
+}
+
+function evaluatePart(avatar, state, part) {
+  const evaluation = {
+    primitives: part.primitives,
+    hidden: false,
+    dx: 0,
+    dy: 0,
+  };
+  applyPartState(evaluation, avatar.poses[state.pose]?.[part.id]);
+  applyPartState(evaluation, avatar.expressions[state.expression]?.[part.id]);
+  applyPartState(evaluation, avatar.mouths[state.mouth]?.[part.id]);
+  applyBlink(part.id, evaluation, quantizedBlink(state.blink));
+  evaluation.dy += breathingOffset(part.id, state.frame);
+
+  const dx = Math.round(evaluation.dx);
+  const dy = Math.round(evaluation.dy);
+  return {
+    hidden: evaluation.hidden,
+    primitives: evaluation.primitives.map((primitive) =>
+      translatePrimitive(primitive, dx, dy),
+    ),
+  };
+}
+
 export function renderAvatarPixels(avatar, state, viewport = "full") {
-  void state;
   const size =
     viewport === "portrait" ? avatar.canvas.portrait : avatar.canvas.full;
   const data = new Uint8ClampedArray(size * size * 4);
@@ -135,7 +225,9 @@ export function renderAvatarPixels(avatar, state, viewport = "full") {
     );
 
   for (const { part } of orderedParts) {
-    for (const primitive of part.primitives) {
+    const evaluated = evaluatePart(avatar, state, part);
+    if (evaluated.hidden) continue;
+    for (const primitive of evaluated.primitives) {
       switch (primitive.type) {
         case "rect":
           fillRect(
