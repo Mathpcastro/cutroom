@@ -3,39 +3,68 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CutRoom — o vídeo que faz o seu SaaS vender no orgânico</title>
-<meta name="description" content="O agente faz o Reels, o piloto automático posta, o carrossel converte. Funil orgânico para vender o seu SaaS sem tráfego pago.">
+<title>Videosell — avatares e vídeos com IA para o seu produto</title>
+<meta name="description" content="Complemente o Carrossell com Reels, narração, formatos em código e publicação. Videosell por R$ 97, pagamento único.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Sora:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>
-  :root { --accent: #ff5a36; --ink: #111; --paper: #fff; --soft: #f2f0ec; --grey: #6b6560; }
+  :root {
+    --ink: #141318;
+    --ink-2: #1B1B22;
+    --paper: #F7F6F1;
+    --white: #FFFFFF;
+    --muted: #6E6B77;
+    --violet: #7C5CFF;
+    --violet-deep: #6445D8;
+    --lime: #C8FF5A;
+    --line: #DDD9E2;
+    --accent: var(--violet-deep);
+    --soft: #EFEDF5;
+    --grey: var(--muted);
+  }
   * { box-sizing: border-box; margin: 0; }
-  body { font-family: "Instrument Sans", system-ui, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.5; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); line-height: 1.5; }
   a { color: inherit; }
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
-  .ribbon { background: var(--ink); color: #fff; text-align: center; padding: 12px 16px; font-size: 15px; }
-  .ribbon b { color: var(--accent); }
-  h1 { font: 58px/1 Anton, Impact, sans-serif; text-transform: uppercase; letter-spacing: .4px; }
-  h1 em, h2 em { font: italic 400 1em/1 "Instrument Serif", serif; text-transform: none; color: var(--accent); letter-spacing: 0; }
-  h2 { font: 44px/1.05 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 12px; }
-  .sub { font-size: 18px; color: var(--grey); max-width: 760px; margin-bottom: 26px; }
+  :focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
+  h1, h2, h3, .wordmark { font-family: "Sora", system-ui, sans-serif; letter-spacing: -.04em; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .ribbon { background: var(--ink); color: var(--white); text-align: center; padding: 11px 16px; font-size: 14px; }
+  .ribbon b { color: var(--lime); }
+  .site-header { display: flex; align-items: center; min-height: 82px; padding: 18px 0; }
+  .brand { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; border-radius: 12px; }
+  .brand svg { display: block; width: 42px; height: 42px; flex: 0 0 42px; }
+  .wordmark { font-size: 25px; font-weight: 700; line-height: 1; }
+  .wordmark span { color: var(--violet-deep); }
+  h1 { font-size: clamp(42px, 4.4vw, 64px); line-height: 1.04; font-weight: 700; }
+  h1 span { color: var(--lime); }
+  h2 { font-size: 44px; line-height: 1.08; margin-bottom: 12px; }
+  h2 em { font-style: normal; color: var(--violet-deep); }
+  .sub { font-size: 18px; color: var(--muted); max-width: 760px; margin-bottom: 26px; }
   section { padding: 64px 0; }
   .soft { background: var(--soft); }
-  .dark { background: var(--ink); color: #fff; }
+  .dark { background: var(--ink); color: var(--white); }
   .dark .sub { color: rgba(255,255,255,.7); }
-  .cta { display: inline-flex; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 19px "Instrument Sans"; text-decoration: none; box-shadow: 0 14px 40px rgba(255,90,54,.35); }
-  .cta small { font-weight: 500; opacity: .9; }
-  .price { margin-top: 12px; font-size: 15px; color: var(--grey); }
-  .no { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--grey); }
-  .note { margin-top: 18px; font-size: 13px; color: var(--grey); max-width: 820px; }
+  .dark h2 em { color: var(--lime); }
+  .cta { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px; max-width: 100%; padding: 17px 25px; border-radius: 14px; background: var(--violet-deep); color: var(--white); font: 700 18px/1.35 "Inter", system-ui, sans-serif; text-decoration: none; box-shadow: 0 14px 36px rgba(100,69,216,.28); }
+  .cta small { font-size: .82em; font-weight: 500; opacity: .92; }
+  .price { margin-top: 12px; font-size: 14px; color: var(--muted); }
+  .no { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+  .note { margin-top: 18px; font-size: 13px; color: var(--muted); max-width: 820px; }
 
-  /* Dobra 1 */
-  .hero { padding: 40px 0; display: grid; grid-template-columns: 1.15fr .85fr; gap: 44px; align-items: center; min-height: calc(100vh - 46px); }
-  .lead { font-size: 19px; margin: 18px 0 20px; max-width: 580px; }
-  .mech { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
-  .mech span { padding: 8px 14px; border-radius: 999px; background: var(--soft); font: 600 14px "Instrument Sans"; }
-  .mech span b { color: var(--accent); }
-  .phone { justify-self: center; width: min(300px, 78vw); aspect-ratio: 9/16; border-radius: 36px; overflow: hidden; background: #000; border: 10px solid var(--ink); box-shadow: 0 30px 80px rgba(0,0,0,.22); position: relative; }
+  /* Dobra 1: palco digital */
+  .hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(34px, 4.5vw, 62px); display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(240px, .85fr); gap: clamp(32px, 5vw, 68px); align-items: center; min-height: 630px; border-radius: 30px; background: radial-gradient(circle at 88% 12%, rgba(124,92,255,.26), transparent 38%), var(--ink); color: var(--white); }
+  .hero-copy { position: relative; z-index: 1; min-width: 0; }
+  .eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 19px; color: var(--lime); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .eyebrow::before { content: ""; width: 24px; height: 2px; flex: 0 0 24px; border-radius: 2px; background: var(--lime); }
+  .lead { font-size: 17px; line-height: 1.65; color: rgba(255,255,255,.76); margin: 22px 0 24px; max-width: 600px; }
+  .mech { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 25px; }
+  .mech span { min-width: 0; padding: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: var(--ink-2); color: rgba(255,255,255,.86); font-size: 12px; font-weight: 600; line-height: 1.4; }
+  .mech span b { display: block; margin-bottom: 3px; color: var(--lime); font-family: "Sora", system-ui, sans-serif; font-size: 14px; }
+  .hero .price { color: rgba(255,255,255,.64); }
+  .hero .no { color: rgba(255,255,255,.7); text-underline-offset: 3px; }
+  .phone { justify-self: center; width: min(288px, 100%); aspect-ratio: 9/16; border-radius: 38px; overflow: hidden; background: #000; border: 8px solid #2B2A33; box-shadow: 0 30px 80px rgba(0,0,0,.48), 0 0 0 1px rgba(255,255,255,.08); position: relative; }
   .phone video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   /* Comparativo: 2 dobras de 3 */
@@ -45,21 +74,21 @@
   html, body { overflow-x: hidden; }
   .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
   .case { position: relative; background: var(--paper); border-radius: 26px; padding: 14px; box-shadow: 0 16px 50px rgba(0,0,0,.06); }
-  .case h3 { font: 700 18px "Instrument Sans"; margin: 4px 4px 10px; }
+  .case h3 { font-size: 18px; margin: 4px 4px 10px; }
   .case h3 span { color: var(--accent); }
   .reel { position: relative; aspect-ratio: 9/16; max-height: 60vh; margin: 0 auto; border-radius: 20px; overflow: hidden; background: #000; }
   .reel video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .tag-ours { position: absolute; left: 10px; bottom: 10px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 12px "Instrument Sans"; letter-spacing: .5px; text-transform: uppercase; }
+  .tag-ours { position: absolute; left: 10px; bottom: 10px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 12px "Inter", system-ui, sans-serif; letter-spacing: .5px; text-transform: uppercase; }
   .orig { position: absolute; right: 10px; bottom: 10px; width: 30%; border-radius: 12px; overflow: hidden; border: 3px solid #fff; box-shadow: 0 8px 24px rgba(0,0,0,.35); text-decoration: none; background: #000; }
   .orig img { width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block; }
-  .orig span { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; background: rgba(0,0,0,.78); color: #fff; font: 700 10px/1.25 "Instrument Sans"; text-align: center; }
-  .sound { position: absolute; left: 10px; top: 10px; padding: 7px 12px; border-radius: 999px; border: 0; background: rgba(0,0,0,.65); color: #fff; font: 600 12px "Instrument Sans"; cursor: pointer; }
+  .orig span { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; background: rgba(0,0,0,.78); color: #fff; font: 700 10px/1.25 "Inter", system-ui, sans-serif; text-align: center; }
+  .sound { position: absolute; left: 10px; top: 10px; padding: 7px 12px; border-radius: 999px; border: 0; background: rgba(0,0,0,.65); color: #fff; font: 600 12px "Inter", system-ui, sans-serif; cursor: pointer; }
   .case p { font-size: 14px; color: var(--grey); margin: 10px 4px 2px; }
 
   /* Monetização */
   .ways { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
   .way { background: var(--paper); border-radius: 24px; padding: 28px; }
-  .way b.n { display: block; font: 48px/1 Anton, Impact, sans-serif; color: var(--accent); margin-bottom: 6px; }
+  .way b.n { display: block; font: 48px/1 "Sora", system-ui, sans-serif; color: var(--accent); margin-bottom: 6px; }
   .way h3 { font-size: 22px; margin-bottom: 8px; }
   .way p { font-size: 16px; }
   .way ul { margin: 10px 0 0 18px; font-size: 15px; }
@@ -68,11 +97,11 @@
   .stage-f { padding: 22px 22px 22px 30px; background: #2a2623; color: #fff; clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%); }
   .stage-f:first-child { background: var(--ink); clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%); }
   .stage-f:nth-child(3) { background: #3a332e; } .stage-f:nth-child(4) { background: var(--accent); }
-  .stage-f b { display: block; font: 28px/1 Anton, Impact, sans-serif; text-transform: uppercase; margin-bottom: 6px; }
+  .stage-f b { display: block; font: 28px/1 "Sora", system-ui, sans-serif; text-transform: uppercase; margin-bottom: 6px; }
   .stage-f span { font-size: 14px; opacity: .9; }
   .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
   .day-f { background: var(--soft); border-radius: 14px; padding: 12px 10px; font-size: 12px; }
-  .day-f strong { display: block; font: 20px Anton, Impact, sans-serif; margin-bottom: 4px; }
+  .day-f strong { display: block; font: 20px "Sora", system-ui, sans-serif; margin-bottom: 4px; }
   .day-f i { display: block; font-style: normal; padding: 5px 7px; border-radius: 9px; margin-top: 5px; }
   .day-f .r { background: var(--accent); color: #fff; } .day-f .c { background: var(--ink); color: #fff; }
   .panel { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
@@ -86,7 +115,6 @@
 
   @media (max-width: 860px) {
     h1 { font-size: 40px; } h2 { font-size: 32px; }
-    .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 30px; }
     .fold { min-height: auto; }
     /* Cada dobra vira um carrossel de arrastar no celular. */
     .trio { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; padding-bottom: 8px; }
@@ -96,6 +124,23 @@
     .stage-f, .stage-f:first-child { clip-path: none; border-radius: 14px; margin-bottom: 6px; }
     .week { grid-template-columns: repeat(2, 1fr); }
   }
+  @media (max-width: 760px) {
+    .wrap { padding: 0 16px; }
+    .ribbon { padding: 10px 18px; font-size: 13px; }
+    .site-header { min-height: 72px; padding: 14px 0; }
+    .wordmark { font-size: 23px; }
+    .hero { grid-template-columns: minmax(0, 1fr); gap: 32px; min-height: auto; padding: 28px 24px 32px; border-radius: 24px; }
+    h1 { font-size: clamp(36px, 10.5vw, 48px); line-height: 1.06; }
+    .eyebrow { margin-bottom: 16px; font-size: 11px; }
+    .lead { margin: 18px 0 20px; font-size: 16px; line-height: 1.6; }
+    .mech { grid-template-columns: minmax(0, 1fr); gap: 7px; margin-bottom: 22px; }
+    .mech span { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 13px; }
+    .mech span b { margin: 0; }
+    .cta { width: 100%; padding: 15px 18px; font-size: 17px; }
+    .hero .no { width: 100%; text-align: center; line-height: 1.55; }
+    .hero .price { text-align: center; }
+    .phone { width: min(278px, 82vw); }
+  }
 </style>
 </head>
 <body>
@@ -103,16 +148,31 @@
 
   <!-- DOBRA 1: a tese e a oferta -->
   <div class="wrap">
-    <header class="hero">
-      <div>
-        <h1>O carrossel aquece. <em>O Reels traz gente nova.</em> Juntos, vendem o seu SaaS sem tráfego pago.</h1>
-        <p class="lead">O <b>CutRoom</b> é o editor que o Claude Code e o Codex controlam: você pede o vídeo, o agente escreve, narra, anima e entrega o Reels pronto com a sua marca do Carrossell. O piloto automático posta um por dia, e todo vídeo termina levando para o link do seu perfil.</p>
-        <div class="mech"><span><b>1</b> Reels todo dia</span><span><b>2</b> visita no perfil</span><span><b>3</b> clique no link</span><span><b>4</b> venda</span></div>
-        <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o CutRoom <small>por R$ 97</small></a>
-        <p class="price">Pagamento único, só nesta página.</p>
-        <a class="no" href="#RECUSAR" data-cakto-downsell>Não, obrigado. Vou ficar só com os carrosséis.</a>
+    <header class="site-header">
+      <a class="brand" href="#inicio" aria-label="Videosell — início">
+        <svg width="42" height="42" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <rect width="64" height="64" rx="18" fill="#7C5CFF"/>
+          <path d="M15 17L28.2 46C29.7 49.3 34.3 49.3 35.8 46L43 30" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="46" cy="18" r="5" fill="#C8FF5A"/>
+        </svg>
+        <span class="wordmark">Video<span>sell</span></span>
+      </a>
+    </header>
+    <header class="hero" id="inicio">
+      <div class="hero-copy">
+        <p class="eyebrow">Carrossell + Videosell</p>
+        <h1>Seu produto ganha <span>rosto, voz e presença.</span></h1>
+        <p class="lead">Você já cria carrosséis com o Carrossell. Com o Videosell, transforma ideias em Reels com roteiro, narração, animação e a sua marca — tudo no seu computador, com a IA que você já usa.</p>
+        <div class="mech" aria-label="Como funciona">
+          <span><b>1</b> Descreva o vídeo</span>
+          <span><b>2</b> Revise o resultado</span>
+          <span><b>3</b> Publique no seu perfil</span>
+        </div>
+        <a class="cta" href="#COMPRAR" data-cakto-upsell>Quero o Videosell <small>por R$ 97</small></a>
+        <p class="price">Pagamento único. Oferta desta página.</p>
+        <a class="no" href="#RECUSAR" data-cakto-downsell>Não, obrigado. Vou continuar somente com os carrosséis.</a>
       </div>
-      <div class="phone"><video src="videos/stickman.mp4" poster="videos/stickman.jpg" autoplay muted loop playsinline data-autoplay></video></div>
+      <div class="phone"><video src="videos/professor.mp4" poster="videos/professor.jpg" autoplay muted loop playsinline preload="metadata" data-autoplay></video></div>
     </header>
   </div>
 
