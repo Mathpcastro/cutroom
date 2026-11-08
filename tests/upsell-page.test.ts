@@ -1,14 +1,17 @@
 import { access, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { parseHTML } from "linkedom";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const pagePath = "site/upsell/index.html";
 
 describe("contrato da página pública de upsell Videosell", () => {
   let html: string;
+  let document: ReturnType<typeof parseHTML>["document"];
 
   beforeAll(async () => {
     html = await readFile(pagePath, "utf8");
+    ({ document } = parseHTML(html));
   });
 
   it("apresenta Videosell, Carrossell e a oferta de pagamento único", () => {
@@ -19,10 +22,21 @@ describe("contrato da página pública de upsell Videosell", () => {
   });
 
   it("preserva os gatilhos e destinos de upsell e downsell da Cakto", () => {
-    expect(html).toContain("data-cakto-upsell");
-    expect(html).toContain("data-cakto-downsell");
-    expect(html).toContain('href="#COMPRAR"');
-    expect(html).toContain('href="#RECUSAR"');
+    const upsells = Array.from(
+      document.querySelectorAll("[data-cakto-upsell]"),
+    );
+    const downsells = Array.from(
+      document.querySelectorAll("[data-cakto-downsell]"),
+    );
+
+    expect(upsells.length).toBeGreaterThan(0);
+    expect(downsells.length).toBeGreaterThan(0);
+    for (const upsell of upsells) {
+      expect(upsell.getAttribute("href")).toBe("#COMPRAR");
+    }
+    for (const downsell of downsells) {
+      expect(downsell.getAttribute("href")).toBe("#RECUSAR");
+    }
   });
 
   it("não promete gratuidade, open source, teste grátis ou garantia de vendas", () => {
@@ -46,7 +60,7 @@ describe("contrato da página pública de upsell Videosell", () => {
   });
 
   it("inclui pelo menos seis comparativos com o original", () => {
-    expect(html.match(/class="orig"/g)?.length ?? 0).toBeGreaterThanOrEqual(6);
+    expect(document.querySelectorAll(".orig").length).toBeGreaterThanOrEqual(6);
   });
 
   it("inclui as duas provas sociais externas", () => {
@@ -58,7 +72,24 @@ describe("contrato da página pública de upsell Videosell", () => {
     );
   });
 
-  it("abre links externos com proteção contra opener e referrer", () => {
-    expect(html).toContain('target="_blank" rel="noopener noreferrer"');
+  it("protege cada link externo aberto em nova aba", () => {
+    const externalBlankLinks = Array.from(
+      document.querySelectorAll("a"),
+    ).filter(
+      (anchor) =>
+        /^https?:\/\//i.test(anchor.getAttribute("href") ?? "") &&
+        (anchor.getAttribute("target") ?? "").toLowerCase() === "_blank",
+    );
+
+    expect(externalBlankLinks.length).toBeGreaterThan(0);
+    for (const anchor of externalBlankLinks) {
+      const relTokens = (anchor.getAttribute("rel") ?? "")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+      expect(relTokens).toEqual(
+        expect.arrayContaining(["noopener", "noreferrer"]),
+      );
+    }
   });
 });
