@@ -19,6 +19,50 @@ function setup(root: string) {
   return { store, service };
 }
 
+const SECRET_VALUE = "sk-test-recursive-profile-secret-123456";
+const SECRET_ERROR = "Dados sensíveis não são permitidos no perfil; use o SecretStore.";
+const SENSITIVE_KEYS = [
+  "apiKey",
+  "api-key",
+  "api_key",
+  "api key",
+  "secret",
+  "clientSecret",
+  "client-secret",
+  "client secret",
+  "password",
+  "passphrase",
+  "pass-phrase",
+  "token",
+  "accessToken",
+  "access_token",
+  "refreshToken",
+  "refresh token",
+  "credential",
+  "credentials",
+  "credential-id",
+  "authorization",
+  "auth",
+  "cookie",
+  "session",
+  "privateKey",
+  "private_key",
+  "bearer",
+  "bearer-token",
+];
+
+async function expectSecretRejection(operation: Promise<unknown>) {
+  let error: unknown;
+  try {
+    await operation;
+  } catch (caught) {
+    error = caught;
+  }
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toBe(SECRET_ERROR);
+  expect((error as Error).message).not.toContain(SECRET_VALUE);
+}
+
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -120,6 +164,49 @@ describe("ProfileStore and ProfileService", () => {
       defaultAvatar: { avatarId: "avatar-orbit", revision: 2, hash: "a".repeat(64) },
     });
     expect((await service.get(profile.id)).createdAt).toBe(before.createdAt);
+  });
+
+  it("rejects every sensitive key recursively during create without leaking values", async () => {
+    const { service } = setup(await temporaryRoot());
+    for (const [index, key] of SENSITIVE_KEYS.entries()) {
+      await expectSecretRejection(
+        service.create({
+          name: `Creator ${index}`,
+          handle: `creator-${index}`,
+          preferences: { safe: [{ nested: { [key]: SECRET_VALUE } }] },
+        }),
+      );
+    }
+    expect(await service.list()).toEqual([]);
+  });
+
+  it("rejects every sensitive key recursively during update and preserves the profile", async () => {
+    const { service } = setup(await temporaryRoot());
+    const profile = await service.create({ name: "Orbit Labs", handle: "orbitlabs" });
+    const before = await service.get(profile.id);
+    for (const key of SENSITIVE_KEYS) {
+      await expectSecretRejection(
+        service.update(profile.id, {
+          instagram: { preferences: { safe: [{ nested: { [key]: SECRET_VALUE } }] } },
+        }),
+      );
+    }
+    expect(await service.get(profile.id)).toEqual(before);
+  });
+
+  it("allows the public credentialRef while rejecting other credential keys", async () => {
+    const { service } = setup(await temporaryRoot());
+    const profile = await service.create({
+      name: "Orbit Labs",
+      handle: "orbitlabs",
+      preferences: { credentialRef: "elevenlabs", nested: [{ credentialRef: "openai" }] },
+    });
+    const updated = await service.update(profile.id, {
+      voice: { credentialRef: "elevenlabs" },
+      instagram: { preferences: { credentialRef: "connection-orbit" } },
+    });
+    expect(updated.voice.credentialRef).toBe("elevenlabs");
+    expect(updated.instagram.preferences).toEqual({ credentialRef: "connection-orbit" });
   });
 
   it("rejects duplicate, malformed and cross-profile project links atomically", async () => {

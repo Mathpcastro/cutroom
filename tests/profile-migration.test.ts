@@ -1,7 +1,9 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { Films } from "../electron/core/film";
 import { migrateLegacyProfile } from "../electron/core/profile-service";
 import { ProfileStore } from "../electron/core/profile-store";
 
@@ -106,9 +108,33 @@ describe("legacy profile migration", () => {
     const profileJson = await readFile(join(root, "profiles", profile.id, "profile.json"), "utf8");
     expect(profileJson).not.toContain(FAKE_API_KEY);
     expect(profileJson).not.toContain("apiKey");
-    const filmJson = JSON.stringify({ version: 1, id: "film-orbit", profileId: profile.id });
-    await writeFile(join(root, "film-orbit.json"), filmJson, "utf8");
+    const films = new Films(
+      join(root, "Films"),
+      resolve("resources/film-kit"),
+      createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"),
+    );
+    const film = await films.create({
+      name: "Film Orbit",
+      brand: {
+        name: profile.brand.name,
+        handle: profile.handle,
+        context: profile.commercialGoal,
+        palette: {
+          accent: profile.brand.accent,
+          ink: profile.brand.ink,
+          paper: profile.brand.paper,
+        },
+        source: "manual",
+        updatedAt: profile.updatedAt,
+      },
+    });
+    await store.linkProject(profile.id, film.id);
+    const filmJson = await readFile(join(film.path, "film.json"), "utf8");
+    const filmBrand = await readFile(join(film.path, "brand.js"), "utf8");
+    expect(film.id).toBe("film-orbit");
+    expect(await store.listProjects(profile.id)).toEqual([film.id]);
     expect(filmJson).not.toContain(FAKE_API_KEY);
+    expect(filmBrand).not.toContain(FAKE_API_KEY);
     expect(logs.join("\n")).not.toContain(FAKE_API_KEY);
     expect(logs.join("\n")).not.toContain("apiKey");
 
@@ -157,5 +183,81 @@ describe("legacy profile migration", () => {
     expect(profile.instagram.preferences).toEqual({ shareToFeed: false });
     for (const value of [JSON.stringify(profile), logs.join("\n")]) expect(value).not.toContain(FAKE_API_KEY);
     expect(secrets.writes).toEqual([]);
+  });
+
+  it("sanitizes every sensitive key recursively while preserving useful legacy preferences", async () => {
+    const root = await temporaryRoot();
+    const logs: string[] = [];
+    const sensitive = Object.fromEntries(
+      [
+        "apiKey",
+        "api-key",
+        "api_key",
+        "api key",
+        "secret",
+        "clientSecret",
+        "client-secret",
+        "client secret",
+        "password",
+        "passphrase",
+        "pass-phrase",
+        "token",
+        "accessToken",
+        "access_token",
+        "refreshToken",
+        "refresh token",
+        "credential",
+        "credentials",
+        "credential-id",
+        "authorization",
+        "auth",
+        "cookie",
+        "session",
+        "privateKey",
+        "private_key",
+        "bearer",
+        "bearer-token",
+      ].map((key) => [key, FAKE_API_KEY]),
+    );
+    const publish = {
+      defaultAccount: "connection-orbit",
+      preferences: {
+        shareToFeed: false,
+        ...sensitive,
+        nested: {
+          auth: FAKE_API_KEY,
+          keep: "nested",
+          deep: [{ token: FAKE_API_KEY, keep: "array" }, { credentialRef: "public-voice" }],
+        },
+        list: [{ clientSecret: FAKE_API_KEY, ok: 1 }, { password: FAKE_API_KEY }, "texto", null],
+      },
+    };
+    const legacyPublishBytes = JSON.stringify(publish, null, 2);
+    await writeFile(join(root, "publish.json"), legacyPublishBytes, "utf8");
+
+    const profile = await migrateLegacyProfile({
+      root,
+      secrets: new FakeSecretStore(),
+      brand: {
+        name: "Orbit Labs",
+        handle: "orbitlabs",
+        context: "Objetivo comercial legado.",
+        palette: { accent: "#7C5CFF", ink: "#141318", paper: "#F7F6F1" },
+      },
+      voice: { provider: "elevenlabs", voices: { elevenlabs: "voice-orbit" }, apiKey: FAKE_API_KEY },
+      logger: (message) => logs.push(message),
+    });
+
+    expect(profile.instagram.preferences).toEqual({
+      shareToFeed: false,
+      nested: {
+        keep: "nested",
+        deep: [{ keep: "array" }, { credentialRef: "public-voice" }],
+      },
+      list: [{ ok: 1 }, "texto", null],
+    });
+    expect(await readFile(join(root, "publish.json"), "utf8")).toBe(legacyPublishBytes);
+    expect(logs.join("\n")).not.toContain(FAKE_API_KEY);
+    expect(JSON.stringify(profile)).not.toContain(FAKE_API_KEY);
   });
 });

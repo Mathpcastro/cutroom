@@ -45,14 +45,77 @@ function legacyHandle(value: unknown): string {
   return assertProfileHandle(normalized || "perfil-padrao");
 }
 
-function withoutSecrets(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutSecrets);
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value as LegacyRecord)
-      .filter(([key]) => !/(?:api[_-]?key|secret|password|access[_-]?token|refresh[_-]?token|authorization)/i.test(key))
-      .map(([key, child]) => [key, withoutSecrets(child)]),
+const SECRET_ERROR = "Dados sensíveis não são permitidos no perfil; use o SecretStore.";
+const SENSITIVE_WORDS = new Set([
+  "secret",
+  "password",
+  "passphrase",
+  "token",
+  "tokens",
+  "credential",
+  "credentials",
+  "authorization",
+  "auth",
+  "authentication",
+  "cookie",
+  "cookies",
+  "session",
+  "sessions",
+  "bearer",
+]);
+
+function sensitiveKey(key: string): boolean {
+  if (key === "credentialRef") return false;
+  const normalized = key
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return (
+    words.some((word) => SENSITIVE_WORDS.has(word)) ||
+    normalized.includes("apikey") ||
+    normalized.includes("privatekey") ||
+    normalized.includes("secret") ||
+    normalized.includes("password") ||
+    normalized.includes("passphrase") ||
+    normalized.includes("credential") ||
+    normalized.includes("authorization") ||
+    normalized.includes("cookie") ||
+    normalized.includes("session") ||
+    normalized.includes("bearer") ||
+    normalized.endsWith("token") ||
+    normalized.endsWith("tokens") ||
+    normalized.endsWith("auth")
   );
+}
+
+function assertNoSensitiveKeys(value: unknown, seen = new WeakSet<object>()): void {
+  if (!value || typeof value !== "object" || seen.has(value)) return;
+  seen.add(value);
+  for (const [key, child] of Object.entries(value)) {
+    if (sensitiveKey(key)) throw new Error(SECRET_ERROR);
+    assertNoSensitiveKeys(child, seen);
+  }
+}
+
+function withoutSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const result = value.map(withoutSecrets).filter((child) => child !== undefined);
+    return result.length ? result : undefined;
+  }
+  if (!value || typeof value !== "object") return value;
+  const result = Object.fromEntries(
+    Object.entries(value as LegacyRecord)
+      .filter(([key]) => !sensitiveKey(key))
+      .map(([key, child]) => [key, withoutSecrets(child)])
+      .filter(([, child]) => child !== undefined),
+  );
+  return Object.keys(result).length ? result : undefined;
 }
 
 function defaultProfile(id: string, name: string, handle: string, now: string): StudioProfile {
@@ -106,6 +169,7 @@ export class ProfileService {
   constructor(private readonly host: { store: ProfileStore; secrets?: ProfileSecrets }) {}
 
   async create(input: CreateStudioProfileInput): Promise<StudioProfile> {
+    assertNoSensitiveKeys(input);
     const handle = assertProfileHandle(input.handle);
     if ((await this.host.store.list()).some((profile) => profile.id === handle || profile.handle === handle))
       throw new Error("Já existe um perfil com este handle.");
@@ -133,6 +197,7 @@ export class ProfileService {
   }
 
   async update(profileId: string, patch: StudioProfilePatch): Promise<StudioProfile> {
+    assertNoSensitiveKeys(patch);
     const current = await this.get(profileId);
     const next = applyPatch(current, patch, new Date().toISOString());
     if (next.handle !== current.handle && (await this.list()).some((profile) => profile.handle === next.handle))
@@ -179,6 +244,8 @@ export async function migrateLegacyProfile(options: LegacyProfileMigrationOption
   const handle = legacyHandle(legacyBrand.handle);
   const publishPreferences = record(legacyPublish.preferences);
   const accounts = Array.isArray(legacyPublish.accounts) ? legacyPublish.accounts : undefined;
+  const sanitizedPreferences = withoutSecrets(publishPreferences) as Record<string, unknown> | undefined;
+  const sanitizedAccounts = withoutSecrets(accounts);
   const profile = defaultProfile("perfil-padrao", "Perfil padrão", handle, now);
   profile.brand = {
     name: string(legacyBrand.name, "Minha marca"),
@@ -198,11 +265,7 @@ export async function migrateLegacyProfile(options: LegacyProfileMigrationOption
   profile.commercialGoal = string(legacyBrand.context);
   profile.instagram = {
     ...(string(legacyPublish.defaultAccount) ? { connectionId: string(legacyPublish.defaultAccount) } : {}),
-    preferences: (Object.keys(publishPreferences).length
-      ? withoutSecrets(publishPreferences)
-      : accounts
-        ? { accounts: withoutSecrets(accounts) }
-        : {}) as Record<string, unknown>,
+    preferences: sanitizedPreferences ?? (sanitizedAccounts ? { accounts: sanitizedAccounts } : {}),
   };
 
   const saved = await store.save(parseProfile(profile));
