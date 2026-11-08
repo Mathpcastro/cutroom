@@ -1159,13 +1159,17 @@
       // Pré-visualizações mudas entram em play somente pelo controller.
       const videos = Array.from(document.querySelectorAll("video[data-autoplay]"));
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-      const soundButtons = new Map();
+      const soundControls = new Map();
 
-      const updateSoundButton = (video, enabled) => {
-        const button = soundButtons.get(video);
-        if (!button) return;
-        button.textContent = enabled ? "Sem som" : "Ouvir";
+      const setSoundState = (video, enabled) => {
+        const control = soundControls.get(video);
+        video.muted = !enabled;
+        if (!control) return;
+        const { button, title } = control;
+        const text = enabled ? "Sem som" : "Ouvir";
+        button.textContent = text;
         button.setAttribute("aria-pressed", String(enabled));
+        button.setAttribute("aria-label", `${text} vídeo: ${title}`);
       };
 
       const safePlay = (video, onFailure = () => {}) => {
@@ -1189,32 +1193,26 @@
             .trim() || "demonstração";
         button.type = "button";
         button.className = "sound";
-        button.textContent = "Ouvir";
-        button.setAttribute("aria-label", `Ouvir vídeo: ${title}`);
-        button.setAttribute("aria-pressed", "false");
-        soundButtons.set(video, button);
+        soundControls.set(video, { button, title });
+        setSoundState(video, false);
 
         button.addEventListener("click", () => {
           if (!video.muted) {
-            video.muted = true;
-            updateSoundButton(video, false);
+            setSoundState(video, false);
             return;
           }
 
           videos.forEach((other) => {
             if (other === video) return;
-            other.muted = true;
             other.pause();
-            updateSoundButton(other, false);
+            setSoundState(other, false);
           });
 
-          video.muted = false;
           video.currentTime = 0;
-          updateSoundButton(video, true);
+          setSoundState(video, true);
           safePlay(video, () => {
-            video.muted = true;
             video.pause();
-            updateSoundButton(video, false);
+            setSoundState(video, false);
           });
         });
         video.parentElement.appendChild(button);
@@ -1226,6 +1224,7 @@
             const video = entry.target;
             if (!entry.isIntersecting) {
               video.pause();
+              setSoundState(video, false);
             } else if (!reduced.matches && video.muted) {
               safePlay(video);
             }
@@ -1236,7 +1235,11 @@
       videos.forEach((video) => io.observe(video));
 
       reduced.addEventListener("change", (event) => {
-        if (event.matches) videos.forEach((video) => video.pause());
+        if (!event.matches) return;
+        videos.forEach((video) => {
+          video.pause();
+          setSoundState(video, false);
+        });
       });
 
       // Mantém o link original acessível mesmo se a thumbnail remota falhar.
