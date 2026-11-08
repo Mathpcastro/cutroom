@@ -182,11 +182,16 @@ function createUpsellServer() {
   });
 }
 
-function isExternalThumbnail(url) {
+function externalResourceKind(url) {
   try {
-    return new URL(url).hostname === "pbs.twimg.com";
+    const hostname = new URL(url).hostname;
+    if (hostname === "pbs.twimg.com") return "thumbnail externa";
+    if (hostname === "fonts.googleapis.com" || hostname === "fonts.gstatic.com") {
+      return "fonte externa";
+    }
+    return undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -204,8 +209,9 @@ function attachDiagnostics(page, baseUrl, label, problems, externalIssues) {
     if (message.type() !== "error") return;
     const location = message.location().url;
     const text = `${message.text()}${location ? ` (${location})` : ""}`;
-    if (isExternalThumbnail(location)) {
-      externalIssues.add(`${label}: console da thumbnail externa: ${text}`);
+    const externalKind = externalResourceKind(location);
+    if (externalKind) {
+      externalIssues.add(`${label}: console de ${externalKind}: ${text}`);
     } else {
       problems.push(`${label}: erro de console: ${text}`);
     }
@@ -215,8 +221,9 @@ function attachDiagnostics(page, baseUrl, label, problems, externalIssues) {
     const previousStatus = localMediaResponses.get(request);
     const failure = request.failure()?.errorText ?? "falha desconhecida";
     const detail = `${url}: ${failure}`;
-    if (isExternalThumbnail(url)) {
-      externalIssues.add(`${label}: thumbnail externa indisponível: ${detail}`);
+    const externalKind = externalResourceKind(url);
+    if (externalKind) {
+      externalIssues.add(`${label}: ${externalKind} indisponível: ${detail}`);
     } else if (isLocalMedia(url, baseUrl)) {
       // Chrome aborta streams de mídia ao pausar, buscar outro trecho ou recarregar.
       // Só é cancelamento esperado quando o servidor já entregou uma resposta válida.
@@ -235,8 +242,9 @@ function attachDiagnostics(page, baseUrl, label, problems, externalIssues) {
     }
     if (response.status() < 400) return;
     const detail = `${url}: HTTP ${response.status()}`;
-    if (isExternalThumbnail(url)) {
-      externalIssues.add(`${label}: thumbnail externa indisponível: ${detail}`);
+    const externalKind = externalResourceKind(url);
+    if (externalKind) {
+      externalIssues.add(`${label}: ${externalKind} indisponível: ${detail}`);
     } else if (isLocalMedia(url, baseUrl)) {
       problems.push(`${label}: falha de mídia local: ${detail}`);
     }
@@ -365,7 +373,7 @@ async function checkFirstCtaKeyboard(page) {
   );
 }
 
-async function checkReducedMotionAndSound(page) {
+async function checkReducedMotionAndSound(page, { playbackTimeout = 5_000 } = {}) {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload({ waitUntil: "load" });
   await page.waitForFunction(() => document.querySelectorAll("button.sound").length === 7);
@@ -412,6 +420,31 @@ async function checkReducedMotionAndSound(page) {
     assert.equal(state.muted, true);
     assert.equal(state.pressed, "false");
   }
+
+  const firstVideo = page.locator("video[data-autoplay]").first();
+  const playbackStart = await firstVideo.evaluate((video) => video.currentTime);
+  try {
+    await page.waitForFunction(
+      (startTime) => {
+        const video = document.querySelector("video[data-autoplay]");
+        return Boolean(
+          video && !video.paused && video.currentTime > startTime,
+        );
+      },
+      playbackStart,
+      { timeout: playbackTimeout },
+    );
+  } catch {
+    const state = await firstVideo.evaluate((video) => ({
+      paused: video.paused,
+      currentTime: video.currentTime,
+      readyState: video.readyState,
+    }));
+    throw new Error(
+      `primeiro vídeo não avançou após ${playbackTimeout} ms; ` +
+        `início=${playbackStart}, estado=${JSON.stringify(state)}`,
+    );
+  }
 }
 
 async function checkHttpContract(baseUrl) {
@@ -442,82 +475,241 @@ async function checkHttpContract(baseUrl) {
   await traversalResponse.body?.cancel();
 }
 
-await mkdir(artifactsDirectory, { recursive: true });
-const server = createUpsellServer();
-let browser;
-const problems = [];
-const externalIssues = new Set();
-const screenshots = [];
-
-try {
+async function listenUpsellServer(server) {
   await new Promise((resolveListen, rejectListen) => {
     server.once("error", rejectListen);
     server.listen(0, "127.0.0.1", resolveListen);
   });
   const address = server.address();
   assert.ok(address && typeof address === "object");
-  const baseUrl = `http://127.0.0.1:${address.port}/`;
-  await checkHttpContract(baseUrl);
+  return `http://127.0.0.1:${address.port}/`;
+}
 
-  browser = await chromium.launch({
-    executablePath: chromiumExecutable(),
-    headless: true,
-    args: ["--no-sandbox"],
-  });
-
-  for (const viewport of viewports) {
-    const label = `${viewport.width}x${viewport.height}`;
-    const context = await browser.newContext({
-      viewport,
-      reducedMotion: "no-preference",
-    });
+async function closeBrowserAndServer(browser, server, primaryError) {
+  const cleanupErrors = [];
+  if (browser) {
     try {
-      const page = await context.newPage();
-      attachDiagnostics(page, baseUrl, label, problems, externalIssues);
-      await installRejectionCapture(page, label, problems);
-      // Simula indisponibilidade do X para validar o fallback sem depender da rede.
-      await page.route("https://pbs.twimg.com/**", (route) =>
-        route.abort("failed"),
-      );
-      await page.goto(baseUrl, { waitUntil: "load" });
-      await settlePage(page);
-      await checkStructureAndOverflow(page, viewport.width);
-      await checkExternalFallbacks(page, label, externalIssues);
-
-      const screenshot = resolve(
-        artifactsDirectory,
-        `upsell-${viewport.width}.png`,
-      );
-      await page.screenshot({ path: screenshot, fullPage: true });
-      screenshots.push(screenshot);
-      await checkFirstCtaKeyboard(page);
-      await checkReducedMotionAndSound(page);
-      console.log(`PASS ${label}: estrutura, teclado, reduced motion e som`);
+      await browser.close();
     } catch (error) {
-      problems.push(
-        `${label}: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
-      );
-    } finally {
-      await context.close();
+      cleanupErrors.push(error);
     }
   }
-} finally {
-  await browser?.close();
-  if (server.listening) {
-    await new Promise((resolveClose, rejectClose) => {
-      server.close((error) => (error ? rejectClose(error) : resolveClose()));
-    });
+  if (server?.listening) {
+    try {
+      await new Promise((resolveClose, rejectClose) => {
+        server.close((error) => (error ? rejectClose(error) : resolveClose()));
+        server.closeAllConnections?.();
+      });
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+
+  if (primaryError) {
+    for (const cleanupError of cleanupErrors) {
+      console.warn("WARN falha adicional durante cleanup:", cleanupError);
+    }
+    throw primaryError;
+  }
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, "Falha ao encerrar browser ou servidor");
   }
 }
 
-for (const issue of externalIssues) console.log(`INFO ${issue}`);
-for (const screenshot of screenshots) console.log(`SCREENSHOT ${screenshot}`);
+async function blockExternalFontRequests(page) {
+  for (const pattern of [
+    "https://fonts.googleapis.com/**",
+    "https://fonts.gstatic.com/**",
+  ]) {
+    await page.route(pattern, (route) => route.abort("failed"));
+  }
+}
 
-if (problems.length > 0) {
-  for (const problem of problems) console.error(`FAIL ${problem}`);
-  process.exitCode = 1;
+async function runSmoke() {
+  await mkdir(artifactsDirectory, { recursive: true });
+  const server = createUpsellServer();
+  let browser;
+  let primaryError;
+  const problems = [];
+  const externalIssues = new Set();
+  const screenshots = [];
+
+  try {
+    const baseUrl = await listenUpsellServer(server);
+    await checkHttpContract(baseUrl);
+
+    browser = await chromium.launch({
+      executablePath: chromiumExecutable(),
+      headless: true,
+      args: ["--no-sandbox"],
+    });
+
+    for (const viewport of viewports) {
+      const label = `${viewport.width}x${viewport.height}`;
+      const context = await browser.newContext({
+        viewport,
+        reducedMotion: "no-preference",
+      });
+      try {
+        const page = await context.newPage();
+        attachDiagnostics(page, baseUrl, label, problems, externalIssues);
+        await installRejectionCapture(page, label, problems);
+        // Simula indisponibilidade do X para validar o fallback sem depender da rede.
+        await page.route("https://pbs.twimg.com/**", (route) =>
+          route.abort("failed"),
+        );
+        await page.goto(baseUrl, { waitUntil: "load" });
+        await settlePage(page);
+        await checkStructureAndOverflow(page, viewport.width);
+        await checkExternalFallbacks(page, label, externalIssues);
+
+        const screenshot = resolve(
+          artifactsDirectory,
+          `upsell-${viewport.width}.png`,
+        );
+        await page.screenshot({ path: screenshot, fullPage: true });
+        screenshots.push(screenshot);
+        await checkFirstCtaKeyboard(page);
+        await checkReducedMotionAndSound(page);
+        console.log(`PASS ${label}: estrutura, teclado, reduced motion e som`);
+      } catch (error) {
+        problems.push(
+          `${label}: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  } catch (error) {
+    primaryError = error;
+  }
+  await closeBrowserAndServer(browser, server, primaryError);
+
+  for (const issue of externalIssues) console.log(`INFO ${issue}`);
+  for (const screenshot of screenshots) console.log(`SCREENSHOT ${screenshot}`);
+
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(`FAIL ${problem}`);
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `PASS upsell: ${viewports.length} viewports, sem erros de runtime ou mídia local`,
+    );
+  }
+}
+
+async function runRegressions() {
+  const server = createUpsellServer();
+  let browser;
+  let primaryError;
+
+  try {
+    const baseUrl = await listenUpsellServer(server);
+    browser = await chromium.launch({
+      executablePath: chromiumExecutable(),
+      headless: true,
+      args: ["--no-sandbox"],
+    });
+
+    const stalledContext = await browser.newContext({
+      viewport: { width: 1440, height: 1000 },
+      reducedMotion: "reduce",
+    });
+    try {
+      const page = await stalledContext.newPage();
+      await page.addInitScript(() => {
+        HTMLMediaElement.prototype.play = () => new Promise(() => {});
+      });
+      await page.route("https://pbs.twimg.com/**", (route) =>
+        route.abort("failed"),
+      );
+      await blockExternalFontRequests(page);
+      await page.goto(baseUrl, { waitUntil: "load" });
+      await assert.rejects(
+        checkReducedMotionAndSound(page, { playbackTimeout: 600 }),
+        /primeiro vídeo não avançou/,
+      );
+      console.log("PASS regressão: play pendente falha com diagnóstico");
+    } finally {
+      await stalledContext.close();
+    }
+
+    const fontContext = await browser.newContext({
+      viewport: { width: 1440, height: 1000 },
+      reducedMotion: "reduce",
+    });
+    try {
+      const page = await fontContext.newPage();
+      const problems = [];
+      const externalIssues = new Set();
+      attachDiagnostics(page, baseUrl, "fontes", problems, externalIssues);
+      await installRejectionCapture(page, "fontes", problems);
+      await page.route("https://pbs.twimg.com/**", (route) =>
+        route.abort("failed"),
+      );
+      await blockExternalFontRequests(page);
+      await page.goto(baseUrl, { waitUntil: "load" });
+      await page.waitForTimeout(200);
+      assert.deepEqual(problems, []);
+      assert.ok(
+        [...externalIssues].some(
+          (issue) =>
+            issue.includes("fonte externa") &&
+            issue.includes("fonts.googleapis.com"),
+        ),
+        "falha de fonts.googleapis.com não foi isolada",
+      );
+      assert.equal(
+        externalResourceKind("https://fonts.gstatic.com/s/inter/font.woff2"),
+        "fonte externa",
+      );
+      console.log("PASS regressão: falhas de fontes viram avisos externos");
+    } finally {
+      await fontContext.close();
+    }
+
+    const cleanupCalls = [];
+    const fakeBrowser = {
+      close: async () => {
+        cleanupCalls.push("browser.close");
+        throw new Error("falha simulada de browser.close");
+      },
+    };
+    const fakeServer = {
+      listening: true,
+      close(callback) {
+        cleanupCalls.push("server.close");
+        callback(new Error("falha simulada de server.close"));
+      },
+      closeAllConnections() {
+        cleanupCalls.push("server.closeAllConnections");
+      },
+    };
+    const originalError = new Error("erro principal simulado");
+    const originalWarn = console.warn;
+    console.warn = () => {};
+    try {
+      await assert.rejects(
+        closeBrowserAndServer(fakeBrowser, fakeServer, originalError),
+        (error) => error === originalError,
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+    assert.deepEqual(cleanupCalls, [
+      "browser.close",
+      "server.close",
+      "server.closeAllConnections",
+    ]);
+    console.log("PASS regressão: cleanup independente preserva erro principal");
+  } catch (error) {
+    primaryError = error;
+  }
+  await closeBrowserAndServer(browser, server, primaryError);
+}
+
+if (process.env.UPSELL_SMOKE_REGRESSION === "1") {
+  await runRegressions();
 } else {
-  console.log(
-    `PASS upsell: ${viewports.length} viewports, sem erros de runtime ou mídia local`,
-  );
+  await runSmoke();
 }
