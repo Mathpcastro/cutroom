@@ -116,7 +116,7 @@ describe("controller acessível dos vídeos de upsell", () => {
     const button = article.locator("button.sound");
     const title = await articleTitle(article);
     await article.scrollIntoViewIfNeeded();
-    await expect.poll(() => article.locator("video").evaluate((video) => !video.paused && video.muted)).toBe(true);
+    await expect.poll(() => article.locator("video").evaluate((video) => !(video as HTMLVideoElement).paused && (video as HTMLVideoElement).muted)).toBe(true);
 
     await button.focus();
     await button.press("Enter");
@@ -137,7 +137,7 @@ describe("controller acessível dos vídeos de upsell", () => {
     });
 
     await article.scrollIntoViewIfNeeded();
-    await expect.poll(() => article.locator("video").evaluate((video) => !video.paused && video.muted)).toBe(true);
+    await expect.poll(() => article.locator("video").evaluate((video) => !(video as HTMLVideoElement).paused && (video as HTMLVideoElement).muted)).toBe(true);
     await button.press("Enter");
     await expect.poll(() => videoState(article)).toMatchObject({
       muted: false,
@@ -153,9 +153,9 @@ describe("controller acessível dos vídeos de upsell", () => {
     const button = article.locator("button.sound");
     const title = await articleTitle(article);
     await article.scrollIntoViewIfNeeded();
-    await expect.poll(() => article.locator("video").evaluate((video) => !video.paused && video.muted)).toBe(true);
+    await expect.poll(() => article.locator("video").evaluate((video) => !(video as HTMLVideoElement).paused && (video as HTMLVideoElement).muted)).toBe(true);
     await button.press("Enter");
-    await expect.poll(() => article.locator("video").evaluate((video) => !video.muted && !video.paused)).toBe(true);
+    await expect.poll(() => article.locator("video").evaluate((video) => !(video as HTMLVideoElement).muted && !(video as HTMLVideoElement).paused)).toBe(true);
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect.poll(() => videoState(article)).toEqual({
@@ -187,7 +187,7 @@ describe("controller acessível dos vídeos de upsell", () => {
     const first = page.locator("article.case").first();
     const second = page.locator("article.case").nth(1);
     await first.scrollIntoViewIfNeeded();
-    await expect.poll(() => first.locator("video").evaluate((video) => !video.paused)).toBe(true);
+    await expect.poll(() => first.locator("video").evaluate((video) => !(video as HTMLVideoElement).paused)).toBe(true);
     const firstTitle = await articleTitle(first);
     const secondTitle = await articleTitle(second);
 
@@ -199,12 +199,12 @@ describe("controller acessível dos vídeos de upsell", () => {
       `Sem som vídeo: ${firstTitle}`,
     );
     await second.locator("button.sound").click();
-    await expect.poll(() => second.locator("video").evaluate((video) => !video.muted && !video.paused)).toBe(true);
+    await expect.poll(() => second.locator("video").evaluate((video) => !(video as HTMLVideoElement).muted && !(video as HTMLVideoElement).paused)).toBe(true);
 
     const states = await page.locator("video[data-autoplay]").evaluateAll((videos) =>
       videos.map((video) => ({
-        muted: video.muted,
-        paused: video.paused,
+        muted: (video as HTMLVideoElement).muted,
+        paused: (video as HTMLVideoElement).paused,
         text: video.parentElement!.querySelector("button.sound")!.textContent,
         pressed: video.parentElement!.querySelector("button.sound")!.getAttribute("aria-pressed"),
       })),
@@ -225,7 +225,7 @@ describe("controller acessível dos vídeos de upsell", () => {
     const title = await articleTitle(article);
     await article.scrollIntoViewIfNeeded();
     await article.locator("video").evaluate((video) => {
-      video.play = () => Promise.reject(new Error("Falha simulada de play"));
+      (video as HTMLVideoElement).play = () => Promise.reject(new Error("Falha simulada de play"));
     });
     await article.locator("button.sound").click();
     await expect.poll(() => videoState(article)).toEqual({

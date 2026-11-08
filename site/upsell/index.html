@@ -417,7 +417,8 @@
         overflow-wrap: anywhere;
       }
       .orig-fallback strong {
-        font-size: 11px;
+        font-size: clamp(8px, 2.3vw, 11px);
+        white-space: nowrap;
       }
       .sound {
         position: absolute;
