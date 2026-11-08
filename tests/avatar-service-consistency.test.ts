@@ -597,11 +597,16 @@ describe("AvatarService consistency", { timeout: 60_000 }, () => {
     const blocked = render(service, firstAvatar.avatarId, first.revision);
     await rendererStarted.promise;
     const independent = render(service, secondAvatar.avatarId, second.revision);
-    await delay(30);
-    const ranInParallel = calls === 2;
-    releaseRenderer.resolve();
-    await Promise.all([blocked, independent]);
-    expect(ranInParallel).toBe(true);
+    try {
+      await vi.waitFor(() => expect(calls).toBe(2), {
+        timeout: 5_000,
+        interval: 10,
+      });
+    } finally {
+      releaseRenderer.resolve();
+      await Promise.all([blocked, independent]);
+    }
+    expect(calls).toBe(2);
   });
 
   it("serializes select and save so selection and revision metadata converge", async () => {
