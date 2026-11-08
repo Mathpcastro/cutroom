@@ -45,77 +45,138 @@ function legacyHandle(value: unknown): string {
   return assertProfileHandle(normalized || "perfil-padrao");
 }
 
-const SECRET_ERROR = "Dados sensíveis não são permitidos no perfil; use o SecretStore.";
-const SENSITIVE_WORDS = new Set([
-  "secret",
-  "password",
-  "passphrase",
-  "token",
-  "tokens",
-  "credential",
-  "credentials",
-  "authorization",
-  "auth",
-  "authentication",
-  "cookie",
-  "cookies",
-  "session",
-  "sessions",
-  "bearer",
-]);
+const PREFERENCE_ERROR = "Preferências contêm campos ou valores não permitidos.";
+const INVALID_PREFERENCE = Symbol("invalid-preference");
 
-function sensitiveKey(key: string): boolean {
-  if (key === "credentialRef") return false;
-  const normalized = key
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  const words = key
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  return (
-    words.some((word) => SENSITIVE_WORDS.has(word)) ||
-    normalized.includes("apikey") ||
-    normalized.includes("privatekey") ||
-    normalized.includes("secret") ||
-    normalized.includes("password") ||
-    normalized.includes("passphrase") ||
-    normalized.includes("credential") ||
-    normalized.includes("authorization") ||
-    normalized.includes("cookie") ||
-    normalized.includes("session") ||
-    normalized.includes("bearer") ||
-    normalized.endsWith("token") ||
-    normalized.endsWith("tokens") ||
-    normalized.endsWith("auth")
-  );
-}
+type PreferenceRule =
+  | { kind: "object"; fields: Record<string, PreferenceRule>; required?: readonly string[] }
+  | { kind: "array"; items: PreferenceRule; maxItems: number }
+  | { kind: "boolean" }
+  | { kind: "string"; nullable?: boolean; maxLength: number; allowEmpty?: boolean }
+  | { kind: "id" };
 
-function assertNoSensitiveKeys(value: unknown, seen = new WeakSet<object>()): void {
-  if (!value || typeof value !== "object" || seen.has(value)) return;
-  seen.add(value);
-  for (const [key, child] of Object.entries(value)) {
-    if (sensitiveKey(key)) throw new Error(SECRET_ERROR);
-    assertNoSensitiveKeys(child, seen);
+const INSTAGRAM_ACCOUNTS_RULE: PreferenceRule = {
+  kind: "array",
+  maxItems: 500,
+  items: {
+    kind: "object",
+    required: ["id"],
+    fields: {
+      id: { kind: "string", maxLength: 200, allowEmpty: false },
+      userId: { kind: "id" },
+      igUserId: { kind: "id" },
+      username: { kind: "string", nullable: true, maxLength: 200 },
+      status: { kind: "string", nullable: true, maxLength: 200 },
+    },
+  },
+};
+
+/**
+ * Closed allowlist for every free-form profile preference.
+ *
+ * `preferences` currently has no free keys: brand and voice already use typed fields.
+ * Instagram supports `shareToFeed` from publishReel and `accounts` from Publisher's
+ * public InstagramAccount metadata (id, userId, igUserId, username, status).
+ * Everything else, including credentialRef outside voice, is rejected or discarded.
+ */
+export const PROFILE_FREE_FIELD_ALLOWLIST = {
+  preferences: { kind: "object", fields: {} },
+  instagramPreferences: {
+    kind: "object",
+    fields: {
+      shareToFeed: { kind: "boolean" },
+      accounts: INSTAGRAM_ACCOUNTS_RULE,
+    },
+  },
+} as const satisfies Record<string, PreferenceRule>;
+
+function preferenceValue(
+  value: unknown,
+  rule: PreferenceRule,
+  mode: "reject" | "discard",
+  ancestors: WeakSet<object>,
+): unknown | typeof INVALID_PREFERENCE {
+  const invalid = (): typeof INVALID_PREFERENCE => {
+    if (mode === "reject") throw new Error(PREFERENCE_ERROR);
+    return INVALID_PREFERENCE;
+  };
+  if (rule.kind === "boolean") return typeof value === "boolean" ? value : invalid();
+  if (rule.kind === "string") {
+    if (value === null && rule.nullable) return null;
+    return typeof value === "string" &&
+      value.length <= rule.maxLength &&
+      (rule.allowEmpty !== false || value.length > 0)
+      ? value
+      : invalid();
+  }
+  if (rule.kind === "id") {
+    if (value === null) return null;
+    if (typeof value === "string") return value.length <= 200 ? value : invalid();
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : invalid();
+  }
+  if (!value || typeof value !== "object" || ancestors.has(value)) return invalid();
+  if (rule.kind === "array") {
+    if (!Array.isArray(value) || value.length > rule.maxItems) return invalid();
+    ancestors.add(value);
+    try {
+      const result: unknown[] = [];
+      for (const child of value) {
+        const parsed = preferenceValue(child, rule.items, mode, ancestors);
+        if (parsed !== INVALID_PREFERENCE) result.push(parsed);
+      }
+      return result;
+    } finally {
+      ancestors.delete(value);
+    }
+  }
+  if (Array.isArray(value)) return invalid();
+  const prototype = Object.getPrototypeOf(value);
+  if ((prototype !== Object.prototype && prototype !== null) || Object.getOwnPropertySymbols(value).length)
+    return invalid();
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Object.values(descriptors).some((descriptor) => !("value" in descriptor) || !descriptor.enumerable))
+    return invalid();
+  ancestors.add(value);
+  try {
+    const object = value as Record<string, unknown>;
+    for (const key of rule.required ?? []) if (!Object.hasOwn(object, key)) return invalid();
+    const result: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(descriptors)) {
+      const field = Object.hasOwn(rule.fields, key) ? rule.fields[key] : undefined;
+      if (!field) {
+        if (mode === "reject") return invalid();
+        continue;
+      }
+      const parsed = preferenceValue(child.value, field, mode, ancestors);
+      if (parsed !== INVALID_PREFERENCE) result[key] = parsed;
+    }
+    return result;
+  } finally {
+    ancestors.delete(value);
   }
 }
 
-function withoutSecrets(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    const result = value.map(withoutSecrets).filter((child) => child !== undefined);
-    return result.length ? result : undefined;
-  }
-  if (!value || typeof value !== "object") return value;
-  const result = Object.fromEntries(
-    Object.entries(value as LegacyRecord)
-      .filter(([key]) => !sensitiveKey(key))
-      .map(([key, child]) => [key, withoutSecrets(child)])
-      .filter(([, child]) => child !== undefined),
+function assertFreePreferences(patch: StudioProfilePatch): void {
+  preferenceValue(patch.preferences ?? {}, PROFILE_FREE_FIELD_ALLOWLIST.preferences, "reject", new WeakSet());
+  preferenceValue(
+    patch.instagram?.preferences ?? {},
+    PROFILE_FREE_FIELD_ALLOWLIST.instagramPreferences,
+    "reject",
+    new WeakSet(),
   );
-  return Object.keys(result).length ? result : undefined;
+}
+
+function sanitizeLegacyPreferences(preferences: unknown, accounts: unknown) {
+  const parsedPreferences = preferenceValue(
+    preferences,
+    PROFILE_FREE_FIELD_ALLOWLIST.instagramPreferences,
+    "discard",
+    new WeakSet(),
+  );
+  const parsedAccounts = preferenceValue(accounts, INSTAGRAM_ACCOUNTS_RULE, "discard", new WeakSet());
+  const safePreferences = record(parsedPreferences);
+  if (Object.keys(safePreferences).length) return safePreferences;
+  return Array.isArray(parsedAccounts) && parsedAccounts.length ? { accounts: parsedAccounts } : {};
 }
 
 function defaultProfile(id: string, name: string, handle: string, now: string): StudioProfile {
@@ -169,7 +230,7 @@ export class ProfileService {
   constructor(private readonly host: { store: ProfileStore; secrets?: ProfileSecrets }) {}
 
   async create(input: CreateStudioProfileInput): Promise<StudioProfile> {
-    assertNoSensitiveKeys(input);
+    assertFreePreferences(input);
     const handle = assertProfileHandle(input.handle);
     if ((await this.host.store.list()).some((profile) => profile.id === handle || profile.handle === handle))
       throw new Error("Já existe um perfil com este handle.");
@@ -197,7 +258,7 @@ export class ProfileService {
   }
 
   async update(profileId: string, patch: StudioProfilePatch): Promise<StudioProfile> {
-    assertNoSensitiveKeys(patch);
+    assertFreePreferences(patch);
     const current = await this.get(profileId);
     const next = applyPatch(current, patch, new Date().toISOString());
     if (next.handle !== current.handle && (await this.list()).some((profile) => profile.handle === next.handle))
@@ -244,8 +305,7 @@ export async function migrateLegacyProfile(options: LegacyProfileMigrationOption
   const handle = legacyHandle(legacyBrand.handle);
   const publishPreferences = record(legacyPublish.preferences);
   const accounts = Array.isArray(legacyPublish.accounts) ? legacyPublish.accounts : undefined;
-  const sanitizedPreferences = withoutSecrets(publishPreferences) as Record<string, unknown> | undefined;
-  const sanitizedAccounts = withoutSecrets(accounts);
+  const sanitizedPreferences = sanitizeLegacyPreferences(publishPreferences, accounts);
   const profile = defaultProfile("perfil-padrao", "Perfil padrão", handle, now);
   profile.brand = {
     name: string(legacyBrand.name, "Minha marca"),
@@ -265,7 +325,7 @@ export async function migrateLegacyProfile(options: LegacyProfileMigrationOption
   profile.commercialGoal = string(legacyBrand.context);
   profile.instagram = {
     ...(string(legacyPublish.defaultAccount) ? { connectionId: string(legacyPublish.defaultAccount) } : {}),
-    preferences: sanitizedPreferences ?? (sanitizedAccounts ? { accounts: sanitizedAccounts } : {}),
+    preferences: sanitizedPreferences,
   };
 
   const saved = await store.save(parseProfile(profile));

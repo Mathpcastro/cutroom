@@ -185,7 +185,7 @@ describe("legacy profile migration", () => {
     expect(secrets.writes).toEqual([]);
   });
 
-  it("sanitizes every sensitive key recursively while preserving useful legacy preferences", async () => {
+  it("keeps only allowlisted legacy preferences and discards every unknown key recursively", async () => {
     const root = await temporaryRoot();
     const logs: string[] = [];
     const sensitive = Object.fromEntries(
@@ -201,9 +201,20 @@ describe("legacy profile migration", () => {
         "password",
         "passphrase",
         "pass-phrase",
+        "passwd",
+        "pwd",
         "token",
         "accessToken",
         "access_token",
+        "accessKey",
+        "access_key",
+        "clientKey",
+        "client-key",
+        "client_key",
+        "signingKey",
+        "signing-key",
+        "signing_key",
+        "encryptionKey",
         "refreshToken",
         "refresh token",
         "credential",
@@ -217,6 +228,7 @@ describe("legacy profile migration", () => {
         "private_key",
         "bearer",
         "bearer-token",
+        "totallyUnknown",
       ].map((key) => [key, FAKE_API_KEY]),
     );
     const publish = {
@@ -224,12 +236,21 @@ describe("legacy profile migration", () => {
       preferences: {
         shareToFeed: false,
         ...sensitive,
-        nested: {
-          auth: FAKE_API_KEY,
-          keep: "nested",
-          deep: [{ token: FAKE_API_KEY, keep: "array" }, { credentialRef: "public-voice" }],
-        },
-        list: [{ clientSecret: FAKE_API_KEY, ok: 1 }, { password: FAKE_API_KEY }, "texto", null],
+        credentialRef: "not-allowed-in-free-preferences",
+        accounts: [
+          {
+            id: "connection-orbit",
+            userId: "",
+            igUserId: 0,
+            username: "",
+            status: null,
+            nested: { auth: FAKE_API_KEY },
+            clientKey: FAKE_API_KEY,
+          },
+          { id: "connection-two", username: "orbit", signing_key: FAKE_API_KEY },
+          { username: "missing-required-id", keep: "discard" },
+        ],
+        nested: { keep: "unknown-container" },
       },
     };
     const legacyPublishBytes = JSON.stringify(publish, null, 2);
@@ -248,13 +269,13 @@ describe("legacy profile migration", () => {
       logger: (message) => logs.push(message),
     });
 
+    expect(profile.voice.credentialRef).toBe("elevenlabs");
     expect(profile.instagram.preferences).toEqual({
       shareToFeed: false,
-      nested: {
-        keep: "nested",
-        deep: [{ keep: "array" }, { credentialRef: "public-voice" }],
-      },
-      list: [{ ok: 1 }, "texto", null],
+      accounts: [
+        { id: "connection-orbit", userId: "", igUserId: 0, username: "", status: null },
+        { id: "connection-two", username: "orbit" },
+      ],
     });
     expect(await readFile(join(root, "publish.json"), "utf8")).toBe(legacyPublishBytes);
     expect(logs.join("\n")).not.toContain(FAKE_API_KEY);
