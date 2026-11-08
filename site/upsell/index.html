@@ -721,6 +721,15 @@
           width: min(278px, 82vw);
         }
       }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition: none !important;
+          animation: none !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -781,7 +790,6 @@
           <video
             src="videos/professor.mp4"
             poster="videos/professor.jpg"
-            autoplay
             muted
             loop
             playsinline
@@ -1148,39 +1156,87 @@
 
     <footer>Videosell · Carrossell</footer>
     <script>
-      // Os vídeos do CutRoom tocam sozinhos enquanto estão na tela (sem som, em loop); toque para ouvir.
-      const videos = document.querySelectorAll("video[data-autoplay]");
-      const io = new IntersectionObserver(
-        (entries) =>
-          entries.forEach((e) =>
-            e.isIntersecting
-              ? e.target.play().catch(() => {})
-              : e.target.pause(),
-          ),
-        { threshold: 0.4 },
-      );
-      videos.forEach((v) => {
-        io.observe(v);
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "sound";
-        b.textContent = "🔊 Ouvir";
-        b.onclick = () => {
-          const on = v.muted;
-          videos.forEach((o) => {
-            o.muted = true;
-          });
-          document
-            .querySelectorAll(".sound")
-            .forEach((x) => (x.textContent = "🔊 Ouvir"));
-          v.muted = !on;
-          if (on) {
-            v.currentTime = 0;
-            v.play();
-            b.textContent = "🔇 Sem som";
+      // Pré-visualizações mudas entram em play somente pelo controller.
+      const videos = Array.from(document.querySelectorAll("video[data-autoplay]"));
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const soundButtons = new Map();
+
+      const updateSoundButton = (video, enabled) => {
+        const button = soundButtons.get(video);
+        if (!button) return;
+        button.textContent = enabled ? "Sem som" : "Ouvir";
+        button.setAttribute("aria-pressed", String(enabled));
+      };
+
+      const safePlay = (video, onFailure = () => {}) => {
+        try {
+          const playback = video.play();
+          if (playback && typeof playback.catch === "function") {
+            playback.catch(onFailure);
           }
-        };
-        v.parentElement.appendChild(b);
+        } catch {
+          onFailure();
+        }
+      };
+
+      videos.forEach((video) => {
+        const button = document.createElement("button");
+        const title =
+          video
+            .closest("article")
+            ?.querySelector("h3")
+            ?.textContent.replace(/\s+/g, " ")
+            .trim() || "demonstração";
+        button.type = "button";
+        button.className = "sound";
+        button.textContent = "Ouvir";
+        button.setAttribute("aria-label", `Ouvir vídeo: ${title}`);
+        button.setAttribute("aria-pressed", "false");
+        soundButtons.set(video, button);
+
+        button.addEventListener("click", () => {
+          if (!video.muted) {
+            video.muted = true;
+            updateSoundButton(video, false);
+            return;
+          }
+
+          videos.forEach((other) => {
+            if (other === video) return;
+            other.muted = true;
+            other.pause();
+            updateSoundButton(other, false);
+          });
+
+          video.muted = false;
+          video.currentTime = 0;
+          updateSoundButton(video, true);
+          safePlay(video, () => {
+            video.muted = true;
+            video.pause();
+            updateSoundButton(video, false);
+          });
+        });
+        video.parentElement.appendChild(button);
+      });
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const video = entry.target;
+            if (!entry.isIntersecting) {
+              video.pause();
+            } else if (!reduced.matches && video.muted) {
+              safePlay(video);
+            }
+          });
+        },
+        { threshold: 0.35 },
+      );
+      videos.forEach((video) => io.observe(video));
+
+      reduced.addEventListener("change", (event) => {
+        if (event.matches) videos.forEach((video) => video.pause());
       });
 
       // Mantém o link original acessível mesmo se a thumbnail remota falhar.
