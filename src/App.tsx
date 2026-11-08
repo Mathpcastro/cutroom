@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDownToLine,
+  ArrowLeft,
   Check,
   ChevronDown,
   CircleHelp,
@@ -11,7 +12,7 @@ import {
   Settings2,
   X,
 } from "lucide-react";
-import type { AppSnapshot, EditCommand } from "./shared/types";
+import type { AppSnapshot, EditCommand, StudioTab } from "./shared/types";
 import { duration, emptySnapshot, timecode } from "./lib/editor";
 import { Assistant } from "./components/Assistant";
 import { BrandMark } from "./components/BrandMark";
@@ -19,6 +20,7 @@ import { Player } from "./components/Player";
 import { Timeline } from "./components/Timeline";
 import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
 import { StudioPanel } from "./components/StudioPanel";
+import { VideosellStudio } from "./components/VideosellStudio";
 import { Menu } from "./components/Menu";
 import { applyTheme, themes, type ThemeId } from "./lib/themes";
 import { useDialogKeyboard } from "./lib/useDialogKeyboard";
@@ -31,18 +33,27 @@ export default function App() {
   const [loading, setLoading] = useState(!!window.cutroom);
   const [tab, setTab] = useState<"media" | "transcript" | "style">("media");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [studio, setStudio] = useState<null | "start" | "brand" | "voices" | "films" | "publish">(null);
+  const [studio, setStudio] = useState<StudioTab | null>(null);
+  const [surface, setSurface] = useState<"studio" | "editor">("studio");
+  const openAdvanced = useCallback((nextTab?: StudioTab) => {
+    if (nextTab) setStudio(nextTab);
+    setSurface("editor");
+  }, []);
   useEffect(() => {
-    const open = (event: Event) => setStudio(((event as CustomEvent).detail as typeof studio) ?? "start");
+    const open = (event: Event) =>
+      openAdvanced(((event as CustomEvent).detail as StudioTab | undefined) ?? "start");
     window.addEventListener("cutroom:studio", open);
     return () => window.removeEventListener("cutroom:studio", open);
-  }, []);
+  }, [openAdvanced]);
   const [theme, setTheme] = useState<ThemeId>(
     (document.documentElement.dataset.theme as ThemeId) || "graphite",
   );
   const [helpOpen, setHelpOpen] = useState(false);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    if (surface === "studio") setPlaying(false);
+  }, [surface]);
   const [selectedId, setSelectedId] = useState<string>();
   const [jobsOpen, setJobsOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -116,7 +127,7 @@ export default function App() {
     let active = true;
     const unsubscribe = window.cutroom.onEvent((event) => {
       if (active && event.type === "state") setState(event.state);
-      if (active && event.type === "studio") setStudio(event.tab);
+      if (active && event.type === "studio") openAdvanced(event.tab);
     });
     void window.cutroom
       .request<AppSnapshot>("getState")
@@ -133,7 +144,7 @@ export default function App() {
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [openAdvanced]);
   useEffect(() => {
     if (projectId.current !== state.project.id) {
       projectId.current = state.project.id;
@@ -153,12 +164,14 @@ export default function App() {
     const edit = () => {
       setTab("style");
       setDrawerOpen(true);
+      openAdvanced();
     };
     window.addEventListener("cutroom:motion-edit", edit);
     return () => window.removeEventListener("cutroom:motion-edit", edit);
-  }, []);
+  }, [openAdvanced]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (surface !== "editor") return;
       if ((event.ctrlKey || event.metaKey) && event.key === ",") {
         event.preventDefault();
         window.dispatchEvent(new Event("cutroom:preferences"));
@@ -195,7 +208,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state.canRedo, state.canUndo, state.project, time, run]);
+  }, [state.canRedo, state.canUndo, state.project, time, run, surface]);
   const activeJobs = state.jobs.filter((job) => job.status === "running");
   const recentJob = activeJobs[0] || state.jobs.at(-1);
   const originalDuration = state.project.media.reduce(
@@ -203,16 +216,30 @@ export default function App() {
     0,
   );
   return (
-    <div className={`app-shell ${desktop ? "is-desktop" : ""}`}>
+    <>
+      <div className="videosell-studio-host" hidden={surface !== "studio"}>
+        <VideosellStudio onOpenAdvanced={openAdvanced} />
+      </div>
+      <div className={`app-shell ${desktop ? "is-desktop" : ""}`} hidden={surface !== "editor"}>
       <header className="titlebar">
+        <button
+          type="button"
+          className="studio-return-button"
+          onClick={() => {
+            setStudio(null);
+            setSurface("studio");
+          }}
+        >
+          <ArrowLeft size={14} /> Voltar ao estúdio
+        </button>
         <a
           className="wordmark"
           href="#"
           onClick={(event) => event.preventDefault()}
-          aria-label="CutRoom"
+          aria-label="Videosell"
         >
           <BrandMark size={16} />
-          CutRoom
+          Videosell
         </a>
         <span className="titlebar-divider" />
         <Menu
@@ -678,6 +705,7 @@ export default function App() {
           ))}
         </section>
       )}
-    </div>
+      </div>
+    </>
   );
 }

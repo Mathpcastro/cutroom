@@ -136,6 +136,14 @@ describe("Videosell brand", () => {
     ]);
   });
 
+  it("keeps CutRoom packaging identity while presenting Videosell copy", async () => {
+    const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+    expect(packageJson.name).toBe("cutroom");
+    expect(packageJson.build.appId).toBe("com.matheuscastro.cutroom");
+    expect(packageJson.build.productName).toBe("CutRoom");
+    expect(packageJson.description).toBe(brandTagline);
+  });
+
   it("bundles Sora and Inter locally with their OFL licenses", async () => {
     const assets = [
       "resources/fonts/Sora-Variable.ttf",

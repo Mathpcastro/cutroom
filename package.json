@@ -1,7 +1,7 @@
 {
   "name": "cutroom",
   "version": "0.7.0",
-  "description": "A local-first, open-source video editor controlled by text.",
+  "description": "Avatares de IA para apresentar e vender seu produto.",
   "type": "module",
   "main": "dist-electron/main.js",
   "author": "Matheus Castro",

@@ -244,6 +244,8 @@ export type StudioTab = "start" | "brand" | "voices" | "films" | "publish";
 export type EditorEvent = { type: "state"; state: AppSnapshot } | { type: "studio"; tab: StudioTab };
 export interface StudioProfilesAPI {
   list(): Promise<StudioProfile[]>;
+  getActive(): Promise<StudioProfile | undefined>;
+  listProjects(profileId: string): Promise<string[]>;
   get(profileId: string): Promise<StudioProfile>;
   create(input: CreateStudioProfileInput): Promise<StudioProfile>;
   update(profileId: string, patch: StudioProfilePatch): Promise<StudioProfile>;

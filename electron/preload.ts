@@ -6,6 +6,9 @@ const api: CutroomAPI = {
     ipcRenderer.invoke("editor:request", method, params),
   studioProfiles: {
     list: () => ipcRenderer.invoke("editor:request", "profileList"),
+    getActive: () => ipcRenderer.invoke("editor:request", "profileGetActive"),
+    listProjects: (profileId) =>
+      ipcRenderer.invoke("editor:request", "profileListProjects", { profileId }),
     get: (profileId) =>
       ipcRenderer.invoke("editor:request", "profileGet", { profileId }),
     create: (input) =>

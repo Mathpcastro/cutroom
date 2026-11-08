@@ -127,6 +127,7 @@ let filmStudio: FilmStudio;
 let publisher: Publisher;
 let secretStore: SecretStore;
 let brandStore: BrandStore;
+let profileService: ProfileService;
 let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
 let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
 /** Host images for scenes: the brand logo as data-asset="logo". */
@@ -1218,6 +1219,13 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       };
     case "profileList":
       return dispatchProfileTool("profile_list", {});
+    case "profileGetActive":
+      return profileService.getActive();
+    case "profileListProjects":
+      return dispatchProfileTool(
+        "profile_list_projects",
+        params as Record<string, unknown>,
+      );
     case "profileGet":
       return dispatchProfileTool("profile_get", params as Record<string, unknown>);
     case "profileCreate":
@@ -1540,9 +1548,8 @@ app.whenReady().then(async () => {
   await mkdir(join(userDir, "agent-workspace"), { recursive: true });
   packages = new PackageManager(join(userDir, "packages"), resources);
   brandStore = new BrandStore(userDir);
-  dispatchProfileTool = createProfileToolDispatcher(
-    new ProfileService({ store: new ProfileStore(userDir) }),
-  );
+  profileService = new ProfileService({ store: new ProfileStore(userDir) });
+  dispatchProfileTool = createProfileToolDispatcher(profileService);
   studio = new Studio({
     project: () => state.project,
     command: async (command) => {
