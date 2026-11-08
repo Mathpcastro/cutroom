@@ -315,11 +315,12 @@
       }
       .trio {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 22px;
       }
       .case {
         position: relative;
+        min-width: 0;
         background: var(--paper);
         border-radius: 26px;
         padding: 14px;
@@ -351,15 +352,16 @@
         position: absolute;
         left: 10px;
         bottom: 10px;
+        max-width: calc(70% - 26px);
         padding: 6px 12px;
         border-radius: 999px;
         background: var(--accent);
         color: #fff;
         font:
-          700 12px "Inter",
+          700 11px/1.3 "Inter",
           system-ui,
           sans-serif;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
       }
       .orig {
@@ -367,12 +369,14 @@
         right: 10px;
         bottom: 10px;
         width: 30%;
+        min-width: 44px;
+        min-height: 44px;
         border-radius: 12px;
         overflow: hidden;
         border: 3px solid #fff;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
         text-decoration: none;
-        background: #000;
+        background: var(--ink-2);
       }
       .orig img {
         width: 100%;
@@ -380,13 +384,13 @@
         object-fit: cover;
         display: block;
       }
-      .orig span {
+      .orig > span:not(.orig-fallback) {
         position: absolute;
         left: 0;
         right: 0;
         bottom: 0;
-        padding: 4px 6px;
-        background: rgba(0, 0, 0, 0.78);
+        padding: 5px 6px;
+        background: rgba(0, 0, 0, 0.82);
         color: #fff;
         font:
           700 10px/1.25 "Inter",
@@ -394,14 +398,40 @@
           sans-serif;
         text-align: center;
       }
+      .orig-fallback {
+        display: flex;
+        width: 100%;
+        aspect-ratio: 9/16;
+        min-height: 44px;
+        padding: 10px 5px 32px;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 6px;
+        color: #fff;
+        font:
+          600 10px/1.3 "Inter",
+          system-ui,
+          sans-serif;
+        text-align: center;
+        overflow-wrap: anywhere;
+      }
+      .orig-fallback strong {
+        font-size: 11px;
+      }
       .sound {
         position: absolute;
         left: 10px;
         top: 10px;
-        padding: 7px 12px;
+        display: inline-flex;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 10px 14px;
+        align-items: center;
+        justify-content: center;
         border-radius: 999px;
         border: 0;
-        background: rgba(0, 0, 0, 0.65);
+        background: rgba(0, 0, 0, 0.72);
         color: #fff;
         font:
           600 12px "Inter",
@@ -588,17 +618,13 @@
         .fold {
           min-height: auto;
         }
-        /* Cada dobra vira um carrossel de arrastar no celular. */
         .trio {
-          display: flex;
-          overflow-x: auto;
-          scroll-snap-type: x mandatory;
-          gap: 14px;
-          padding-bottom: 8px;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 18px;
         }
         .case {
-          flex: 0 0 78%;
-          scroll-snap-align: center;
+          width: min(100%, 420px);
+          margin-inline: auto;
         }
         .reel {
           max-height: none;
@@ -756,80 +782,50 @@
       </section>
     </div>
 
-    <!-- DOBRAS 2 e 3: os vídeos feitos no CutRoom -->
+    <!-- DOBRAS 2 e 3: vídeos gerados e referências de formato -->
     <section class="soft fold">
       <div class="wrap">
-        <h2>Feito no CutRoom. <em>Sem câmera, sem editor.</em></h2>
+        <h2>Feito no Videosell. <em>Sem câmera, sem editor.</em></h2>
         <p class="sub">
-          Os formatos que mais viralizam em vídeo feito com código, prontos para
-          o seu SaaS. Toque em um vídeo para ouvir.
+          Seis referências de formato em vídeo feito com código para o seu SaaS.
+          Toque em um vídeo para ouvir.
         </p>
         <div class="trio">
-          <div class="case">
-            <h3>Suspense de <span>stickman</span></h3>
+          <article class="case">
+            <h3>Aula com apresentador em pixel art</h3>
             <div class="reel">
               <video
-                src="videos/stickman.mp4"
-                poster="videos/stickman.jpg"
+                src="videos/professor.mp4"
+                poster="videos/professor.jpg"
                 muted
                 loop
                 playsinline
                 preload="metadata"
                 data-autoplay
-              ></video
-              ><span class="tag-ours">Feito no CutRoom</span>
+              ></video>
+              <span class="tag-ours">Feito no Videosell</span>
+              <a
+                class="orig"
+                href="https://x.com/finnardley/status/2116010421740007894"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ver referência original de @finnardley no X"
+              >
+                <img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2116009362552434688/img/jkPpJnTcWGJQzywL.jpg"
+                  alt="Referência original de @finnardley"
+                  loading="lazy"
+                  data-handle="@finnardley"
+                />
+                <span>Referência no X</span>
+              </a>
             </div>
             <p>
-              Cenário 3D com luz de dia e de noite, HUD de dia e hora, regras e
-              um final com escolha que enche os comentários.
+              Referência de formato: aula vertical com apresentador em pixel
+              art, legendas e cards que acompanham a explicação.
             </p>
-          </div>
-          <div class="case">
-            <h3>Jogo em <span>pixel art</span></h3>
-            <div class="reel">
-              <video
-                src="videos/pixel.mp4"
-                poster="videos/pixel.jpg"
-                muted
-                loop
-                playsinline
-                preload="metadata"
-                data-autoplay
-              ></video
-              ><span class="tag-ours">Feito no CutRoom</span>
-            </div>
-            <p>
-              O seu funil vira uma fase: posts são moedas, o chefão é o
-              algoritmo, o combo é carrossel + Reels.
-            </p>
-          </div>
-          <div class="case">
-            <h3>Explainer <span>ilustrado</span></h3>
-            <div class="reel">
-              <video
-                src="videos/kurzgesagt.mp4"
-                poster="videos/kurzgesagt.jpg"
-                muted
-                loop
-                playsinline
-                preload="metadata"
-                data-autoplay
-              ></video
-              ><span class="tag-ours">Feito no CutRoom</span>
-            </div>
-            <p>
-              O seu SaaS como um planeta: a estrela do conteúdo acende e os
-              visitantes entram em órbita.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-    <section class="soft fold" style="padding-top: 0">
-      <div class="wrap">
-        <h2 style="font-size: 34px">E para mostrar o <em>produto</em></h2>
-        <div class="trio">
-          <div class="case">
+          </article>
+          <article class="case">
             <h3>O app <span>funcionando</span></h3>
             <div class="reel">
               <video
@@ -840,14 +836,30 @@
                 playsinline
                 preload="metadata"
                 data-autoplay
-              ></video
-              ><span class="tag-ours">Feito no CutRoom</span>
+              ></video>
+              <span class="tag-ours">Feito no Videosell</span>
+              <a
+                class="orig"
+                href="https://x.com/twoclipping/status/2103835273813496100"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ver referência original de @twoclipping no X"
+              >
+                <img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2103830256347910144/img/YsUzKmE5XqGD9NZR.jpg"
+                  alt="Referência original de @twoclipping"
+                  loading="lazy"
+                  data-handle="@twoclipping"
+                />
+                <span>Referência no X</span>
+              </a>
             </div>
             <p>
-              Formas que viram a interface, cursor clicando, estado por estado.
+              Referência de formato: animação de interface com cursor,
+              transições e estados do produto em primeiro plano.
             </p>
-          </div>
-          <div class="case">
+          </article>
+          <article class="case">
             <h3>Voo pela sua <span>landing page</span></h3>
             <div class="reel">
               <video
@@ -858,37 +870,142 @@
                 playsinline
                 preload="metadata"
                 data-autoplay
-              ></video
-              ><span class="tag-ours">Feito no CutRoom</span>
+              ></video>
+              <span class="tag-ours">Feito no Videosell</span>
+              <a
+                class="orig"
+                href="https://x.com/twoclipping/status/2110329502676951367"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ver referência original de @twoclipping no X"
+              >
+                <img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2110328827956068352/img/Yfz92C5G-vOXGdv4.jpg"
+                  alt="Referência original de @twoclipping"
+                  loading="lazy"
+                  data-handle="@twoclipping"
+                />
+                <span>Referência no X</span>
+              </a>
             </div>
             <p>
-              O CutRoom captura a sua página e a câmera voa por ela até a frase
-              da marca.
+              Referência de formato: sobrevoo de landing page com movimento de
+              câmera e destaque para a mensagem da marca.
             </p>
-          </div>
-          <div class="case">
-            <h3>Aula com <span>apresentador</span></h3>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section class="soft fold" style="padding-top: 0">
+      <div class="wrap">
+        <h2 style="font-size: 34px">E para contar <em>histórias</em></h2>
+        <div class="trio">
+          <article class="case">
+            <h3>Suspense de <span>stickman</span></h3>
             <div class="reel">
               <video
-                src="videos/professor.mp4"
-                poster="videos/professor.jpg"
+                src="videos/stickman.mp4"
+                poster="videos/stickman.jpg"
                 muted
                 loop
                 playsinline
                 preload="metadata"
                 data-autoplay
-              ></video
-              ><span class="tag-ours">Feito no CutRoom</span>
+              ></video>
+              <span class="tag-ours">Feito no Videosell</span>
+              <a
+                class="orig"
+                href="https://x.com/finnardley/status/2115786060231770351"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ver referência original de @finnardley no X"
+              >
+                <img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2115784242701500416/img/a_e-E2kTPxvwNIU5.jpg"
+                  alt="Referência original de @finnardley"
+                  loading="lazy"
+                  data-handle="@finnardley"
+                />
+                <span>Referência no X</span>
+              </a>
             </div>
             <p>
-              Pixel art com a boca na voz, cards na palavra falada e o seu
-              número.
+              Referência de formato: narrativa com stickman, cenário 3D, HUD e
+              uma pergunta final para conduzir a história.
             </p>
-          </div>
+          </article>
+          <article class="case">
+            <h3>Narrativa de <span>e se</span></h3>
+            <div class="reel">
+              <video
+                src="videos/e-se.mp4"
+                poster="videos/e-se.jpg"
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                data-autoplay
+              ></video>
+              <span class="tag-ours">Feito no Videosell</span>
+              <a
+                class="orig"
+                href="https://x.com/finnardley/status/2117997239125585942"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ver referência original de @finnardley no X"
+              >
+                <img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2117994784631541761/img/VzOtyP3iKz8Z5d3a.jpg"
+                  alt="Referência original de @finnardley"
+                  loading="lazy"
+                  data-handle="@finnardley"
+                />
+                <span>Referência no X</span>
+              </a>
+            </div>
+            <p>
+              Referência de formato: narrativa hipotética conduzida por “e se”,
+              com cenas visuais que desenvolvem a pergunta inicial.
+            </p>
+          </article>
+          <article class="case">
+            <h3>Explainer <span>ilustrado</span></h3>
+            <div class="reel">
+              <video
+                src="videos/kurzgesagt.mp4"
+                poster="videos/kurzgesagt.jpg"
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                data-autoplay
+              ></video>
+              <span class="tag-ours">Feito no Videosell</span>
+              <a
+                class="orig"
+                href="https://x.com/finnardley/status/2114305886420086817"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ver referência original de @finnardley no X"
+              >
+                <img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2114305237498388481/img/DMcFgslJnlOdVQ94.jpg"
+                  alt="Referência original de @finnardley"
+                  loading="lazy"
+                  data-handle="@finnardley"
+                />
+                <span>Referência no X</span>
+              </a>
+            </div>
+            <p>
+              Referência de formato: explainer ilustrado com metáforas visuais,
+              narração e cenas que organizam uma ideia complexa.
+            </p>
+          </article>
         </div>
         <p class="note">
-          Todos feitos pelo CutRoom com a voz que roda no seu computador e
-          música livre de direitos.
+          Os vídeos desta seção foram gerados no Videosell. As referências
+          externas pertencem aos respectivos autores e apresentam os formatos.
         </p>
       </div>
     </section>
@@ -1150,6 +1267,7 @@
       videos.forEach((v) => {
         io.observe(v);
         const b = document.createElement("button");
+        b.type = "button";
         b.className = "sound";
         b.textContent = "🔊 Ouvir";
         b.onclick = () => {
@@ -1168,6 +1286,28 @@
           }
         };
         v.parentElement.appendChild(b);
+      });
+
+      // Mantém o link original acessível mesmo se a thumbnail remota falhar.
+      document.querySelectorAll("a.orig img").forEach((image) => {
+        const showFallback = () => {
+          const link = image.closest("a.orig");
+          if (!link || link.querySelector(".orig-fallback")) return;
+
+          image.hidden = true;
+          image.style.display = "none";
+
+          const fallback = document.createElement("span");
+          fallback.className = "orig-fallback";
+          const handle = document.createElement("strong");
+          handle.textContent = image.dataset.handle || "Referência original";
+          const action = document.createElement("span");
+          action.textContent = "Abrir referência no X";
+          fallback.append(handle, action);
+          link.insertBefore(fallback, link.querySelector("span"));
+        };
+        image.addEventListener("error", showFallback, { once: true });
+        if (image.complete && image.naturalWidth === 0) showFallback();
       });
     </script>
   </body>
