@@ -246,6 +246,24 @@ describe("ProfileStore and ProfileService", () => {
     );
   });
 
+  it("preserves Instagram preferences when updating only connectionId", async () => {
+    const { service } = setup(await temporaryRoot());
+    const preferences = {
+      shareToFeed: false,
+      accounts: [{ id: "connection-orbit", username: "orbit" }],
+    };
+    const profile = await service.create({
+      name: "Orbit Labs",
+      handle: "orbitlabs",
+      instagram: { preferences },
+    });
+
+    const updated = await service.update(profile.id, { instagram: { connectionId: "ca_2" } });
+
+    expect(updated.instagram).toEqual({ connectionId: "ca_2", preferences });
+    expect((await service.get(profile.id)).instagram).toEqual({ connectionId: "ca_2", preferences });
+  });
+
   it("rejects functions, bigint, non-finite numbers and cyclic structures", async () => {
     const { service } = setup(await temporaryRoot());
     const profile = await service.create({ name: "Orbit Labs", handle: "orbitlabs" });

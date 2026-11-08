@@ -180,18 +180,26 @@ function normalizeFreePreferences<T extends StudioProfilePatch>(patch: T): T {
     "reject",
     new WeakSet(),
   );
-  const instagramPreferences = preferenceValue(
-    patch.instagram?.preferences ?? {},
-    PROFILE_FREE_FIELD_ALLOWLIST.instagramPreferences,
-    "reject",
-    new WeakSet(),
-  );
+  const instagramPreferences =
+    patch.instagram?.preferences === undefined
+      ? undefined
+      : preferenceValue(
+          patch.instagram.preferences,
+          PROFILE_FREE_FIELD_ALLOWLIST.instagramPreferences,
+          "reject",
+          new WeakSet(),
+        );
   return {
     ...patch,
     ...(patch.preferences === undefined ? {} : { preferences }),
     ...(patch.instagram === undefined
       ? {}
-      : { instagram: { ...patch.instagram, preferences: instagramPreferences } }),
+      : {
+          instagram: {
+            ...patch.instagram,
+            ...(instagramPreferences === undefined ? {} : { preferences: instagramPreferences }),
+          },
+        }),
   } as T;
 }
 
