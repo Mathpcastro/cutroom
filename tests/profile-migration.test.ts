@@ -50,8 +50,8 @@ async function writeLegacyFiles(root: string) {
     apiKey: FAKE_API_KEY,
   };
   const publish = {
-    accounts: [{ id: "connection-orbit", igUserId: "178", username: "orbitlabs" }],
-    defaultAccount: "connection-orbit",
+    accounts: [{ id: "ca_1", igUserId: 178, username: "marca" }],
+    defaultAccount: "ca_1",
     preferences: { shareToFeed: true },
     history: [],
   };
@@ -95,8 +95,11 @@ describe("legacy profile migration", () => {
         paper: "#F7F6F1",
       },
       instagram: {
-        connectionId: "connection-orbit",
-        preferences: { shareToFeed: true },
+        connectionId: "ca_1",
+        preferences: {
+          shareToFeed: true,
+          accounts: [{ id: "ca_1", igUserId: 178, username: "marca" }],
+        },
       },
       commercialGoal: legacy.brand.context,
     });
@@ -158,6 +161,55 @@ describe("legacy profile migration", () => {
     expect(await store.list()).toHaveLength(1);
     expect(await readFile(join(root, "profiles", profile.id, "profile.json"), "utf8")).toBe(firstJson);
     expect(await readdir(join(root, "profiles"))).not.toContain("profile.json.partial");
+  });
+
+  it("runs concurrent migrations once with a consistent index", async () => {
+    const root = await temporaryRoot();
+    await writeLegacyFiles(root);
+    const firstStore = new ProfileStore(root);
+    const secondStore = new ProfileStore(root);
+
+    const [first, second] = await Promise.all([
+      migrateLegacyProfile({ root, store: firstStore }),
+      migrateLegacyProfile({ root, store: secondStore }),
+    ]);
+
+    expect(second).toEqual(first);
+    expect(first.instagram).toEqual({
+      connectionId: "ca_1",
+      preferences: {
+        shareToFeed: true,
+        accounts: [{ id: "ca_1", igUserId: 178, username: "marca" }],
+      },
+    });
+    expect(await firstStore.list()).toEqual([first]);
+    expect((await firstStore.getActive())?.id).toBe(first.id);
+    expect((await firstStore.legacyMigration())?.profileId).toBe(first.id);
+    const entries = await readdir(join(root, "profiles"), { recursive: true });
+    expect(entries.some((entry) => entry.endsWith(".partial"))).toBe(false);
+  });
+
+  it("does not replace explicit valid preferences.accounts with legacy top-level accounts", async () => {
+    const root = await temporaryRoot();
+    const profile = await migrateLegacyProfile({
+      root,
+      publish: {
+        accounts: [{ id: "ca_legacy", igUserId: 178, username: "antiga" }],
+        defaultAccount: "ca_explicit",
+        preferences: {
+          shareToFeed: true,
+          accounts: [{ id: "ca_explicit", igUserId: 179, username: "marca" }],
+        },
+      },
+    });
+
+    expect(profile.instagram).toEqual({
+      connectionId: "ca_explicit",
+      preferences: {
+        shareToFeed: true,
+        accounts: [{ id: "ca_explicit", igUserId: 179, username: "marca" }],
+      },
+    });
   });
 
   it("accepts legacy values without ever serializing the secret input", async () => {

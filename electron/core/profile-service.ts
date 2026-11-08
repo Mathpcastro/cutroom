@@ -212,8 +212,9 @@ function sanitizeLegacyPreferences(preferences: unknown, accounts: unknown) {
   );
   const parsedAccounts = preferenceValue(accounts, INSTAGRAM_ACCOUNTS_RULE, "discard", new WeakSet());
   const safePreferences = record(parsedPreferences);
-  if (Object.keys(safePreferences).length) return safePreferences;
-  return Array.isArray(parsedAccounts) && parsedAccounts.length ? { accounts: parsedAccounts } : {};
+  if (!Object.hasOwn(safePreferences, "accounts") && Array.isArray(parsedAccounts) && parsedAccounts.length)
+    return { ...safePreferences, accounts: parsedAccounts };
+  return safePreferences;
 }
 
 function defaultProfile(id: string, name: string, handle: string, now: string): StudioProfile {
@@ -268,14 +269,16 @@ export class ProfileService {
   constructor(private readonly host: { store: ProfileStore; secrets?: ProfileSecrets }) {}
 
   async create(input: CreateStudioProfileInput): Promise<StudioProfile> {
-    const handle = assertProfileHandle(input.handle);
-    if ((await this.host.store.list()).some((profile) => profile.id === handle || profile.handle === handle))
-      throw new Error("Já existe um perfil com este handle.");
-    const now = new Date().toISOString();
-    const profile = applyPatch(defaultProfile(handle, input.name, handle, now), input, now);
-    await this.host.store.save(profile);
-    if (!(await this.host.store.getActive())) await this.host.store.setActive(profile.id);
-    return profile;
+    return this.host.store.runExclusive(async () => {
+      const handle = assertProfileHandle(input.handle);
+      if ((await this.host.store.list()).some((profile) => profile.id === handle || profile.handle === handle))
+        throw new Error("Já existe um perfil com este handle.");
+      const now = new Date().toISOString();
+      const profile = applyPatch(defaultProfile(handle, input.name, handle, now), input, now);
+      await this.host.store.save(profile);
+      if (!(await this.host.store.getActive())) await this.host.store.setActive(profile.id);
+      return profile;
+    });
   }
 
   async get(profileId: string): Promise<StudioProfile> {
@@ -291,15 +294,17 @@ export class ProfileService {
   }
 
   async setActive(profileId: string): Promise<void> {
-    await this.host.store.setActive(assertProfileId(profileId));
+    await this.host.store.setActive(profileId);
   }
 
   async update(profileId: string, patch: StudioProfilePatch): Promise<StudioProfile> {
-    const current = await this.get(profileId);
-    const next = applyPatch(current, patch, new Date().toISOString());
-    if (next.handle !== current.handle && (await this.list()).some((profile) => profile.handle === next.handle))
-      throw new Error("Já existe um perfil com este handle.");
-    return this.host.store.save(next);
+    return this.host.store.runExclusive(async () => {
+      const current = await this.get(profileId);
+      const next = applyPatch(current, patch, new Date().toISOString());
+      if (next.handle !== current.handle && (await this.list()).some((profile) => profile.handle === next.handle))
+        throw new Error("Já existe um perfil com este handle.");
+      return this.host.store.save(next);
+    });
   }
 
   async linkProject(profileId: string, projectId: string): Promise<void> {
@@ -311,62 +316,66 @@ export class ProfileService {
   }
 
   async delete(profileId: string, confirmation: "DELETE"): Promise<void> {
-    if (confirmation !== "DELETE") throw new Error("Exclusão exige confirmação explícita DELETE.");
-    await this.host.store.delete(assertProfileId(profileId));
+    await this.host.store.runExclusive(async () => {
+      if (confirmation !== "DELETE") throw new Error("Exclusão exige confirmação explícita DELETE.");
+      await this.host.store.delete(profileId);
+    });
   }
 }
 
 export async function migrateLegacyProfile(options: LegacyProfileMigrationOptions): Promise<StudioProfile> {
   const store = options.store ?? new ProfileStore(options.root);
-  const migrated = await store.legacyMigration();
-  if (migrated) return store.get(migrated.profileId);
+  return store.runExclusive(async () => {
+    const migrated = await store.legacyMigration();
+    if (migrated) return store.get(migrated.profileId);
 
-  const [brandInput, voiceInput, publishInput] = await Promise.all([
-    readLegacy(options.root, "brand.json", options.brand),
-    readLegacy(options.root, "voice.json", options.voice),
-    readLegacy(options.root, "publish.json", options.publish),
-  ]);
-  const legacyBrand = record(brandInput);
-  const legacyVoice = record(voiceInput);
-  const legacyPublish = record(publishInput);
-  const palette = record(legacyBrand.palette);
-  const voices = record(legacyVoice.voices);
-  const requestedProvider = string(legacyVoice.provider, "local");
-  const provider = (["elevenlabs", "kokoro", "openai", "local"] as const).includes(
-    requestedProvider as "elevenlabs" | "kokoro" | "openai" | "local",
-  )
-    ? (requestedProvider as StudioProfile["voice"]["provider"])
-    : "local";
-  const now = new Date().toISOString();
-  const handle = legacyHandle(legacyBrand.handle);
-  const publishPreferences = record(legacyPublish.preferences);
-  const accounts = Array.isArray(legacyPublish.accounts) ? legacyPublish.accounts : undefined;
-  const sanitizedPreferences = sanitizeLegacyPreferences(publishPreferences, accounts);
-  const profile = defaultProfile("perfil-padrao", "Perfil padrão", handle, now);
-  profile.brand = {
-    name: string(legacyBrand.name, "Minha marca"),
-    accent: string(palette.accent, "#7C5CFF"),
-    ink: string(palette.ink, "#141318"),
-    paper: string(palette.paper, "#F7F6F1"),
-  };
-  profile.voice = {
-    provider,
-    voiceId: string(voices[provider] ?? legacyVoice.voiceId, "default"),
-    ...(provider === "elevenlabs" || provider === "openai" ? { credentialRef: provider } : {}),
-  };
-  profile.personality = {
-    description: string(legacyBrand.context),
-    presentation: string(legacyBrand.designKit),
-  };
-  profile.commercialGoal = string(legacyBrand.context);
-  profile.instagram = {
-    ...(string(legacyPublish.defaultAccount) ? { connectionId: string(legacyPublish.defaultAccount) } : {}),
-    preferences: sanitizedPreferences,
-  };
+    const [brandInput, voiceInput, publishInput] = await Promise.all([
+      readLegacy(options.root, "brand.json", options.brand),
+      readLegacy(options.root, "voice.json", options.voice),
+      readLegacy(options.root, "publish.json", options.publish),
+    ]);
+    const legacyBrand = record(brandInput);
+    const legacyVoice = record(voiceInput);
+    const legacyPublish = record(publishInput);
+    const palette = record(legacyBrand.palette);
+    const voices = record(legacyVoice.voices);
+    const requestedProvider = string(legacyVoice.provider, "local");
+    const provider = (["elevenlabs", "kokoro", "openai", "local"] as const).includes(
+      requestedProvider as "elevenlabs" | "kokoro" | "openai" | "local",
+    )
+      ? (requestedProvider as StudioProfile["voice"]["provider"])
+      : "local";
+    const now = new Date().toISOString();
+    const handle = legacyHandle(legacyBrand.handle);
+    const publishPreferences = record(legacyPublish.preferences);
+    const accounts = Array.isArray(legacyPublish.accounts) ? legacyPublish.accounts : undefined;
+    const sanitizedPreferences = sanitizeLegacyPreferences(publishPreferences, accounts);
+    const profile = defaultProfile("perfil-padrao", "Perfil padrão", handle, now);
+    profile.brand = {
+      name: string(legacyBrand.name, "Minha marca"),
+      accent: string(palette.accent, "#7C5CFF"),
+      ink: string(palette.ink, "#141318"),
+      paper: string(palette.paper, "#F7F6F1"),
+    };
+    profile.voice = {
+      provider,
+      voiceId: string(voices[provider] ?? legacyVoice.voiceId, "default"),
+      ...(provider === "elevenlabs" || provider === "openai" ? { credentialRef: provider } : {}),
+    };
+    profile.personality = {
+      description: string(legacyBrand.context),
+      presentation: string(legacyBrand.designKit),
+    };
+    profile.commercialGoal = string(legacyBrand.context);
+    profile.instagram = {
+      ...(string(legacyPublish.defaultAccount) ? { connectionId: string(legacyPublish.defaultAccount) } : {}),
+      preferences: sanitizedPreferences,
+    };
 
-  const saved = await store.save(parseProfile(profile));
-  if (!(await store.getActive())) await store.setActive(saved.id);
-  await store.markLegacyMigrated(saved.id);
-  options.logger?.("Migração do perfil legado concluída sem copiar credenciais.");
-  return saved;
+    const saved = await store.save(parseProfile(profile));
+    if (!(await store.getActive())) await store.setActive(saved.id);
+    await store.markLegacyMigrated(saved.id);
+    options.logger?.("Migração do perfil legado concluída sem copiar credenciais.");
+    return saved;
+  });
 }

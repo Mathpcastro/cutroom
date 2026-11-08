@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -388,6 +388,126 @@ describe("ProfileStore and ProfileService", () => {
     const projectsPath = join(root, "profiles", a.id, "projects.json");
     expect(JSON.parse(await readFile(projectsPath, "utf8"))).toEqual({ version: 1, projectIds: ["film-orbit"] });
     await expect(access(`${projectsPath}.partial`)).rejects.toThrow();
+  });
+
+  it("serializes concurrent creates across instances without losing profiles", async () => {
+    const root = await temporaryRoot();
+    const first = new ProfileService({ store: new ProfileStore(root) });
+    const second = new ProfileService({ store: new ProfileStore(join(root, ".")) });
+
+    const [a, b] = await Promise.all([
+      first.create({ name: "Orbit Labs", handle: "orbitlabs" }),
+      second.create({ name: "Matheus", handle: "matheus" }),
+    ]);
+
+    expect((await first.list()).map((profile) => profile.id).sort()).toEqual([a.id, b.id].sort());
+    expect([a.id, b.id]).toContain((await first.getActive())?.id);
+    const profilesRoot = join(root, "profiles");
+    const index = JSON.parse(await readFile(join(profilesRoot, "index.json"), "utf8"));
+    expect(index.profileIds.sort()).toEqual([a.id, b.id].sort());
+    expect(index.activeProfileId).toBe((await first.getActive())?.id);
+    expect((await readdir(profilesRoot)).sort()).toEqual(["index.json", a.id, b.id].sort());
+    const entries = await readdir(profilesRoot, { recursive: true });
+    expect(entries.some((entry) => entry.endsWith(".partial"))).toBe(false);
+  });
+
+  it("preserves both changes during concurrent updates", async () => {
+    const root = await temporaryRoot();
+    const { service } = setup(root);
+    const other = new ProfileService({ store: new ProfileStore(root) });
+    const profile = await service.create({ name: "Orbit Labs", handle: "orbitlabs" });
+
+    await Promise.all([
+      service.update(profile.id, { brand: { accent: "#123456" } }),
+      other.update(profile.id, { voice: { provider: "local", voiceId: "atlas" } }),
+    ]);
+
+    const persisted = await service.get(profile.id);
+    expect(persisted.brand.accent).toBe("#123456");
+    expect(persisted.voice).toEqual({ provider: "local", voiceId: "atlas" });
+  });
+
+  it("rejects the foreign owner during concurrent project links", async () => {
+    const root = await temporaryRoot();
+    const { service } = setup(root);
+    const a = await service.create({ name: "Orbit Labs", handle: "orbitlabs" });
+    const b = await service.create({ name: "Matheus", handle: "matheus" });
+
+    let arrivals = 0;
+    let release: () => void = () => undefined;
+    const bothWriting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const coordinateWrites = async () => {
+      arrivals += 1;
+      if (arrivals === 2) release();
+      await Promise.race([bothWriting, new Promise<void>((resolve) => setTimeout(resolve, 25))]);
+    };
+    class CoordinatedProfileStore extends ProfileStore {
+      protected async writeAtomic(file: string, value: unknown): Promise<void> {
+        if (file.endsWith("projects.json")) await coordinateWrites();
+        await super.writeAtomic(file, value);
+      }
+    }
+    const first = new ProfileService({ store: new CoordinatedProfileStore(root) });
+    const second = new ProfileService({ store: new CoordinatedProfileStore(root) });
+
+    const results = await Promise.allSettled([
+      first.linkProject(a.id, "film-shared"),
+      second.linkProject(b.id, "film-shared"),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((result) => result.status === "rejected");
+    expect(rejected?.status).toBe("rejected");
+    if (rejected?.status === "rejected") expect(String(rejected.reason)).toMatch(/outro perfil|another profile/i);
+    const projects = await Promise.all([service.listProjects(a.id), service.listProjects(b.id)]);
+    expect(projects.filter((ids) => ids.includes("film-shared"))).toEqual([["film-shared"]]);
+    expect(JSON.parse(await readFile(join(root, "profiles", "index.json"), "utf8")).profileIds.sort()).toEqual(
+      [a.id, b.id].sort(),
+    );
+    const entries = await readdir(join(root, "profiles"), { recursive: true });
+    expect(entries.some((entry) => entry.endsWith(".partial"))).toBe(false);
+  });
+
+  it("keeps the index consistent during concurrent update, delete and select", async () => {
+    const root = await temporaryRoot();
+    const { service } = setup(root);
+    const other = new ProfileService({ store: new ProfileStore(root) });
+    const removed = await service.create({ name: "Orbit Labs", handle: "orbitlabs" });
+    const selected = await service.create({ name: "Matheus", handle: "matheus" });
+
+    const [update, deletion, selection] = await Promise.allSettled([
+      other.update(removed.id, { commercialGoal: "Atualização concorrente" }),
+      other.delete(removed.id, "DELETE"),
+      service.setActive(selected.id),
+    ]);
+
+    if (update.status === "rejected") expect(String(update.reason)).toMatch(/encontr|not found/i);
+    expect(deletion.status).toBe("fulfilled");
+    expect(selection.status).toBe("fulfilled");
+    expect((await service.list()).map((profile) => profile.id)).toEqual([selected.id]);
+    expect((await service.getActive())?.id).toBe(selected.id);
+    const index = JSON.parse(await readFile(join(root, "profiles", "index.json"), "utf8"));
+    expect(index).toMatchObject({ activeProfileId: selected.id, profileIds: [selected.id] });
+    expect((await readdir(join(root, "profiles"))).sort()).toEqual(["index.json", selected.id].sort());
+  });
+
+  it("removes temporary files when an atomic write fails", async () => {
+    const root = await temporaryRoot();
+    class ExposedProfileStore extends ProfileStore {
+      writeAtomically(file: string, value: unknown) {
+        return this.writeAtomic(file, value);
+      }
+    }
+    const store = new ExposedProfileStore(root);
+    const profilesRoot = join(root, "profiles");
+    const target = join(profilesRoot, "index.json");
+    await mkdir(target, { recursive: true });
+
+    await expect(store.writeAtomically(target, { version: 1, profileIds: [] })).rejects.toThrow();
+
+    expect(await readdir(profilesRoot)).toEqual(["index.json"]);
   });
 
   it("requires DELETE confirmation and removes only profile metadata", async () => {

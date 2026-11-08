@@ -1,5 +1,7 @@
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import {
   assertProfileId,
   assertProjectId,
@@ -57,10 +59,61 @@ function parseProjects(value: unknown): ProjectIndex {
 }
 
 export class ProfileStore {
-  private readonly root: string;
+  private static readonly transactionContext = new AsyncLocalStorage<string>();
+  private static readonly queues = new Map<string, Promise<void>>();
+
+  private root: string;
+  private initialization: Promise<void> | undefined;
 
   constructor(userDir: string) {
-    this.root = join(userDir, "profiles");
+    this.root = resolve(userDir, "profiles");
+  }
+
+  private async initializeRoot(): Promise<void> {
+    if (!this.initialization) {
+      this.initialization = (async () => {
+        await mkdir(this.root, { recursive: true });
+        this.root = await realpath(this.root);
+      })();
+    }
+    const initialization = this.initialization;
+    try {
+      await initialization;
+    } catch (error) {
+      if (this.initialization === initialization) this.initialization = undefined;
+      throw error;
+    }
+  }
+
+  private lockKey(): string {
+    return process.platform === "win32" ? this.root.toLowerCase() : this.root;
+  }
+
+  private static enqueue<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    const previous = ProfileStore.queues.get(key) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => current);
+    ProfileStore.queues.set(key, tail);
+    return (async () => {
+      await previous;
+      try {
+        return await operation();
+      } finally {
+        release();
+        if (ProfileStore.queues.get(key) === tail) ProfileStore.queues.delete(key);
+      }
+    })();
+  }
+
+  /** Serializes a complete logical profile transaction across store instances. */
+  async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    await this.initializeRoot();
+    const key = this.lockKey();
+    if (ProfileStore.transactionContext.getStore() === key) return operation();
+    return ProfileStore.enqueue(key, () => ProfileStore.transactionContext.run(key, operation));
   }
 
   private indexFile() {
@@ -81,9 +134,17 @@ export class ProfileStore {
 
   protected async writeAtomic(file: string, value: unknown): Promise<void> {
     await mkdir(dirname(file), { recursive: true });
-    const partial = `${file}.partial`;
-    await writeFile(partial, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-    await rename(partial, file);
+    const partial = `${file}.${process.pid}.${randomUUID()}.partial`;
+    try {
+      await writeFile(partial, `${JSON.stringify(value, null, 2)}\n`, {
+        encoding: "utf8",
+        mode: 0o600,
+        flag: "wx",
+      });
+      await rename(partial, file);
+    } finally {
+      await rm(partial, { force: true });
+    }
   }
 
   private async index(): Promise<ProfileIndex> {
@@ -95,83 +156,103 @@ export class ProfileStore {
   }
 
   async save(input: unknown): Promise<StudioProfile> {
-    const profile = parseProfile(input);
-    await this.writeAtomic(this.profileFile(profile.id), profile);
-    const index = await this.index();
-    if (!index.profileIds.includes(profile.id)) index.profileIds.push(profile.id);
-    await this.saveIndex(index);
-    return profile;
+    return this.runExclusive(async () => {
+      const profile = parseProfile(input);
+      await this.writeAtomic(this.profileFile(profile.id), profile);
+      const index = await this.index();
+      if (!index.profileIds.includes(profile.id)) index.profileIds.push(profile.id);
+      await this.saveIndex(index);
+      return profile;
+    });
   }
 
   async get(profileId: string): Promise<StudioProfile> {
-    const value = await optionalJson(this.profileFile(assertProfileId(profileId)));
-    if (value === undefined) throw new Error("Perfil não encontrado.");
-    const profile = parseProfile(value);
-    if (profile.id !== profileId) throw new Error("Profile ID não corresponde ao diretório.");
-    return profile;
+    return this.runExclusive(async () => {
+      const value = await optionalJson(this.profileFile(assertProfileId(profileId)));
+      if (value === undefined) throw new Error("Perfil não encontrado.");
+      const profile = parseProfile(value);
+      if (profile.id !== profileId) throw new Error("Profile ID não corresponde ao diretório.");
+      return profile;
+    });
   }
 
   async list(): Promise<StudioProfile[]> {
-    const index = await this.index();
-    return Promise.all(index.profileIds.map((profileId) => this.get(profileId)));
+    return this.runExclusive(async () => {
+      const index = await this.index();
+      return Promise.all(index.profileIds.map((profileId) => this.get(profileId)));
+    });
   }
 
   async setActive(profileId: string): Promise<void> {
-    await this.get(profileId);
-    const index = await this.index();
-    index.activeProfileId = assertProfileId(profileId);
-    await this.saveIndex(index);
+    return this.runExclusive(async () => {
+      const id = assertProfileId(profileId);
+      await this.get(id);
+      const index = await this.index();
+      index.activeProfileId = id;
+      await this.saveIndex(index);
+    });
   }
 
   async getActive(): Promise<StudioProfile | undefined> {
-    const { activeProfileId } = await this.index();
-    return activeProfileId ? this.get(activeProfileId) : undefined;
+    return this.runExclusive(async () => {
+      const { activeProfileId } = await this.index();
+      return activeProfileId ? this.get(activeProfileId) : undefined;
+    });
   }
 
   async legacyMigration() {
-    return (await this.index()).legacyMigration;
+    return this.runExclusive(async () => (await this.index()).legacyMigration);
   }
 
   async markLegacyMigrated(profileId: string): Promise<void> {
-    await this.get(profileId);
-    const index = await this.index();
-    if (index.legacyMigration) {
-      if (index.legacyMigration.profileId !== profileId) throw new Error("Outro perfil já recebeu a migração legada.");
-      return;
-    }
-    index.legacyMigration = { version: 1, profileId, completedAt: new Date().toISOString() };
-    await this.saveIndex(index);
+    return this.runExclusive(async () => {
+      const id = assertProfileId(profileId);
+      await this.get(id);
+      const index = await this.index();
+      if (index.legacyMigration) {
+        if (index.legacyMigration.profileId !== id) throw new Error("Outro perfil já recebeu a migração legada.");
+        return;
+      }
+      index.legacyMigration = { version: 1, profileId: id, completedAt: new Date().toISOString() };
+      await this.saveIndex(index);
+    });
   }
 
   async delete(profileId: string): Promise<void> {
-    const id = assertProfileId(profileId);
-    await this.get(id);
-    await rm(this.profileDirectory(id), { recursive: true, force: false });
-    const index = await this.index();
-    index.profileIds = index.profileIds.filter((candidate) => candidate !== id);
-    if (index.activeProfileId === id) delete index.activeProfileId;
-    await this.saveIndex(index);
+    return this.runExclusive(async () => {
+      const id = assertProfileId(profileId);
+      await this.get(id);
+      await rm(this.profileDirectory(id), { recursive: true, force: false });
+      const index = await this.index();
+      index.profileIds = index.profileIds.filter((candidate) => candidate !== id);
+      if (index.activeProfileId === id) delete index.activeProfileId;
+      await this.saveIndex(index);
+    });
   }
 
   async linkProject(profileId: string, projectId: string): Promise<void> {
-    const id = assertProfileId(profileId);
-    const filmId = assertProjectId(projectId);
-    await this.get(id);
-    const projects = parseProjects(await optionalJson(this.projectsFile(id)));
-    if (projects.projectIds.includes(filmId)) throw new Error("Projeto já vinculado a este perfil.");
-    const index = await this.index();
-    for (const otherId of index.profileIds) {
-      if (otherId === id) continue;
-      const other = parseProjects(await optionalJson(this.projectsFile(otherId)));
-      if (other.projectIds.includes(filmId)) throw new Error("Projeto já pertence a outro perfil.");
-    }
-    projects.projectIds.push(filmId);
-    await this.writeAtomic(this.projectsFile(id), projects);
+    return this.runExclusive(async () => {
+      const id = assertProfileId(profileId);
+      const filmId = assertProjectId(projectId);
+      await this.get(id);
+      const projects = parseProjects(await optionalJson(this.projectsFile(id)));
+      if (projects.projectIds.includes(filmId)) throw new Error("Projeto já vinculado a este perfil.");
+      const index = await this.index();
+      for (const otherId of index.profileIds) {
+        if (otherId === id) continue;
+        const other = parseProjects(await optionalJson(this.projectsFile(otherId)));
+        if (other.projectIds.includes(filmId)) throw new Error("Projeto já pertence a outro perfil.");
+      }
+      projects.projectIds.push(filmId);
+      await this.writeAtomic(this.projectsFile(id), projects);
+    });
   }
 
   async listProjects(profileId: string): Promise<string[]> {
-    const id = assertProfileId(profileId);
-    await this.get(id);
-    return parseProjects(await optionalJson(this.projectsFile(id))).projectIds;
+    return this.runExclusive(async () => {
+      const id = assertProfileId(profileId);
+      await this.get(id);
+      return parseProjects(await optionalJson(this.projectsFile(id))).projectIds;
+    });
   }
 }
