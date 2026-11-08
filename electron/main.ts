@@ -86,6 +86,7 @@ import { ProfileService } from "./core/profile-service";
 import { ProfileStore } from "./core/profile-store";
 import {
   createProfileToolDispatcher,
+  DESKTOP_MCP_PROFILE_CALLER,
   isProfileTool,
 } from "./core/profile-tool-defs";
 
@@ -979,6 +980,15 @@ async function executeTool(
   throw new Error("Ferramenta não autorizada.");
 }
 
+async function executeDesktopMcpTool(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  if (isProfileTool(name))
+    return dispatchProfileTool(name, args, DESKTOP_MCP_PROFILE_CALLER);
+  return executeTool(name, args);
+}
+
 async function connectCodex(value: unknown = {}) {
   const config = z
     .object({
@@ -1773,7 +1783,7 @@ app.whenReady().then(async () => {
   else await window.loadFile(join(here, "../dist/index.html"));
   startWindowsAutoUpdate(window);
 
-  desktopMcp = new DesktopMcpServer(executeTool, userDir);
+  desktopMcp = new DesktopMcpServer(executeDesktopMcpTool, userDir);
   await desktopMcp.start().catch((err) => {
     console.error("Falha ao iniciar servidor Desktop MCP do CutRoom:", err);
   });

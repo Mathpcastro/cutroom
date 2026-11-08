@@ -51,6 +51,8 @@ const instagramPreferences = objectSchema({
   accounts: { type: "array", maxItems: 500, items: account },
 });
 const profilePatch = {
+  name: text(200, 1),
+  handle,
   defaultAvatar: objectSchema(
     {
       avatarId: profileId,
@@ -82,18 +84,13 @@ const profilePatch = {
   commercialGoal: text(60_000),
   preferences: objectSchema(),
 };
-const profileFields = {
-  name: text(200, 1),
-  handle,
-  ...profilePatch,
-};
 
 export const PROFILE_TOOLS = [
   {
     name: "profile_create",
     description:
       "Create a Videosell creator profile. Only documented brand, voice, avatar-reference and preference fields are accepted; never send credential values.",
-    inputSchema: objectSchema(profileFields, ["name", "handle"]),
+    inputSchema: objectSchema(profilePatch, ["name", "handle"]),
   },
   {
     name: "profile_get",
@@ -155,6 +152,12 @@ export interface ProfileToolCaller {
   id: "ui" | "agent" | "desktop-mcp";
   authorizeProfileDelete?: boolean;
 }
+
+/** Trusted host capability, injected only by the authenticated Desktop MCP transport. */
+export const DESKTOP_MCP_PROFILE_CALLER = {
+  id: "desktop-mcp",
+  authorizeProfileDelete: true,
+} as const satisfies ProfileToolCaller;
 
 export type ProfileToolService = Pick<
   ProfileService,

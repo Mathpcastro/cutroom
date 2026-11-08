@@ -46,22 +46,21 @@ async function mcp(executeTool: Dispatcher) {
   const server = new DesktopMcpServer(executeTool, root);
   servers.push(server);
   const url = await server.start();
-  return async (name: string, args: Record<string, unknown>) => {
+  const rpc = async (method: string, params?: unknown) => {
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${server.token}`,
       },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: { name, arguments: args },
-      }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     return (await response.json()).result;
   };
+  const remote = async (name: string, args: Record<string, unknown>) =>
+    rpc("tools/call", { name, arguments: args });
+  remote.listTools = async () => (await rpc("tools/list", {})).tools;
+  return remote;
 }
 
 function resultText(result: any) {
@@ -108,6 +107,71 @@ describe("creator profile tool contract", () => {
       const serialized = JSON.stringify(tool?.inputSchema);
       expect(serialized).not.toMatch(/destination|credentialValue|publish|instagramAction/);
     }
+  });
+
+  it("allows create/delete only with confirmation on the authenticated Desktop MCP channel", async () => {
+    const service = await temporaryService();
+    const call = dispatcher(service);
+    const remote = await mcp((name, args) =>
+      call(name, args, (profileTools as any).DESKTOP_MCP_PROFILE_CALLER),
+    );
+    const created = resultText(
+      await remote("profile_create", { name: "Desktop", handle: "desktop" }),
+    );
+
+    const missingConfirmation = await remote("profile_delete", { profileId: created.id });
+    expect(missingConfirmation.isError).toBe(true);
+    expect(await service.get(created.id)).toMatchObject({ id: created.id });
+
+    const injectedAuthorization = await remote("profile_delete", {
+      profileId: created.id,
+      confirmation: "DELETE",
+      authorizeProfileDelete: true,
+    });
+    expect(injectedAuthorization.isError).toBe(true);
+    expect(await service.get(created.id)).toMatchObject({ id: created.id });
+
+    const removed = await remote("profile_delete", {
+      profileId: created.id,
+      confirmation: "DELETE",
+    });
+    expect(removed.isError).toBeFalsy();
+    await expect(service.get(created.id)).rejects.toThrow(/encontr|not found/i);
+
+    const internal = await service.create({ name: "Internal", handle: "internal" });
+    await expect(
+      call("profile_delete", { profileId: internal.id, confirmation: "DELETE" }),
+    ).rejects.toThrow(/caller|autoriz/i);
+    expect(await service.get(internal.id)).toMatchObject({ id: internal.id });
+  });
+
+  it("publishes the same name and handle update fields accepted by real MCP calls", async () => {
+    const service = await temporaryService();
+    const call = dispatcher(service);
+    const remote = await mcp(call);
+    const created = await service.create({ name: "Before", handle: "before" });
+    const updated = resultText(
+      await remote("profile_update", {
+        profileId: created.id,
+        patch: { name: "After", handle: "after" },
+      }),
+    );
+    expect(updated).toMatchObject({ name: "After", handle: "after" });
+
+    const tools = await remote.listTools();
+    const update = tools.find((tool: any) => tool.name === "profile_update");
+    const create = tools.find((tool: any) => tool.name === "profile_create");
+    const patch = update.inputSchema.properties.patch;
+    expect(patch.additionalProperties).toBe(false);
+    expect(patch.properties.name).toEqual(create.inputSchema.properties.name);
+    expect(patch.properties.handle).toEqual(create.inputSchema.properties.handle);
+
+    const arbitrary = await remote("profile_update", {
+      profileId: created.id,
+      patch: { totallyUnknown: true },
+    });
+    expect(arbitrary.isError).toBe(true);
+    expect(await service.get(created.id)).toMatchObject({ name: "After", handle: "after" });
   });
 
   it("uses the same ProfileService methods for direct UI calls and real Desktop MCP calls", async () => {
@@ -257,6 +321,9 @@ describe("creator profile tool contract", () => {
       ),
     );
     expect(main).toContain("createProfileToolDispatcher");
+    expect(main).toContain("async function executeDesktopMcpTool(");
+    expect(main).toContain("dispatchProfileTool(name, args, DESKTOP_MCP_PROFILE_CALLER)");
+    expect(main).toContain("new DesktopMcpServer(executeDesktopMcpTool, userDir)");
     expect(main).toContain("if (isProfileTool(name)) return dispatchProfileTool(name, args);");
     expect(main).toContain('case "profileDelete"');
     expect(main).toContain("authorizeProfileDelete: true");
