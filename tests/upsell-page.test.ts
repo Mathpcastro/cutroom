@@ -72,17 +72,16 @@ describe("contrato da página pública de upsell Videosell", () => {
     );
   });
 
-  it("protege cada link externo aberto em nova aba", () => {
-    const externalBlankLinks = Array.from(
-      document.querySelectorAll("a"),
-    ).filter(
-      (anchor) =>
-        /^https?:\/\//i.test(anchor.getAttribute("href") ?? "") &&
-        (anchor.getAttribute("target") ?? "").toLowerCase() === "_blank",
+  it("abre cada link externo em nova aba com proteção", () => {
+    const externalLinks = Array.from(document.querySelectorAll("a")).filter(
+      (anchor) => /^https?:\/\//i.test(anchor.getAttribute("href") ?? ""),
     );
 
-    expect(externalBlankLinks.length).toBeGreaterThan(0);
-    for (const anchor of externalBlankLinks) {
+    expect(externalLinks.length).toBeGreaterThan(0);
+    for (const anchor of externalLinks) {
+      expect((anchor.getAttribute("target") ?? "").toLowerCase()).toBe(
+        "_blank",
+      );
       const relTokens = (anchor.getAttribute("rel") ?? "")
         .toLowerCase()
         .split(/\s+/)
