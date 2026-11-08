@@ -12,6 +12,7 @@ import type {
 import { CAPTION_PRESETS } from "../../src/shared/captions";
 import { STUDIO_TOOLS } from "./studio-tool-defs";
 import { AVATAR_TOOLS } from "./avatar-tool-defs";
+import { PROFILE_TOOLS } from "./profile-tool-defs";
 
 export type CodexStatus = {
   account?: string;
@@ -155,6 +156,7 @@ export const EDITOR_TOOLS = [
     ),
   },
   ...STUDIO_TOOLS,
+  ...PROFILE_TOOLS,
   ...AVATAR_TOOLS,
 ];
 

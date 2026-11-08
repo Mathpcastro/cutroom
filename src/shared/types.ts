@@ -1,5 +1,10 @@
 import type { CaptionSettings } from "./captions";
 import type { AgentProvider } from "./providers";
+import type {
+  CreateStudioProfileInput,
+  StudioProfile,
+  StudioProfilePatch,
+} from "./profile";
 export type ReasoningEffort =
   "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export interface AgentActivity {
@@ -237,8 +242,21 @@ export interface EditCommand {
 }
 export type StudioTab = "start" | "brand" | "voices" | "films" | "publish";
 export type EditorEvent = { type: "state"; state: AppSnapshot } | { type: "studio"; tab: StudioTab };
+export interface StudioProfilesAPI {
+  list(): Promise<StudioProfile[]>;
+  get(profileId: string): Promise<StudioProfile>;
+  create(input: CreateStudioProfileInput): Promise<StudioProfile>;
+  update(profileId: string, patch: StudioProfilePatch): Promise<StudioProfile>;
+  duplicate(
+    profileId: string,
+    input: Pick<CreateStudioProfileInput, "name" | "handle">,
+  ): Promise<StudioProfile>;
+  select(profileId: string): Promise<void>;
+  remove(profileId: string, confirmation: "DELETE"): Promise<void>;
+}
 export interface CutroomAPI {
   request<T = AppSnapshot>(method: string, params?: unknown): Promise<T>;
+  studioProfiles: StudioProfilesAPI;
   onEvent(callback: (event: EditorEvent) => void): () => void;
   mediaUrl(path: string): string;
   pathForFile?(file: File): string;

@@ -82,6 +82,12 @@ import { renderAvatarRevision } from "./core/avatar-render";
 import { AvatarVision } from "./core/avatar-vision";
 import { createAvatarToolDispatcher } from "./core/avatar-mcp";
 import { isAvatarTool } from "./core/avatar-tool-defs";
+import { ProfileService } from "./core/profile-service";
+import { ProfileStore } from "./core/profile-store";
+import {
+  createProfileToolDispatcher,
+  isProfileTool,
+} from "./core/profile-tool-defs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -121,6 +127,7 @@ let publisher: Publisher;
 let secretStore: SecretStore;
 let brandStore: BrandStore;
 let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
+let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
 /** Host images for scenes: the brand logo as data-asset="logo". */
 async function motionAssets(): Promise<MotionAssets> {
   const brand = await brandStore?.get();
@@ -728,6 +735,7 @@ async function executeTool(
   name: string,
   args: Record<string, unknown>,
 ): Promise<unknown> {
+  if (isProfileTool(name)) return dispatchProfileTool(name, args);
   if (isAvatarTool(name)) return dispatchAvatarTool(name, args);
   if (name === "get_project") return structuredClone(state.project);
   if (name === "edit_project") {
@@ -1198,6 +1206,24 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return {
         files: await installSkill(app.getPath("home"), app.getVersion()),
       };
+    case "profileList":
+      return dispatchProfileTool("profile_list", {});
+    case "profileGet":
+      return dispatchProfileTool("profile_get", params as Record<string, unknown>);
+    case "profileCreate":
+      return dispatchProfileTool("profile_create", params as Record<string, unknown>);
+    case "profileUpdate":
+      return dispatchProfileTool("profile_update", params as Record<string, unknown>);
+    case "profileDuplicate":
+      return dispatchProfileTool("profile_duplicate", params as Record<string, unknown>);
+    case "profileSelect":
+      return dispatchProfileTool("profile_select", params as Record<string, unknown>);
+    case "profileDelete":
+      return dispatchProfileTool(
+        "profile_delete",
+        params as Record<string, unknown>,
+        { id: "ui", authorizeProfileDelete: true },
+      );
     case "getBrand":
       return { brand: (await brandStore.get()) ?? null };
     case "saveBrand":
@@ -1504,6 +1530,9 @@ app.whenReady().then(async () => {
   await mkdir(join(userDir, "agent-workspace"), { recursive: true });
   packages = new PackageManager(join(userDir, "packages"), resources);
   brandStore = new BrandStore(userDir);
+  dispatchProfileTool = createProfileToolDispatcher(
+    new ProfileService({ store: new ProfileStore(userDir) }),
+  );
   studio = new Studio({
     project: () => state.project,
     command: async (command) => {
