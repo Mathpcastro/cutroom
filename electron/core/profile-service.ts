@@ -47,6 +47,7 @@ function legacyHandle(value: unknown): string {
 
 const PREFERENCE_ERROR = "Preferências contêm campos ou valores não permitidos.";
 const INVALID_PREFERENCE = Symbol("invalid-preference");
+const INVALID_STRUCTURE = Symbol("invalid-structure");
 
 type PreferenceRule =
   | { kind: "object"; fields: Record<string, PreferenceRule>; required?: readonly string[] }
@@ -78,6 +79,8 @@ const INSTAGRAM_ACCOUNTS_RULE: PreferenceRule = {
  * Instagram supports `shareToFeed` from publishReel and `accounts` from Publisher's
  * public InstagramAccount metadata (id, userId, igUserId, username, status).
  * Everything else, including credentialRef outside voice, is rejected or discarded.
+ * Structural corruption (accessors, cycles, extra array properties, symbols or custom
+ * prototypes) discards the entire containing field during legacy migration.
  */
 export const PROFILE_FREE_FIELD_ALLOWLIST = {
   preferences: { kind: "object", fields: {} },
@@ -95,10 +98,10 @@ function preferenceValue(
   rule: PreferenceRule,
   mode: "reject" | "discard",
   ancestors: WeakSet<object>,
-): unknown | typeof INVALID_PREFERENCE {
-  const invalid = (): typeof INVALID_PREFERENCE => {
+): unknown | typeof INVALID_PREFERENCE | typeof INVALID_STRUCTURE {
+  const invalid = (structural = false): typeof INVALID_PREFERENCE | typeof INVALID_STRUCTURE => {
     if (mode === "reject") throw new Error(PREFERENCE_ERROR);
-    return INVALID_PREFERENCE;
+    return structural ? INVALID_STRUCTURE : INVALID_PREFERENCE;
   };
   if (rule.kind === "boolean") return typeof value === "boolean" ? value : invalid();
   if (rule.kind === "string") {
@@ -114,14 +117,27 @@ function preferenceValue(
     if (typeof value === "string") return value.length <= 200 ? value : invalid();
     return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : invalid();
   }
-  if (!value || typeof value !== "object" || ancestors.has(value)) return invalid();
+  if (!value || typeof value !== "object") return invalid();
+  if (ancestors.has(value)) return invalid(true);
   if (rule.kind === "array") {
     if (!Array.isArray(value) || value.length > rule.maxItems) return invalid();
+    if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length)
+      return invalid(true);
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    for (const key of Reflect.ownKeys(value)) {
+      if (key === "length") continue;
+      if (typeof key === "symbol" || !/^(0|[1-9]\d*)$/.test(key)) return invalid(true);
+      const descriptor = descriptors[key];
+      if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) return invalid(true);
+    }
     ancestors.add(value);
     try {
       const result: unknown[] = [];
-      for (const child of value) {
-        const parsed = preferenceValue(child, rule.items, mode, ancestors);
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = descriptors[String(index)];
+        if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) return invalid(true);
+        const parsed = preferenceValue(descriptor.value, rule.items, mode, ancestors);
+        if (parsed === INVALID_STRUCTURE) return parsed;
         if (parsed !== INVALID_PREFERENCE) result.push(parsed);
       }
       return result;
@@ -132,10 +148,10 @@ function preferenceValue(
   if (Array.isArray(value)) return invalid();
   const prototype = Object.getPrototypeOf(value);
   if ((prototype !== Object.prototype && prototype !== null) || Object.getOwnPropertySymbols(value).length)
-    return invalid();
+    return invalid(true);
   const descriptors = Object.getOwnPropertyDescriptors(value);
   if (Object.values(descriptors).some((descriptor) => !("value" in descriptor) || !descriptor.enumerable))
-    return invalid();
+    return invalid(true);
   ancestors.add(value);
   try {
     const object = value as Record<string, unknown>;
@@ -148,6 +164,7 @@ function preferenceValue(
         continue;
       }
       const parsed = preferenceValue(child.value, field, mode, ancestors);
+      if (parsed === INVALID_STRUCTURE) return parsed;
       if (parsed !== INVALID_PREFERENCE) result[key] = parsed;
     }
     return result;
@@ -156,14 +173,26 @@ function preferenceValue(
   }
 }
 
-function assertFreePreferences(patch: StudioProfilePatch): void {
-  preferenceValue(patch.preferences ?? {}, PROFILE_FREE_FIELD_ALLOWLIST.preferences, "reject", new WeakSet());
-  preferenceValue(
+function normalizeFreePreferences<T extends StudioProfilePatch>(patch: T): T {
+  const preferences = preferenceValue(
+    patch.preferences ?? {},
+    PROFILE_FREE_FIELD_ALLOWLIST.preferences,
+    "reject",
+    new WeakSet(),
+  );
+  const instagramPreferences = preferenceValue(
     patch.instagram?.preferences ?? {},
     PROFILE_FREE_FIELD_ALLOWLIST.instagramPreferences,
     "reject",
     new WeakSet(),
   );
+  return {
+    ...patch,
+    ...(patch.preferences === undefined ? {} : { preferences }),
+    ...(patch.instagram === undefined
+      ? {}
+      : { instagram: { ...patch.instagram, preferences: instagramPreferences } }),
+  } as T;
 }
 
 function sanitizeLegacyPreferences(preferences: unknown, accounts: unknown) {
@@ -197,6 +226,7 @@ function defaultProfile(id: string, name: string, handle: string, now: string): 
 }
 
 function applyPatch(profile: StudioProfile, patch: StudioProfilePatch, updatedAt: string): StudioProfile {
+  patch = normalizeFreePreferences(patch);
   return parseProfile({
     ...profile,
     name: patch.name ?? profile.name,
@@ -230,7 +260,6 @@ export class ProfileService {
   constructor(private readonly host: { store: ProfileStore; secrets?: ProfileSecrets }) {}
 
   async create(input: CreateStudioProfileInput): Promise<StudioProfile> {
-    assertFreePreferences(input);
     const handle = assertProfileHandle(input.handle);
     if ((await this.host.store.list()).some((profile) => profile.id === handle || profile.handle === handle))
       throw new Error("Já existe um perfil com este handle.");
@@ -258,7 +287,6 @@ export class ProfileService {
   }
 
   async update(profileId: string, patch: StudioProfilePatch): Promise<StudioProfile> {
-    assertFreePreferences(patch);
     const current = await this.get(profileId);
     const next = applyPatch(current, patch, new Date().toISOString());
     if (next.handle !== current.handle && (await this.list()).some((profile) => profile.handle === next.handle))

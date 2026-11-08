@@ -263,6 +263,96 @@ describe("ProfileStore and ProfileService", () => {
     );
   });
 
+  it("rejects non-enumerable array toJSON without executing or persisting its secret", async () => {
+    const root = await temporaryRoot();
+    const { service } = setup(root);
+    const accounts = [{ id: "connection-orbit" }];
+    Object.defineProperty(accounts, "toJSON", {
+      enumerable: false,
+      value: () => ({ totallyUnknown: SECRET_VALUE }),
+    });
+
+    await expectSecretRejection(
+      service.create({
+        name: "Orbit Labs",
+        handle: "orbitlabs",
+        instagram: { preferences: { accounts } },
+      }),
+    );
+    expect(await service.list()).toEqual([]);
+    await expect(access(join(root, "profiles", "orbitlabs", "profile.json"))).rejects.toThrow();
+  });
+
+  it("rejects changing array getters during update without reading them", async () => {
+    const { service } = setup(await temporaryRoot());
+    const profile = await service.create({ name: "Orbit Labs", handle: "orbitlabs" });
+    const before = await service.get(profile.id);
+    let reads = 0;
+    const accounts: unknown[] = [];
+    Object.defineProperty(accounts, "0", {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return reads === 1
+          ? { id: "connection-orbit" }
+          : { id: "connection-orbit", totallyUnknown: SECRET_VALUE };
+      },
+    });
+
+    await expectSecretRejection(
+      service.update(profile.id, { instagram: { preferences: { accounts } } }),
+    );
+    expect(reads).toBe(0);
+    expect(await service.get(profile.id)).toEqual(before);
+  });
+
+  it("rejects array extra properties, symbols and altered prototypes", async () => {
+    const { service } = setup(await temporaryRoot());
+    const profile = await service.create({ name: "Orbit Labs", handle: "orbitlabs" });
+    const extra = Object.assign([{ id: "connection-orbit" }], { totallyUnknown: SECRET_VALUE });
+    const hidden = [{ id: "connection-orbit" }];
+    Object.defineProperty(hidden, "hiddenMethod", { enumerable: false, value: () => SECRET_VALUE });
+    const symbol = [{ id: "connection-orbit" }];
+    (symbol as unknown as Record<symbol, unknown>)[Symbol("secret")] = SECRET_VALUE;
+    const prototype = [{ id: "connection-orbit" }];
+    Object.setPrototypeOf(prototype, {});
+
+    for (const accounts of [extra, hidden, symbol, prototype])
+      await expectSecretRejection(
+        service.update(profile.id, { instagram: { preferences: { accounts } } }),
+      );
+  });
+
+  it("persists and returns normalized copies isolated from later input mutations", async () => {
+    const { service } = setup(await temporaryRoot());
+    const createAccounts = [{ id: "connection-orbit", username: "created" }];
+    const createAvatar = { avatarId: "avatar-orbit", revision: 1, hash: "a".repeat(64) };
+    const created = await service.create({
+      name: "Orbit Labs",
+      handle: "orbitlabs",
+      defaultAvatar: createAvatar,
+      instagram: { preferences: { accounts: createAccounts } },
+    });
+    createAccounts[0].username = "mutated-after-create";
+    createAvatar.revision = 99;
+    expect(created.instagram.preferences.accounts).toEqual([{ id: "connection-orbit", username: "created" }]);
+    expect(created.defaultAvatar?.revision).toBe(1);
+
+    const updateAccounts = [{ id: "connection-orbit", username: "updated" }];
+    const updateAvatar = { avatarId: "avatar-orbit", revision: 2, hash: "b".repeat(64) };
+    const updated = await service.update(created.id, {
+      defaultAvatar: updateAvatar,
+      instagram: { preferences: { accounts: updateAccounts } },
+    });
+    updateAccounts[0].username = "mutated-after-update";
+    updateAvatar.hash = "c".repeat(64);
+    expect(updated.instagram.preferences.accounts).toEqual([{ id: "connection-orbit", username: "updated" }]);
+    expect(updated.defaultAvatar?.hash).toBe("b".repeat(64));
+    const reloaded = await service.get(created.id);
+    expect(reloaded.instagram.preferences.accounts).toEqual([{ id: "connection-orbit", username: "updated" }]);
+    expect(reloaded.defaultAvatar?.hash).toBe("b".repeat(64));
+  });
+
   it("rejects duplicate, malformed and cross-profile project links atomically", async () => {
     const root = await temporaryRoot();
     const { service } = setup(root);

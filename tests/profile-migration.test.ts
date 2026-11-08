@@ -281,4 +281,42 @@ describe("legacy profile migration", () => {
     expect(logs.join("\n")).not.toContain(FAKE_API_KEY);
     expect(JSON.stringify(profile)).not.toContain(FAKE_API_KEY);
   });
+
+  it("discards entire legacy account fields with array accessors, toJSON or cycles", async () => {
+    const withToJson = [{ id: "connection-orbit" }];
+    Object.defineProperty(withToJson, "toJSON", {
+      enumerable: false,
+      value: () => ({ totallyUnknown: FAKE_API_KEY }),
+    });
+    const withGetter: unknown[] = [];
+    Object.defineProperty(withGetter, "0", {
+      enumerable: true,
+      get: () => ({ id: "connection-orbit", username: FAKE_API_KEY }),
+    });
+    const cyclic: unknown[] = [{ id: "connection-orbit" }];
+    cyclic.push(cyclic);
+
+    for (const accounts of [withToJson, withGetter, cyclic]) {
+      const root = await temporaryRoot();
+      const logs: string[] = [];
+      const profile = await migrateLegacyProfile({
+        root,
+        secrets: new FakeSecretStore(),
+        brand: {
+          name: "Orbit Labs",
+          handle: "orbitlabs",
+          context: "Objetivo comercial legado.",
+          palette: { accent: "#7C5CFF", ink: "#141318", paper: "#F7F6F1" },
+        },
+        voice: { provider: "elevenlabs", voices: { elevenlabs: "voice-orbit" } },
+        publish: { preferences: { accounts } },
+        logger: (message) => logs.push(message),
+      });
+
+      expect(profile.instagram.preferences).toEqual({});
+      const persisted = await readFile(join(root, "profiles", profile.id, "profile.json"), "utf8");
+      expect(persisted).not.toContain(FAKE_API_KEY);
+      expect(logs.join("\n")).not.toContain(FAKE_API_KEY);
+    }
+  });
 });
