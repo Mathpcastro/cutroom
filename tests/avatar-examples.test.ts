@@ -121,6 +121,62 @@ function usedPaletteTokens(avatar: AvatarPackage) {
   return used;
 }
 
+interface NativeRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const faceRegion: NativeRegion = { x: 28, y: 18, width: 42, height: 29 };
+const mouthRegion: NativeRegion = { x: 39, y: 32, width: 20, height: 15 };
+
+function regionalDifference(
+  avatar: AvatarPackage,
+  leftState: AvatarRenderState,
+  rightState: AvatarRenderState,
+  region: NativeRegion,
+) {
+  const left = renderAvatarPixels(avatar, leftState);
+  const right = renderAvatarPixels(avatar, rightState);
+  let changed = 0;
+  for (let y = region.y; y < region.y + region.height; y += 1) {
+    for (let x = region.x; x < region.x + region.width; x += 1) {
+      const offset = (y * left.width + x) * 4;
+      for (let channel = 0; channel < 4; channel += 1) {
+        if (left.data[offset + channel] !== right.data[offset + channel]) {
+          changed += 1;
+          break;
+        }
+      }
+    }
+  }
+  return changed;
+}
+
+function partBounds(
+  avatar: AvatarPackage,
+  partId: string,
+  state: AvatarRenderState,
+) {
+  const pixels = renderedPart(avatar, partId, state);
+  let left = pixels.width;
+  let right = -1;
+  let top = pixels.height;
+  let bottom = -1;
+  for (let offset = 0; offset < pixels.data.length; offset += 4) {
+    if (pixels.data[offset + 3] === 0) continue;
+    const index = offset / 4;
+    const x = index % pixels.width;
+    const y = Math.floor(index / pixels.width);
+    left = Math.min(left, x);
+    right = Math.max(right, x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+  }
+  return { width: right - left + 1, height: bottom - top + 1 };
+}
+
 describe("authored avatar examples", () => {
   it.each(names)(
     "validates %s and every required composed state",
@@ -230,6 +286,9 @@ describe("authored avatar examples", () => {
       ]) {
         expect(avatar.identity.anchors[anchor]).toBeDefined();
       }
+      expect(new Set(avatar.identity.inferred).size).toBe(
+        avatar.identity.inferred.length,
+      );
     },
   );
 
@@ -282,6 +341,123 @@ describe("authored avatar examples", () => {
         }
       }
       expect(disconnected).toEqual([]);
+    },
+  );
+
+  it.each(names)(
+    "authors organic eyes and facial geometry for %s",
+    async (name) => {
+      const avatar = await readExample(name);
+      const eyes = avatar.parts.find((part) => part.id === "eyes");
+      expect(eyes).toBeDefined();
+      expect(
+        eyes?.primitives.some(
+          (primitive) =>
+            primitive.type === "rect" &&
+            primitive.width === 9 &&
+            primitive.height === 7,
+        ),
+      ).toBe(false);
+
+      for (const expression of AVATAR_EXPRESSIONS.slice(1)) {
+        const overrides = avatar.expressions[expression];
+        expect(overrides.mouth?.primitives?.length).toBeGreaterThan(0);
+        expect(overrides.brows?.primitives?.length).toBeGreaterThan(0);
+        expect(
+          (overrides.lids?.primitives?.length ?? 0) +
+            (overrides.eyes?.primitives?.length ?? 0),
+        ).toBeGreaterThan(0);
+      }
+      expect(avatar.mouths.X.mouth?.hidden).not.toBe(true);
+    },
+  );
+
+  it.each(names)(
+    "separates every expression in native face and mouth regions for %s",
+    async (name) => {
+      const avatar = await readExample(name);
+      for (const expression of AVATAR_EXPRESSIONS.slice(1)) {
+        const expressionState = {
+          ...neutralState,
+          mouth: "X",
+          expression,
+        } as const;
+        const neutral = { ...neutralState, mouth: "X" } as const;
+        expect(
+          regionalDifference(avatar, neutral, expressionState, faceRegion),
+          `${name}/${expression} face`,
+        ).toBeGreaterThanOrEqual(24);
+        expect(
+          regionalDifference(avatar, neutral, expressionState, mouthRegion),
+          `${name}/${expression} mouth`,
+        ).toBeGreaterThanOrEqual(6);
+      }
+    },
+  );
+
+  it.each(names)(
+    "separates every viseme by at least 18 native mouth pixels for %s",
+    async (name) => {
+      const avatar = await readExample(name);
+      for (let left = 0; left < AVATAR_MOUTHS.length; left += 1) {
+        for (let right = left + 1; right < AVATAR_MOUTHS.length; right += 1) {
+          const leftMouth = AVATAR_MOUTHS[left];
+          const rightMouth = AVATAR_MOUTHS[right];
+          expect(
+            regionalDifference(
+              avatar,
+              { ...neutralState, mouth: leftMouth },
+              { ...neutralState, mouth: rightMouth },
+              mouthRegion,
+            ),
+            `${name}/${leftMouth}/${rightMouth}`,
+          ).toBeGreaterThanOrEqual(18);
+        }
+      }
+    },
+  );
+
+  it("authors different companion and expert viseme geometry", async () => {
+    const companion = await readExample("companion");
+    const expert = await readExample("expert");
+    for (const mouth of AVATAR_MOUTHS.filter((mouth) => mouth !== "X")) {
+      expect(companion.mouths[mouth]).not.toEqual(expert.mouths[mouth]);
+    }
+    expect(companion.mouths.X).toEqual({});
+    expect(expert.mouths.X).toEqual({});
+  });
+
+  it.each(names)(
+    "redesigns arm, forearm and hand geometry in every non-neutral pose of %s",
+    async (name) => {
+      const avatar = await readExample(name);
+      for (const pose of AVATAR_POSES.slice(1)) {
+        for (const side of ["left", "right"] as const) {
+          for (const part of ["arm", "forearm", "hand"] as const) {
+            expect(
+              avatar.poses[pose][`${part}.${side}`]?.primitives?.length,
+              `${name}/${pose}/${part}.${side}`,
+            ).toBeGreaterThan(0);
+          }
+        }
+        expect(
+          regionalDifference(
+            avatar,
+            neutralState,
+            { ...neutralState, pose },
+            { x: 0, y: 35, width: 96, height: 50 },
+          ),
+          `${name}/${pose} body`,
+        ).toBeGreaterThanOrEqual(120);
+      }
+      const pointingWidths = (["left", "right"] as const).map(
+        (side) =>
+          partBounds(avatar, `hand.${side}`, {
+            ...neutralState,
+            pose: "pointing",
+          }).width,
+      );
+      expect(Math.max(...pointingWidths)).toBeGreaterThanOrEqual(14);
     },
   );
 });

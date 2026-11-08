@@ -51,16 +51,18 @@ function transformPixels(pixels, sheet, index) {
   return { ...pixels, data };
 }
 
-function composeNativeSheet(frames) {
+function composeNativeSheet(frames, sheet) {
   const canvas = document.createElement("canvas");
-  canvas.width = frames.reduce((width, frame) => width + frame.width, 0);
-  canvas.height = frames[0]?.height ?? 0;
+  const columns = sheet === "motion" ? 16 : frames.length;
+  const rows = sheet === "motion" ? Math.ceil(frames.length / columns) : 1;
+  canvas.width = (frames[0]?.width ?? 0) * columns;
+  canvas.height = (frames[0]?.height ?? 0) * rows;
   const context = canvas.getContext("2d");
   context.imageSmoothingEnabled = false;
-  let x = 0;
-  for (const frame of frames) {
-    context.drawImage(canvasForPixels(frame), x, 0);
-    x += frame.width;
+  for (const [index, frame] of frames.entries()) {
+    const x = (index % columns) * frame.width;
+    const y = Math.floor(index / columns) * frame.height;
+    context.drawImage(canvasForPixels(frame), x, y);
   }
   return canvas;
 }
@@ -90,7 +92,7 @@ async function render(sheet) {
       index,
     ),
   );
-  const native = composeNativeSheet(frames);
+  const native = composeNativeSheet(frames, sheet);
   const hash = await nativePixelHash(native);
 
   const output = document.createElement("canvas");

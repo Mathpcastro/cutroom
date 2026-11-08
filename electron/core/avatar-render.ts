@@ -95,10 +95,28 @@ interface AvatarWorkerResult {
 const NEUTRAL_STATE: AvatarRenderState = {
   pose: "neutral",
   expression: "neutral",
-  mouth: "A",
+  mouth: "X",
   blink: 0,
   frame: 0,
 };
+
+export const AVATAR_MOTION_STRIP_POSES = [
+  "neutral",
+  "explaining",
+  "pointing",
+] as const;
+
+export function avatarMotionProofStates(): AvatarRenderState[] {
+  return AVATAR_MOTION_STRIP_POSES.flatMap((pose) =>
+    Array.from({ length: 16 }, (_, frame) => ({
+      ...NEUTRAL_STATE,
+      pose,
+      mouth: AVATAR_MOUTHS[frame % 6],
+      blink: frame === 6 || frame === 7 ? 1 : 0,
+      frame,
+    })),
+  );
+}
 
 const PROOF_STATES: Record<AvatarProofSheet, AvatarRenderState[]> = {
   neutral: [NEUTRAL_STATE],
@@ -113,13 +131,7 @@ const PROOF_STATES: Record<AvatarProofSheet, AvatarRenderState[]> = {
     expression,
   })),
   mouths: AVATAR_MOUTHS.map((mouth) => ({ ...NEUTRAL_STATE, mouth })),
-  motion: Array.from({ length: 16 }, (_, frame) => ({
-    ...NEUTRAL_STATE,
-    pose: AVATAR_POSES[frame % AVATAR_POSES.length],
-    mouth: AVATAR_MOUTHS[frame % AVATAR_MOUTHS.length],
-    blink: frame === 6 || frame === 7 ? 1 : 0,
-    frame,
-  })),
+  motion: avatarMotionProofStates(),
 };
 
 function samePath(left: string, right: string): boolean {
@@ -254,8 +266,12 @@ export async function renderAvatarRevision(
       await assertRealPathInsideRevision(revisionDir, png);
       await assertRealPathInsideRevision(revisionDir, jpeg);
 
-      const nativeWidth = avatar.canvas.full * PROOF_STATES[sheet].length;
-      const nativeHeight = avatar.canvas.full;
+      const nativeWidth =
+        avatar.canvas.full *
+        (sheet === "motion" ? 16 : PROOF_STATES[sheet].length);
+      const nativeHeight =
+        avatar.canvas.full *
+        (sheet === "motion" ? AVATAR_MOTION_STRIP_POSES.length : 1);
       if (
         file.nativeWidth !== nativeWidth ||
         file.nativeHeight !== nativeHeight ||

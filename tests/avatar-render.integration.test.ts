@@ -99,7 +99,7 @@ const expectedDimensions: Record<
     nativeWidth: 672,
     nativeHeight: 96,
   },
-  motion: { width: 6144, height: 384, nativeWidth: 1536, nativeHeight: 96 },
+  motion: { width: 6144, height: 1152, nativeWidth: 1536, nativeHeight: 288 },
 };
 
 describe("avatar review-sheet Chromium integration", () => {
@@ -115,6 +115,36 @@ describe("avatar review-sheet Chromium integration", () => {
         signal: controller.signal,
       }),
     ).rejects.toThrow("Render cancelado pelo job.");
+  });
+
+  it("keeps neutral, explaining and pointing in separate 16-frame motion strips", async () => {
+    const renderer =
+      (await import("../electron/core/avatar-render")) as typeof import("../electron/core/avatar-render") & {
+        avatarMotionProofStates?: () => Array<{
+          pose: string;
+          mouth: string;
+          blink: number;
+          frame: number;
+        }>;
+      };
+    const states = renderer.avatarMotionProofStates?.();
+    expect(states).toHaveLength(48);
+
+    for (const [strip, pose] of [
+      "neutral",
+      "explaining",
+      "pointing",
+    ].entries()) {
+      const frames = states!.slice(strip * 16, strip * 16 + 16);
+      expect(frames.map((state) => state.pose)).toEqual(Array(16).fill(pose));
+      expect(frames.map((state) => state.frame)).toEqual(
+        Array.from({ length: 16 }, (_, frame) => frame),
+      );
+      expect(new Set(frames.map((state) => state.mouth)).size).toBeGreaterThan(
+        1,
+      );
+      expect(frames.some((state) => state.blink === 1)).toBe(true);
+    }
   });
 
   it("writes native PNG sheets with identical RGBA hashes and no external network", async () => {
@@ -177,11 +207,10 @@ describe("avatar review-sheet Chromium integration", () => {
       expect(artifact.jpeg).not.toBe(artifact.png);
       expect(artifact.hash).toMatch(/^[a-f0-9]{64}$/);
     }
-    expect(first.hashes).toMatchObject({
-      neutral: qualityHashes.neutral,
-      expressions: qualityHashes.expressionSheet,
-      mouths: qualityHashes.mouthSheet,
-    });
+    expect(first.hashes).toMatchObject({ mouths: qualityHashes.mouthSheet });
+    expect(first.hashes.neutral).not.toBe(qualityHashes.neutral);
+    expect(first.hashes.expressions).not.toBe(qualityHashes.expressionSheet);
+    expect(first.hashes.motion).not.toBe(qualityHashes.motionLoop);
     expect(first.files.every((artifact) => artifact.png.startsWith(root))).toBe(
       true,
     );

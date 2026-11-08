@@ -1,445 +1,534 @@
 {
-  "schemaVersion": 1,
-  "engineVersion": "avatar-schema-1+cutroom-0.7.0",
-  "engine": {
-    "rendererSha256": "097734945d0951ff3bbc2eeb8e7c9dca5649e01949db7313acd286fd3edcb25b",
-    "proofSha256": "ad042b1191bf558fc3bf402eb6f0e0704be011fb41a064e333c308a1d7ed67b3",
-    "worker": "electron/render-motion.ts",
-    "browser": "C:/Program Files/Google/Chrome/Application/chrome.exe",
-    "networkRequests": []
-  },
-  "reproduction": {
-    "command": "npx tsx artifacts/avatar-proof/reproduce.ts",
-    "cwd": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos",
-    "store": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store",
-    "notes": "Runs the real Avatar MCP dispatcher with the production AvatarService, AvatarStore and Chromium renderer; no model calls."
-  },
-  "candidates": [
-    {
-      "id": "strategist",
-      "candidateId": "candidate-7f289f37-adbf-46a7-80c6-98ae9672055a",
-      "revision": 1,
-      "packageHash": "606d8dfbacdd5eae63f733a71c4626d74ebaee05a43ee9b263dce786098c9892",
-      "qualityHashes": {
-        "neutral": "4207081c902c0a99536a64ff76bcfd6966682af69bcae02863df54a31cf08c81",
-        "silhouette": "06c301cf8ac561607decf590cc3c4a08d9729c0d65e4f93ff4ec1b4d071be248",
-        "grayscale": "b37fde6a796f55dff395c5bd83ea8d1d061198a2993c3460de55449512059ada",
-        "backgroundLight": "c146c932ba2c26569ec9c9c5e3f5bcce810849a97c65eede3f8982d5efeef902",
-        "backgroundDark": "90d20e9ee7a17cbfaff8b580fe3f058b19cd6842a2b771c3525d1559b1d11594",
-        "expressionSheet": "03463680254771c578bcd3c52e01d4688360126e447642483167589bcb501082",
-        "mouthSheet": "56b44b6d249cab1a515f94ac01f339fa4bb839cdb8f4bb2bf1a27a1c66053f54",
-        "motionLoop": "c35a202d630530adaa3bf50bbb37999c69394a38d6633c3af05fb6eed3900984"
-      },
-      "review": {
-        "file": "strategist/review.jpg",
-        "width": 1200,
-        "height": 2386,
-        "jpegSha256": "7657aa8bdb8f5f77024ed5792003c57e5b6323f910d6c98da9e34891626248e7",
-        "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\review.jpg"
-      },
-      "files": [
-        {
-          "sheet": "neutral",
-          "file": "strategist/neutral.png",
-          "width": 384,
-          "height": 384,
-          "nativeWidth": 96,
-          "nativeHeight": 96,
-          "pixelHash": "4207081c902c0a99536a64ff76bcfd6966682af69bcae02863df54a31cf08c81",
-          "pngSha256": "110717382633886f4585c5291a3f64d4f613453201a5a2ed2cddd73b59ad0700",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\neutral.png"
-        },
-        {
-          "sheet": "silhouette",
-          "file": "strategist/silhouette.png",
-          "width": 1920,
-          "height": 384,
-          "nativeWidth": 480,
-          "nativeHeight": 96,
-          "pixelHash": "d8f33b950a22d4ec2e5e57111b2e26932d4a9d87090256e606331f59df887a6d",
-          "pngSha256": "c00ac8dd47d78131c3621a3525898b20fcd8fa46c73238ccff04cdc31231be36",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\silhouette.png"
-        },
-        {
-          "sheet": "grayscale",
-          "file": "strategist/grayscale.png",
-          "width": 2304,
-          "height": 384,
-          "nativeWidth": 576,
-          "nativeHeight": 96,
-          "pixelHash": "953f2cdb56641ba9fd94d68eda03556c417e22ce0e923fc6bd1af06367794135",
-          "pngSha256": "3faf89caec942f2d3ab1a9010089fcc01a65696285117ca50c18068a177f4efa",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\grayscale.png"
-        },
-        {
-          "sheet": "backgrounds",
-          "file": "strategist/backgrounds.png",
-          "width": 1536,
-          "height": 384,
-          "nativeWidth": 384,
-          "nativeHeight": 96,
-          "pixelHash": "d85543bac49510874950345202023cfa3970ec994d02ff1635826a45e7c4109d",
-          "pngSha256": "be9045fc92b994cb7d1c18de5f34c6206c9a3c605dc317f79f8309798e1c3bb8",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\backgrounds.png"
-        },
-        {
-          "sheet": "expressions",
-          "file": "strategist/expressions.png",
-          "width": 2304,
-          "height": 384,
-          "nativeWidth": 576,
-          "nativeHeight": 96,
-          "pixelHash": "03463680254771c578bcd3c52e01d4688360126e447642483167589bcb501082",
-          "pngSha256": "9e8381ca2ec913f1312651cedcd32a5f3e5815e13cf2776008cba80741552601",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\expressions.png"
-        },
-        {
-          "sheet": "mouths",
-          "file": "strategist/mouths.png",
-          "width": 2688,
-          "height": 384,
-          "nativeWidth": 672,
-          "nativeHeight": 96,
-          "pixelHash": "56b44b6d249cab1a515f94ac01f339fa4bb839cdb8f4bb2bf1a27a1c66053f54",
-          "pngSha256": "ed89ebe04cfe64a16ab204376d966af38d775b2c2999f7abf3b55e2bd8de65f2",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\mouths.png"
-        },
-        {
-          "sheet": "motion",
-          "file": "strategist/motion.png",
-          "width": 6144,
-          "height": 384,
-          "nativeWidth": 1536,
-          "nativeHeight": 96,
-          "pixelHash": "5afcf7fa18fe55758d8702d6f7a95f2b594918975d4a9580e272f77bb02028a9",
-          "pngSha256": "17dacf50607d8a80ae687bedb1cea4d432bbfba88d0e74f80470f412fd1446e5",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-z6PvVR\\motion.png"
-        }
-      ],
-      "mcpOperations": [
-        {
-          "tool": "avatar_create_candidate",
-          "arguments": {
-            "avatarId": "strategist",
-            "description": "Task 9 authored strategist visual proof",
-            "package": "resources/avatar-engine/examples/strategist.json"
-          }
-        },
-        {
-          "tool": "avatar_select_candidate",
-          "arguments": {
-            "avatarId": "strategist",
-            "candidateId": "candidate-7f289f37-adbf-46a7-80c6-98ae9672055a"
-          }
-        },
-        {
-          "tool": "avatar_save_revision",
-          "arguments": {
-            "avatarId": "strategist",
-            "candidateId": "candidate-7f289f37-adbf-46a7-80c6-98ae9672055a"
-          }
-        },
-        {
-          "tool": "avatar_render",
-          "arguments": {
-            "avatarId": "strategist",
-            "revision": 1,
-            "sheets": [
-              "neutral",
-              "silhouette",
-              "grayscale",
-              "backgrounds",
-              "expressions",
-              "mouths",
-              "motion"
-            ]
-          }
-        }
-      ]
+  "schemaVersion": 2,
+  "deterministic": {
+    "engineVersion": "avatar-schema-1+cutroom-0.7.0",
+    "engine": {
+      "rendererSha256": "097734945d0951ff3bbc2eeb8e7c9dca5649e01949db7313acd286fd3edcb25b",
+      "proofSha256": "0619f86d0a436faae50fbe52a1b5d996f6798294b3bc7474a0c4820fe2f5e879",
+      "worker": "electron/render-motion.ts"
     },
-    {
-      "id": "companion",
-      "candidateId": "candidate-36e09fd9-f9b4-4f11-b173-7c664786ab1a",
-      "revision": 1,
-      "packageHash": "a7bbc40859d45f38a870a0efe72f8cef125cff4cdfb2d44805f289cf4ea6d87d",
-      "qualityHashes": {
-        "neutral": "17b7a49dad0963e9f31ffca09cf0de53762d749cb66b88a5fbcf42e14fe927b8",
-        "silhouette": "6fcefbf8911e561913eeceea783ce667c247611916267ab99a390341f7e529af",
-        "grayscale": "1c92a9a7f9e88e638bc1fb3ceabe7c4fa44f7c7025e2e1afeb526fc03d310fda",
-        "backgroundLight": "ab7f0d716507f1df8af32141a4cda7b08c9da5d5db8c4d1cc1e329f2040b8815",
-        "backgroundDark": "bc0300afc978d763cdbee4f592b95d4337dcfdeb0fdbd57884eec7f820ad3c04",
-        "expressionSheet": "7483c0b9308eb6f243e706156badde1434e7c3d6e61e263165dbf1fd79d18fc7",
-        "mouthSheet": "5e0ab8f8b8ce90b0ed40425957eb9c6a334375f347888b7289943217bd76a2c0",
-        "motionLoop": "dc6b7fba86e6ef750e2166055742642f98becf785ba1942d282548a33583bae2"
+    "candidates": [
+      {
+        "id": "strategist",
+        "revision": 1,
+        "packageHash": "2cb5c47e60cd2e952d023236fbd8d7115d39dfa32c8a2170022eb2814a2aebad",
+        "qualityHashes": {
+          "neutral": "f4be0d9b72eb232617d0c1bd570a49cda94692119cdb2829a47d74fc69451594",
+          "silhouette": "c73f9f56735a2085ab1f6653d64aea0e6836663a2db34a6e8881808251efb277",
+          "grayscale": "7261e6f0054c62bfaace31e67eea50b3f94752427767bc2acf82d6292b5c17d2",
+          "backgroundLight": "5bf1f98ef17b3b3cfc7a0df9d7bd0ef4168d9d6c0cf7aa98cc6055a00a79d1cc",
+          "backgroundDark": "240e31d91814312c951fa53fce31eabf580652646bc3dc9c1247ef04a81cc864",
+          "expressionSheet": "f8c6e93c7f28567d3a5eeb3b5376afe40326b1c7e3b1df2924f5164f5b0e0862",
+          "mouthSheet": "75697ef9e213608d73d3d6c6faa5a324dd1badcfebd11ca6de437f7750320acf",
+          "motionLoop": "45d6b8ab930f3e56aa7ad4fbd5db5460cd1711af46d314cf3f6dceb936798931"
+        },
+        "review": {
+          "file": "strategist/review.jpg",
+          "width": 1200,
+          "height": 2536
+        },
+        "files": [
+          {
+            "sheet": "neutral",
+            "file": "strategist/neutral.png",
+            "width": 384,
+            "height": 384,
+            "nativeWidth": 96,
+            "nativeHeight": 96,
+            "pixelHash": "c68e4435f495ef5d21bc42e783631e6923c5eeb92957960262ab6ace55f3e9b6",
+            "pngSha256": "fd26f7605e1e365962fa68470b2d5fab906f8eaca7a2d6661df93890d79e9b55"
+          },
+          {
+            "sheet": "silhouette",
+            "file": "strategist/silhouette.png",
+            "width": 1920,
+            "height": 384,
+            "nativeWidth": 480,
+            "nativeHeight": 96,
+            "pixelHash": "0c2553d082bcbb3319ee5b49f792f51813c49db2c9d2e4e89c6b509b9cd21541",
+            "pngSha256": "dce32425efab56ab7cc468e83afb4427205d527d8815026064797642c6efe621"
+          },
+          {
+            "sheet": "grayscale",
+            "file": "strategist/grayscale.png",
+            "width": 2304,
+            "height": 384,
+            "nativeWidth": 576,
+            "nativeHeight": 96,
+            "pixelHash": "7a5b519ece6f134de3294e0bb59c51347fddc090a32e1b7cb2476cf1d1619c7a",
+            "pngSha256": "62d96b37bc56af2c5c034ea7f09e2f2064cf5a21bfec7e33d74f3ab03790f736"
+          },
+          {
+            "sheet": "backgrounds",
+            "file": "strategist/backgrounds.png",
+            "width": 1536,
+            "height": 384,
+            "nativeWidth": 384,
+            "nativeHeight": 96,
+            "pixelHash": "42e894a0fee37f1c6231fa0e522f4b51ed9fcff59ff3af6ffea49b7d6d2828a0",
+            "pngSha256": "5a6b5671c22f626c095dee46146424de8001e3c62be729f51ce877671a4f80c2"
+          },
+          {
+            "sheet": "expressions",
+            "file": "strategist/expressions.png",
+            "width": 2304,
+            "height": 384,
+            "nativeWidth": 576,
+            "nativeHeight": 96,
+            "pixelHash": "93519da704135db13bd008c0acca01324dab623837b9cc4d578b699fcb858a0d",
+            "pngSha256": "f35b544e3d0b2940c60f6d9ef512175452ce3a892110b3f7465c6a7f851c53ea"
+          },
+          {
+            "sheet": "mouths",
+            "file": "strategist/mouths.png",
+            "width": 2688,
+            "height": 384,
+            "nativeWidth": 672,
+            "nativeHeight": 96,
+            "pixelHash": "75697ef9e213608d73d3d6c6faa5a324dd1badcfebd11ca6de437f7750320acf",
+            "pngSha256": "7b9c9505a50d0262690016d996d972445937e7796a07a0d7cdb3ef53c1bfbb6a"
+          },
+          {
+            "sheet": "motion",
+            "file": "strategist/motion.png",
+            "width": 6144,
+            "height": 1152,
+            "nativeWidth": 1536,
+            "nativeHeight": 288,
+            "pixelHash": "9bd8350b83cc16b332da799085215912568bd4e5ae03cf882dc709cad38e2198",
+            "pngSha256": "650a38b79b904bfe1718069966623bc669e66a7b9f372e1221142a90dbfb35f2"
+          }
+        ]
       },
-      "review": {
-        "file": "companion/review.jpg",
-        "width": 1200,
-        "height": 2386,
-        "jpegSha256": "21a240b0ebd32eba78fd2d72a71b8b78571545ed224b5096575494d16744311a",
-        "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\review.jpg"
+      {
+        "id": "companion",
+        "revision": 1,
+        "packageHash": "eed69b5e3703783ba0817bd95901cbe71dcd59e01e22d5e98adbc3b29df9da22",
+        "qualityHashes": {
+          "neutral": "e6e86a8001d3524516a3afaa3890e1c9dd3926452c85ccae1caccad8b7d32b76",
+          "silhouette": "71e1184015019bc00c70b94087b230816de0572479dedbd6118c15ba0ece623b",
+          "grayscale": "2f7d49d4194c3e9d412f4c8ec44f5b3a037cedfedf1c2bd4823d7bc92e7fbf22",
+          "backgroundLight": "5c70265a62f1015160a5f58aadd0935b392324bab757d262f2836506629fbfd2",
+          "backgroundDark": "3e0999d6c1e6fee2d94cc3cf189cf7016aa7e342a1d5c670deda5962ac1a5c38",
+          "expressionSheet": "7a97581597db675b14d1f3644e4a33d6e2271c928f9d73f0435f1d58bb022840",
+          "mouthSheet": "015161c0916f15329de6bd73d1a04cd10c701e299cf9e7ee68c5d1ddb2b45469",
+          "motionLoop": "9dfe8305d7f797a2c1d4affc0e8f6667976c1088f5bdc7138cdba8939d4bde9a"
+        },
+        "review": {
+          "file": "companion/review.jpg",
+          "width": 1200,
+          "height": 2536
+        },
+        "files": [
+          {
+            "sheet": "neutral",
+            "file": "companion/neutral.png",
+            "width": 384,
+            "height": 384,
+            "nativeWidth": 96,
+            "nativeHeight": 96,
+            "pixelHash": "1566ad8588668f9defecc91b2adf76b6c2d658243adac7ac911c4a32024c80a2",
+            "pngSha256": "c0b6e21459229fb3ae88fd4e697baebf558ec25f5fe3da18a5e239ba592fd28c"
+          },
+          {
+            "sheet": "silhouette",
+            "file": "companion/silhouette.png",
+            "width": 1920,
+            "height": 384,
+            "nativeWidth": 480,
+            "nativeHeight": 96,
+            "pixelHash": "9a5a9e116cc4804d4cf3e5f0cbd37abca88d8cf3e1d27e67eeb83f5a34694f41",
+            "pngSha256": "6f99ba8c0270ab41efc736dc29bb144ffe5dcda6d3d68559b23dd455015c10ea"
+          },
+          {
+            "sheet": "grayscale",
+            "file": "companion/grayscale.png",
+            "width": 2304,
+            "height": 384,
+            "nativeWidth": 576,
+            "nativeHeight": 96,
+            "pixelHash": "5e2da4d21649287c3945eb1cca51f289abf6dbc1dbdf602b5ac10c08802cbc27",
+            "pngSha256": "0cb05ebfe2503a4435949e3f02a31a23f65d0263f30a3548e2a88f12065b3015"
+          },
+          {
+            "sheet": "backgrounds",
+            "file": "companion/backgrounds.png",
+            "width": 1536,
+            "height": 384,
+            "nativeWidth": 384,
+            "nativeHeight": 96,
+            "pixelHash": "ac2896fc7a9e530d5590bd1c1a5967e4b0dfa737621f697ba7792f09b6fa65e5",
+            "pngSha256": "620135cb1a9676562b086f519e70d51b24e750887ff3e290247edb59f3ced3e8"
+          },
+          {
+            "sheet": "expressions",
+            "file": "companion/expressions.png",
+            "width": 2304,
+            "height": 384,
+            "nativeWidth": 576,
+            "nativeHeight": 96,
+            "pixelHash": "6eadcef6d90c04b1edb5044d44fc05af799dd2340b22fcefe17dd746b29ce989",
+            "pngSha256": "382d2e24892464fe248ca07cef11f3eeb7b11cfca8e79eff21c95386602763e4"
+          },
+          {
+            "sheet": "mouths",
+            "file": "companion/mouths.png",
+            "width": 2688,
+            "height": 384,
+            "nativeWidth": 672,
+            "nativeHeight": 96,
+            "pixelHash": "015161c0916f15329de6bd73d1a04cd10c701e299cf9e7ee68c5d1ddb2b45469",
+            "pngSha256": "b29fa1813685e3379183422baad80c7bee5c9e519d7d900fa582f6234cbc6e35"
+          },
+          {
+            "sheet": "motion",
+            "file": "companion/motion.png",
+            "width": 6144,
+            "height": 1152,
+            "nativeWidth": 1536,
+            "nativeHeight": 288,
+            "pixelHash": "b6ef67d213e0f50c665c5267d863d1486f8afb7912f0bafa1450a1528eb3d68e",
+            "pngSha256": "4d8c671f48eb047c5d2efbe7ac6606df23ea5db3c8208ec56c8a526535a028fb"
+          }
+        ]
       },
-      "files": [
-        {
-          "sheet": "neutral",
-          "file": "companion/neutral.png",
-          "width": 384,
-          "height": 384,
-          "nativeWidth": 96,
-          "nativeHeight": 96,
-          "pixelHash": "17b7a49dad0963e9f31ffca09cf0de53762d749cb66b88a5fbcf42e14fe927b8",
-          "pngSha256": "2d0ac4fa8f8b3d773a6c93ecabc2e7b0f2bac791da9d6a667136711f8c67e48c",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\neutral.png"
+      {
+        "id": "expert",
+        "revision": 1,
+        "packageHash": "13d20afc34a76ceff75f188b825a8fac8a7579ca76f41f1f98482c232964ab95",
+        "qualityHashes": {
+          "neutral": "1f25af0d8615c475665f2841fd4bd15d8b8395c87d62c995b41e51d2c57a1016",
+          "silhouette": "5a9f673398fa3dec2010449c52817323451d94d1ebf754d4aafc47a80e26bcac",
+          "grayscale": "4a1f845894b6e7944a500d9ef5266dc6e3b609d10398bab8a83a6a34edfdbc7f",
+          "backgroundLight": "2ce939a3ca677c8db3edc7404823fb0d5fdb1a77ba232b78fab7216522bd56ea",
+          "backgroundDark": "36191aea6dde48b6b5129806cdf33ace87f807b861444236ba3c2b432d4dccc4",
+          "expressionSheet": "7c0a468afa06eb444d3485afb8bc98a8a30b9f9ce81a0588f12c12b178f80e83",
+          "mouthSheet": "0a15e2a7e7a00ee07b71e69f9b99bcbcc4cc860cc952791871911750148f7da0",
+          "motionLoop": "d5bb6552da8711e8d92a7c3bea6bd6f9f21a156d3ae8c5a7f1817aab6803c66a"
         },
-        {
-          "sheet": "silhouette",
-          "file": "companion/silhouette.png",
-          "width": 1920,
-          "height": 384,
-          "nativeWidth": 480,
-          "nativeHeight": 96,
-          "pixelHash": "4eb8584787849e461dc3191fa627a60abdbd3bb892af6cae965ecdf614e34b3a",
-          "pngSha256": "2d1ff296f6b3f2929f3f9d619da045d08582ba4665d8ab5a9259a32412f0867a",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\silhouette.png"
+        "review": {
+          "file": "expert/review.jpg",
+          "width": 1200,
+          "height": 2536
         },
-        {
-          "sheet": "grayscale",
-          "file": "companion/grayscale.png",
-          "width": 2304,
-          "height": 384,
-          "nativeWidth": 576,
-          "nativeHeight": 96,
-          "pixelHash": "04f89dd6f1e6aa9d0453f6b85d13b94352e5aea6ddbe38746ac79feac27f229a",
-          "pngSha256": "769b40543b3a514da1b8ee2bf85a3ffc5599282cf902d58200351a339b014242",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\grayscale.png"
-        },
-        {
-          "sheet": "backgrounds",
-          "file": "companion/backgrounds.png",
-          "width": 1536,
-          "height": 384,
-          "nativeWidth": 384,
-          "nativeHeight": 96,
-          "pixelHash": "cb097b6ad2914daf9bef484e5179b22e1f04eccd18ce6597d55f5f5b550f5500",
-          "pngSha256": "2dc817c656e1eeea5d8da30bb350e7c643fdd7fc4d18101f52d29ede31db5999",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\backgrounds.png"
-        },
-        {
-          "sheet": "expressions",
-          "file": "companion/expressions.png",
-          "width": 2304,
-          "height": 384,
-          "nativeWidth": 576,
-          "nativeHeight": 96,
-          "pixelHash": "7483c0b9308eb6f243e706156badde1434e7c3d6e61e263165dbf1fd79d18fc7",
-          "pngSha256": "ba57fe5d173f7b226703ea7af7618c7497ff8aa177fe3f49f1a74ac103d05d6b",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\expressions.png"
-        },
-        {
-          "sheet": "mouths",
-          "file": "companion/mouths.png",
-          "width": 2688,
-          "height": 384,
-          "nativeWidth": 672,
-          "nativeHeight": 96,
-          "pixelHash": "5e0ab8f8b8ce90b0ed40425957eb9c6a334375f347888b7289943217bd76a2c0",
-          "pngSha256": "11ebe9e91d061fee7e365f5a8ee7183dbb9ae5a56aa199ac20da4c35d19ed126",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\mouths.png"
-        },
-        {
-          "sheet": "motion",
-          "file": "companion/motion.png",
-          "width": 6144,
-          "height": 384,
-          "nativeWidth": 1536,
-          "nativeHeight": 96,
-          "pixelHash": "09dab9103c83a98e75626b7487ba61774a7670df3a77a950f1d2727adb9bb215",
-          "pngSha256": "5ec723b191d8a54556b796d82d1b594081a95c4b23a38405e6334e548a9d446d",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-knS0kk\\motion.png"
-        }
-      ],
-      "mcpOperations": [
-        {
-          "tool": "avatar_create_candidate",
-          "arguments": {
-            "avatarId": "companion",
-            "description": "Task 9 authored companion visual proof",
-            "package": "resources/avatar-engine/examples/companion.json"
+        "files": [
+          {
+            "sheet": "neutral",
+            "file": "expert/neutral.png",
+            "width": 384,
+            "height": 384,
+            "nativeWidth": 96,
+            "nativeHeight": 96,
+            "pixelHash": "831eb48366fbb602e1a55b0a5d8ebd81b8a1c229d8d321ec8d653e990db87841",
+            "pngSha256": "661e25383840bc161dba18a385bc6e4f02183ec95a648a0ed138a9a04566be7e"
+          },
+          {
+            "sheet": "silhouette",
+            "file": "expert/silhouette.png",
+            "width": 1920,
+            "height": 384,
+            "nativeWidth": 480,
+            "nativeHeight": 96,
+            "pixelHash": "da69d8b17286176da3338c3f59a6c14b7bb6414a7f6f9920a0247183b62fb796",
+            "pngSha256": "6d4dea2f9f7af02c292c00f7b750624a7e789b8ae594f650221c7016a2090e17"
+          },
+          {
+            "sheet": "grayscale",
+            "file": "expert/grayscale.png",
+            "width": 2304,
+            "height": 384,
+            "nativeWidth": 576,
+            "nativeHeight": 96,
+            "pixelHash": "6585d17125d96993e9ae25c8aba0995da2376027987bb05205b1c621e1ec4e40",
+            "pngSha256": "4ec78667a6a48026e6a78b556223f249d5471804f7362be89aa46e25fa3f191a"
+          },
+          {
+            "sheet": "backgrounds",
+            "file": "expert/backgrounds.png",
+            "width": 1536,
+            "height": 384,
+            "nativeWidth": 384,
+            "nativeHeight": 96,
+            "pixelHash": "730976d5de7eaddaa446f7d4d638070398dcd081e06a6d1f8028beba3bb50446",
+            "pngSha256": "ebc8eb94c0eb668382c0390eed4f4b70065d2a3097eb07bd2858c9e36c8d1c0d"
+          },
+          {
+            "sheet": "expressions",
+            "file": "expert/expressions.png",
+            "width": 2304,
+            "height": 384,
+            "nativeWidth": 576,
+            "nativeHeight": 96,
+            "pixelHash": "a5fd6d5c204eb2d5be2d8793f3297270b55d1e7d5f98d14b84ece9c114a6407a",
+            "pngSha256": "3ffc434741928d7c51079b7b374b4662ee3803a0cbf4c4f0c9a04f517a151782"
+          },
+          {
+            "sheet": "mouths",
+            "file": "expert/mouths.png",
+            "width": 2688,
+            "height": 384,
+            "nativeWidth": 672,
+            "nativeHeight": 96,
+            "pixelHash": "0a15e2a7e7a00ee07b71e69f9b99bcbcc4cc860cc952791871911750148f7da0",
+            "pngSha256": "b3cdee4af73fd8ccaa411cfdd2aefd0a30bfa6ba3659b50f6e9a6ab59de1ebac"
+          },
+          {
+            "sheet": "motion",
+            "file": "expert/motion.png",
+            "width": 6144,
+            "height": 1152,
+            "nativeWidth": 1536,
+            "nativeHeight": 288,
+            "pixelHash": "51b0aa7c7881e778a839b94f25753dc6ba5190e57c87166dee0b57b2702c461e",
+            "pngSha256": "1d4f31c857b98e9598a74f825b878199389fa42cb814c1773adb06a201b5bed8"
           }
-        },
-        {
-          "tool": "avatar_select_candidate",
-          "arguments": {
-            "avatarId": "companion",
-            "candidateId": "candidate-36e09fd9-f9b4-4f11-b173-7c664786ab1a"
-          }
-        },
-        {
-          "tool": "avatar_save_revision",
-          "arguments": {
-            "avatarId": "companion",
-            "candidateId": "candidate-36e09fd9-f9b4-4f11-b173-7c664786ab1a"
-          }
-        },
-        {
-          "tool": "avatar_render",
-          "arguments": {
-            "avatarId": "companion",
-            "revision": 1,
-            "sheets": [
-              "neutral",
-              "silhouette",
-              "grayscale",
-              "backgrounds",
-              "expressions",
-              "mouths",
-              "motion"
-            ]
-          }
-        }
-      ]
+        ]
+      }
+    ]
+  },
+  "volatile": {
+    "reproduction": {
+      "cwd": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos",
+      "store": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store",
+      "browser": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+      "verifyCommand": "npx tsx artifacts/avatar-proof/reproduce.ts",
+      "writeCommand": "npx tsx artifacts/avatar-proof/reproduce.ts --write"
     },
-    {
-      "id": "expert",
-      "candidateId": "candidate-ce0d8a50-65aa-459c-9e6e-e37a6628e739",
-      "revision": 1,
-      "packageHash": "a7fff568f8b947e785923747979c8930ed2a9288fe85edb56a23161f5f85bb39",
-      "qualityHashes": {
-        "neutral": "17a6e45af0dd512b4de366a71343dc204eb2ea93cfc1694d90aee8a059a4c972",
-        "silhouette": "835c24ffd322535b7399abbf298ddd74b67da7b64348635f05c325ccede50d9a",
-        "grayscale": "92cdfa6de301b4a0f47c5c47689d90e16137dead1674695c504a831dec752c51",
-        "backgroundLight": "e0a81005d06aeedd54b121999feb9226058d417e19b4f1dead3e5afc0d5afd8f",
-        "backgroundDark": "dc6eb5665d8375a280994a66b4aa77a777498971e9bcfd7e013863c6d81e56d3",
-        "expressionSheet": "860c9a0094c6e096e3a6ca9621b6347fd00deb31616816a04c098f8f64c4657e",
-        "mouthSheet": "93c029ac9ff30d54d36dfeae59d744ea3c320b415a8d243532cb5e15cc6f1137",
-        "motionLoop": "bb0e106ebcc495c912e645fc92f49e462798d8a283a1d47af51e17a1b5dc83b3"
+    "candidates": [
+      {
+        "id": "strategist",
+        "candidateId": "candidate-5f5d2284-41e6-4818-9f28-fa1596679e23",
+        "review": {
+          "jpegSha256": "f11d200419aed116fd45f0ef5445192217306e053790b87d7e76f25ccabe5471",
+          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\review.jpg"
+        },
+        "files": [
+          {
+            "sheet": "neutral",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\neutral.png"
+          },
+          {
+            "sheet": "silhouette",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\silhouette.png"
+          },
+          {
+            "sheet": "grayscale",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\grayscale.png"
+          },
+          {
+            "sheet": "backgrounds",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\backgrounds.png"
+          },
+          {
+            "sheet": "expressions",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\expressions.png"
+          },
+          {
+            "sheet": "mouths",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\mouths.png"
+          },
+          {
+            "sheet": "motion",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\strategist\\revisions\\1\\.renders\\avatar-E4piHE\\motion.png"
+          }
+        ],
+        "mcpOperations": [
+          {
+            "tool": "avatar_create_candidate",
+            "arguments": {
+              "avatarId": "strategist",
+              "description": "Task 9 reauthored strategist visual proof",
+              "package": "resources/avatar-engine/examples/strategist.json"
+            }
+          },
+          {
+            "tool": "avatar_select_candidate",
+            "arguments": {
+              "avatarId": "strategist",
+              "candidateId": "candidate-5f5d2284-41e6-4818-9f28-fa1596679e23"
+            }
+          },
+          {
+            "tool": "avatar_save_revision",
+            "arguments": {
+              "avatarId": "strategist",
+              "candidateId": "candidate-5f5d2284-41e6-4818-9f28-fa1596679e23"
+            }
+          },
+          {
+            "tool": "avatar_render",
+            "arguments": {
+              "avatarId": "strategist",
+              "revision": 1,
+              "sheets": [
+                "neutral",
+                "silhouette",
+                "grayscale",
+                "backgrounds",
+                "expressions",
+                "mouths",
+                "motion"
+              ]
+            }
+          }
+        ]
       },
-      "review": {
-        "file": "expert/review.jpg",
-        "width": 1200,
-        "height": 2386,
-        "jpegSha256": "d461a9c04f3f5c3c41d441ffe945838e6d635fcd3e42374f957237355bca9019",
-        "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\review.jpg"
+      {
+        "id": "companion",
+        "candidateId": "candidate-25b5498b-64fc-4ec7-bc86-147dca24e886",
+        "review": {
+          "jpegSha256": "fcee050fefe60d2e839b5488576d43fd6e7893db78dc12233e8d04fba566d100",
+          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\review.jpg"
+        },
+        "files": [
+          {
+            "sheet": "neutral",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\neutral.png"
+          },
+          {
+            "sheet": "silhouette",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\silhouette.png"
+          },
+          {
+            "sheet": "grayscale",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\grayscale.png"
+          },
+          {
+            "sheet": "backgrounds",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\backgrounds.png"
+          },
+          {
+            "sheet": "expressions",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\expressions.png"
+          },
+          {
+            "sheet": "mouths",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\mouths.png"
+          },
+          {
+            "sheet": "motion",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\companion\\revisions\\1\\.renders\\avatar-0nd2hV\\motion.png"
+          }
+        ],
+        "mcpOperations": [
+          {
+            "tool": "avatar_create_candidate",
+            "arguments": {
+              "avatarId": "companion",
+              "description": "Task 9 reauthored companion visual proof",
+              "package": "resources/avatar-engine/examples/companion.json"
+            }
+          },
+          {
+            "tool": "avatar_select_candidate",
+            "arguments": {
+              "avatarId": "companion",
+              "candidateId": "candidate-25b5498b-64fc-4ec7-bc86-147dca24e886"
+            }
+          },
+          {
+            "tool": "avatar_save_revision",
+            "arguments": {
+              "avatarId": "companion",
+              "candidateId": "candidate-25b5498b-64fc-4ec7-bc86-147dca24e886"
+            }
+          },
+          {
+            "tool": "avatar_render",
+            "arguments": {
+              "avatarId": "companion",
+              "revision": 1,
+              "sheets": [
+                "neutral",
+                "silhouette",
+                "grayscale",
+                "backgrounds",
+                "expressions",
+                "mouths",
+                "motion"
+              ]
+            }
+          }
+        ]
       },
-      "files": [
-        {
-          "sheet": "neutral",
-          "file": "expert/neutral.png",
-          "width": 384,
-          "height": 384,
-          "nativeWidth": 96,
-          "nativeHeight": 96,
-          "pixelHash": "17a6e45af0dd512b4de366a71343dc204eb2ea93cfc1694d90aee8a059a4c972",
-          "pngSha256": "37a43de64134a2e73f5955591b6ab67cd2bf9f6824f87351589992f177651f68",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\neutral.png"
+      {
+        "id": "expert",
+        "candidateId": "candidate-3746d4b7-87b1-41cb-a1e2-b273cdacf8a0",
+        "review": {
+          "jpegSha256": "1bc01c0cc11859df4e49cccf7431f7da809b1cd7fd8b0c50a78a672ab59e1488",
+          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\review.jpg"
         },
-        {
-          "sheet": "silhouette",
-          "file": "expert/silhouette.png",
-          "width": 1920,
-          "height": 384,
-          "nativeWidth": 480,
-          "nativeHeight": 96,
-          "pixelHash": "486edb92f5ec2f106b09f2e9e8181643d7652bbedd5e31e35a6a1aad32de9234",
-          "pngSha256": "2ac03641aa4f5e2867bd0b44e625a1f4f389ed0f2eed41528b058c95200e0c82",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\silhouette.png"
-        },
-        {
-          "sheet": "grayscale",
-          "file": "expert/grayscale.png",
-          "width": 2304,
-          "height": 384,
-          "nativeWidth": 576,
-          "nativeHeight": 96,
-          "pixelHash": "15f60e048d48d0d986f395a8e2027dc6d15c4fe7e7188855c99b18c28e1c713c",
-          "pngSha256": "054aafd98c9463ed0922dd090e67c4c657c260d749f2ea1bc40679809b1d934d",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\grayscale.png"
-        },
-        {
-          "sheet": "backgrounds",
-          "file": "expert/backgrounds.png",
-          "width": 1536,
-          "height": 384,
-          "nativeWidth": 384,
-          "nativeHeight": 96,
-          "pixelHash": "8997a0a7a1cea8e692bffdb1d3619d583d82bc0080a5d4b3965399a6b848e06c",
-          "pngSha256": "215c6acf448252a612257149e674071e5a7db1e6629b8b28cb51dca90357b7ea",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\backgrounds.png"
-        },
-        {
-          "sheet": "expressions",
-          "file": "expert/expressions.png",
-          "width": 2304,
-          "height": 384,
-          "nativeWidth": 576,
-          "nativeHeight": 96,
-          "pixelHash": "860c9a0094c6e096e3a6ca9621b6347fd00deb31616816a04c098f8f64c4657e",
-          "pngSha256": "f4696faa7a24ea9b633482c9072e07f320b5b00b9e3edb01e23ab7080637cb41",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\expressions.png"
-        },
-        {
-          "sheet": "mouths",
-          "file": "expert/mouths.png",
-          "width": 2688,
-          "height": 384,
-          "nativeWidth": 672,
-          "nativeHeight": 96,
-          "pixelHash": "93c029ac9ff30d54d36dfeae59d744ea3c320b415a8d243532cb5e15cc6f1137",
-          "pngSha256": "fa6ab26d4f16dac6357cd577dc11b817d6ec07f4ed8b9f2b55b6801139bb876c",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\mouths.png"
-        },
-        {
-          "sheet": "motion",
-          "file": "expert/motion.png",
-          "width": 6144,
-          "height": 384,
-          "nativeWidth": 1536,
-          "nativeHeight": 96,
-          "pixelHash": "61108e658aa018de9597acd427de2fd07a513713a6511c589373d3dc10d3d2b8",
-          "pngSha256": "8ffa4389795b177f9962f0b7d8e9645799c9e783cb081e98fd53925d0ad27b09",
-          "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-NYUeIr\\motion.png"
-        }
-      ],
-      "mcpOperations": [
-        {
-          "tool": "avatar_create_candidate",
-          "arguments": {
-            "avatarId": "expert",
-            "description": "Task 9 authored expert visual proof",
-            "package": "resources/avatar-engine/examples/expert.json"
+        "files": [
+          {
+            "sheet": "neutral",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\neutral.png"
+          },
+          {
+            "sheet": "silhouette",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\silhouette.png"
+          },
+          {
+            "sheet": "grayscale",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\grayscale.png"
+          },
+          {
+            "sheet": "backgrounds",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\backgrounds.png"
+          },
+          {
+            "sheet": "expressions",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\expressions.png"
+          },
+          {
+            "sheet": "mouths",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\mouths.png"
+          },
+          {
+            "sheet": "motion",
+            "storePath": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\avatar-store\\expert\\revisions\\1\\.renders\\avatar-HUR5dP\\motion.png"
           }
-        },
-        {
-          "tool": "avatar_select_candidate",
-          "arguments": {
-            "avatarId": "expert",
-            "candidateId": "candidate-ce0d8a50-65aa-459c-9e6e-e37a6628e739"
+        ],
+        "mcpOperations": [
+          {
+            "tool": "avatar_create_candidate",
+            "arguments": {
+              "avatarId": "expert",
+              "description": "Task 9 reauthored expert visual proof",
+              "package": "resources/avatar-engine/examples/expert.json"
+            }
+          },
+          {
+            "tool": "avatar_select_candidate",
+            "arguments": {
+              "avatarId": "expert",
+              "candidateId": "candidate-3746d4b7-87b1-41cb-a1e2-b273cdacf8a0"
+            }
+          },
+          {
+            "tool": "avatar_save_revision",
+            "arguments": {
+              "avatarId": "expert",
+              "candidateId": "candidate-3746d4b7-87b1-41cb-a1e2-b273cdacf8a0"
+            }
+          },
+          {
+            "tool": "avatar_render",
+            "arguments": {
+              "avatarId": "expert",
+              "revision": 1,
+              "sheets": [
+                "neutral",
+                "silhouette",
+                "grayscale",
+                "backgrounds",
+                "expressions",
+                "mouths",
+                "motion"
+              ]
+            }
           }
-        },
-        {
-          "tool": "avatar_save_revision",
-          "arguments": {
-            "avatarId": "expert",
-            "candidateId": "candidate-ce0d8a50-65aa-459c-9e6e-e37a6628e739"
-          }
-        },
-        {
-          "tool": "avatar_render",
-          "arguments": {
-            "avatarId": "expert",
-            "revision": 1,
-            "sheets": [
-              "neutral",
-              "silhouette",
-              "grayscale",
-              "backgrounds",
-              "expressions",
-              "mouths",
-              "motion"
-            ]
-          }
-        }
-      ]
-    }
-  ]
+        ]
+      }
+    ]
+  }
 }
