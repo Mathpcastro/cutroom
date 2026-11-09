@@ -819,6 +819,8 @@ async function executeTool(
     read_film_file: (a) => filmStudio.read(a),
     film_check: (a) => filmStudio.check(a),
     film_capture_page: (a) => filmStudio.capture(a),
+    list_effects: (a) => filmStudio.listEffects(a),
+    film_add_effect: (a) => filmStudio.addEffect(a),
     film_review: (a) => filmStudio.review(a),
     instagram_accounts: () => publisher.settings(),
     schedule_reel: (a) => publisher.schedule(a),

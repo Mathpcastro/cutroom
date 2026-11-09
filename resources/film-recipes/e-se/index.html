@@ -183,6 +183,7 @@
     CRM.glitch(tl, ".note", tNada + 0.1, 0.35);
     CRM.shake(tl, "#film", tVoce + 0.05, 20, 0.35);
     tl.set({}, {}, D);
+    CRM.post(tl, D, { film: "#film", leaks: [tDia30, tDia90, tDia365, tMas], grain: 0.07 });
     window.__timelines["film"] = tl;
   </script>
 </div>

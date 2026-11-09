@@ -150,6 +150,7 @@
     CRM.flash(tl, FX.flash, B.quanto, 0.45);
     CRM.shake(tl, "#film", B.faltam, 14, 0.3);
     CRM.flash(tl, FX.flash, B.responde, 0.35);
+    CRM.post(tl, D, { film: "#film", leaks: [B.vibra, B.quanto, B.responde], grain: 0, grade: false });
     window.__timelines["film"] = tl;
   </script>
   <script type="module">

@@ -1,0 +1,6 @@
+HyperFrames registry components
+Copyright HeyGen and the HyperFrames contributors
+Source: https://github.com/heygen-com/hyperframes (registry/components), Apache License 2.0 (see LICENSE).
+
+Modified for offline use in Videosell: remote GSAP replaced by the film's local copy, Google Fonts links
+removed, demo pages and tests omitted. Component fonts and textures keep their own license files.

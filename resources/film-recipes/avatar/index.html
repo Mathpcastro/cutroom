@@ -212,6 +212,7 @@
     function draw(t) {
       bg.clearRect(0, 0, 1080, 1920);
       CRM.background(bg, t, SC);
+      CRM.mesh(bg, t, ["#000", "#7C5CFF", "#C8FF5A", "#FF5A36"], { base: false, grid: false, strength: 0.16 });
       stars(bg, t);
       CRM.speedLines(bg, t, B.incrivel - 0.05, B.incrivel + 0.7, 540, 620, "#C8FF5A");
       CRM.speedLines(bg, t, B.duzentas - 0.1, B.views + 0.6, 310, 930, "#ffffff");
@@ -301,6 +302,8 @@
     var st = { t: 0 };
     tl.to(st, { t: D, duration: D, ease: "none", onUpdate: function () { draw(st.t); } }, 0);
     draw(0);
+    CRM.post(tl, D, { film: "#film", leaks: [cut("ninguem"), cut("anuncio"), cut("olha"), cut("camera"), B.prazer - 0.1, cut("roteiro"), cut("dorme"), cut("visita"), B.venda, cut("quer")] });
+    CRM.shimmer(tl, "#c1", B.roteiro + 0.3); CRM.shimmer(tl, "#c2", B.voz + 0.3); CRM.shimmer(tl, "#c3", B.dia);
     window.__timelines["film"] = tl;
   </script>
 </div>

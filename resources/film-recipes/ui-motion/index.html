@@ -183,6 +183,8 @@
     CRM.flash(tl, "#flash", tMinutos, 0.4); CRM.shake(tl, ".cam", tMinutos + 0.05, 18, 0.3);
     CRM.flash(tl, "#flash", tCut, 0.7); CRM.shake(tl, ".cam", tCut + 0.05, 24, 0.35);
     tl.set({}, {}, D);
+    CRM.post(tl, D, { film: "#film", leaks: [tGrava, tMonta, tEntrega, tCut], grain: 0.06, vignette: 0.25 });
+    CRM.shimmer(tl, ".shape", tMinutos + 0.2);
     window.__timelines["film"] = tl;
   </script>
 </div>

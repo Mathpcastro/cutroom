@@ -163,6 +163,41 @@ Suspense em segunda pessoa: um boneco de palito 2D (contorno escuro grosso, corp
     checklist: [...CHECK_COMMON, "HUD de dia/hora sempre visível e atualizando", "Cada regra é paga na tela", "Final com escolha em que as duas opções parecem ruins"],
   },
   {
+    id: "historia",
+    name: "Historinha em episódios",
+    aspect: "9:16",
+    length: "25–45 s",
+    goodFor: "Contar histórias em série com personagens fixos (o seu avatar e coadjuvantes): um episódio por dia, com gancho, conflito, virada e \"continua no próximo episódio\". Cria hábito e faz as pessoas seguirem o perfil para ver a parte 2 — sem precisar vender nada no vídeo.",
+    needs: ["os personagens (nome e jeito de cada um)", "a situação do episódio e o gancho para o próximo"],
+    guide: `# Historinha em episódios
+Série com personagens fixos. O roteiro fica no bloco \`#roteiro\` do \`index.html\`; \`CRM.autoStory\` monta tudo.
+
+## Roteiro
+\`\`\`
+# Episódio 2: O manual
+[cena: escritorio, noite]        ← lugares: quarto, escritorio, rua, cafe · dia ou noite
+Narrador: Episódio dois. O manual.
+Léo (animado): Bia, dez clientes novos!   ← humor: animado, sonolenta, pensativa, confiante, brava, nervoso, surpresa
+Bia: E zero manuais.
+Narrador: Continua no próximo episódio.
+\`\`\`
+- Linhas sem "Nome:" são do narrador (caixa amarela de quadrinho). A primeira linha do narrador vira o cartão de título; a última, o "Continua…" com o CTA "SEGUE PRA PARTE 2".
+- Cada personagem é um avatar: só mexe a boca na própria fala; perguntas e exclamações ganham close no rosto; o balão sai em cima de quem fala com a palavra falada destacada.
+- Elenco em \`cast: { "Léo": window.FILM_AVATAR, "Bia": CRM_SAMPLE_AVATARS.companion }\`. O 1º personagem usa o avatar do perfil.
+
+## Narração
+- \`film_voiceover\` recebe **só as falas**, na ordem, sem nomes nem marcações (o texto de \`roteiro.txt\`).
+- Vozes diferentes por personagem: gere o diálogo fora (ElevenLabs, várias vozes) e use \`film_voiceover{film, text, audio}\` — os tempos das palavras vêm da transcrição local.
+
+## Estrutura (≈ 30 s)
+1. Título do episódio (2 s) e situação em 1 fala.
+2. Conflito em 2–4 falas curtas, alternando personagens.
+3. Virada (o narrador marca a passagem de tempo, troque a cena).
+4. Gancho final + "Continua no próximo episódio".
+Falas de até 12 palavras. Uma série = mesmos personagens, mesma abertura, episódios numerados.`,
+    checklist: [...CHECK_COMMON, "Cada fala tem no máximo 12 palavras", "O episódio termina num gancho para o próximo", "A narração tem só as falas, na mesma ordem do roteiro"],
+  },
+  {
     id: "avatar",
     name: "Avatar apresentador",
     aspect: "9:16",

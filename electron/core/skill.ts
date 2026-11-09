@@ -28,7 +28,7 @@ ${formats}
 3. Escreva o roteiro falado e mostre ao usuário antes de gerar a voz.
 4. \`create_film{name, format}\` → a pasta já vem com o filme inicial do formato (a versão do CutRoom, funcionando), \`CUTROOM.md\` e o kit. Se você tem acesso a arquivos, edite a pasta direto; senão use \`write_film_file\`/\`read_film_file\`.
 5. \`film_voiceover{film, text}\` → \`timing.js\` com o tempo de cada palavra e o volume por quadro. Se responder \`status:"generating"\`, chame de novo com o mesmo texto.
-6. Adapte \`index.html\`: textos, telas, cores; reancore as cenas com \`CR.at("palavra", n, segundosReserva)\`. Música e efeitos: \`search_music\` → \`film_asset\`. Telas reais do produto: \`film_asset{path}\` ou \`film_capture_page{url}\`.
+6. Adapte \`index.html\`: textos, telas, cores; reancore as cenas com \`CR.at("palavra", n, segundosReserva)\`. Música e efeitos: \`search_music\` → \`film_asset\`. Telas reais do produto: \`film_asset{path}\` ou \`film_capture_page{url}\`. Efeitos prontos (legendas cinéticas, transições, cursores, notificações): \`list_effects{query}\` → \`film_add_effect{film, name}\`. Acabamento: \`CRM.post(tl, D, {leaks})\` em todo filme.
 7. \`film_check\` → \`film_stills\` (5–6 momentos) → \`film_review\` (corrija toda nota abaixo de 8 e toda flag) → \`render_film\` (repita até \`status:"done"\`).
 8. Entregue o caminho do MP4 (fica em Vídeos/CutRoom) e a linha de crédito da música CC BY para a legenda do post. Postar no Instagram só com confirmação explícita do usuário: \`publish_reel\` (agora) ou \`schedule_reels_daily\` (piloto automático, um Reels por dia).
 

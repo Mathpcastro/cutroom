@@ -161,6 +161,17 @@ export class FilmStudio {
     return this.host.films.readFile(a.film, a.path);
   }
 
+  /** Effects catalogue (HyperFrames registry components, offline). */
+  async listEffects(args: Record<string, unknown>) {
+    const a = z.object({ query: z.string().max(200).optional(), limit: z.number().int().min(1).max(120).optional() }).strict().parse(args);
+    return this.host.films.effects(a.query, a.limit);
+  }
+
+  async addEffect(args: Record<string, unknown>) {
+    const a = z.object({ film, name: z.string().max(80) }).strict().parse(args);
+    return this.host.films.addEffect(a.film, a.name);
+  }
+
   async capture(args: Record<string, unknown>) {
     const a = z.object({ film, url: z.string().url().max(2000), name: z.string().max(60).optional() }).strict().parse(args);
     const runner = await this.host.runner();

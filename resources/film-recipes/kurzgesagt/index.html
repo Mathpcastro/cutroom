@@ -231,6 +231,7 @@
     CRM.flash(tl, FX.flash, B.estrela, 0.55);
     CRM.punch(tl, "#film", B.cento, 1.05, 0.5);
     CRM.flash(tl, FX.flash, B.acender, 0.45);
+    CRM.post(tl, D, { film: "#film", leaks: [B.estrela, B.clientes, B.acender], grain: 0.06, warm: "#ffc36b", cool: "#4fd1c5" });
     window.__timelines["film"] = tl;
   </script>
 </div>

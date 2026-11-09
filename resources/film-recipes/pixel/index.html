@@ -208,6 +208,7 @@
     CRM.flash(tl, FX.flash, B.combo, 0.7); CRM.shake(tl, "#film", B.combo + 0.05, 24, 0.4);
     CRM.flash(tl, FX.flash, B.venda, 0.5); CRM.punch(tl, "#film", B.venda + 0.05, 1.06, 0.4);
     CRM.flash(tl, FX.flash, B.concluida, 0.6);
+    CRM.post(tl, D, { film: "#film", leaks: [B.combo, B.venda, B.concluida], grain: 0.04, vignette: 0.2 });
     window.__timelines["film"] = tl;
   </script>
 </div>

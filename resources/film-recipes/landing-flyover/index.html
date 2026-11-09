@@ -133,6 +133,7 @@
     var av = document.getElementById("av").getContext("2d"), stA = { t: 0 };
     tl.to(stA, { t: D, duration: D, ease: "none", onUpdate: function () { av.clearRect(0, 0, 1080, 1920); A.draw(av, stA.t); CRM.particles(av, stA.t, BURSTS); } }, 0);
     tl.set({}, {}, D);
+    CRM.post(tl, D, { film: "#film", leaks: [FLY, CARD - 0.4], grain: 0.06, vignette: 0.3 });
     window.__timelines["film"] = tl;
   </script>
 </div>

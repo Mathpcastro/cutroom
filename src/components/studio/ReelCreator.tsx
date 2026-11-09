@@ -56,6 +56,79 @@ export function initialReelDraft(profile: StudioProfile, withAvatar: boolean): R
   };
 }
 
+export const STORY_SAMPLE = `# Episódio 1: O primeiro cliente
+[cena: quarto, noite]
+Narrador: Episódio um. O primeiro cliente.
+Léo (animado): Bia, acorda! Alguém pagou!
+Bia (sonolenta): Pagou o quê? A gente nem tem botão de pagar.
+Léo: Pois é. Ele mandou um Pix e escreveu: me ensina a usar.
+[cena: escritorio, dia]
+Narrador: E foi aí que o cliente respondeu.
+Léo (nervoso): Ele quer cancelar?
+Bia (surpresa): Não. Ele quer indicar dez amigos.
+Narrador: Continua no próximo episódio.`;
+
+/** Only the spoken lines of a story script, in order (what the narration says). */
+export function storySpoken(script: string) {
+  return script
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#") && !/^\[.*\]$/.test(line))
+    .map((line) => line.replace(/^[^:()[\]]{1,24}?\s*(?:\([^)]*\))?\s*:\s*/, ""))
+    .join(" ");
+}
+
+/** A story episode: CRM.autoStory directs it from the dialogue script (the profile avatar plays the lead). */
+export function storyHtml(draft: ReelDraft, voice: VoiceResult) {
+  const duration = Math.max(6, +(voice.voiceEnd + 2.4).toFixed(2));
+  const hasAvatar = Boolean(draft.avatar);
+  const script = htmlText(draft.script);
+  const title = /^#\s*(.+)$/m.exec(draft.script)?.[1] ?? "Episódio";
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>${htmlText(title)}</title>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
+  @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #141318; }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #141318; font-family: "Instrument Sans", sans-serif; }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="${duration}" data-width="1080" data-height="1920">
+  <audio id="voz" data-start="0" data-duration="${voice.duration}" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
+  <template id="roteiro">${script}</template>
+  <script src="kit/gsap.min.js"></script>
+  <script src="brand.js"></script>
+  <script src="timing.js"></script>
+  ${hasAvatar ? '<script src="avatar/runtime.js"></script>\n  <script src="avatar/voice.js"></script>' : ""}
+  <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
+  <script src="kit/avatar/engine.js"></script>
+  <script src="kit/avatar/sample.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var D = ${duration};
+    var tl = gsap.timeline({ paused: true });
+    var S = window.CRM_SAMPLE_AVATARS || {}, palette = (window.BRAND && window.BRAND.palette) || {};
+    CRM.autoStory({
+      tl: tl, film: "#film", duration: D, engine: window.AvatarEngine,
+      script: document.getElementById("roteiro").content.textContent,
+      fallback: [window.FILM_AVATAR || S.strategist, S.companion, S.expert].filter(Boolean),
+      accent: palette.accent || "#7C5CFF",
+    });
+    tl.set({}, {}, D);
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>`;
+}
+
 function deterministicScript(objective: string, offer: string) {
   return `${objective.trim() || "Apresente seu produto com clareza"}. ${offer.trim() || "Conheça a oferta"}. Veja cada detalhe e comece agora pelo link do perfil.`;
 }
@@ -142,6 +215,7 @@ export function ReelCreator({
   const draft = session.draft;
   const withAvatar = Boolean(draft.avatar);
   const busy = session.step === "generating";
+  const story = draft.formatId === "historia";
 
   useEffect(() => {
     void api<{ formats: VideoFormat[] }>("list_formats")
@@ -151,6 +225,9 @@ export function ReelCreator({
 
   function update(patch: Partial<ReelDraft>) {
     const next = { ...draft, ...patch };
+    // Switching to the story format starts from a sample episode the user edits.
+    if (patch.formatId === "historia" && draft.formatId !== "historia" && scriptAutomatic.current) next.script = STORY_SAMPLE;
+    if (patch.formatId && patch.formatId !== "historia" && draft.formatId === "historia" && scriptAutomatic.current) next.script = deterministicScript(next.objective, next.offer);
     if (scriptAutomatic.current && (patch.objective !== undefined || patch.offer !== undefined)) {
       next.script = deterministicScript(next.objective, next.offer);
     }
@@ -161,7 +238,7 @@ export function ReelCreator({
     onSession({ ...session, step: "generating", error: undefined });
     try {
       const created = await api<CreatedFilm>("create_film", {
-        name: draft.objective.trim(),
+        name: story ? (/^#\s*(.+)$/m.exec(draft.script)?.[1] ?? "Episódio") : draft.objective.trim(),
         format: draft.formatId,
         aspect: "9:16",
         ...(draft.avatar ? { avatar: draft.avatar } : {}),
@@ -169,9 +246,10 @@ export function ReelCreator({
       const profileVoice = draft.voice.provider === "local" && draft.voice.voiceId === "default"
         ? undefined
         : draft.voice.voiceId;
+      const spoken = story ? storySpoken(draft.script) : draft.script;
       let voice = await api<VoiceResult>("film_voiceover", {
         film: created.film,
-        text: draft.script,
+        text: spoken,
         provider: draft.voice.provider,
         voice: profileVoice,
       });
@@ -181,12 +259,12 @@ export function ReelCreator({
         await new Promise((resolve) => setTimeout(resolve, 1500));
         voice = await api<VoiceResult>("film_voiceover", {
           film: created.film,
-          text: draft.script,
+          text: spoken,
           provider: draft.voice.provider,
           voice: profileVoice,
         });
       }
-      await api("write_film_file", { film: created.film, path: "index.html", content: reelHtml(draft, voice) });
+      await api("write_film_file", { film: created.film, path: "index.html", content: story ? storyHtml(draft, voice) : reelHtml(draft, voice) });
       const duration = +(voice.voiceEnd + 1.8).toFixed(2);
       const [check, frames, format] = await Promise.all([
         api<{ errors: string[]; warnings: string[] }>("film_check", { film: created.film }),
@@ -225,11 +303,13 @@ export function ReelCreator({
 
       <div className="reel-creator-grid">
         <section className="reel-form-card">
-          <span className="reel-section-number">01 · MENSAGEM</span>
-          <label className="reel-field">Objetivo<input value={draft.objective} maxLength={180} disabled={busy} onChange={(event) => update({ objective: event.target.value })} /></label>
-          <label className="reel-field">Oferta<textarea rows={3} value={draft.offer} maxLength={500} disabled={busy} onChange={(event) => update({ offer: event.target.value })} /></label>
-          <label className="reel-field">Roteiro<textarea rows={8} value={draft.script} maxLength={5000} disabled={busy} onChange={(event) => { scriptAutomatic.current = false; update({ script: event.target.value }); }} /></label>
-          <small>O texto acima é o roteiro real enviado à narração. Nenhuma IA foi simulada.</small>
+          <span className="reel-section-number">01 · {story ? "EPISÓDIO" : "MENSAGEM"}</span>
+          {!story && <label className="reel-field">Objetivo<input value={draft.objective} maxLength={180} disabled={busy} onChange={(event) => update({ objective: event.target.value })} /></label>}
+          {!story && <label className="reel-field">Oferta<textarea rows={3} value={draft.offer} maxLength={500} disabled={busy} onChange={(event) => update({ offer: event.target.value })} /></label>}
+          <label className="reel-field">{story ? "Roteiro do episódio" : "Roteiro"}<textarea rows={story ? 14 : 8} value={draft.script} maxLength={5000} disabled={busy} onChange={(event) => { scriptAutomatic.current = false; update({ script: event.target.value }); }} /></label>
+          <small>{story
+            ? "Uma fala por linha: “Nome (humor): fala”. Linhas sem nome são do narrador; [cena: quarto, noite] troca o cenário; “# Episódio 1: Título” abre o episódio. O primeiro personagem é o seu avatar."
+            : "O texto acima é o roteiro real enviado à narração. Nenhuma IA foi simulada."}</small>
         </section>
 
         <section className="reel-form-card">
@@ -253,7 +333,7 @@ export function ReelCreator({
       {busy && <p className="reel-busy" role="status"><LoaderCircle size={16} className="spin" /> Criando filme, narração, cenas e quadros reais. Isso pode levar alguns minutos.</p>}
       <div className="reel-create-actions">
         <span>O filme será vinculado a <strong>{profile.name}</strong>.</span>
-        <button type="button" className="studio-primary-button" disabled={busy || !formats.length || !draft.objective.trim() || !draft.offer.trim() || !draft.script.trim()} onClick={() => void generate()}>
+        <button type="button" className="studio-primary-button" disabled={busy || !formats.length || (!story && (!draft.objective.trim() || !draft.offer.trim())) || !draft.script.trim()} onClick={() => void generate()}>
           {busy ? <LoaderCircle size={15} className="spin" /> : <WandSparkles size={15} />} Gerar filme e revisar <ArrowRight size={14} />
         </button>
       </div>

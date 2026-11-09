@@ -176,6 +176,21 @@ ${engine}`)(scope, class {});
   });
 });
 
+describe("effects catalogue (HyperFrames registry, offline)", () => {
+  it("finds effects and copies one into a film with a mount snippet", async () => {
+    const found = await films.effects("caption karaoke");
+    expect(found.effects.map((e) => e.name)).toContain("caption-pill-karaoke");
+    const film = await films.create({ name: "Efeitos", format: "avatar" });
+    const added = await films.addEffect(film.id, "per-word-rise");
+    expect(added.file).toBe("compositions/components/per-word-rise.html");
+    expect(added.mount).toContain('data-composition-src="compositions/components/per-word-rise.html"');
+    const html = await fs.readFile(path.join(film.path, added.file), "utf8");
+    expect(html).toContain("../../kit/gsap.min.js");
+    expect(html).not.toMatch(/https:\/\/(cdn\.jsdelivr|fonts\.googleapis)/);
+    await expect(films.addEffect(film.id, "nao-existe")).rejects.toThrow(/não existe/);
+  });
+});
+
 describe("film helpers", () => {
   it("finds remote references but not XML namespaces", () => {
     expect(remoteReferences('<svg xmlns="http://www.w3.org/2000/svg"></svg>')).toEqual([]);

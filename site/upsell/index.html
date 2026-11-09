@@ -952,6 +952,18 @@
         max-width: 900px;
         margin: 0 auto;
       }
+      .story-wrap {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        gap: 40px;
+        align-items: center;
+      }
+      .story-list {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .story-case .reel {
+        max-width: 380px;
+      }
       @media (max-width: 1000px) {
         .feats,
         .quad,
@@ -961,7 +973,8 @@
       }
       @media (max-width: 860px) {
         .proofs,
-        .pair {
+        .pair,
+        .story-wrap {
           grid-template-columns: minmax(0, 1fr);
         }
         .pair {
@@ -1307,6 +1320,34 @@
       </div>
     </section>
 
+    <!-- HISTÓRIAS: série com personagens fixos -->
+    <section id="historias" aria-labelledby="story-title">
+      <div class="wrap story-wrap">
+        <div class="story-copy">
+          <h2 id="story-title">E também conta <em>histórias.</em></h2>
+          <p class="sub">
+            Nem todo Reels precisa vender. Crie uma série com personagens fixos
+            (o seu avatar e coadjuvantes), um episódio por dia, cada um
+            terminando em “continua no próximo”. Quem gosta segue o perfil
+            para ver a parte 2.
+          </p>
+          <ul class="inc story-list">
+            <li>Roteiro em falas: “Léo (animado): Bia, acorda!”</li>
+            <li>Cada personagem fala com a própria boca e voz</li>
+            <li>Balões de quadrinho, cenários de dia e de noite</li>
+            <li>Título do episódio e gancho para o próximo</li>
+          </ul>
+        </div>
+        <article class="case story-case">
+          <h3>Episódio 1: <span>o primeiro cliente</span></h3>
+          <div class="reel">
+            <video src="videos/historia.mp4" poster="videos/historia.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+            <span class="tag-ours">Feito no Videosell</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <!-- O QUE O APP FAZ -->
     <section id="o-que-faz" aria-labelledby="does-title">
       <div class="wrap">
@@ -1541,7 +1582,7 @@
         <h2 id="inclusions-title">O que você <em>leva</em></h2>
         <ul class="inc">
           <li>App Videosell para Windows, com atualizações</li>
-          <li>8 formatos virais com filme pronto e guia passo a passo</li>
+          <li>9 formatos, incluindo histórias em episódios, com filme pronto e guia</li>
           <li>Criador de avatar de IA em pixel art</li>
           <li>Perfis separados para cada produto</li>
           <li>Narração no seu computador, ElevenLabs, OpenAI ou a sua voz</li>
