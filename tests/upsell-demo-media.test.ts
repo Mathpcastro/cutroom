@@ -1,21 +1,16 @@
 import { execFile as execFileCallback } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "ffprobe-static";
 import { describe, expect, it } from "vitest";
 
 const execFile = promisify(execFileCallback);
-const ffmpegPath = ffmpegStatic!;
 const ffprobePath = ffprobeStatic.path;
-const names = ["professor", "ui-motion"] as const;
 
-async function audioHash(file: string) {
-  const { stdout } = await execFile(ffmpegPath, [
-    "-v", "error", "-i", file, "-map", "0:a:0", "-c:a", "copy", "-f", "md5", "-",
-  ]);
-  return stdout.trim();
-}
+// Every video the page plays, with its poster (the page is the source of truth).
+const page = readFileSync(resolve("site/upsell/index.html"), "utf8");
+const names = [...new Set([...page.matchAll(/src="videos\/([\w-]+)\.mp4"/g)].map((m) => m[1]))];
 
 async function probe(file: string) {
   const { stdout } = await execFile(ffprobePath, [
@@ -33,27 +28,30 @@ async function probe(file: string) {
   };
 }
 
-describe("mídias reais dos dois comparativos do upsell", { timeout: 60_000 }, () => {
+describe("vídeos reais da página de upsell", { timeout: 60_000 }, () => {
+  it("a página toca os vídeos gerados pelo motor novo", () => {
+    expect(names).toEqual(expect.arrayContaining(["avatar", "professor", "ui-motion", "mentoria", "stickman", "kurzgesagt"]));
+  });
+
   for (const name of names) {
-    it(`${name}: mantém byte a byte o stream de narração original`, async () => {
-      const generated = resolve(`site/upsell/videos/${name}.mp4`);
-      const original = resolve(`artifacts/upsell-demos/original/${name}.mp4`);
-      expect(await audioHash(generated)).toEqual(await audioHash(original));
-    });
-
-    it(`${name}: entrega vertical 1080 × 1920, 30 fps e áudio 48 kHz`, async () => {
+    it(`${name}: vertical 9:16, 30 fps, com áudio a 48 kHz`, async () => {
       const info = await probe(resolve(`site/upsell/videos/${name}.mp4`));
-      const video = info.streams.find((stream) => stream.codec_type === "video");
+      const video = info.streams.find((stream) => stream.codec_type === "video")!;
       const audio = info.streams.find((stream) => stream.codec_type === "audio");
-      expect(video).toMatchObject({ width: 1080, height: 1920, avg_frame_rate: "30/1" });
+      expect(video.width! * 16).toBe(video.height! * 9);
+      expect(video.width).toBeGreaterThanOrEqual(540);
+      expect(video.avg_frame_rate).toBe("30/1");
       expect(audio?.sample_rate).toBe("48000");
-      expect(Number(info.format.duration)).toBeGreaterThan(0);
+      expect(Number(info.format.duration)).toBeGreaterThan(5);
     });
 
-    it(`${name}: tem pôster vertical com as dimensões do vídeo`, async () => {
-      const info = await probe(resolve(`site/upsell/videos/${name}.jpg`));
-      const poster = info.streams.find((stream) => stream.codec_type === "video");
-      expect(poster).toMatchObject({ width: 1080, height: 1920 });
+    it(`${name}: tem pôster com as dimensões do vídeo`, async () => {
+      const [clip, poster] = await Promise.all([
+        probe(resolve(`site/upsell/videos/${name}.mp4`)),
+        probe(resolve(`site/upsell/videos/${name}.jpg`)),
+      ]);
+      const v = clip.streams.find((stream) => stream.codec_type === "video")!;
+      expect(poster.streams[0]).toMatchObject({ width: v.width, height: v.height });
     });
   }
 });

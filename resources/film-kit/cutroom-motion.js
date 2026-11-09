@@ -520,8 +520,9 @@
         else CRM.punch(tl, cam, start + 0.05, 1.06, 0.4);
       }
       // Kinetic words: chunks of up to 4 words, each slamming on its first spoken word.
-      var chunks = [];
-      for (var c = 0; c < sw.length; c += 4) chunks.push(sw.slice(c, c + 4));
+      // Balanced chunks of at most 4 words (5 words → 3 + 2, never a lone word at the end).
+      var chunks = [], per = Math.ceil(sw.length / Math.ceil(sw.length / 4));
+      for (var c = 0; c < sw.length; c += per) chunks.push(sw.slice(c, c + per));
       if (last && A) chunks = [sw];
       chunks.forEach(function (ch, ci) {
         var el = document.createElement("div");
@@ -534,7 +535,7 @@
         }).join(" ");
         if (ch.length > 6) el.style.fontSize = "92px";
         textLayer.appendChild(el);
-        var t0 = Math.max(0, ch[0].start - 0.12), t1 = ci + 1 < chunks.length ? Math.max(0, chunks[ci + 1][0].start - 0.14) : next - 0.06;
+        var t0 = Math.max(0, ch[0].start - 0.12), t1 = ci + 1 < chunks.length ? Math.max(t0 + 0.2, chunks[ci + 1][0].start - 0.32) : next - 0.2;
         CRM.slam(tl, el, t0, { times: ch.map(function (w) { return Math.max(0, w.start - 0.06); }), shakeSel: cam, amp: neg ? 22 : 12 });
         if (neg) CRM.glitch(tl, el.querySelector(".neg") || el, t0 + 0.1, 0.3);
         CRM.out(tl, el, t1);

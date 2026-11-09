@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<!-- Formato "ui-motion" do CutRoom: uma forma que vira interface, cursor clicando, estados que mudam. Roteiro em roteiro.txt. -->
+<!-- Formato "ui-motion" do Videosell: uma forma que vira interface, cursor clicando, estados que mudam. Roteiro em roteiro.txt. -->
 <script src="brand.js"></script>
 <style>
   @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
@@ -27,7 +27,9 @@
   .track { position: relative; height: 92px; margin-top: 22px; border-radius: 18px; background: #F2EFEA; }
   .clip { position: absolute; top: 10px; height: 72px; border-radius: 14px; }
   .playhead { position: absolute; top: -12px; left: 0; width: 6px; height: 340px; border-radius: 3px; background: var(--ink); }
-  .chip { position: absolute; left: 160px; top: 1430px; padding: 26px 44px; border-radius: 999px; background: var(--ink); color: #fff; font: 600 44px "Instrument Sans"; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+  #av { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  #flash { position: absolute; inset: 0; background: #fff; z-index: 40; visibility: hidden; opacity: 0; }
+  .chip { position: absolute; left: 420px; top: 1430px; padding: 26px 44px; border-radius: 999px; background: var(--ink); color: #fff; font: 600 44px "Instrument Sans"; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
   .chip b { color: var(--accent); }
   .reel { position: absolute; inset: 0; background: linear-gradient(170deg, var(--ink), #3a2f2a); color: #fff; }
   .reel .title { position: absolute; left: 50px; right: 50px; top: 300px; font: 96px/1 Anton; }
@@ -54,7 +56,7 @@
         <div class="btn">Gerar</div>
       </div>
       <div class="state st2 later">
-        <div class="label">Narração · voz pronta</div>
+        <div class="label">Narração · a sua voz</div>
         <div class="wave"></div>
       </div>
       <div class="state st3 later">
@@ -68,16 +70,21 @@
       </div>
     </div>
     <div class="hook later">SEU PRÓXIMO<br>REELS SE FAZ<br><span>SOZINHO</span></div>
-    <div class="chip later">♪ Música <b>livre de direitos</b></div>
+    <div class="chip later">♪ Música <b>e efeitos</b></div>
     <div class="ok later">✓</div>
-    <div class="end logo later">CUT<span>ROOM</span></div>
-    <div class="end tag later">o editor que o seu agente controla</div>
+    <div class="end logo later">VIDEO<span>SELL</span></div>
+    <div class="end tag later">Reels com IA que vendem o seu SaaS</div>
+    <canvas id="av" width="1080" height="1920"></canvas>
   </div></div>
+  <div id="flash"></div>
   <audio id="voz" data-start="0" data-duration="13.7" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
   <!--MUSICA-->
   <script src="kit/gsap.min.js"></script>
   <script src="timing.js"></script>
   <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
+  <script src="kit/avatar/engine.js"></script>
+  <script src="kit/avatar/sample.js"></script>
   <script>
     (function () {
       var p = (window.BRAND && window.BRAND.palette) || {}, s = document.documentElement.style;
@@ -149,13 +156,32 @@
     tl.to(".reel .bar i", { width: "100%", duration: 2.0, ease: "none" }, tEntrega + 0.4);
     CR.stamp(tl, ".ok", tMinutos, -8);
     // 6. Final: a marca.
-    var tCut = at("cutroom", 2, 11.6);
+    var tCut = at("videosell", 2, 11.6);
     tl.to(".shape, .ok", { scale: 0.6, autoAlpha: 0, duration: 0.3, ease: "power2.in" }, tCut - 0.3);
     CR.slam(tl, ".logo", tCut);
     CR.rise(tl, ".tag", tCut + 0.5);
     CR.profileCTA(tl, at("link", 1, tCut + 0.8), { y: 1180, until: D });
 
     CR.camera(tl, ".cam", D, [tVoce, tGrava, tMonta, tEntrega, tCut], { inner: ".punch", punch: 0.04 });
+
+    // The avatar records the narration with your voice and points to the link at the end.
+    var A = CRM.avatar({ engine: window.AvatarEngine, avatar: window.FILM_AVATAR || window.CRM_SAMPLE_AVATAR, outline: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#E8462F" });
+    A.shot(0, { x: 200, y: 1930, scale: 8, d: 0 }); A.enter(tGrava + 0.1, "left");
+    A.act(tGrava, "explaining", "happy"); A.talk(tGrava + 0.4, tEntrega - 0.2, ["explaining", "pointing"]);
+    A.act(tMinutos, "celebrating", "happy"); A.hop(tMinutos + 0.05, 24);
+    A.shot(tCut - 0.3, { x: 860, y: 1930, scale: 9, d: 0.4, e: "inOut" }); A.act(tCut, "pointing", "confident");
+    var BURSTS = [
+      { t: tMinutos, x: 750, y: 580, kind: "confetti", n: 90, spread: 1200, seed: 3 },
+      { t: tCut, x: 540, y: 850, kind: "spark", n: 46, spread: 900, seed: 7 },
+    ];
+    var av = document.getElementById("av").getContext("2d"), stA = { t: 0 };
+    tl.to(stA, { t: D, duration: D, ease: "none", onUpdate: function () { av.clearRect(0, 0, 1080, 1920); A.draw(av, stA.t); CRM.particles(av, stA.t, BURSTS); } }, 0);
+    // Impacts: the click, the beat, the delivery and the logo.
+    CRM.shake(tl, ".cam", 0.1, 14, 0.3);
+    CRM.flash(tl, "#flash", tGrava - 0.1, 0.45); CRM.shake(tl, ".cam", tGrava - 0.05, 16, 0.3);
+    CRM.punch(tl, ".shape", tBatida, 1.06, 0.3);
+    CRM.flash(tl, "#flash", tMinutos, 0.4); CRM.shake(tl, ".cam", tMinutos + 0.05, 18, 0.3);
+    CRM.flash(tl, "#flash", tCut, 0.7); CRM.shake(tl, ".cam", tCut + 0.05, 24, 0.35);
     tl.set({}, {}, D);
     window.__timelines["film"] = tl;
   </script>

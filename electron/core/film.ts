@@ -158,8 +158,17 @@ export class Films {
       await mkdir(join(dir, "kit", "avatar"), { recursive: true });
       // Classic-script build of the engine: ready before the first frame is captured (a dynamic import is not).
       await writeFile(join(dir, "kit", "avatar", "engine.js"), classicAvatarEngine(await readFile(join(engine, "avatar-engine.js"), "utf8")), "utf8");
-      const sample = await readFile(join(engine, "examples", "strategist.json"), "utf8").catch(() => "");
-      if (sample) await writeFile(join(dir, "kit", "avatar", "sample.js"), `window.CRM_SAMPLE_AVATAR = ${JSON.stringify(JSON.parse(sample))};\n`, "utf8");
+      const samples: Record<string, unknown> = {};
+      for (const name of ["strategist", "companion", "expert"]) {
+        const raw = await readFile(join(engine, "examples", `${name}.json`), "utf8").catch(() => "");
+        if (raw) samples[name] = JSON.parse(raw);
+      }
+      if (Object.keys(samples).length)
+        await writeFile(
+          join(dir, "kit", "avatar", "sample.js"),
+          `window.CRM_SAMPLE_AVATARS = ${JSON.stringify(samples)};\nwindow.CRM_SAMPLE_AVATAR = window.CRM_SAMPLE_AVATARS.strategist || Object.values(window.CRM_SAMPLE_AVATARS)[0];\n`,
+          "utf8",
+        );
     }
     // three.js (MIT) for 3D sets and post-processing; use an import map: {"three": "./kit/three/three.module.min.js"}.
     if (await stat(join(this.kit, "three")).then(() => true, () => false)) await cp(join(this.kit, "three"), join(dir, "kit", "three"), { recursive: true });

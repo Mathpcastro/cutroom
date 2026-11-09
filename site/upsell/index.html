@@ -935,9 +935,27 @@
         max-height: none;
       }
 
+      .quad.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .case.on-dark {
+        background: var(--ink-2);
+        color: var(--white);
+      }
+      .case.on-dark p {
+        color: rgba(255, 255, 255, 0.72);
+      }
+      .case.on-dark h3 span {
+        color: var(--lime);
+      }
+      #avatar .trio {
+        max-width: 900px;
+        margin: 0 auto;
+      }
       @media (max-width: 1000px) {
         .feats,
-        .quad {
+        .quad,
+        .quad.three {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
@@ -1259,6 +1277,36 @@
       </div>
     </section>
 
+    <!-- AVATAR: um apresentador para qualquer produto -->
+    <section class="dark" id="avatar" aria-labelledby="avatar-title">
+      <div class="wrap">
+        <h2 id="avatar-title">Seu avatar apresenta. <em>Qualquer produto.</em></h2>
+        <p class="sub">
+          Crie o seu avatar de IA uma vez e ele aparece nos Reels falando com a
+          sua voz: cai na tela, aponta, comemora, faz close no rosto e chama
+          para o link. Um perfil para cada produto.
+        </p>
+        <div class="trio">
+          <article class="case on-dark">
+            <h3>Aula para um <span>SaaS</span></h3>
+            <div class="reel">
+              <video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+              <span class="tag-ours">Feito no Videosell</span>
+            </div>
+            <p>O avatar ensina o post que vende, mostra a prova e termina com uma pergunta que gera comentário.</p>
+          </article>
+          <article class="case on-dark">
+            <h3>Reels para <span>mentoria</span></h3>
+            <div class="reel">
+              <video src="videos/mentoria.mp4" poster="videos/mentoria.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+              <span class="tag-ours">Feito no Videosell</span>
+            </div>
+            <p>Montado sozinho a partir do roteiro: cada frase vira uma cena, com gestos, close e transições.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <!-- O QUE O APP FAZ -->
     <section id="o-que-faz" aria-labelledby="does-title">
       <div class="wrap">
@@ -1279,10 +1327,10 @@
           </div>
           <div class="feat">
             <b class="ico" aria-hidden="true">▦</b>
-            <h3>7 formatos virais prontos</h3>
+            <h3>8 formatos virais prontos</h3>
             <p>
-              Stickman em 3D, jogo em pixel art, explainer ilustrado, “e se”,
-              aula com apresentador, o app funcionando e voo pela sua landing
+              Avatar apresentador, stickman em 3D, jogo em pixel art, explainer
+              ilustrado, “e se”, aula, o app funcionando e voo pela sua landing
               page.
             </p>
           </div>
@@ -1421,17 +1469,11 @@
           Todos gerados pelo Videosell. Troque o roteiro, as telas e a marca;
           o ritmo que prende já vem pronto.
         </p>
-        <div class="quad">
+        <div class="quad three">
           <article class="case">
             <h3>Jogo em <span>pixel art</span></h3>
             <div class="reel">
               <video src="videos/pixel.mp4" poster="videos/pixel.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
-            </div>
-          </article>
-          <article class="case">
-            <h3>Aula com <span>apresentador</span></h3>
-            <div class="reel">
-              <video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
             </div>
           </article>
           <article class="case">
@@ -1499,7 +1541,7 @@
         <h2 id="inclusions-title">O que você <em>leva</em></h2>
         <ul class="inc">
           <li>App Videosell para Windows, com atualizações</li>
-          <li>7 formatos virais com filme pronto e guia passo a passo</li>
+          <li>8 formatos virais com filme pronto e guia passo a passo</li>
           <li>Criador de avatar de IA em pixel art</li>
           <li>Perfis separados para cada produto</li>
           <li>Narração no seu computador, ElevenLabs, OpenAI ou a sua voz</li>
