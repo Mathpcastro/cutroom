@@ -276,6 +276,24 @@ export class Studio {
     message: "A narração ainda está sendo gerada no computador do usuário. Chame a mesma ferramenta de novo, com o mesmo texto, em 30 segundos (não cobra de novo).",
   };
 
+  /**
+   * Word timings for a narration recorded elsewhere (ElevenLabs, a cloned voice, a microphone):
+   * the local transcription hears it and the words are aligned to the script as written.
+   */
+  async alignFile(file: string, text: string) {
+    const info = await stat(file);
+    const key = createHash("sha256").update(JSON.stringify([file, info.size, info.mtimeMs, text])).digest("hex").slice(0, 32);
+    return this.host.job("voice", "Sincronizando a narração…", async (signal, progress) => {
+      const duration = await probeAudio(file, signal);
+      const recognized = await this.host.transcribeFile(
+        { id: `voice-file-${key}`, name: "Narração", path: file, duration, width: 1, height: 1, fps: 1, hasAudio: true },
+        signal,
+        (v) => progress(v),
+      );
+      return { words: alignScript(text, recognized), duration };
+    });
+  }
+
   async addVoiceover(args: Record<string, unknown>) {
     const a = Studio.voiceArgs
       .extend({

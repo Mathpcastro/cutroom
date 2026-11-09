@@ -98,16 +98,17 @@
     g.imageSmoothingEnabled = false;
     var ACC = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#ff5a36";
     var PAL = { K: "#1a1423", S: "#f2c29b", s: "#c98d6a", C: ACC, c: "#b8321f", W: "#ffffff", B: "#2b6fd6", b: "#1b4596", P: "#3a2a22", Y: "#ffd23f", y: "#d9a21b", G: "#5bc95b", g: "#2f8f3f", R: "#ff4d4d", V: "#7b3fe4", v: "#4f22a8", O: "#ff9f1c" };
-    function sprite(rows, x, y, flip, pal) {
+    function sprite(rows, x, y, flip, pal, sc) {
+      sc = sc || 1;
       for (var r = 0; r < rows.length; r++) for (var c = 0; c < rows[r].length; c++) {
         var ch = rows[r][flip ? rows[r].length - 1 - c : c];
         if (ch === ".") continue;
-        g.fillStyle = (pal && pal[ch]) || PAL[ch]; g.fillRect(Math.round(x + c), Math.round(y + r), 1, 1);
+        g.fillStyle = (pal && pal[ch]) || PAL[ch]; g.fillRect(Math.round(x) + c * sc, Math.round(y) + r * sc, sc, sc);
       }
     }
     var HERO_TOP = ["....CCCCC.......", "...CCCCCCCC.....", "...KCCCCCCCCC...", "...KSSSSSK......", "...KSKSSKSK.....", "...KSSSSSSK.....", "....KSssSK......", ".....KKKK.......", "....KBBBBK......", "...KBBWWBBK.....", "..KSKBBBBKSK....", "..KSKBBBBKSK....", "....KbbbbK......", "....KBBBBK......"];
     var LEGS = [["....KP..PK......", "....KP..PK......", "....KK..KK......"], ["...KP....PK.....", "..KP......PK....", "..KK......KK...."], ["....KPPPPK......", ".....KP.PK......", ".....KK.KK......"], ["...KP...KP......", "...KK....KPK....", ".........KK....."]];
-    function hero(x, y, frame, flip, pal) { sprite(HERO_TOP.concat(LEGS[frame]), x, y, flip, pal); }
+    function hero(x, y, frame, flip, pal) { sprite(HERO_TOP.concat(LEGS[frame]), x, y, flip, pal, 2); } // 2x2 pixels: reads on a phone
     var GOLD = { C: "#ffd23f", c: "#d9a21b", B: "#ffe680", b: "#ffd23f", P: "#d9a21b" };
     function seeded(n) { var s = n * 9301 + 49297; return function () { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
     function sky(cam, mood) {
@@ -137,12 +138,12 @@
     function iconCarousel(x, y) { [[6, "#ffffff"], [3, "#ffe0d6"], [0, ACC]].forEach(function (o) { g.fillStyle = "#1a1423"; g.fillRect(x + o[0] - 1, y + o[0] - 1, 12, 14); g.fillStyle = o[1]; g.fillRect(x + o[0], y + o[0], 10, 12); }); }
     function iconReels(x, y) { g.fillStyle = "#1a1423"; g.fillRect(x - 1, y - 1, 16, 16); g.fillStyle = "#ff4fa3"; g.fillRect(x, y, 14, 14); g.fillStyle = "#fff"; for (var i = 0; i < 6; i++) g.fillRect(x + 5, y + 4 + i, 1 + Math.min(i, 5 - i) * 1.4, 1); }
     function boss(x, y, t, hp, hit) {
-      var r = 22, cx = x + r, cy = y + r;
+      var r = 32, cx = x + r, cy = y + r;
       for (var yy = -r; yy <= r; yy++) for (var xx = -r; xx <= r; xx++) if (xx * xx + yy * yy <= r * r) { g.fillStyle = hit ? "#ffffff" : (xx + yy) % 7 === 0 ? "#4f22a8" : "#7b3fe4"; g.fillRect(cx + xx, cy + yy + Math.round(Math.sin(t * 4) * 2), 1, 1); }
       var by = Math.round(Math.sin(t * 4) * 2);
-      g.fillStyle = "#fff"; g.fillRect(cx - 9, cy - 9 + by, 18, 14); g.fillStyle = "#1a1423"; g.fillRect(cx - 4 + Math.round(Math.sin(t * 2) * 3), cy - 5 + by, 6, 7);
-      g.fillStyle = "#1a1423"; g.fillRect(cx - 12, cy + 9 + by, 24, 5); g.fillStyle = "#fff"; for (var k = 0; k < 6; k++) g.fillRect(cx - 11 + k * 4, cy + 9 + by, 2, 3);
-      g.fillStyle = "#1a1423"; g.fillRect(x - 2, y - 14, 48, 6); g.fillStyle = "#ff4d4d"; g.fillRect(x - 1, y - 13, Math.round(46 * hp), 4);
+      g.fillStyle = "#fff"; g.fillRect(cx - 13, cy - 13 + by, 26, 20); g.fillStyle = "#1a1423"; g.fillRect(cx - 5 + Math.round(Math.sin(t * 2) * 5), cy - 7 + by, 9, 10);
+      g.fillStyle = "#1a1423"; g.fillRect(cx - 17, cy + 13 + by, 34, 7); g.fillStyle = "#fff"; for (var k = 0; k < 8; k++) g.fillRect(cx - 16 + k * 4, cy + 13 + by, 2, 4);
+      g.fillStyle = "#1a1423"; g.fillRect(x - 2, y - 14, 68, 6); g.fillStyle = "#ff4d4d"; g.fillRect(x - 1, y - 13, Math.round(66 * hp), 4);
     }
     function sign(x, label, lit) { g.fillStyle = "#6b3517"; g.fillRect(x + 14, 200, 4, 30); g.fillStyle = lit ? "#ffd23f" : "#f4efe6"; g.fillRect(x, 180, 32, 22); g.fillStyle = "#1a1423"; g.fillRect(x, 180, 32, 1); g.fillRect(x, 201, 32, 1); g.font = "6px 'Press Start 2P'"; g.fillText(label, x + 2, 194); }
     function fireworks(t, t0) { var r = seeded(9); for (var i = 0; i < 5; i++) { var cx = 20 + r() * 140, cy = 40 + r() * 90, start = t0 + i * 0.35, k = t - start; if (k < 0 || k > 1.2) continue; for (var a = 0; a < 12; a++) { var ang = (a / 12) * Math.PI * 2, d = k * 34; g.fillStyle = ["#ffd23f", "#ff4fa3", "#5ab0ff", ACC][(i + a) % 4]; g.fillRect(Math.round(cx + Math.cos(ang) * d), Math.round(cy + Math.sin(ang) * d), 2, 2); } } }
@@ -156,7 +157,7 @@
       // The hero runs right until the boss; the camera follows.
       var runEnd = B.chefao, heroWorld = 30 + Math.min(t, runEnd) * 34 + (t > B.combo ? (t - B.combo) * 40 : 0);
       if (t > B.visita) heroWorld += (t - B.visita) * 26;
-      var cam = Math.max(0, heroWorld - 40);
+      var cam = Math.max(0, heroWorld - 30);
       sky(cam, mood);
       ground(cam);
       // Coins along the path (each one is a post); collected when the hero passes.
@@ -164,20 +165,20 @@
       var walking = t < runEnd || (t > B.combo && t < B.concluida);
       var frame = walking ? Math.floor(t * 10) % 4 : 0;
       var jump = 0;
-      if (t > B.pula && t < B.chefao) jump = Math.max(0, Math.sin(((t - B.pula) % 0.8) / 0.8 * Math.PI)) * 26;
+      if (t > B.pula && t < B.chefao) jump = Math.max(0, Math.sin(((t - B.pula) % 0.8) / 0.8 * Math.PI)) * 34;
       var poweredUp = t > B.combo;
-      var hx = heroWorld - cam, hy = 213 - jump;
+      var hx = heroWorld - cam, hy = 196 - jump;
       if (t > B.vida && t < B.vida + 0.6 && Math.floor(t * 20) % 2) {} else hero(hx, hy, jump > 2 ? 3 : frame, false, poweredUp ? GOLD : null);
       // Boss arena.
       if (t > B.chefao - 0.4 && t < B.aguenta + 0.6) {
-        var bx = 118 - (t < B.chefao ? (B.chefao - t) * -200 : 0), hit = t > B.combo && Math.floor(t * 12) % 3 === 0;
+        var bx = 104 - (t < B.chefao ? (B.chefao - t) * -200 : 0), hit = t > B.combo && Math.floor(t * 12) % 3 === 0;
         var hp = t < B.combo ? 1 : Math.max(0, 1 - (t - B.combo) / Math.max(0.5, B.aguenta - B.combo));
-        if (t < B.aguenta) boss(bx, 186, t, hp, hit);
-        else { var k = (t - B.aguenta) / 0.6, rr = seeded(4); for (var p = 0; p < 40; p++) { g.fillStyle = p % 2 ? "#7b3fe4" : "#ffd23f"; g.fillRect(bx + 22 + (rr() - 0.5) * 120 * k, 208 + (rr() - 0.5) * 120 * k, 3, 3); } }
+        if (t < B.aguenta) boss(bx, 166, t, hp, hit);
+        else { var k = (t - B.aguenta) / 0.6, rr = seeded(4); for (var p = 0; p < 40; p++) { g.fillStyle = p % 2 ? "#7b3fe4" : "#ffd23f"; g.fillRect(bx + 32 + (rr() - 0.5) * 140 * k, 198 + (rr() - 0.5) * 140 * k, 4, 4); } }
         // The boss ignores pretty posts: they bounce off.
-        if (t > B.ignora && t < B.vida) { var q = (t - B.ignora) / Math.max(0.3, B.vida - B.ignora); iconCarousel(hx + 18 + q * 70 - (q > 0.6 ? (q - 0.6) * 180 : 0), 196 - Math.sin(q * Math.PI) * 24); }
+        if (t > B.ignora && t < B.vida) { var q = (t - B.ignora) / Math.max(0.3, B.vida - B.ignora); iconCarousel(hx + 30 + q * 50 - (q > 0.6 ? (q - 0.6) * 160 : 0), 186 - Math.sin(q * Math.PI) * 24); }
         // Combo shots.
-        if (poweredUp && t < B.aguenta) for (var s2 = 0; s2 < 4; s2++) { var ph = ((t - B.combo) * 2.4 + s2 * 0.25) % 1; g.fillStyle = s2 % 2 ? "#ffd23f" : "#ff4fa3"; g.fillRect(hx + 16 + ph * (bx - hx), 210 + Math.sin(ph * 6) * 4, 5, 3); }
+        if (poweredUp && t < B.aguenta) for (var s2 = 0; s2 < 4; s2++) { var ph = ((t - B.combo) * 2.4 + s2 * 0.25) % 1; g.fillStyle = s2 % 2 ? "#ffd23f" : "#ff4fa3"; g.fillRect(hx + 30 + ph * (bx - hx - 20), 206 + Math.sin(ph * 6) * 4, 6, 4); }
       }
       // Power-up blocks and what comes out of them.
       if (t > B.poderes - 0.3 && t < B.combo + 0.5) {

@@ -14,6 +14,14 @@ const string = (description: string, extra: Record<string, unknown> = {}) => ({
   description,
   ...extra,
 });
+const avatarReference = objectSchema(
+  {
+    avatarId: string("Avatar id returned by the avatar tools."),
+    revision: number("Approved immutable avatar revision.", { minimum: 1 }),
+    hash: string("SHA-256 hash of the approved revision.", { pattern: "^[a-f0-9]{64}$" }),
+  },
+  ["avatarId", "revision", "hash"],
+);
 
 export const STUDIO_TOOLS = [
   {
@@ -144,9 +152,15 @@ export const STUDIO_TOOLS = [
         name: string("Film title (also the output file name)."),
         aspect: { type: "string", enum: ["9:16", "16:9", "1:1", "4:5"], description: "Default 9:16 (Reels), or the format's aspect." },
         format: string("Format id from list_formats: its guide and checklist are written into CUTROOM.md."),
+        avatar: avatarReference,
       },
       ["name"],
     ),
+  },
+  {
+    name: "update_film_avatar",
+    description: "Explicitly replace one film's immutable avatar snapshot with another approved revision. Other films and older snapshots are unchanged.",
+    inputSchema: objectSchema({ film: string("Film id."), avatar: avatarReference }, ["film", "avatar"]),
   },
   {
     name: "list_films",
@@ -165,6 +179,7 @@ export const STUDIO_TOOLS = [
         voice: string("Voice id from list_voices. Default: the voice chosen in CutRoom."),
         model: string("Provider model (optional)."),
         instructions: string("OpenAI only: tone/pace instructions."),
+        audio: string("Absolute path of a narration already recorded elsewhere (ElevenLabs, a cloned voice, a microphone). The voice is kept as is and the word timings come from the local transcription aligned to text (the exact script)."),
       },
       ["film", "text"],
     ),

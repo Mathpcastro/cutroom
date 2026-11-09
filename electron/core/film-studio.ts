@@ -4,13 +4,17 @@ import { z } from "zod";
 import { ffmpegPath } from "./media";
 import { runProcess } from "./process";
 import { FILM_SIZES, Films, analyzeFilm, capturePage, checkFilm, filmStills, renderFilm, slug, type FilmRunner } from "./film";
+import { filmAvatarCacheKey, snapshotFilmAvatar } from "./film-avatar";
 import { FORMATS, formatGuide } from "./formats";
 import { Studio, probeAudio } from "./studio";
+import type { AvatarStore } from "./avatar-store";
 import type { BrandStore } from "./brand";
 
 type Progress = (value: number, label?: string) => void;
 export interface FilmHost {
   films: Films;
+  avatarStore: AvatarStore;
+  avatarEngineDir: string;
   brand: BrandStore;
   /** Worker script + headless browser (throws a friendly error when the motion package is missing). */
   runner(): Promise<Pick<FilmRunner, "worker" | "browser">>;
@@ -19,8 +23,10 @@ export interface FilmHost {
 }
 
 const RENDER_WAIT_MS = 40_000;
+const AUDIO = [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".opus", ".flac"];
 const MEDIA = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".mp4", ".webm", ".mov", ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"];
 const film = z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/, "Use o id devolvido por create_film ou list_films.");
+const avatar = z.object({ avatarId: z.string().min(1).max(64), revision: z.number().int().positive(), hash: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 
 /** Film-in-code tools: the agent writes HTML/GSAP, CutRoom supplies voice, timing, kit, checks and the render. */
 export class FilmStudio {
@@ -40,6 +46,7 @@ export class FilmStudio {
         name: z.string().trim().min(1).max(120),
         aspect: z.enum(Object.keys(FILM_SIZES) as [keyof typeof FILM_SIZES, ...(keyof typeof FILM_SIZES)[]]).optional(),
         format: z.string().max(60).optional(),
+        avatar: avatar.optional(),
       })
       .strict()
       .parse(args);
@@ -50,13 +57,23 @@ export class FilmStudio {
       aspect: a.aspect ?? (guide?.aspect as keyof typeof FILM_SIZES | undefined),
       format: a.format,
       brand,
+      avatar: a.avatar,
       guide: guide ? `${guide.guide}\n\n### Checklist\n${guide.checklist.map((c) => `- ${c}`).join("\n")}` : undefined,
     });
+    if (a.avatar) {
+      try {
+        await snapshotFilmAvatar({ store: this.host.avatarStore, filmDir: created.path, engineDir: this.host.avatarEngineDir, avatar: a.avatar });
+      } catch (error) {
+        await rm(created.path, { recursive: true, force: true });
+        throw error;
+      }
+    }
     return {
       film: created.id,
       path: created.path,
       size: `${created.width}x${created.height}`,
-      files: created.files,
+      avatar: created.avatar,
+      files: a.avatar ? await this.host.films.files(created.id) : created.files,
       brand: brand ? { name: brand.name, palette: brand.palette } : { configured: false },
       next: [
         "Leia CUTROOM.md (contrato, kit, regras de qualidade) com read_film_file ou direto da pasta.",
@@ -67,10 +84,31 @@ export class FilmStudio {
     };
   }
 
+  async updateFilmAvatar(args: Record<string, unknown>) {
+    const a = z.object({ film, avatar }).strict().parse(args);
+    const dir = this.host.films.dir(a.film);
+    await this.host.films.meta(a.film);
+    const snapshot = await snapshotFilmAvatar({ store: this.host.avatarStore, filmDir: dir, engineDir: this.host.avatarEngineDir, avatar: a.avatar });
+    await this.host.films.updateAvatar(a.film, snapshot);
+    return { film: a.film, avatar: snapshot, cacheKey: filmAvatarCacheKey(snapshot) };
+  }
+
   async voiceover(args: Record<string, unknown>) {
-    const a = Studio.voiceArgs.extend({ film }).strict().parse(args);
-    const { film: id, ...voiceArgs } = a;
+    const a = Studio.voiceArgs.extend({ film, audio: z.string().max(2000).optional() }).strict().parse(args);
+    const { film: id, audio, ...voiceArgs } = a;
     await this.host.films.meta(id);
+    if (audio) {
+      // A narration recorded elsewhere: keep the voice, take the timings from the local transcription.
+      if (!isAbsolute(audio) || !AUDIO.includes(extname(audio).toLowerCase())) throw new Error("Use o caminho absoluto de um arquivo de áudio (mp3, wav, m4a, aac, ogg, opus, flac).");
+      const aligned = await this.studio.alignFile(audio, voiceArgs.text);
+      const set = await this.host.films.setVoice(id, { file: audio, words: aligned.words, duration: aligned.duration, provider: "arquivo" });
+      return {
+        ...set,
+        words: set.words.map((w) => `${w.start.toFixed(2)} ${w.text}`).join(" "),
+        suggestedDuration: +(set.voiceEnd + 2).toFixed(1),
+        audioTag: `<audio id="voz" data-start="0" data-duration="${set.duration}" data-track-index="20" data-volume="1" src="${set.file}"></audio>`,
+      };
+    }
     const voiced = await this.studio.synthesize(voiceArgs);
     if (!voiced) return Studio.generating;
     const { file, words, provider, voice } = voiced;
