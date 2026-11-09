@@ -47,6 +47,7 @@
   <script src="kit/gsap.min.js"></script>
   <script src="timing.js"></script>
   <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
   <script>
     (function () {
       var p = (window.BRAND && window.BRAND.palette) || {};
@@ -194,6 +195,19 @@
     tl.to(st, { t: D, duration: D, ease: "none", onUpdate: function () { draw(st.t); } }, 0);
     draw(0);
     tl.set({}, {}, D);
+    // Motion kit: hits on the game's peaks (pixel-square particles match the art).
+    var FX = CRM.overlay(tl, D, [
+      { t: B.vida, x: 300, y: 1300, kind: "spark", n: 30, spread: 700, colors: ["#ff4d4d", "#ffffff"], seed: 3 },
+      { t: B.combo, x: 540, y: 700, kind: "confetti", n: 90, spread: 1300, seed: 5 },
+      { t: B.aguenta + 0.2, x: 700, y: 1200, kind: "spark", n: 60, spread: 1100, seed: 7 },
+      { t: B.venda, x: 540, y: 800, kind: "coin", n: 24, spread: 1100, angle: -Math.PI / 2, cone: 2.2, seed: 9 },
+      { t: B.concluida, x: 540, y: 600, kind: "confetti", n: 110, spread: 1400, seed: 11 },
+    ], { speedLines: [{ from: B.combo - 0.05, to: B.combo + 0.8, x: 540, y: 700, color: "#ffd23f" }] });
+    CRM.flash(tl, FX.flash, B.vida, 0.5); CRM.shake(tl, "#film", B.vida + 0.02, 22, 0.35);
+    CRM.shake(tl, "#film", B.chefao + 0.2, 14, 0.3);
+    CRM.flash(tl, FX.flash, B.combo, 0.7); CRM.shake(tl, "#film", B.combo + 0.05, 24, 0.4);
+    CRM.flash(tl, FX.flash, B.venda, 0.5); CRM.punch(tl, "#film", B.venda + 0.05, 1.06, 0.4);
+    CRM.flash(tl, FX.flash, B.concluida, 0.6);
     window.__timelines["film"] = tl;
   </script>
 </div>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!--
-  Formato "landing-flyover" do CutRoom: voo 3D contínuo pela landing page, sem narração.
+  Formato "landing-flyover" do Videosell: voo 3D contínuo pela landing page, com narração curta, palavras na tela e o avatar no cartão final.
   1. film_capture_page{film, url} → assets/pagina.jpg (anote a altura que ele devolve).
   2. Ajuste CONFIG abaixo: altura da página, os 2–6 elementos que levantam (em px da captura de 1440 de largura) e a frase final.
 -->
@@ -28,6 +28,11 @@
   .l2 { top: 1080px; font: italic 92px/1 "Instrument Serif"; }
   .brand { position: absolute; left: 90px; top: 1290px; font: 700 46px "Instrument Sans"; color: rgba(255,255,255,.85); letter-spacing: 1px; }
   .later { visibility: hidden; opacity: 0; }
+  .kin { position: absolute; left: 60px; right: 60px; top: 150px; text-align: center; font: 112px/1 Anton; text-transform: uppercase; color: #fff; visibility: hidden; opacity: 0; }
+  .kin .w { display: inline-block; padding: 6px 18px; margin: 4px; border-radius: 14px; background: #141318; }
+  .kin em { font-style: normal; color: #C8FF5A; }
+  #av { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; z-index: 20; }
+  #flash { position: absolute; inset: 0; background: #fff; z-index: 40; visibility: hidden; opacity: 0; }
 </style>
 </head>
 <body>
@@ -38,26 +43,36 @@
     <div class="line l2 later"></div>
     <div class="brand later"></div>
   </div>
+  <div class="kin" id="k1">sua <em>landing</em> page</div>
+  <div class="kin" id="k2">vira <em>Reels</em></div>
+  <div class="kin" id="k3">cada <em>prova</em> sobe</div>
+  <canvas id="av" width="1080" height="1920"></canvas>
+  <div id="flash"></div>
+  <audio id="voz" data-start="0" data-duration="11" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
   <!--MUSICA-->
   <!--SFX-->
   <script src="kit/gsap.min.js"></script>
   <script src="timing.js"></script>
   <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
+  <script src="kit/avatar/engine.js"></script>
+  <script src="kit/avatar/sample.js"></script>
   <script>
     var CONFIG = {
       src: "assets/pagina.jpg",
-      pageHeight: 7086, // altura devolvida por film_capture_page (px da captura de 1440)
+      pageHeight: 9000, // "height" devolvido por film_capture_page (altura da imagem, px da captura de 1440)
       // Elementos que levantam do papel: x, y, w, h em px da captura; at = segundo em que levantam.
       lifts: [
-        { x: 760, y: 220, w: 560, h: 520, at: 0.15, z: 70 },
-        { x: 80, y: 655, w: 700, h: 62, at: 0.35, z: 40 },
-        { x: 80, y: 1140, w: 740, h: 400, at: 1.9, z: 50 },
-        { x: 840, y: 1140, w: 540, h: 480, at: 2.2, z: 60 },
-        { x: 860, y: 3000, w: 460, h: 480, at: 4.0, z: 60 },
-        { x: 800, y: 5400, w: 580, h: 680, at: 6.0, z: 55 },
+        { x: 540, y: 416, w: 360, h: 56, at: 0.15, z: 60 },
+        { x: 180, y: 596, w: 1080, h: 704, at: 0.45, z: 45 },
+        { x: 180, y: 1336, w: 1080, h: 92, at: 1.2, z: 60 },
+        { x: 735, y: 1770, w: 435, h: 390, at: 1.8, z: 60 },
+        { x: 180, y: 3390, w: 1080, h: 390, at: 3.2, z: 50 },
+        { x: 180, y: 4230, w: 1080, h: 420, at: 4.0, z: 50 },
+        { x: 180, y: 7635, w: 1080, h: 825, at: 5.6, z: 55 },
       ],
-      line1: "Carrossel que vende.",
-      line2: "no piloto automático.",
+      line1: "112 assinantes.",
+      line2: "sem 1 real de anúncio.",
       brand: (window.BRAND && window.BRAND.name) || "",
     };
     (function () {
@@ -66,7 +81,10 @@
     })();
     window.__timelines = window.__timelines || {};
     var tl = gsap.timeline({ paused: true });
-    var D = 15, k = 1000 / 1440, Hs = CONFIG.pageHeight * k;
+    var at = CR.at, k = 1000 / 1440, Hs = CONFIG.pageHeight * k;
+    // The flight lasts until the narration says "no final"; the card lands on "frase".
+    var FLY = Math.max(5.5, at("final", 1, 7.4) - 1.2), CARD = FLY + 1.3;
+    var D = Math.max(CARD + 4.2, CR.timing.voiceEnd + 2.4);
     var page = document.querySelector(".page"), slide = document.querySelector(".slide");
     page.style.height = Hs + "px";
     page.style.backgroundImage = "url(" + CONFIG.src + ")";
@@ -78,7 +96,7 @@
       slide.appendChild(el);
       // Stand up about its own middle (top edge toward the lens), hover, then settle back as the camera passes.
       tl.fromTo(el, { z: 0, rotationX: 0 }, { z: l.z, rotationX: -24, duration: 1.1, ease: "power2.out" }, l.at);
-      tl.to(el, { z: 0, rotationX: 0, duration: 1.0, ease: "power2.inOut" }, Math.min(l.at + 3.2, 7.4));
+      tl.to(el, { z: 0, rotationX: 0, duration: 1.0, ease: "power2.inOut" }, Math.min(l.at + 3.2, FLY - 0.5));
     });
     document.querySelector(".l1").textContent = CONFIG.line1;
     document.querySelector(".l2").textContent = CONFIG.line2;
@@ -86,18 +104,34 @@
 
     // Voo: plano deitado (rotationX 54) que desliza numa velocidade só, de cima até perto do fim da página.
     tl.set(".tilt", { rotationX: 54 }, 0);
-    tl.fromTo(slide, { y: -40 }, { y: -(Hs - 1000), duration: 7.9, ease: "power1.inOut" }, 0);
+    tl.fromTo(slide, { y: -40 }, { y: -(Hs - 1000), duration: FLY, ease: "power1.inOut" }, 0);
     // Subida: o plano fica de frente e a câmera afasta até ver um bom pedaço da página (sem voltar a aproximar).
-    tl.to(".tilt", { rotationX: 0, duration: 1.6, ease: "power2.inOut" }, 7.9);
-    tl.to(".zoom", { scale: 0.42, duration: 1.6, ease: "power2.inOut" }, 7.9);
-    tl.to(slide, { y: -(Hs / 2) + 400, duration: 1.6, ease: "power2.inOut" }, 7.9);
+    tl.to(".tilt", { rotationX: 0, duration: 1.2, ease: "power2.inOut" }, FLY);
+    tl.to(".zoom", { scale: 0.42, duration: 1.2, ease: "power2.inOut" }, FLY);
+    tl.to(slide, { y: -(Hs / 2) + 400, duration: 1.2, ease: "power2.inOut" }, FLY);
     // Mergulho no cartão final (a cor da marca sobe e cobre a página).
-    tl.set(".card", { autoAlpha: 1 }, 9.9);
-    tl.fromTo(".card", { yPercent: 100 }, { yPercent: 0, duration: 0.5, ease: "power3.inOut" }, 9.9);
-    CR.slam(tl, ".l1", 10.35);
-    CR.rise(tl, ".l2", 10.9);
-    CR.rise(tl, ".brand", 11.4);
-    CR.profileCTA(tl, 12.0, { y: 1420, color: "#111111", ink: "#FFFFFF", until: D });
+    tl.set(".card", { autoAlpha: 1 }, CARD - 0.4);
+    tl.fromTo(".card", { yPercent: 100 }, { yPercent: 0, duration: 0.5, ease: "power3.inOut" }, CARD - 0.4);
+    CR.slam(tl, ".l1", CARD + 0.05);
+    CRM.shake(tl, "#film", CARD + 0.1, 18, 0.3);
+    CR.rise(tl, ".l2", CARD + 0.6);
+    CR.rise(tl, ".brand", CARD + 1.1);
+    CR.profileCTA(tl, Math.max(CARD + 1.3, at("link", 1, CARD + 1.3) - 0.3), { y: 1420, color: "#111111", ink: "#FFFFFF", until: D });
+    // Words over the flight, on the spoken words.
+    CRM.slam(tl, "#k1", at("landing", 1, 0.9) - 0.4, { gap: 0.1, shake: false });
+    CRM.out(tl, "#k1", at("videosell", 1, 2.1) - 0.1);
+    CRM.slam(tl, "#k2", at("transforma", 1, 2.6), { gap: 0.18, shake: false });
+    CRM.out(tl, "#k2", at("câmera", 1, 4.6) - 0.1);
+    CRM.slam(tl, "#k3", at("cada", 1, 6.0) - 0.05, { gap: 0.18, shake: false });
+    CRM.out(tl, "#k3", CARD - 0.5);
+    CRM.flash(tl, "#flash", CARD - 0.4, 0.5);
+    // The avatar lands on the final card and points to the link.
+    var A = CRM.avatar({ engine: window.AvatarEngine, avatar: window.FILM_AVATAR || window.CRM_SAMPLE_AVATAR, outline: "#FFFFFF" });
+    A.shot(0, { x: 860, y: 1950, scale: 8, d: 0 }); A.enter(CARD + 0.2, "drop");
+    A.act(0, "celebrating", "happy"); A.act(CARD + 1.2, "pointing", "confident");
+    var BURSTS = [{ t: CARD + 0.52, x: 860, y: 1950, kind: "dust", n: 22, seed: 3 }, { t: CARD + 0.1, x: 540, y: 820, kind: "confetti", n: 100, spread: 1300, seed: 5 }];
+    var av = document.getElementById("av").getContext("2d"), stA = { t: 0 };
+    tl.to(stA, { t: D, duration: D, ease: "none", onUpdate: function () { av.clearRect(0, 0, 1080, 1920); A.draw(av, stA.t); CRM.particles(av, stA.t, BURSTS); } }, 0);
     tl.set({}, {}, D);
     window.__timelines["film"] = tl;
   </script>

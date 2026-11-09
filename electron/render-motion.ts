@@ -443,6 +443,22 @@ async function capture(spec: Spec & { url: string; maxHeight?: number }) {
       }
       window.scrollTo(0, 0);
       await new Promise((r) => setTimeout(r, 800));
+      // Sticky/fixed headers would be painted over the content in a full-page shot (and repeat while
+      // the camera flies): pin them where they sit at the top of the document.
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+        const position = getComputedStyle(el).position;
+        if (position === "sticky") el.style.setProperty("position", "relative", "important");
+        else if (position === "fixed") el.style.setProperty("position", "absolute", "important");
+      }
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      document.getAnimations().forEach((animation) => {
+        try {
+          animation.finish();
+        } catch {
+          // Infinite animations cannot finish; they stay where they are.
+        }
+      });
+      await new Promise((r) => setTimeout(r, 300));
     });
     const height = await page.evaluate(() =>
       Math.ceil(document.documentElement.scrollHeight),

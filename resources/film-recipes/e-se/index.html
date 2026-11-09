@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<!-- Formato "e-se" do CutRoom: cenário 2D que atravessa o tempo, contador de dias e marcos. Roteiro em roteiro.txt. -->
+<!-- Formato "e-se" do Videosell: cenário 2D que atravessa o tempo, contador de dias e marcos, com o avatar do perfil vivendo a história. Roteiro em roteiro.txt. -->
 <script src="brand.js"></script>
 <style>
   @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
@@ -30,6 +30,9 @@
   .end { position: absolute; left: 40px; width: 1000px; top: 470px; text-align: center; font: 130px/1.05 Anton; color: #fff; }
   .end span { color: #ffd35c; }
   .later { visibility: hidden; opacity: 0; }
+  #av { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  #fx { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; z-index: 30; pointer-events: none; }
+  #flash { position: absolute; inset: 0; background: #fff; z-index: 40; visibility: hidden; opacity: 0; }
 </style>
 </head>
 <body>
@@ -46,17 +49,23 @@
     </svg>
     <div class="board"></div>
     <div class="badge later">★ autoridade</div>
+    <canvas id="av" width="1080" height="1920"></canvas>
   </div></div>
   <div class="day later">DIA <span class="dn">1</span></div>
   <div class="q later">E SE VOCÊ POSTASSE UM CARROSSEL POR DIA?</div>
   <div class="doors later"></div>
   <div class="note later">nada disso é garantido</div>
   <div class="end later">VOCÊ COMEÇARIA<br><span>HOJE?</span></div>
+  <canvas id="fx" width="1080" height="1920"></canvas>
+  <div id="flash"></div>
   <audio id="voz" data-start="0" data-duration="22" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
   <!--MUSICA-->
   <script src="kit/gsap.min.js"></script>
   <script src="timing.js"></script>
   <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
+  <script src="kit/avatar/engine.js"></script>
+  <script src="kit/avatar/sample.js"></script>
   <script>
     (function () {
       var p = (window.BRAND && window.BRAND.palette) || {}, s = document.documentElement.style;
@@ -130,12 +139,49 @@
     tl.to(".world", { scale: 1, y: 0, duration: 0.8, ease: "power3.inOut" }, tMas);
     tl.to(".person", { autoAlpha: 0, duration: 0.3 }, tMas);
     tl.to(".board i", { opacity: 0, duration: 0.2 }, tMas);
-    CR.exit(tl, ".badge", tMas);
+    CR.exit(tl, ".badge", tNada - 0.1);
     tl.to(".sky", { background: "linear-gradient(#7cc4ee, #cfeefb)", duration: 1 }, tMas + 0.3);
     CR.slam(tl, ".end", tVoce);
     CR.profileCTA(tl, at("primeiro", 1, tVoce + 1.2), { y: 820, ink: "#1E1C1A", until: D });
 
     CR.camera(tl, ".world", D, [tDia30, tDia90, tDia365, tVoce], { inner: ".punch", drift: 0.02 });
+
+    // The profile's avatar lives the year in front of the house (people walk in front of it).
+    var avCanvas = document.getElementById("av");
+    root.appendChild(avCanvas);
+    people.forEach(function (p) { root.appendChild(p); });
+    var A = CRM.avatar({ engine: window.AvatarEngine, avatar: window.FILM_AVATAR || window.CRM_SAMPLE_AVATAR, outline: "#FFFFFF" });
+    A.shot(0, { x: 850, y: 1560, scale: 6, d: 0 }); A.enter(0.25, "drop");
+    A.act(0, "neutral", "thinking");
+    A.act(tDia1, "neutral", "neutral"); A.act(tVe, null, "serious");
+    A.act(tDia30, "explaining", "confident"); A.hop(tAut, 18); A.talk(tDia30 + 0.4, tDia90 - 0.2, ["explaining", "pointing"]);
+    A.act(tDia90, "celebrating", "happy"); A.hop(tVende, 22);
+    A.spin(tDia365 - 0.1); A.act(tDia365, "celebrating", "happy"); A.hop(tPortas, 26);
+    A.act(tNada, "neutral", "serious");
+    A.act(tMas, "explaining", "confident");
+    A.shot(tVoce - 0.2, { x: 820, y: 1880, scale: 9, d: 0.45, e: "inOut" }); A.act(tVoce, "pointing", "happy");
+    var BURSTS = [
+      { t: 0.57, x: 850, y: 1560, kind: "dust", n: 20, seed: 3 },
+      { t: tAut, x: 760, y: 980, kind: "spark", n: 30, spread: 600, seed: 5 },
+      { t: tVende, x: 540, y: 1300, kind: "heart", n: 14, spread: 700, angle: -Math.PI / 2, cone: 1.6, seed: 7 },
+      { t: tDia365 + 0.1, x: 540, y: 400, kind: "confetti", n: 110, spread: 1400, seed: 11 },
+      { t: tPortas, x: 540, y: 700, kind: "spark", n: 50, spread: 900, seed: 13 },
+    ];
+    var avx = avCanvas.getContext("2d"), fx = document.getElementById("fx").getContext("2d"), stA = { t: 0 };
+    tl.to(stA, { t: D, duration: D, ease: "none", onUpdate: function () {
+      avx.clearRect(0, 0, 1080, 1920); A.draw(avx, stA.t);
+      fx.clearRect(0, 0, 1080, 1920);
+      CRM.speedLines(fx, stA.t, tDia365 - 0.1, tDia365 + 0.8, 540, 330, "#ffd35c");
+      CRM.particles(fx, stA.t, BURSTS);
+    } }, 0);
+    // Each jump in time hits: the counter punches, the frame shakes, a flash.
+    [tDia30, tDia90, tDia365].forEach(function (t, i) {
+      CRM.punch(tl, ".day", t, 1.25, 0.35);
+      CRM.shake(tl, "#film", t + 0.02, 12 + i * 6, 0.3);
+      CRM.flash(tl, "#flash", t, 0.35 + i * 0.15);
+    });
+    CRM.glitch(tl, ".note", tNada + 0.1, 0.35);
+    CRM.shake(tl, "#film", tVoce + 0.05, 20, 0.35);
     tl.set({}, {}, D);
     window.__timelines["film"] = tl;
   </script>

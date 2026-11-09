@@ -436,6 +436,29 @@
     return tl;
   };
 
+  /**
+   * Effects layer for any format: a full-frame flash and a particle canvas on top of the film.
+   *   var fx = CRM.overlay(tl, D, [{ t, x, y, kind, n, ... }]);  CRM.flash(tl, fx.flash, t, 0.5);
+   */
+  CRM.overlay = function (tl, D, bursts, opts) {
+    opts = opts || {};
+    var root = document.querySelector(opts.film || "[data-composition-id]");
+    var flash = document.createElement("div");
+    flash.style.cssText = "position:absolute;inset:0;z-index:58;pointer-events:none;visibility:hidden;opacity:0;background:" + (opts.flashColor || "#fff");
+    var canvas = document.createElement("canvas");
+    canvas.width = 1080; canvas.height = 1920;
+    canvas.style.cssText = "position:absolute;left:0;top:0;width:1080px;height:1920px;z-index:57;pointer-events:none";
+    root.appendChild(canvas); root.appendChild(flash);
+    var ctx = canvas.getContext("2d"), st = { t: 0 };
+    var lines = opts.speedLines || [];
+    tl.to(st, { t: D, duration: D, ease: "none", onUpdate: function () {
+      ctx.clearRect(0, 0, 1080, 1920);
+      lines.forEach(function (l) { CRM.speedLines(ctx, st.t, l.from, l.to, l.x, l.y, l.color); });
+      CRM.particles(ctx, st.t, bursts || []);
+    } }, 0);
+    return { flash: flash, canvas: canvas };
+  };
+
   /* ------------------------------------------------------------------ automatic director */
   var NEG = /^(nao|nunca|ninguem|zero|sem|caro|cara|problema|dificil|perde|perdeu|pior|medo|sozinho|parado|travado|ruim|erro|falta)$/;
   var POS = /^(venda|vendas|vender|vende|cliente|clientes|resultado|sucesso|cresce|crescer|lucro|ganha|ganhar|pronto|facil|rapido|agora|sim|dinheiro|faturamento)$/;

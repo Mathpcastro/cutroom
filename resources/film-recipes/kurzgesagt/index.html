@@ -36,6 +36,7 @@
   <script src="kit/gsap.min.js"></script>
   <script src="timing.js"></script>
   <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
   <script>
     (function () {
       var p = (window.BRAND && window.BRAND.palette) || {};
@@ -221,6 +222,15 @@
     tl.to(st, { t: D, duration: D, ease: "none", onUpdate: function () { draw(st.t); } }, 0);
     draw(0);
     tl.set({}, {}, D);
+    // Motion kit, kept gentle for the explainer: light where the star turns on, particles at the payoffs.
+    var FX = CRM.overlay(tl, D, [
+      { t: B.estrela, x: 330, y: 820, kind: "spark", n: 50, spread: 900, colors: ["#ffd35c", "#ffffff"], seed: 3 },
+      { t: B.clientes, x: 540, y: 900, kind: "confetti", n: 80, spread: 1200, seed: 5 },
+      { t: B.acender, x: 330, y: 820, kind: "spark", n: 60, spread: 1000, colors: ["#ffd35c", "#ffffff"], seed: 7 },
+    ], { flashColor: "#fff6d6" });
+    CRM.flash(tl, FX.flash, B.estrela, 0.55);
+    CRM.punch(tl, "#film", B.cento, 1.05, 0.5);
+    CRM.flash(tl, FX.flash, B.acender, 0.45);
     window.__timelines["film"] = tl;
   </script>
 </div>

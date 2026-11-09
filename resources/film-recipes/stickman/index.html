@@ -68,6 +68,7 @@
   <script src="kit/gsap.min.js"></script>
   <script src="timing.js"></script>
   <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
   <script>
     // Timeline and DOM overlay (classic script: registered synchronously).
     (function () {
@@ -139,6 +140,16 @@
       tl.to(".cap", { autoAlpha: 0, duration: 0.1 }, Math.min(next - 0.05, t0 + 1.4));
     });
     tl.set({}, {}, D);
+    // Motion kit: every rule and every threat lands with a hit.
+    var FX = CRM.overlay(tl, D, [
+      { t: B.vibra, x: 540, y: 1100, kind: "spark", n: 30, spread: 600, seed: 3 },
+      { t: B.responde, x: 540, y: 900, kind: "spark", n: 50, spread: 900, colors: ["#3ddc84", "#ff4d4d", "#ffffff"], seed: 5 },
+    ]);
+    [B.r1, B.r2, B.r3].forEach(function (t) { CRM.shake(tl, "#film", t + 0.05, 12, 0.25); });
+    CRM.shake(tl, "#film", B.vibra, 18, 0.5);
+    CRM.flash(tl, FX.flash, B.quanto, 0.45);
+    CRM.shake(tl, "#film", B.faltam, 14, 0.3);
+    CRM.flash(tl, FX.flash, B.responde, 0.35);
     window.__timelines["film"] = tl;
   </script>
   <script type="module">
