@@ -185,7 +185,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioP
 
   const create = (mode: CreateMode) => {
     setCreateMode(mode);
-    if (mode !== "avatar" && profile) {
+    if (mode !== "avatar" && profile && (mode === "without-avatar" || profile.defaultAvatar)) {
       setReelSession({ step: "brief", draft: initialReelDraft(profile, mode === "avatar-reel") });
     } else {
       setReelSession(null);

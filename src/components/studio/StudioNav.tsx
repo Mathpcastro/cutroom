@@ -101,10 +101,7 @@ export function StudioNav({
         <button
           type="button"
           className="studio-advanced-button"
-          onClick={() => {
-            onPage("settings");
-            onOpenAdvanced();
-          }}
+          onClick={() => onOpenAdvanced()}
         >
           <Settings2 size={15} />
           <span>Ajustes avançados</span>
