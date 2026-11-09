@@ -106,18 +106,6 @@ try {
   }).toBe("estudio-teste");
   evidence.checks.push("profile creation and selection persist through the real ProfileService");
 
-  for (const [action, heading] of [
-    ["Criar meu avatar", "Criar meu avatar"],
-    ["Criar um Reel com avatar", "Criar um Reel com avatar"],
-    ["Criar sem avatar", "Criar sem avatar"],
-    ["Continuar criando", "Projetos"],
-  ]) {
-    await page.getByRole("button", { name: action, exact: true }).click();
-    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-    await backHome();
-  }
-  evidence.checks.push("all four home actions lead to honest intermediate states with a working return");
-
   for (const [nav, heading] of [
     ["Meus avatares", "Meus avatares"],
     ["Projetos", "Projetos"],
@@ -170,13 +158,54 @@ try {
   await page.getByRole("button", { name: "Ajustes avançados", exact: true }).click();
   await expect(page.locator(".workspace")).toBeVisible();
   await expect(page.getByRole("button", { name: "Voltar ao estúdio", exact: true })).toBeVisible();
+  const advancedTheme = await page.locator(".app-shell").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      background: style.getPropertyValue("--bg").trim(),
+      accent: style.getPropertyValue("--accent").trim(),
+      fontFamily: style.fontFamily,
+    };
+  });
+  if (
+    advancedTheme.background.toLowerCase() !== "#f7f6f1" ||
+    advancedTheme.accent.toLowerCase() !== "#6445d8" ||
+    !advancedTheme.fontFamily.includes("Inter")
+  ) {
+    throw new Error(`Advanced editor does not use the Videosell theme: ${JSON.stringify(advancedTheme)}`);
+  }
+  await screenshot("advanced-1440x1000");
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].setSize(1050, 700);
+  });
+  await expect.poll(() => page.evaluate(() => innerWidth)).toBeLessThanOrEqual(1050);
+  await screenshot("advanced-1050x700");
+  if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) {
+    throw new Error("Advanced editor has horizontal overflow at 1050x700.");
+  }
+  evidence.checks.push("advanced editor uses Videosell tokens and Inter without horizontal overflow at both desktop sizes");
   await page.getByRole("button", { name: "Voltar ao estúdio", exact: true }).click();
   await expect(page.locator(".videosell-studio")).toBeVisible();
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].setSize(1440, 1000);
+  });
+  await expect.poll(() => page.evaluate(() => innerWidth)).toBe(1440);
   if (!(await page.evaluate(() => window.__videosellStateProbe?.preserved))) {
     throw new Error("Advanced editor navigation reloaded the renderer.");
   }
   await expect(profileSelect).toHaveValue("estudio-teste");
   evidence.checks.push("advanced editor and studio return preserve renderer and selected-profile state");
+
+  for (const [action, heading] of [
+    ["Criar meu avatar", "Criar meu avatar"],
+    ["Criar um Reel com avatar", "Criar um Reel com avatar"],
+    ["Criar sem avatar", "Criar sem avatar"],
+    ["Continuar criando", "Projetos"],
+  ]) {
+    await page.getByRole("button", { name: action, exact: true }).click();
+    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+    await backHome();
+  }
+  evidence.checks.push("all four home actions lead to honest intermediate states with a working return");
 
   await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent("cutroom:studio", { detail: "brand" }));

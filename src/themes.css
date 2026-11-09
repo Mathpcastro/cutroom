@@ -142,8 +142,27 @@ button:disabled {
   opacity: 0.43;
 }
 .app-shell {
+  --bg: #f7f6f1;
+  --panel: #ffffff;
+  --raised: #efedf5;
+  --hover: #e9e3f7;
+  --text: #141318;
+  --muted: #66636d;
+  --line: #dedbd3;
+  --line-strong: #b9b1ca;
+  --accent: #6445d8;
+  --accent-ink: #ffffff;
+  --accent-soft: #eee9f7;
+  --lime: #c8ff5a;
+  --danger: #ae3030;
+  --danger-bg: #fff0f0;
+  --danger-line: #d99696;
+  --warning: #825c18;
+  --shadow: #0002;
   min-width: 900px;
   min-height: 620px;
+  color-scheme: light;
+  font-family: "Inter", "Segoe UI", sans-serif;
 }
 .titlebar {
   height: 44px;
