@@ -4,6 +4,7 @@ import { availableParallelism } from "node:os";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import type { AudioWord } from "../../src/shared/types";
 import type { Brand } from "./brand";
+import { writeFilmAvatarVoice } from "./film-avatar";
 import { ffmpegPath, ffprobePath } from "./media";
 import { runProcess } from "./process";
 
@@ -12,6 +13,12 @@ import { runProcess } from "./process";
  * Each lives in its own folder under Videos/CutRoom/filmes so Claude Code or Codex can edit it
  * with their own file tools; agents without file access use writeFile/readFile below.
  */
+export interface FilmAvatarRef {
+  avatarId: string;
+  revision: number;
+  hash: string;
+}
+
 export interface FilmMeta {
   id: string;
   name: string;
@@ -19,6 +26,7 @@ export interface FilmMeta {
   height: number;
   fps: number;
   format?: string;
+  avatar?: FilmAvatarRef;
   createdAt: string;
   voice?: { file: string; duration: number; words: number; provider?: string; voice?: string };
   credits: { file: string; title: string; author: string; license: string; url?: string; attribution?: string }[];
@@ -133,7 +141,7 @@ export class Films {
     return films.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  async create(options: { name: string; aspect?: keyof typeof FILM_SIZES; format?: string; brand?: Brand; guide?: string }) {
+  async create(options: { name: string; aspect?: keyof typeof FILM_SIZES; format?: string; brand?: Brand; guide?: string; avatar?: FilmAvatarRef }) {
     await mkdir(this.root, { recursive: true });
     let id = slug(options.name);
     for (let n = 2; await stat(join(this.root, id)).then(() => true, () => false); n++) id = `${slug(options.name)}-${n}`;
@@ -146,7 +154,7 @@ export class Films {
     // three.js (MIT) for 3D sets and post-processing; use an import map: {"three": "./kit/three/three.module.min.js"}.
     if (await stat(join(this.kit, "three")).then(() => true, () => false)) await cp(join(this.kit, "three"), join(dir, "kit", "three"), { recursive: true });
     await writeFile(join(dir, "kit", "gsap.min.js"), await readFile(this.gsap)); // may live inside app.asar
-    const meta: FilmMeta = { id, name: options.name, width, height, fps: 30, format: options.format, createdAt: new Date().toISOString(), credits: [] };
+    const meta: FilmMeta = { id, name: options.name, width, height, fps: 30, format: options.format, avatar: options.avatar, createdAt: new Date().toISOString(), credits: [] };
     await this.save(meta);
     const brand = options.brand;
     await writeFile(
@@ -174,6 +182,13 @@ export class Films {
     }
     await writeFile(join(dir, "CUTROOM.md"), filmRules(meta, options.guide, starter), "utf8");
     return { ...meta, path: dir, starter, files: await this.files(id) };
+  }
+
+  async updateAvatar(id: string, avatar: FilmAvatarRef) {
+    const meta = await this.meta(id);
+    meta.avatar = avatar;
+    await this.save(meta);
+    return meta;
   }
 
   async files(id: string, all = false) {
@@ -220,6 +235,7 @@ export class Films {
     const words = (voice.words ?? []).map((w) => ({ text: w.text, start: +w.start.toFixed(3), end: +w.end.toFixed(3) }));
     const voiceEnd = words.length ? words[words.length - 1].end : voice.duration;
     await writeFile(join(dir, "timing.js"), `window.TIMING = ${JSON.stringify({ words, envelope: { fps: meta.fps, db }, voiceEnd, file: `assets/${name}`, duration: +voice.duration.toFixed(3) })};\n`, "utf8");
+    if (meta.avatar) await writeFilmAvatarVoice(dir, meta.avatar, { fps: meta.fps, db });
     meta.voice = { file: `assets/${name}`, duration: voice.duration, words: words.length, provider: voice.provider, voice: voice.voice };
     await this.save(meta);
     return { file: `assets/${name}`, duration: +voice.duration.toFixed(3), voiceEnd, words };
@@ -305,12 +321,19 @@ export const withCsp = (html: string) => {
  */
 async function stageFilm(films: Films, id: string) {
   const dir = films.dir(id),
+    meta = await films.meta(id),
     stage = join(dir, ".renders", `palco-${Date.now()}`);
   for (const file of await films.files(id, true)) {
     const target = join(stage, file);
     await mkdir(dirname(target), { recursive: true });
-    if (file === "index.html") await writeFile(target, withCsp(await readFile(join(dir, file), "utf8")), "utf8");
-    else await link(join(dir, file), target).catch(() => copyFile(join(dir, file), target));
+    if (file === "index.html") {
+      let html = withCsp(await readFile(join(dir, file), "utf8"));
+      if (meta.avatar && !html.includes('src="avatar/runtime.js"')) {
+        const scripts = '<script src="avatar/runtime.js"></script><script src="avatar/voice.js"></script>';
+        html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${scripts}</head>`) : scripts + html;
+      }
+      await writeFile(target, html, "utf8");
+    } else await link(join(dir, file), target).catch(() => copyFile(join(dir, file), target));
   }
   return stage;
 }
@@ -453,6 +476,7 @@ export function starterHtml(meta: FilmMeta) {
   <script src="kit/gsap.min.js"></script>
   <script src="brand.js"></script>
   <script src="timing.js"></script>
+  ${meta.avatar ? '<script src="avatar/runtime.js"></script>\n  <script src="avatar/voice.js"></script>' : ""}
   <script src="kit/cutroom-kit.js"></script>
   <script>
     window.__timelines = window.__timelines || {};

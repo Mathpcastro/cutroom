@@ -811,6 +811,7 @@ async function executeTool(
     render_frame: (a) => studio.renderFrame(a),
     review_video: (a) => studio.reviewVideo(a),
     create_film: (a) => filmStudio.create(a),
+    update_film_avatar: (a) => filmStudio.updateFilmAvatar(a),
     list_films: () => filmStudio.list(),
     film_voiceover: (a) => filmStudio.voiceover(a),
     film_asset: (a) => filmStudio.asset(a),
@@ -1279,7 +1280,26 @@ async function request(method: string, params?: unknown): Promise<unknown> {
           .parse(params ?? {}).provider,
       );
     case "listFormats":
+    case "list_formats":
       return studio.listFormats();
+    case "create_film":
+      return filmStudio.create(params as Record<string, unknown>);
+    case "film_voiceover":
+      return filmStudio.voiceover(params as Record<string, unknown>);
+    case "write_film_file":
+      return filmStudio.write(params as Record<string, unknown>);
+    case "read_film_file":
+      return filmStudio.read(params as Record<string, unknown>);
+    case "film_stills":
+      return filmStudio.stills(params as Record<string, unknown>);
+    case "film_check":
+      return filmStudio.check(params as Record<string, unknown>);
+    case "film_review":
+      return filmStudio.review(params as Record<string, unknown>);
+    case "get_format_guide":
+      return studio.getFormatGuide(params as Record<string, unknown>);
+    case "render_film":
+      return filmStudio.render(params as Record<string, unknown>);
     case "getPublishSettings":
       return publisher.settings();
     case "setComposioKey": {
@@ -1374,6 +1394,11 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         "profile_list_projects",
         params as Record<string, unknown>,
       );
+    case "profileLinkProject": {
+      const input = z.object({ profileId: z.string(), projectId: z.string() }).strict().parse(params);
+      await profileService.linkProject(input.profileId, input.projectId);
+      return { ok: true };
+    }
     case "profileGet":
       return dispatchProfileTool("profile_get", params as Record<string, unknown>);
     case "profileCreate":
@@ -1763,6 +1788,7 @@ app.whenReady().then(async () => {
       ),
     process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000,
   );
+  avatarStore = new AvatarStore(join(userDir, "avatars"));
   filmStudio = new FilmStudio(
     {
       films: new Films(
@@ -1771,6 +1797,8 @@ app.whenReady().then(async () => {
         createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"),
         join(resources, "film-recipes"),
       ),
+      avatarStore,
+      avatarEngineDir: join(resources, "avatar-engine"),
       brand: brandStore,
       videosDir: join(app.getPath("videos"), "CutRoom"),
       runner: async () => {
@@ -1787,7 +1815,6 @@ app.whenReady().then(async () => {
     },
     studio,
   );
-  avatarStore = new AvatarStore(join(userDir, "avatars"));
   avatarService = new AvatarService({
     store: avatarStore,
     renderer: renderAvatarRevision,

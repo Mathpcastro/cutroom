@@ -5,7 +5,6 @@ import {
   FileVideo2,
   LoaderCircle,
   RefreshCw,
-  Settings2,
 } from "lucide-react";
 import type { StudioProfile } from "../shared/profile";
 import type { AppSnapshot, StudioTab } from "../shared/types";
@@ -16,6 +15,8 @@ import { BrandSettings } from "./studio/BrandSettings";
 import { VoiceSettings } from "./studio/VoiceSettings";
 import { PublishSettings } from "./studio/PublishSettings";
 import { StudioNav } from "./studio/StudioNav";
+import { ReelCreator, initialReelDraft, type ReelSession } from "./studio/ReelCreator";
+import { ReelReview } from "./studio/ReelReview";
 import "./studio/studio.css";
 
 export type StudioPage =
@@ -53,21 +54,6 @@ interface FilmRecord {
   format?: string;
   createdAt: string;
 }
-
-const createCopy: Record<CreateMode, { title: string; text: string }> = {
-  avatar: {
-    title: "Criar meu avatar",
-    text: "O criador visual de avatares será conectado na próxima etapa. Nenhum avatar foi gerado ou substituído por uma ilustração.",
-  },
-  "avatar-reel": {
-    title: "Criar um Reel com avatar",
-    text: "O fluxo guiado de Reels com avatar ainda não está disponível. Você pode voltar ao início ou usar os recursos existentes no editor avançado.",
-  },
-  "without-avatar": {
-    title: "Criar sem avatar",
-    text: "O novo fluxo guiado sem avatar será conectado na próxima etapa. O Estúdio de vídeos atual continua disponível nos ajustes avançados.",
-  },
-};
 
 function BackHome({ onPage }: { onPage: (page: StudioPage) => void }) {
   return (
@@ -111,6 +97,7 @@ function IntermediatePage({
 export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioProps) {
   const [page, setPage] = useState<StudioPage>("home");
   const [createMode, setCreateMode] = useState<CreateMode>("avatar");
+  const [reelSession, setReelSession] = useState<ReelSession | null>(null);
   const [fontScale, setFontScale] = useState<FontScale>(initialFontScale);
   const changeFontScale = useCallback((scale: number) => {
     if (!fontScales.includes(scale as FontScale)) return;
@@ -198,6 +185,11 @@ export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioP
 
   const create = (mode: CreateMode) => {
     setCreateMode(mode);
+    if (mode !== "avatar" && profile) {
+      setReelSession({ step: "brief", draft: initialReelDraft(profile, mode === "avatar-reel") });
+    } else {
+      setReelSession(null);
+    }
     setPage("create");
   };
 
@@ -310,19 +302,31 @@ export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioP
         onPage={setPage}
       />
     );
+  } else if (page === "create" && profile && reelSession) {
+    content = reelSession.review && reelSession.filmId ? (
+      <ReelReview
+        session={reelSession}
+        onSession={setReelSession}
+        onBack={() => setPage("home")}
+        onOpenAdvanced={() => onOpenAdvanced("films")}
+      />
+    ) : (
+      <ReelCreator
+        profile={profile}
+        session={reelSession}
+        onSession={setReelSession}
+        onReview={setReelSession}
+        onBack={() => setPage("home")}
+      />
+    );
   } else if (page === "create") {
-    const copy = createCopy[createMode];
+    const needsAvatar = createMode === "avatar-reel" && !profile?.defaultAvatar;
     content = (
       <IntermediatePage
-        title={copy.title}
-        eyebrow="FLUXO EM PREPARAÇÃO"
-        text={copy.text}
+        title={createMode === "avatar-reel" ? "Criar um Reel com avatar" : "Criar sem avatar"}
+        eyebrow={needsAvatar ? "AVATAR NECESSÁRIO" : "PERFIL NECESSÁRIO"}
+        text={needsAvatar ? "Crie e aprove um avatar no perfil antes de iniciar este fluxo. Para criar sem personagem, use Criar sem avatar." : "Crie ou selecione um perfil antes de criar e vincular um Reel."}
         onPage={setPage}
-        action={
-          <button type="button" className="studio-secondary-action" onClick={() => onOpenAdvanced("start")}>
-            <Settings2 size={14} /> Abrir Estúdio de vídeos atual
-          </button>
-        }
       />
     );
   } else if (page === "voices" || page === "brand" || page === "publish") {
