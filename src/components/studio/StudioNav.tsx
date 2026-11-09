@@ -20,6 +20,8 @@ interface StudioNavProps {
   onPage: (page: StudioPage) => void;
   onOpenAdvanced: (tab?: StudioTab) => void;
   onProfileChange: (profile: StudioProfile | null, initializing: boolean) => void;
+  fontScale: number;
+  onFontScaleChange: (scale: number) => void;
 }
 
 const items = [
@@ -39,6 +41,8 @@ export function StudioNav({
   onPage,
   onOpenAdvanced,
   onProfileChange,
+  fontScale,
+  onFontScaleChange,
 }: StudioNavProps) {
   return (
     <aside className="studio-sidebar">
@@ -64,16 +68,13 @@ export function StudioNav({
           </button>
         ))}
         <span className="studio-nav-label studio-nav-label-secondary">PRODUÇÃO</span>
-        {advancedItems.map(({ id, label, icon: Icon, tab }) => (
+        {advancedItems.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             className={page === id ? "active" : ""}
             aria-current={page === id ? "page" : undefined}
-            onClick={() => {
-              onPage(id);
-              onOpenAdvanced(tab);
-            }}
+            onClick={() => onPage(id)}
           >
             <Icon size={17} strokeWidth={1.7} />
             <span>{label}</span>
@@ -82,6 +83,21 @@ export function StudioNav({
       </nav>
       <div className="studio-sidebar-bottom">
         <ProfileSwitcher onProfileChange={onProfileChange} />
+        <div className="studio-font-scale" role="group" aria-label="Tamanho da fonte">
+          <span>Fonte</span>
+          <div>
+            {[100, 115, 130].map((scale) => (
+              <button
+                key={scale}
+                type="button"
+                aria-pressed={fontScale === scale}
+                onClick={() => onFontScaleChange(scale)}
+              >
+                {scale}%
+              </button>
+            ))}
+          </div>
+        </div>
         <button
           type="button"
           className="studio-advanced-button"

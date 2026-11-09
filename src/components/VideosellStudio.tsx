@@ -8,10 +8,13 @@ import {
   Settings2,
 } from "lucide-react";
 import type { StudioProfile } from "../shared/profile";
-import type { StudioTab } from "../shared/types";
+import type { AppSnapshot, StudioTab } from "../shared/types";
 import { BrandMark } from "./BrandMark";
 import { StudioHome, type CreateMode, type StudioProject } from "./studio/StudioHome";
 import { AvatarCreator } from "./studio/AvatarCreator";
+import { BrandSettings } from "./studio/BrandSettings";
+import { VoiceSettings } from "./studio/VoiceSettings";
+import { PublishSettings } from "./studio/PublishSettings";
 import { StudioNav } from "./studio/StudioNav";
 import "./studio/studio.css";
 
@@ -26,7 +29,22 @@ export type StudioPage =
   | "settings";
 
 interface VideosellStudioProps {
+  state: AppSnapshot;
+  run: (method: string, params?: unknown) => Promise<void>;
   onOpenAdvanced: (tab?: StudioTab) => void;
+}
+
+const FONT_SCALE_KEY = "videosell.studio.fontScale";
+const fontScales = [100, 115, 130] as const;
+type FontScale = (typeof fontScales)[number];
+
+function initialFontScale(): FontScale {
+  try {
+    const saved = Number(localStorage.getItem(FONT_SCALE_KEY));
+    return fontScales.includes(saved as FontScale) ? saved as FontScale : 115;
+  } catch {
+    return 115;
+  }
 }
 
 interface FilmRecord {
@@ -90,9 +108,19 @@ function IntermediatePage({
   );
 }
 
-export function VideosellStudio({ onOpenAdvanced }: VideosellStudioProps) {
+export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioProps) {
   const [page, setPage] = useState<StudioPage>("home");
   const [createMode, setCreateMode] = useState<CreateMode>("avatar");
+  const [fontScale, setFontScale] = useState<FontScale>(initialFontScale);
+  const changeFontScale = useCallback((scale: number) => {
+    if (!fontScales.includes(scale as FontScale)) return;
+    setFontScale(scale as FontScale);
+    try {
+      localStorage.setItem(FONT_SCALE_KEY, String(scale));
+    } catch {
+      /* Storage may be unavailable; the visual preference still works. */
+    }
+  }, []);
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [profileInitializing, setProfileInitializing] = useState(true);
   const [projects, setProjects] = useState<StudioProject[]>([]);
@@ -297,36 +325,48 @@ export function VideosellStudio({ onOpenAdvanced }: VideosellStudioProps) {
         }
       />
     );
+  } else if (page === "voices" || page === "brand" || page === "publish") {
+    const settingsPage = {
+      voices: { title: "Vozes", eyebrow: "NARRAÇÃO", description: "Escolha uma voz local ou conecte seu provedor preferido." },
+      brand: { title: "Marca", eyebrow: "IDENTIDADE", description: "Defina uma única vez a identidade usada nos seus vídeos." },
+      publish: { title: "Conexões", eyebrow: "PUBLICAÇÃO", description: "Conecte seu Instagram e publique somente quando confirmar." },
+    }[page];
+    content = (
+      <div className="studio-settings-page">
+        <BackHome onPage={setPage} />
+        <header className="studio-settings-heading">
+          <span className="studio-eyebrow">{settingsPage.eyebrow}</span>
+          <PageTitle>{settingsPage.title}</PageTitle>
+          <p>{settingsPage.description}</p>
+        </header>
+        <div className="studio-settings-card">
+          {page === "voices" && <VoiceSettings packages={state.packages} jobs={state.jobs} run={run} />}
+          {page === "brand" && <BrandSettings />}
+          {page === "publish" && <PublishSettings jobs={state.jobs} />}
+        </div>
+      </div>
+    );
   } else {
-    const advanced = {
-      voices: { title: "Vozes", tab: "voices" as const, text: "As vozes e os provedores já configuráveis ficam no Estúdio de vídeos do editor avançado." },
-      brand: { title: "Marca", tab: "brand" as const, text: "A identidade e a paleta já disponíveis ficam no Estúdio de vídeos do editor avançado." },
-      publish: { title: "Conexões", tab: "publish" as const, text: "As conexões de publicação já disponíveis ficam no Estúdio de vídeos do editor avançado." },
-      settings: { title: "Ajustes avançados", tab: undefined, text: "O editor completo permanece disponível, com timeline, mídia, transcrição, estilos e os painéis atuais." },
-    }[page as "voices" | "brand" | "publish" | "settings"];
     content = (
       <IntermediatePage
-        title={advanced.title}
+        title="Ajustes avançados"
         eyebrow="RECURSOS EXISTENTES"
-        text={advanced.text}
+        text="O editor completo permanece disponível, com timeline, mídia, transcrição, estilos e os painéis atuais."
         onPage={setPage}
-        action={
-          <button type="button" className="studio-primary-button" onClick={() => onOpenAdvanced(advanced.tab)}>
-            Abrir no editor avançado <ArrowRight size={14} />
-          </button>
-        }
       />
     );
   }
 
   return (
-    <div className="videosell-studio">
+    <div className="videosell-studio" data-font-scale={fontScale}>
       <div className="studio-window-drag" aria-hidden="true" />
       <StudioNav
         page={page}
         onPage={setPage}
         onOpenAdvanced={onOpenAdvanced}
         onProfileChange={onProfileChange}
+        fontScale={fontScale}
+        onFontScaleChange={changeFontScale}
       />
       <main className="studio-main" id="studio-main-content">
         {content}

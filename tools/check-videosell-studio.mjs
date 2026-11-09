@@ -131,18 +131,38 @@ try {
   await backHome();
   evidence.checks.push("avatar and project navigation exposes real empty states without fixture cards");
 
-  for (const [nav, tab] of [
-    ["Vozes", "Vozes"],
-    ["Marca", "Marca"],
-    ["Conexões", "Publicar"],
+  await expect(page.locator(".videosell-studio")).toHaveAttribute("data-font-scale", "115");
+  await expect(page.getByRole("group", { name: "Tamanho da fonte", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "115%", exact: true })).toHaveAttribute("aria-pressed", "true");
+  evidence.checks.push("studio starts at 115% with an accessible 100/115/130 font-scale control");
+
+  for (const [nav, field, screenshotName] of [
+    ["Vozes", "Provedor padrão", "voices"],
+    ["Marca", "Nome da marca", "brand"],
+    ["Conexões", "Chave do projeto Composio", "publish"],
   ]) {
     await page.getByRole("button", { name: nav, exact: true }).click();
-    await expect(page.locator(".app-shell")).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Estúdio de vídeos", exact: true })).toBeVisible();
-    await expect(page.getByRole("tab", { name: tab, exact: true })).toHaveAttribute("aria-selected", "true");
-    await closePanelAndReturn();
+    await expect(page.locator(".videosell-studio")).toBeVisible();
+    await expect(page.locator(".app-shell")).toBeHidden();
+    await expect(page.getByRole("dialog", { name: "Estúdio de vídeos", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: nav, exact: true })).toBeVisible();
+    await expect(page.getByLabel(field, { exact: false })).toBeVisible();
+    if (nav === "Conexões") await expect(page.getByRole("button", { name: "Publicar Reels", exact: true })).toBeVisible();
+    await screenshot(screenshotName);
+    await backHome();
   }
-  evidence.checks.push("Vozes, Marca e Conexões open the existing advanced StudioPanel on the right tab");
+  evidence.checks.push("Vozes, Marca e Conexões are native Videosell pages using the real settings forms");
+
+  await page.getByRole("button", { name: "130%", exact: true }).click();
+  await expect(page.locator(".videosell-studio")).toHaveAttribute("data-font-scale", "130");
+  await expect(page.getByRole("button", { name: "130%", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("videosell.studio.fontScale"))).toBe("130");
+  await screenshot("font-130");
+  await page.getByRole("button", { name: "100%", exact: true }).click();
+  await expect(page.locator(".videosell-studio")).toHaveAttribute("data-font-scale", "100");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("videosell.studio.fontScale"))).toBe("100");
+  await page.getByRole("button", { name: "130%", exact: true }).click();
+  evidence.checks.push("font scale switches between 100 and 130 percent and persists in local storage");
 
   await page.evaluate(() => {
     window.__videosellStateProbe = { preserved: true };
@@ -276,11 +296,14 @@ try {
     BrowserWindow.getAllWindows()[0].setSize(1050, 700);
   });
   await expect.poll(() => page.evaluate(() => innerWidth)).toBeLessThanOrEqual(1050);
-  if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) {
-    throw new Error("Studio has horizontal overflow at the minimum desktop width.");
+  for (const scale of ["100", "115", "130"]) {
+    await page.getByRole("button", { name: `${scale}%`, exact: true }).click();
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) {
+      throw new Error(`Studio has horizontal overflow at minimum desktop width and ${scale}% font scale.`);
+    }
   }
   await screenshot("home-minimum");
-  evidence.checks.push("screenshots captured at 1440x1000 and minimum desktop size without horizontal overflow");
+  evidence.checks.push("screenshots captured at 1440x1000 and minimum desktop size; all font scales avoid horizontal overflow");
 
   await profileSelect.selectOption("perfil-alternativo");
   await expect(profileSelect).toHaveValue("perfil-alternativo");
@@ -302,6 +325,9 @@ try {
     throw new Error(`Relaunch overwrote the active profile: ${JSON.stringify(persistedIndex)}`);
   }
   evidence.checks.push("the second profile survives an Electron relaunch with the same CUTROOM_USER_DATA in UI and profiles/index.json");
+  await expect(page.locator(".videosell-studio")).toHaveAttribute("data-font-scale", "130");
+  await expect(page.getByRole("button", { name: "130%", exact: true })).toHaveAttribute("aria-pressed", "true");
+  evidence.checks.push("130 percent font scale survives an Electron relaunch");
 
   if (evidence.pageErrors.length || evidence.consoleErrors.length) {
     throw new Error(JSON.stringify({

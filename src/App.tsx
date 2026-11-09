@@ -218,7 +218,7 @@ export default function App() {
   return (
     <>
       <div className="videosell-studio-host" hidden={surface !== "studio"}>
-        <VideosellStudio onOpenAdvanced={openAdvanced} />
+        <VideosellStudio state={state} run={run} onOpenAdvanced={openAdvanced} />
       </div>
       <div className={`app-shell ${desktop ? "is-desktop" : ""}`} hidden={surface !== "editor"}>
       <header className="titlebar">

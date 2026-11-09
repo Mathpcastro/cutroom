@@ -77,7 +77,7 @@ describe("VideosellStudio project loading", () => {
     const root = createRoot(container as unknown as HTMLElement);
     roots.push(root);
     await act(async () => {
-      root.render(<StrictMode><VideosellStudio onOpenAdvanced={() => {}} /></StrictMode>);
+      root.render(<StrictMode><VideosellStudio state={undefined as never} run={async () => {}} onOpenAdvanced={() => {}} /></StrictMode>);
     });
     await vi.waitFor(() => expect(listProjects).toHaveBeenCalledWith(first.id));
 
@@ -133,7 +133,7 @@ describe("VideosellStudio project loading", () => {
     const root = createRoot(container as unknown as HTMLElement);
     roots.push(root);
     await act(async () => {
-      root.render(<StrictMode><VideosellStudio onOpenAdvanced={() => {}} /></StrictMode>);
+      root.render(<StrictMode><VideosellStudio state={undefined as never} run={async () => {}} onOpenAdvanced={() => {}} /></StrictMode>);
     });
 
     expect(container.textContent).toContain("Carregando perfil ativo…");
