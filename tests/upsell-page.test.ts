@@ -246,15 +246,19 @@ describe("contrato da página pública de upsell Videosell", () => {
     );
   });
 
-  it("mostra somente dois comparativos e um tour real do produto", async () => {
-    const originals = Array.from(document.querySelectorAll("a.orig"));
-    expect(originals).toHaveLength(2);
-    expect(originals.map((node) => node.getAttribute("href"))).toEqual(
-      expect.arrayContaining([
-        "https://x.com/finnardley/status/2116010421740007894",
-        "https://x.com/twoclipping/status/2103835273813496100",
-      ]),
-    );
+  const viralOriginals = [
+    "https://x.com/finnardley/status/2115786060231770351",
+    "https://x.com/finnardley/status/2114305886420086817",
+    "https://x.com/twoclipping/status/2103835273813496100",
+  ];
+
+  it("compara três virais originais com a versão do Videosell e mostra o tour real", async () => {
+    const pairs = Array.from(document.querySelectorAll("#comparativo .pair"));
+    expect(pairs).toHaveLength(3);
+    for (const pair of pairs) {
+      expect(pair.querySelector(".viral a.orig")).not.toBeNull();
+      expect(pair.querySelector(".ours video[src^='videos/']")).not.toBeNull();
+    }
     expect(document.querySelector("#produto-por-dentro")).not.toBeNull();
     const screens = Array.from(
       document.querySelectorAll("#produto-por-dentro img[data-studio-screen]"),
@@ -267,18 +271,20 @@ describe("contrato da página pública de upsell Videosell", () => {
     );
   });
 
-  it("inclui as duas provas sociais externas", () => {
+  it("aponta cada comparativo para o post original no X", () => {
     const originalHrefs = Array.from(
       document.querySelectorAll("a.orig"),
       (anchor) => anchor.getAttribute("href"),
     );
+    expect(originalHrefs).toEqual(viralOriginals);
+  });
 
-    expect(originalHrefs).toContain(
-      "https://x.com/finnardley/status/2116010421740007894",
-    );
-    expect(originalHrefs).toContain(
-      "https://x.com/twoclipping/status/2103835273813496100",
-    );
+  it("cita fonte para cada exemplo real de vídeo que vende", () => {
+    const proofs = Array.from(document.querySelectorAll("#por-que .proof"));
+    expect(proofs.length).toBeGreaterThanOrEqual(3);
+    for (const proof of proofs) {
+      expect(proof.querySelector("a.src")?.getAttribute("href")).toMatch(/^https:\/\//);
+    }
   });
 
   it("abre cada link externo em nova aba com proteção", () => {

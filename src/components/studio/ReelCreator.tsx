@@ -41,13 +41,6 @@ interface VideoFormat {
 interface CreatedFilm { film: string; size: string; avatar?: FilmAvatarRef }
 interface VoiceResult { status?: string; duration: number; voiceEnd: number }
 
-const effects: Array<{ id: ReelEffect; name: string }> = [
-  { id: "none", name: "Movimento suave" },
-  { id: "pulse", name: "Pulso nas cenas" },
-  { id: "rise", name: "Entrada ascendente" },
-  { id: "wipe", name: "Transições de corte" },
-];
-
 export function initialReelDraft(profile: StudioProfile, withAvatar: boolean): ReelDraft {
   const objective = profile.commercialGoal || "Apresentar seu produto com clareza";
   const offer = "Conheça a oferta pelo link do perfil";
@@ -57,7 +50,7 @@ export function initialReelDraft(profile: StudioProfile, withAvatar: boolean): R
     offer,
     script: deterministicScript(objective, offer),
     voice: { provider: profile.voice.provider, voiceId: profile.voice.voiceId },
-    formatId: withAvatar ? "professor" : "ui-motion",
+    formatId: withAvatar ? "avatar" : "ui-motion",
     effect: "pulse",
     ...(withAvatar && profile.defaultAvatar ? { avatar: profile.defaultAvatar } : {}),
   };
@@ -71,97 +64,55 @@ function htmlText(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
 }
 
-/** A local, deterministic HyperFrames composition; no generated-AI claim or remote dependency. */
+/**
+ * A local, deterministic HyperFrames composition directed by CRM.autoReel (kit/cutroom-motion.js):
+ * one scene per spoken sentence, kinetic words, camera moves, transitions and particles, with the
+ * profile's avatar acting on stage when the Reel has one. No remote dependency.
+ */
 export function reelHtml(draft: ReelDraft, voice: VoiceResult) {
   const duration = Math.max(4, +(voice.voiceEnd + 1.8).toFixed(2));
   const hasAvatar = Boolean(draft.avatar);
-  const entrance = draft.effect === "rise" ? "y: 90" : draft.effect === "pulse" ? "scale: .88" : "autoAlpha: 0";
   const avatarScripts = hasAvatar
     ? '<script src="avatar/runtime.js"></script>\n  <script src="avatar/voice.js"></script>'
     : "";
-  const avatarCanvas = hasAvatar ? '<canvas id="avatar" aria-label="Apresentador"></canvas>' : "";
-  const init = `
-    window.__timelines = window.__timelines || {};
-    var D = ${duration};
-    var tl = gsap.timeline({ paused: true });
-    var scene = { time: 0 };
-    var avatarDraw = null;
-    function build() {
-      tl.fromTo('.hook', { ${entrance} }, { y: 0, scale: 1, duration: .45, ease: 'power3.out' }, 0);
-      tl.to('.hook', { autoAlpha: 0, y: -35, duration: .3 }, Math.max(1.8, D * .31));
-      tl.fromTo('.offer', { autoAlpha: 0, ${entrance} }, { autoAlpha: 1, y: 0, scale: 1, duration: .45, ease: 'power3.out' }, Math.max(2, D * .34));
-      tl.to('.offer', { autoAlpha: 0, y: -35, duration: .3 }, Math.max(3, D * .70));
-      tl.fromTo('.cta', { autoAlpha: 0, ${entrance} }, { autoAlpha: 1, y: 0, scale: 1, duration: .45, ease: 'power3.out' }, Math.max(3.2, D * .73));
-      ${draft.effect === "wipe" ? "CR.wipe(tl, Math.max(2, D * .34)); CR.wipe(tl, Math.max(3.2, D * .73));" : ""}
-      CR.captions(tl, { el: '.captions', maxWords: 4 });
-      if (avatarDraw) tl.to(scene, { time: D, duration: D, ease: 'none', onUpdate: function () { avatarDraw(scene.time); } }, 0);
-      tl.set({}, {}, D);
-      window.__timelines['film'] = tl;
-    }
-  `;
-  const avatarInit = hasAvatar ? `
-    const { renderAvatarPixels } = await import(window.FILM_AVATAR_ENGINE);
-    window.renderAvatarPixels = renderAvatarPixels;
-    var canvas = document.getElementById('avatar');
-    var context = canvas.getContext('2d');
-    context.imageSmoothingEnabled = false;
-    avatarDraw = function (time) {
-      var voice = window.FILM_AVATAR_VOICE;
-      var frame = Math.max(0, Math.min(voice.mouths.length - 1, Math.floor(time * voice.fps)));
-      var mouth = voice.mouths[frame] || 'X';
-      var pixels = window.renderAvatarPixels(window.FILM_AVATAR, {
-        pose: 'neutral', expression: 'neutral', mouth: mouth,
-        blink: frame % 103 < 4 ? 1 : 0, frame: frame
-      }, 'full');
-      if (canvas.width !== pixels.width || canvas.height !== pixels.height) {
-        canvas.width = pixels.width; canvas.height = pixels.height;
-      }
-      context.putImageData(new ImageData(pixels.data, pixels.width, pixels.height), 0, 0);
-    };
-    avatarDraw(0);
-    build();
-  ` : "build();";
-
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
+<title>${htmlText(draft.objective)}</title>
 <style>
   @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
   @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
   * { box-sizing: border-box; margin: 0; }
-  html, body { width: 1080px; height: 1920px; overflow: hidden; background: ${draft.profileId ? "#141318" : "#141318"}; }
-  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; color: #fff; background: radial-gradient(circle at 85% 12%, #6445d8 0, #141318 52%); font-family: "Instrument Sans", sans-serif; }
-  #film::before { content: ''; position: absolute; left: 70px; top: 85px; width: 94px; height: 12px; background: #c8ff5a; border-radius: 10px; }
-  .scene { position: absolute; left: 76px; right: 76px; top: 360px; visibility: hidden; opacity: 0; }
-  .hook { visibility: visible; opacity: 1; }
-  .kicker { color: #c8ff5a; font-size: 30px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase; }
-  h1, h2 { margin-top: 30px; font-family: Anton, sans-serif; font-weight: 400; line-height: 1.04; text-transform: uppercase; }
-  h1 { font-size: 112px; } h2 { font-size: 94px; }
-  .offer-card { margin-top: 55px; padding: 38px; color: #141318; background: #f7f6f1; border-radius: 28px; font-size: 44px; line-height: 1.3; }
-  .captions { position: absolute; left: 100px; right: 100px; top: 155px; min-height: 150px; text-align: center; font-size: 53px; font-weight: 650; line-height: 1.2; text-shadow: 0 3px 16px #000; }
-  .captions .key { color: #c8ff5a; }
-  #avatar { position: absolute; right: 30px; bottom: 335px; width: 460px; height: 460px; image-rendering: pixelated; }
-  .cta { top: 510px; text-align: center; }
-  .cta .offer-card { color: #fff; background: #6445d8; border: 3px solid #c8ff5a; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #141318; }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; color: #fff; background: #141318; font-family: "Instrument Sans", sans-serif; }
 </style>
 </head>
 <body>
 <div id="film" data-composition-id="film" data-start="0" data-duration="${duration}" data-width="1080" data-height="1920">
-  <section class="scene hook"><span class="kicker">Seu próximo passo</span><h1>${htmlText(draft.objective)}</h1></section>
-  <section class="scene offer"><span class="kicker">A oferta</span><h2>Feita para você</h2><div class="offer-card">${htmlText(draft.offer)}</div></section>
-  <section class="scene cta"><span class="kicker">Comece agora</span><h2>Link no perfil</h2><div class="offer-card">Veja os detalhes e dê o próximo passo.</div></section>
-  <div class="captions"></div>
-  ${avatarCanvas}
   <audio id="voz" data-start="0" data-duration="${voice.duration}" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
   <script src="kit/gsap.min.js"></script>
   <script src="brand.js"></script>
   <script src="timing.js"></script>
   ${avatarScripts}
   <script src="kit/cutroom-kit.js"></script>
-  <script>${init}</script>
-  <script type="module">${avatarInit}</script>
+  <script src="kit/cutroom-motion.js"></script>
+  ${hasAvatar ? '<script src="kit/avatar/engine.js"></script>' : ""}
+  <script>
+    window.__timelines = window.__timelines || {};
+    var D = ${duration};
+    var tl = gsap.timeline({ paused: true });
+    var palette = (window.BRAND && window.BRAND.palette) || {};
+    CRM.autoReel({
+      tl: tl, film: "#film", duration: D,
+      engine: ${hasAvatar ? "window.AvatarEngine" : "null"},
+      avatar: ${hasAvatar ? "window.FILM_AVATAR" : "null"},
+      brand: { accent: palette.accent || "#7C5CFF" }
+    });
+    tl.set({}, {}, D);
+    window.__timelines["film"] = tl;
+  </script>
 </div>
 </body>
 </html>`;
@@ -287,11 +238,6 @@ export function ReelCreator({
             <select value={draft.formatId} disabled={busy || !formats.length} onChange={(event) => update({ formatId: event.target.value })}>
               {!formats.length && <option value={draft.formatId}>Carregando formatos…</option>}
               {formats.map((format) => <option key={format.id} value={format.id}>{format.name} · {format.length}</option>)}
-            </select>
-          </label>
-          <label className="reel-field">Efeito visual
-            <select value={draft.effect} disabled={busy} onChange={(event) => update({ effect: event.target.value as ReelEffect })}>
-              {effects.map((effect) => <option key={effect.id} value={effect.id}>{effect.name}</option>)}
             </select>
           </label>
           <div className="reel-voice-card" data-testid="reel-profile-voice">

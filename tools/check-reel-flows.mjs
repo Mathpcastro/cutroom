@@ -85,8 +85,6 @@ async function createReel({ withAvatar }) {
   if (formats.length < 7 || !formats.some((text) => /UI motion/i.test(text))) {
     throw new Error(`Formatos reais ausentes: ${JSON.stringify(formats)}`);
   }
-  const effects = await page.getByRole("combobox", { name: "Efeito visual", exact: true }).locator("option").allTextContents();
-  if (effects.length < 4) throw new Error(`Efeitos visuais ausentes: ${JSON.stringify(effects)}`);
   if (withAvatar) await expect(page.getByTestId("reel-avatar-reference")).toBeVisible();
   else await expect(page.getByTestId("reel-avatar-reference")).toHaveCount(0);
 
@@ -96,7 +94,6 @@ async function createReel({ withAvatar }) {
     `Seu produto merece uma demonstração clara. Conheça a oferta ${suffix}. Veja cada detalhe e comece agora pelo link do perfil.`,
   );
   if (!withAvatar) await page.getByRole("combobox", { name: "Formato", exact: true }).selectOption("ui-motion");
-  await page.getByRole("combobox", { name: "Efeito visual", exact: true }).selectOption("pulse");
   await expect(page.getByTestId("reel-profile-voice")).toContainText("local");
   await page.getByRole("button", { name: "Gerar filme e revisar", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Revisar Reel", exact: true })).toBeVisible({ timeout: 180_000 });

@@ -94,7 +94,10 @@ describe("controller acessível dos vídeos de upsell", () => {
       route.fulfill({ status: 200, contentType: "image/jpeg", body: localThumbnail }),
     );
     await page.goto(pageUrl, { waitUntil: "load" });
-    await page.waitForFunction(() => document.querySelectorAll("button.sound").length === 3);
+    await page.waitForFunction(() => {
+      const sounds = document.querySelectorAll("button.sound").length;
+      return sounds > 0 && sounds === document.querySelectorAll("video[data-autoplay]").length;
+    });
   });
 
   afterEach(async () => {
@@ -209,10 +212,13 @@ describe("controller acessível dos vídeos de upsell", () => {
         pressed: video.parentElement!.querySelector("button.sound")!.getAttribute("aria-pressed"),
       })),
     );
+    const secondIndex = await second.locator("video").evaluate((video) =>
+      Array.from(document.querySelectorAll("video[data-autoplay]")).indexOf(video),
+    );
     expect(states.filter((state) => !state.muted)).toHaveLength(1);
-    expect(states[2]).toMatchObject({ muted: false, paused: false, text: "Sem som", pressed: "true" });
+    expect(states[secondIndex]).toMatchObject({ muted: false, paused: false, text: "Sem som", pressed: "true" });
     for (const [index, state] of states.entries()) {
-      if (index === 2) continue;
+      if (index === secondIndex) continue;
       expect(state).toMatchObject({ muted: true, paused: true, text: "Ouvir", pressed: "false" });
     }
     await expect.poll(() => second.locator("button.sound").getAttribute("aria-label")).toBe(

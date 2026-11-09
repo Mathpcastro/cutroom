@@ -163,6 +163,38 @@ Suspense em segunda pessoa: um boneco de palito 2D (contorno escuro grosso, corp
     checklist: [...CHECK_COMMON, "HUD de dia/hora sempre visível e atualizando", "Cada regra é paga na tela", "Final com escolha em que as duas opções parecem ruins"],
   },
   {
+    id: "avatar",
+    name: "Avatar apresentador",
+    aspect: "9:16",
+    length: "25–35 s",
+    goodFor: "O seu avatar de IA apresenta o produto em um Reels acelerado: cai na tela, faz zoom no rosto, aponta, comemora, dorme enquanto o perfil trabalha e termina no link do perfil. Cada frase é uma cena nova.",
+    needs: ["a dor do público em uma frase", "3 coisas que o produto faz", "o funil até a venda"],
+    guide: `# Avatar apresentador
+O avatar do perfil (pixel art do criador de avatar) é o apresentador. Sem avatar no filme, o kit usa uma amostra. Tudo vem de \`kit/cutroom-motion.js\` (objeto \`CRM\`).
+
+## Linguagem
+- **Uma frase = uma cena.** A cada frase muda o fundo (\`CRM.background\` com cortina circular), o enquadramento do avatar (\`A.shot\`) e o texto.
+- **Câmera viva:** zoom no rosto (\`A.shot\` com scale 22–28), chicote entre cenas (\`CRM.whip\`), tremida no impacto (\`CRM.shake\`), punch nos números (\`CRM.punch\`), flash (\`CRM.flash\`).
+- **O avatar atua:** \`A.act(t, pose, expressão)\` nas palavras-chave (poses: neutral, explaining, pointing, surprised, celebrating; expressões: neutral, happy, thinking, surprised, serious, confident). \`A.talk\` faz gestos nas palavras; \`A.enter\` (drop, pop, left, right), \`A.hop\`, \`A.spin\`, \`A.hit\`, \`A.sleep\`. A boca segue a narração sozinha.
+- **Texto que bate:** \`CRM.slam\` (palavra por palavra), \`CRM.letters\` (letras caindo), \`CRM.glitch\`, \`CRM.strike\`, \`CRM.popIn\`, \`CRM.slideIn\`. Máximo de 3–5 palavras na tela.
+- **Partículas** no ápice: \`CRM.particles\` (confetti, coin, heart, spark, dust) e \`CRM.speedLines\`.
+- Barra de progresso no topo (\`CRM.progress\`) e CTA do perfil no fim.
+
+## Estrutura (≈ 30 s)
+1. Gancho com o avatar caindo na tela + a dor.
+2. Close no rosto na frase que dói.
+3. O inimigo (anúncio caro, falta de tempo) com carimbo.
+4. A prova com número subindo.
+5. Três "sem" que batem com tremida.
+6. Apresentação do avatar com giro e confete.
+7. O que ele faz em 3 cards, com a voz desenhada ao vivo (\`CRM.waveform\`).
+8. Virada (noite, dia) e funil até a venda com moedas.
+9. CTA: "Quer o seu?" + link do perfil.
+
+Efeitos: whoosh nos chicotes, impact nos carimbos, pop nos cards, moedas na venda; música animada e baixa.`,
+    checklist: [...CHECK_COMMON, "Cada frase muda a cena (fundo, enquadramento ou texto)", "O avatar muda de pose ou expressão nas palavras-chave", "Pelo menos um zoom no rosto e um ápice com partículas"],
+  },
+  {
     id: "pixel",
     name: "Jogo em pixel art",
     aspect: "9:16",

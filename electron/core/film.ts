@@ -151,6 +151,16 @@ export class Films {
     await cp(join(this.kit, "fonts"), join(dir, "fonts"), { recursive: true });
     await mkdir(join(dir, "kit"), { recursive: true });
     await cp(join(this.kit, "cutroom-kit.js"), join(dir, "kit", "cutroom-kit.js"));
+    await cp(join(this.kit, "cutroom-motion.js"), join(dir, "kit", "cutroom-motion.js"));
+    // Pixel avatar engine + a sample avatar, so avatar formats preview before the user's own avatar is attached.
+    const engine = join(this.kit, "..", "avatar-engine");
+    if (await stat(join(engine, "avatar-engine.js")).then(() => true, () => false)) {
+      await mkdir(join(dir, "kit", "avatar"), { recursive: true });
+      // Classic-script build of the engine: ready before the first frame is captured (a dynamic import is not).
+      await writeFile(join(dir, "kit", "avatar", "engine.js"), classicAvatarEngine(await readFile(join(engine, "avatar-engine.js"), "utf8")), "utf8");
+      const sample = await readFile(join(engine, "examples", "strategist.json"), "utf8").catch(() => "");
+      if (sample) await writeFile(join(dir, "kit", "avatar", "sample.js"), `window.CRM_SAMPLE_AVATAR = ${JSON.stringify(JSON.parse(sample))};\n`, "utf8");
+    }
     // three.js (MIT) for 3D sets and post-processing; use an import map: {"three": "./kit/three/three.module.min.js"}.
     if (await stat(join(this.kit, "three")).then(() => true, () => false)) await cp(join(this.kit, "three"), join(dir, "kit", "three"), { recursive: true });
     await writeFile(join(dir, "kit", "gsap.min.js"), await readFile(this.gsap)); // may live inside app.asar
@@ -339,6 +349,16 @@ async function stageFilm(films: Films, id: string) {
 }
 
 /** Runs the HyperFrames worker (Electron in Node mode) and returns its final JSON line. */
+/** The avatar engine (an ES module) as a classic script exposing window.AvatarEngine. */
+export function classicAvatarEngine(source: string) {
+  const body = source.replace(/^export\s+(async\s+)?function/gm, "$1function");
+  return `(function () {
+${body}
+window.AvatarEngine = { renderAvatarPixels: renderAvatarPixels, evaluatePart: evaluatePart };
+})();
+`;
+}
+
 export async function runFilmWorker(dir: string, spec: Record<string, unknown>, runner: FilmRunner, directory = dir) {
   const work = join(dir, ".renders");
   await mkdir(work, { recursive: true });

@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Videosell — avatares e vídeos com IA para o seu produto</title>
+    <title>Videosell — vídeos virais para vender o seu SaaS</title>
     <meta
       name="description"
-      content="Complemente o Carrossell com Reels, narração, formatos em código e publicação. Videosell por R$ 97, pagamento único."
+      content="Os formatos de vídeo que estão viralizando, feitos em código com o seu produto, a sua voz e o seu avatar de IA. Videosell por R$ 97, pagamento único."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -754,6 +754,215 @@
           width: min(278px, 82vw);
         }
       }
+      /* Por que: provas reais */
+      .proofs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+      }
+      .proof {
+        min-width: 0;
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--white);
+      }
+      .proof .big {
+        font: 800 44px/1 "Sora", system-ui, sans-serif;
+        letter-spacing: -0.04em;
+        color: var(--violet-deep);
+        margin-bottom: 12px;
+      }
+      .proof h3 {
+        font-size: 19px;
+        margin-bottom: 8px;
+      }
+      .proof p {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .proof .src {
+        display: inline-block;
+        margin-top: 12px;
+        font-size: 13px;
+        color: var(--violet-deep);
+        overflow-wrap: anywhere;
+      }
+      .thesis {
+        margin-top: 24px;
+        padding: 24px 28px;
+        border-radius: 22px;
+        background: var(--ink);
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 17px;
+      }
+      .thesis b {
+        color: var(--lime);
+      }
+
+      /* Comparativo lado a lado */
+      .pair {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 22px;
+        align-items: start;
+        margin-bottom: 28px;
+        padding: 18px;
+        border-radius: 28px;
+        background: var(--paper);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.06);
+      }
+      .side {
+        min-width: 0;
+      }
+      .side .label,
+      .side h3 {
+        font: 700 18px/1.3 "Sora", system-ui, sans-serif;
+        letter-spacing: -0.02em;
+        margin: 4px 4px 12px;
+      }
+      .side h3 span {
+        color: var(--accent);
+      }
+      .viral .label {
+        color: var(--muted);
+      }
+      .viral blockquote.twitter-tweet {
+        margin: 0 auto;
+        max-width: 380px;
+        padding: 0;
+        border: 0;
+      }
+      .viral .twitter-tweet-rendered {
+        margin: 0 auto !important;
+      }
+      .pair .orig {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        display: block;
+        width: 100%;
+        max-width: 380px;
+        max-height: 60vh;
+        aspect-ratio: 9/16;
+        margin: 0 auto;
+        border: 0;
+        border-radius: 20px;
+        box-shadow: none;
+      }
+      .pair .orig img {
+        height: 100%;
+        filter: saturate(0.9);
+      }
+      .pair .orig > span:not(.orig-fallback) {
+        left: 50%;
+        right: auto;
+        top: 50%;
+        bottom: auto;
+        transform: translate(-50%, -50%);
+        padding: 12px 18px;
+        border-radius: 999px;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+      .pair .orig-fallback {
+        height: 100%;
+        font-size: 14px;
+      }
+      .stat {
+        margin: 12px 4px 0;
+        font-size: 14px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .stat b {
+        color: var(--ink);
+      }
+      .ours .reel {
+        max-width: 380px;
+      }
+      .ours p {
+        font-size: 14px;
+        color: var(--muted);
+        margin: 12px 4px 0;
+      }
+
+      /* O que faz */
+      .feats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .feat {
+        min-width: 0;
+        padding: 22px;
+        border-radius: 20px;
+        background: var(--soft);
+      }
+      .feat .ico {
+        display: inline-grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+        background: var(--ink);
+        color: var(--lime);
+        font-size: 20px;
+      }
+      .feat h3 {
+        font-size: 18px;
+        margin-bottom: 6px;
+      }
+      .feat p {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* Mais formatos */
+      .quad {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .quad .case {
+        padding: 10px;
+      }
+      .quad .case h3 {
+        font-size: 15px;
+      }
+      .quad .reel {
+        max-height: none;
+      }
+
+      @media (max-width: 1000px) {
+        .feats,
+        .quad {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 860px) {
+        .proofs,
+        .pair {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .pair {
+          padding: 14px;
+        }
+        .ours .reel,
+        .pair .orig {
+          width: min(100%, 360px);
+          max-height: none;
+        }
+      }
+      @media (max-width: 520px) {
+        .feats {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .proof .big {
+          font-size: 38px;
+        }
+      }
       @media (prefers-reduced-motion: reduce) {
         *,
         *::before,
@@ -799,17 +1008,18 @@
         <div class="hero-copy">
           <p class="eyebrow">Carrossell + Videosell</p>
           <h1 id="hero-title">
-            Seu produto ganha <span>rosto, voz e presença.</span>
+            Os vídeos que estão viralizando, <span>vendendo o seu SaaS.</span>
           </h1>
           <p class="lead">
-            Você já cria carrosséis com o Carrossell. Com o Videosell,
-            transforma ideias em Reels com roteiro, narração, animação e a sua
-            marca — tudo no seu computador, com a IA que você já usa.
+            Stickman em 3D, jogo em pixel art, explainer ilustrado, o seu app em
+            movimento. Os formatos feitos em código que passaram de 100 mil
+            visualizações, agora com o seu produto, a sua voz e o seu avatar de
+            IA. Sem câmera, sem animador, direto do seu computador.
           </p>
           <div class="mech" aria-label="Como funciona">
-            <span><b>1</b> Descreva o vídeo</span>
-            <span><b>2</b> Revise o resultado</span>
-            <span><b>3</b> Publique no seu perfil</span>
+            <span><b>1</b> Escolha um formato viral</span>
+            <span><b>2</b> A IA monta roteiro, voz e animação</span>
+            <span><b>3</b> O Reels sai no seu perfil todo dia</span>
           </div>
           <a class="cta" href="#COMPRAR" data-cakto-upsell
             >Quero o Videosell <small>por R$ 97</small></a
@@ -821,33 +1031,126 @@
         </div>
         <div class="phone">
           <video
-            src="videos/professor.mp4"
-            poster="videos/professor.jpg"
+            src="videos/avatar.mp4"
+            poster="videos/avatar.jpg"
             muted
             loop
             playsinline
             preload="metadata"
             data-autoplay
+            aria-label="Reels apresentado por um avatar de IA, feito no Videosell"
           ></video>
         </div>
       </section>
     </div>
 
-    <!-- DOBRAS 2 e 3: vídeos gerados e referências de formato -->
-    <section class="soft fold">
+    <!-- POR QUE: vídeo curto vende software -->
+    <section id="por-que" aria-labelledby="why-title">
       <div class="wrap">
-        <h2>Feito no Videosell. <em>Sem câmera, sem editor.</em></h2>
+        <h2 id="why-title">Vídeo curto virou o canal de <em>venda de software</em></h2>
         <p class="sub">
-          Duas demonstrações geradas no Videosell a partir de referências de
-          formato para o seu SaaS. Toque em um vídeo para ouvir.
+          Quem cresce sem anúncio hoje faz a mesma coisa: aparece todo dia no
+          feed com um vídeo que prende nos primeiros segundos e termina no link
+          do perfil. Três exemplos reais, com fonte:
         </p>
-        <div class="trio">
-          <article class="case">
-            <h3>Aula com apresentador em pixel art</h3>
+        <div class="proofs">
+          <article class="proof">
+            <p class="big">18 mi</p>
+            <h3>Duolingo: um mascote no lugar do anúncio</h3>
+            <p>
+              O app de idiomas fez da coruja Duo a personagem dos próprios
+              vídeos no TikTok, com humor e tendências do momento. A conta passa
+              de 18 milhões de seguidores.
+            </p>
+            <a
+              class="src"
+              href="https://creatordb.app/creatorstats/duolingo/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Fonte: CreatorDB, set/2026</a
+            >
+          </article>
+          <article class="proof">
+            <p class="big">US$ 35 mi</p>
+            <h3>Cal AI: um app vendido por vídeo curto</h3>
+            <p>
+              O app de contar calorias cresceu com vídeos curtos no TikTok e no
+              Instagram, sem investidor, até passar de US$ 35 milhões por ano
+              em assinaturas, segundo o fundador.
+            </p>
+            <a
+              class="src"
+              href="https://getlatka.com/companies/calai.app/interviews/cal-ai-zach-yadegari-2025"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Fonte: entrevista do fundador, GetLatka 2025</a
+            >
+          </article>
+          <article class="proof">
+            <p class="big">258 mil</p>
+            <h3>Feito em código, em minutos</h3>
+            <p>
+              Um explainer no estilo Kurzgesagt, feito inteiro em código com o
+              Claude em cerca de 10 minutos, passou de 258 mil visualizações no
+              X. Um estúdio de animação levaria semanas.
+            </p>
+            <a
+              class="src"
+              href="https://x.com/finnardley/status/2114305886420086817"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Fonte: @finnardley no X</a
+            >
+          </article>
+        </div>
+        <div class="thesis">
+          <p>
+            <b>A virada:</b> esses formatos não precisam de rosto, câmera nem
+            equipe. São animação feita em código, e quase ninguém está usando
+            para vender SaaS em português. O Videosell transforma isso numa
+            linha de produção: um formato que já viralizou, o seu produto no
+            roteiro e o link do perfil no final.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARATIVO: o viral original × a versão do Videosell -->
+    <section class="soft" id="comparativo" aria-labelledby="vs-title">
+      <div class="wrap">
+        <h2 id="vs-title">O viral original × <em>feito no Videosell</em></h2>
+        <p class="sub">
+          À esquerda, o post original como está no X. À direita, o mesmo
+          formato feito no Videosell para vender um SaaS, com roteiro em
+          português e narração. Toque em “Ouvir” para comparar com som.
+        </p>
+
+        <div class="pair">
+          <div class="side viral">
+            <p class="label">O viral · stickman em código</p>
+            <blockquote class="twitter-tweet" data-theme="dark" data-conversation="none" data-dnt="true" data-media-max-width="380">
+              <a
+                class="orig"
+                href="https://x.com/finnardley/status/2115786060231770351"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Assistir o original de @finnardley no X"
+                ><img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2115784242701500416/img/a_e-E2kTPxvwNIU5.jpg"
+                  alt="Vídeo original de stickman de @finnardley"
+                  loading="lazy"
+                  data-handle="@finnardley"
+                /><span>▶ Assistir no X</span></a
+              >
+            </blockquote>
+            <p class="stat"><b>62 mil</b> visualizações · <b>665</b> curtidas · @finnardley</p>
+          </div>
+          <article class="side ours">
+            <h3>Suspense de <span>stickman em 3D</span></h3>
             <div class="reel">
               <video
-                src="videos/professor.mp4"
-                poster="videos/professor.jpg"
+                src="videos/stickman.mp4"
+                poster="videos/stickman.jpg"
                 muted
                 loop
                 playsinline
@@ -855,28 +1158,78 @@
                 data-autoplay
               ></video>
               <span class="tag-ours">Feito no Videosell</span>
-              <a
-                class="orig"
-                href="https://x.com/finnardley/status/2116010421740007894"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ver referência original de @finnardley no X"
-              >
-                <img
-                  src="https://pbs.twimg.com/amplify_video_thumb/2116009362552434688/img/jkPpJnTcWGJQzywL.jpg"
-                  alt="Referência original de @finnardley"
-                  loading="lazy"
-                  data-handle="@finnardley"
-                />
-                <span>Referência no X</span>
-              </a>
             </div>
             <p>
-              Referência de formato: aula vertical com apresentador em pixel
-              art, legendas e cards que acompanham a explicação.
+              Cenário 3D com luz de dia e de noite, relógio correndo, regras na
+              tela e um final com escolha que enche os comentários. Termina no
+              link do perfil.
             </p>
           </article>
-          <article class="case">
+        </div>
+
+        <div class="pair">
+          <div class="side viral">
+            <p class="label">O viral · explainer ilustrado</p>
+            <blockquote class="twitter-tweet" data-theme="dark" data-conversation="none" data-dnt="true" data-media-max-width="380">
+              <a
+                class="orig"
+                href="https://x.com/finnardley/status/2114305886420086817"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Assistir o original de @finnardley no X"
+                ><img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2114305237498388481/img/DMcFgslJnlOdVQ94.jpg"
+                  alt="Vídeo original no estilo Kurzgesagt de @finnardley"
+                  loading="lazy"
+                  data-handle="@finnardley"
+                /><span>▶ Assistir no X</span></a
+              >
+            </blockquote>
+            <p class="stat"><b>258 mil</b> visualizações · <b>3,1 mil</b> curtidas · @finnardley</p>
+          </div>
+          <article class="side ours">
+            <h3>Explainer <span>ilustrado</span></h3>
+            <div class="reel">
+              <video
+                src="videos/kurzgesagt.mp4"
+                poster="videos/kurzgesagt.jpg"
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                data-autoplay
+              ></video>
+              <span class="tag-ours">Feito no Videosell</span>
+            </div>
+            <p>
+              O seu SaaS como um planeta: o conteúdo é a estrela que acende, o
+              Reels alcança quem está longe e os visitantes entram em órbita até
+              virar clientes.
+            </p>
+          </article>
+        </div>
+
+        <div class="pair">
+          <div class="side viral">
+            <p class="label">O viral · lançamento de app em código</p>
+            <blockquote class="twitter-tweet" data-theme="dark" data-conversation="none" data-dnt="true" data-media-max-width="380">
+              <a
+                class="orig"
+                href="https://x.com/twoclipping/status/2103835273813496100"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Assistir o original de @twoclipping no X"
+                ><img
+                  src="https://pbs.twimg.com/amplify_video_thumb/2103830256347910144/img/YsUzKmE5XqGD9NZR.jpg"
+                  alt="Vídeo original de lançamento de @twoclipping"
+                  loading="lazy"
+                  data-handle="@twoclipping"
+                /><span>▶ Assistir no X</span></a
+              >
+            </blockquote>
+            <p class="stat"><b>144 mil</b> visualizações · <b>2,2 mil</b> curtidas · @twoclipping</p>
+          </div>
+          <article class="side ours">
             <h3>O app <span>funcionando</span></h3>
             <div class="reel">
               <video
@@ -889,41 +1242,109 @@
                 data-autoplay
               ></video>
               <span class="tag-ours">Feito no Videosell</span>
-              <a
-                class="orig"
-                href="https://x.com/twoclipping/status/2103835273813496100"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ver referência original de @twoclipping no X"
-              >
-                <img
-                  src="https://pbs.twimg.com/amplify_video_thumb/2103830256347910144/img/YsUzKmE5XqGD9NZR.jpg"
-                  alt="Referência original de @twoclipping"
-                  loading="lazy"
-                  data-handle="@twoclipping"
-                />
-                <span>Referência no X</span>
-              </a>
             </div>
             <p>
-              Referência de formato: animação de interface com cursor,
-              transições e estados do produto em primeiro plano.
+              Formas que viram a interface, cursor clicando e estado por estado
+              do produto. O vídeo de lançamento que todo SaaS precisa.
             </p>
           </article>
         </div>
+
         <p class="note">
-          Os vídeos desta seção foram gerados no Videosell. As referências
-          externas pertencem aos respectivos autores e apresentam os formatos.
+          Visualizações coletadas no X em 06/11/2026 e curtidas em 09/11/2026.
+          Os posts originais pertencem aos respectivos autores e aparecem aqui
+          como referência de formato; os vídeos à direita foram gerados no
+          Videosell, com roteiro e narração próprios.
         </p>
       </div>
     </section>
 
-    <section id="produto-por-dentro" aria-labelledby="tour-title">
+    <!-- O QUE O APP FAZ -->
+    <section id="o-que-faz" aria-labelledby="does-title">
+      <div class="wrap">
+        <h2 id="does-title">O que o Videosell <em>faz por você</em></h2>
+        <p class="sub">
+          Um estúdio no seu computador que pega um formato que já viralizou e
+          entrega o Reels pronto, com a sua marca. Você revisa; ele faz o resto.
+        </p>
+        <div class="feats">
+          <div class="feat">
+            <b class="ico" aria-hidden="true">◐</b>
+            <h3>Seu avatar de IA</h3>
+            <p>
+              Crie um mascote em pixel art a partir de uma descrição ou de uma
+              foto, ajuste rosto, roupa e cores, e ele fala com a boca
+              sincronizada à narração.
+            </p>
+          </div>
+          <div class="feat">
+            <b class="ico" aria-hidden="true">▦</b>
+            <h3>7 formatos virais prontos</h3>
+            <p>
+              Stickman em 3D, jogo em pixel art, explainer ilustrado, “e se”,
+              aula com apresentador, o app funcionando e voo pela sua landing
+              page.
+            </p>
+          </div>
+          <div class="feat">
+            <b class="ico" aria-hidden="true">✦</b>
+            <h3>A IA que você já usa</h3>
+            <p>
+              Claude Code, Codex ou o chat do próprio app escrevem o roteiro e
+              montam o vídeo por você, cena por cena.
+            </p>
+          </div>
+          <div class="feat">
+            <b class="ico" aria-hidden="true">◉</b>
+            <h3>Narração e legendas</h3>
+            <p>
+              Voz que roda no seu computador, ElevenLabs ou OpenAI com a sua
+              chave, ou a sua própria gravação. As legendas acompanham cada
+              palavra.
+            </p>
+          </div>
+          <div class="feat">
+            <b class="ico" aria-hidden="true">▣</b>
+            <h3>Revisão antes de sair</h3>
+            <p>
+              Você confere os quadros do vídeo antes de renderizar e recebe um
+              MP4 vertical pronto para o Reels, com música e efeitos.
+            </p>
+          </div>
+          <div class="feat">
+            <b class="ico" aria-hidden="true">↻</b>
+            <h3>Postagem no automático</h3>
+            <p>
+              Conecte o Instagram e agende um Reels por dia. Com os carrosséis
+              do Carrossell, o perfil não fica parado.
+            </p>
+          </div>
+          <div class="feat">
+            <b class="ico" aria-hidden="true">◎</b>
+            <h3>Um perfil por produto</h3>
+            <p>
+              SaaS, consultoria, mentoria: cada produto com o seu avatar, voz,
+              marca e conta, sem misturar.
+            </p>
+          </div>
+          <div class="feat">
+            <b class="ico" aria-hidden="true">⌗</b>
+            <h3>Editor quando quiser</h3>
+            <p>
+              Timeline, cortes, legendas e trilhas em Ajustes avançados, para
+              refinar qualquer vídeo.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="soft" id="produto-por-dentro" aria-labelledby="tour-title">
       <div class="wrap">
         <h2 id="tour-title">O produto <em>por dentro</em></h2>
         <p class="sub">
-          Do avatar à exportação: conheça as telas reais usadas para criar,
-          revisar e editar o seu vídeo.
+          Do avatar à exportação: as telas reais usadas para criar, revisar e
+          editar o seu vídeo.
         </p>
         <div class="tour-grid">
           <figure class="tour-card">
@@ -937,8 +1358,8 @@
             />
             <figcaption>
               <h3>Crie o seu avatar</h3>
-              Comece por uma das três bases locais e prepare um apresentador
-              para os seus vídeos.
+              Comece por uma das bases e transforme no apresentador dos seus
+              vídeos.
             </figcaption>
           </figure>
           <figure class="tour-card">
@@ -951,9 +1372,9 @@
               data-studio-screen
             />
             <figcaption>
-              <h3>Escolha o formato do perfil</h3>
-              Ative um perfil e use avatar, Reel ou a opção sem avatar na
-              criação do conteúdo.
+              <h3>Escolha o perfil e o formato</h3>
+              Crie o Reels com o seu avatar ou direto em um dos formatos, sem
+              avatar.
             </figcaption>
           </figure>
           <figure class="tour-card">
@@ -967,8 +1388,7 @@
             />
             <figcaption>
               <h3>Revise cada quadro</h3>
-              Confira os quadros reais e a validação antes de seguir para o
-              editor e a exportação.
+              Confira os quadros reais e a validação antes de exportar.
             </figcaption>
           </figure>
           <figure class="tour-card">
@@ -982,8 +1402,7 @@
             />
             <figcaption>
               <h3>Ajuste no editor</h3>
-              Use o preview, a timeline e os controles do editor avançado para
-              refinar o resultado.
+              Preview, timeline e controles para refinar o resultado.
             </figcaption>
           </figure>
         </div>
@@ -994,91 +1413,83 @@
       </div>
     </section>
 
-    <!-- FUNIL CARROSSELL + VIDEOSELL -->
-    <section aria-labelledby="funnel-title">
+    <!-- MAIS FORMATOS -->
+    <section id="formatos" aria-labelledby="more-title">
       <div class="wrap">
-        <h2 id="funnel-title">Um fluxo para o seu <em>conteúdo</em></h2>
+        <h2 id="more-title">Mais formatos, <em>mesmo motor</em></h2>
         <p class="sub">
-          Carrossell e Videosell trabalham juntos para levar uma ideia do
-          alcance à apresentação da sua oferta, sem prometer vendas ou
-          viralidade.
+          Todos gerados pelo Videosell. Troque o roteiro, as telas e a marca;
+          o ritmo que prende já vem pronto.
+        </p>
+        <div class="quad">
+          <article class="case">
+            <h3>Jogo em <span>pixel art</span></h3>
+            <div class="reel">
+              <video src="videos/pixel.mp4" poster="videos/pixel.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+            </div>
+          </article>
+          <article class="case">
+            <h3>Aula com <span>apresentador</span></h3>
+            <div class="reel">
+              <video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+            </div>
+          </article>
+          <article class="case">
+            <h3>Voo pela <span>landing page</span></h3>
+            <div class="reel">
+              <video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+            </div>
+          </article>
+          <article class="case">
+            <h3>E se <span>…?</span></h3>
+            <div class="reel">
+              <video src="videos/e-se.mp4" poster="videos/e-se.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- FUNIL CARROSSELL + VIDEOSELL -->
+    <section class="soft" aria-labelledby="funnel-title">
+      <div class="wrap">
+        <h2 id="funnel-title">Reels trazem gente nova. <em>Carrosséis convencem.</em></h2>
+        <p class="sub">
+          Junto com o Carrossell, você fecha o funil orgânico inteiro sem pagar
+          anúncio.
         </p>
         <div class="funnel" aria-label="Fluxo de conteúdo em quatro estágios">
           <div class="stage-f">
             <b>Reels alcançam</b>
-            <span
-              >Apresente uma ideia, uma dúvida ou um problema para quem ainda
-              não conhece o seu produto.</span
-            >
+            <span>Um formato viral leva o seu assunto para quem ainda não te conhece.</span>
           </div>
           <div class="stage-f">
             <b>Perfil recebe</b>
-            <span
-              >Convide a pessoa a visitar seu perfil e encontrar mais conteúdo
-              sobre o mesmo assunto.</span
-            >
+            <span>O final de cada vídeo chama para o perfil, com o seu @ na tela.</span>
           </div>
           <div class="stage-f">
             <b>Carrosséis aprofundam</b>
-            <span
-              >Use o Carrossell para explicar o tema com mais contexto,
-              exemplos e próximos passos.</span
-            >
+            <span>O Carrossell explica, prova e quebra objeções no feed.</span>
           </div>
           <div class="stage-f">
-            <b>Link apresenta a oferta</b>
-            <span
-              >Leve quem tiver interesse à página em que você apresenta seu
-              produto e suas condições.</span
-            >
+            <b>Link vende</b>
+            <span>Quem tem interesse clica no link e conhece a sua oferta.</span>
           </div>
         </div>
-        <h3 style="font-size: 24px; margin-bottom: 10px">
-          Exemplo editorial de sete dias
-        </h3>
+        <h3 style="font-size: 24px; margin-bottom: 10px">Exemplo de uma semana</h3>
         <div class="week" aria-label="Exemplo editorial de sete dias">
-          <div class="day-f">
-            <strong>SEG</strong><i class="r">Reels · aula</i
-            ><i class="c">Carrossel · dor</i>
-          </div>
-          <div class="day-f">
-            <strong>TER</strong><i class="r">Reels · UI motion</i
-            ><i class="c">Carrossel · prova</i>
-          </div>
-          <div class="day-f">
-            <strong>QUA</strong><i class="r">Reels · stickman</i
-            ><i class="c">Carrossel · método</i>
-          </div>
-          <div class="day-f">
-            <strong>QUI</strong><i class="r">Reels · "e se"</i
-            ><i class="c">Carrossel · objeção</i>
-          </div>
-          <div class="day-f">
-            <strong>SEX</strong><i class="r">Reels · landing</i
-            ><i class="c">Carrossel · oferta</i>
-          </div>
-          <div class="day-f">
-            <strong>SÁB</strong><i class="r">Reels · explainer</i
-            ><i class="c">Carrossel · bastidor</i>
-          </div>
-          <div class="day-f">
-            <strong>DOM</strong><i class="r">O melhor da semana</i
-            ><i class="c">Carrossel · pergunta</i>
-          </div>
+          <div class="day-f"><strong>SEG</strong><i class="r">Reels · stickman</i><i class="c">Carrossel · dor</i></div>
+          <div class="day-f"><strong>TER</strong><i class="r">Reels · app</i><i class="c">Carrossel · prova</i></div>
+          <div class="day-f"><strong>QUA</strong><i class="r">Reels · explainer</i><i class="c">Carrossel · método</i></div>
+          <div class="day-f"><strong>QUI</strong><i class="r">Reels · "e se"</i><i class="c">Carrossel · objeção</i></div>
+          <div class="day-f"><strong>SEX</strong><i class="r">Reels · pixel art</i><i class="c">Carrossel · oferta</i></div>
+          <div class="day-f"><strong>SÁB</strong><i class="r">Reels · avatar</i><i class="c">Carrossel · bastidor</i></div>
+          <div class="day-f"><strong>DOM</strong><i class="r">O melhor da semana</i><i class="c">Carrossel · pergunta</i></div>
         </div>
         <p class="note">
-          Este é apenas um exemplo editorial. Esta página não cria uma agenda
-          automática nem garante resultados.
-        </p>
-      </div>
-    </section>
-
-    <section class="soft" aria-labelledby="results-title">
-      <div class="wrap">
-        <h2 id="results-title">Resultados dependem do <em>contexto</em></h2>
-        <p class="sub">
-          Resultados dependem do produto, da oferta, da execução e da
-          constância. Não há garantia de faturamento.
+          Exemplo editorial. Resultados dependem do produto, da oferta, da
+          execução e da constância; não há garantia de visualizações ou de
+          faturamento.
         </p>
       </div>
     </section>
@@ -1087,16 +1498,14 @@
       <div class="wrap">
         <h2 id="inclusions-title">O que você <em>leva</em></h2>
         <ul class="inc">
-          <li>App Videosell para desktop, com atualizações</li>
-          <li>7 formatos atuais com filmes iniciais e guias passo a passo</li>
-          <li>Narração local no seu computador</li>
-          <li>
-            Vozes ElevenLabs e OpenAI opcionais, com as suas próprias chaves
-          </li>
+          <li>App Videosell para Windows, com atualizações</li>
+          <li>7 formatos virais com filme pronto e guia passo a passo</li>
+          <li>Criador de avatar de IA em pixel art</li>
+          <li>Perfis separados para cada produto</li>
+          <li>Narração no seu computador, ElevenLabs, OpenAI ou a sua voz</li>
+          <li>Controle por Claude Code, Codex ou o chat do app</li>
           <li>Música e efeitos com créditos</li>
-          <li>Skill para Claude Code e Codex</li>
-          <li>Revisão e exportação dos vídeos</li>
-          <li>Agendamento do Instagram configurado por você</li>
+          <li>Postagem e agendamento no Instagram com a sua conta</li>
         </ul>
         <p class="note">
           Claude, Codex, provedores de IA e vozes premium podem cobrar
@@ -1108,9 +1517,10 @@
     <section class="dark final" id="oferta">
       <div class="wrap">
         <p class="eyebrow">Carrossell + Videosell</p>
-        <h2>Complete seu conteúdo com vídeo.</h2>
+        <h2>O formato já viralizou. <em>Falta o seu produto nele.</em></h2>
         <p class="sub">
-          Crie, revise e publique Reels com a IA e a marca que você já usa.
+          Reels todo dia com a IA e a marca que você já usa, ao lado dos seus
+          carrosséis.
         </p>
         <a class="cta" href="#COMPRAR" data-cakto-upsell
           >Quero o Videosell <small>por R$ 97</small></a
@@ -1230,5 +1640,6 @@
         if (image.complete && image.naturalWidth === 0) showFallback();
       });
     </script>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
   </body>
 </html>

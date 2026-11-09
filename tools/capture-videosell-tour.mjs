@@ -104,7 +104,6 @@ export async function captureVideosellTour({ projectRoot = defaultRoot } = {}) {
     await page.getByRole("textbox", { name: "Objetivo", exact: true }).fill("Apresentar o Videosell com clareza");
     await page.getByRole("textbox", { name: "Oferta", exact: true }).fill("Criação local de vídeos verticais");
     await page.getByRole("textbox", { name: "Roteiro", exact: true }).fill("Crie seu avatar. Escolha um formato. Revise cada quadro real e exporte seu vídeo vertical.");
-    await page.getByRole("combobox", { name: "Efeito visual", exact: true }).selectOption("pulse");
     await page.getByRole("button", { name: "Gerar filme e revisar", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Revisar Reel", exact: true })).toBeVisible({ timeout: 240_000 });
     await expect(page.locator(".reel-review-still").first()).toBeVisible({ timeout: 240_000 });

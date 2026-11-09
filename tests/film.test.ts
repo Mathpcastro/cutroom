@@ -159,6 +159,23 @@ console.log(JSON.stringify({ complete: true, received, requestPath }));
   }, 15_000);
 });
 
+describe("motion kit and avatar engine in films", () => {
+  it("ships the motion kit, a classic-script avatar engine and a sample avatar", async () => {
+    const film = await films.create({ name: "Avatar apresentador", format: "avatar" });
+    expect(film.files).toEqual(expect.arrayContaining(["kit/cutroom-motion.js", "kit/avatar/engine.js", "kit/avatar/sample.js"]));
+    const engine = await fs.readFile(path.join(film.path, "kit", "avatar", "engine.js"), "utf8");
+    expect(engine).not.toMatch(/^export\s/m);
+    // The classic build runs as a plain script and draws the sample avatar.
+    const sample = await fs.readFile(path.join(film.path, "kit", "avatar", "sample.js"), "utf8");
+    const scope: Record<string, any> = {};
+    new Function("window", "ImageData", `${sample}
+${engine}`)(scope, class {});
+    const pixels = scope.AvatarEngine.renderAvatarPixels(scope.CRM_SAMPLE_AVATAR, { pose: "pointing", expression: "happy", mouth: "D", blink: 0, frame: 3 }, "full");
+    expect(pixels.width).toBe(scope.CRM_SAMPLE_AVATAR.canvas.full);
+    expect(pixels.data.some((v: number) => v > 0)).toBe(true);
+  });
+});
+
 describe("film helpers", () => {
   it("finds remote references but not XML namespaces", () => {
     expect(remoteReferences('<svg xmlns="http://www.w3.org/2000/svg"></svg>')).toEqual([]);
