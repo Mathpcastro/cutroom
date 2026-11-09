@@ -1057,6 +1057,37 @@ describe("AvatarService", { timeout: 60_000 }, () => {
     ).rejects.toThrow(/aprova/i);
   });
 
+  it("stores explicit user approval time separately from a zero manual score", async () => {
+    const { service } = setup();
+    const created = await createThree(service);
+    const candidate = created.candidates[0];
+    const reviewed = await review(
+      service,
+      created.avatarId,
+      candidate.candidateId,
+      {
+        identity: 0,
+        silhouette: 0,
+        pixelCraft: 0,
+        palette: 0,
+        expressions: 0,
+        rig: 0,
+        export: 0,
+      },
+      true,
+    );
+
+    expect(reviewed.total).toBe(0);
+    expect(reviewed.manualApproved).toBe(true);
+    expect(reviewed.approvedByUserAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    const persisted = await service.getCandidate(
+      created.avatarId,
+      candidate.candidateId,
+    );
+    expect(persisted.review?.total).toBe(0);
+    expect(persisted.approvedByUserAt).toBe(reviewed.approvedByUserAt);
+  });
+
   it("compares persisted hashes, anchors, changed parts and quality reports", async () => {
     const { service } = setup();
     const created = await createThree(service);

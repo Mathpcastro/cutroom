@@ -82,6 +82,8 @@ export interface AvatarCandidate {
   quality: AvatarQualityReport;
   correctionRounds: number;
   manualApproved: boolean;
+  /** Explicit user acceptance timestamp; independent from rubric scores. */
+  approvedByUserAt?: string;
   rootCandidateId: string;
   parentCandidateId?: string;
   revision?: number;
@@ -189,6 +191,7 @@ export interface ReviewCandidateInput {
 export interface ReviewedCandidate extends AvatarReviewRecord {
   bestCandidateId: string;
   manualApproved: boolean;
+  approvedByUserAt?: string;
 }
 
 export interface RenderRevisionInput extends Omit<
@@ -433,6 +436,13 @@ function parseState(value: unknown, avatarId: string): AvatarServiceState {
     }
     if (candidate.manualApproved && !candidate.review) {
       throw new Error(`Aprovação sem review no candidato ${key}.`);
+    }
+    if (
+      candidate.approvedByUserAt !== undefined &&
+      (typeof candidate.approvedByUserAt !== "string" ||
+        !Number.isFinite(Date.parse(candidate.approvedByUserAt)))
+    ) {
+      throw new Error(`Timestamp de aprovação inválido no candidato ${key}.`);
     }
     if (candidate.review !== undefined) {
       const review = candidate.review;
@@ -896,7 +906,10 @@ export class AvatarService {
       };
       const beforeReview = clone(state);
       candidate.review = review;
-      if (input.manualApproved === true) candidate.manualApproved = true;
+      if (input.manualApproved === true) {
+        candidate.manualApproved = true;
+        candidate.approvedByUserAt ??= new Date().toISOString();
+      }
       await this.refreshBestCandidate(avatarId, state);
       await this.writeState(avatarId, state);
       try {
@@ -910,6 +923,9 @@ export class AvatarService {
         ...clone(review),
         bestCandidateId: state.bestCandidateId!,
         manualApproved: candidate.manualApproved,
+        ...(candidate.approvedByUserAt
+          ? { approvedByUserAt: candidate.approvedByUserAt }
+          : {}),
       };
     });
   }

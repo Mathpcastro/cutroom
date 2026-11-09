@@ -22,6 +22,38 @@ const api: CutroomAPI = {
     remove: (profileId, confirmation) =>
       ipcRenderer.invoke("editor:request", "profileDelete", { profileId, confirmation }),
   },
+  avatarCreator: {
+    createStarters: (input) =>
+      ipcRenderer.invoke("editor:request", "avatarCreatorCreateStarters", input),
+    getRevision: (input) =>
+      ipcRenderer.invoke("editor:request", "avatarCreatorGetRevision", input),
+    getCandidate: (input) =>
+      ipcRenderer.invoke("editor:request", "avatarCreatorGetCandidate", input),
+    listRevisions: (input) =>
+      ipcRenderer.invoke("editor:request", "avatarCreatorListRevisions", input),
+    readArtifact: (input) =>
+      ipcRenderer.invoke("editor:request", "avatarCreatorReadArtifact", input),
+    selectCandidate: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_select_candidate", input),
+    render: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_render", input),
+    renderJobId: (input) =>
+      ipcRenderer.invoke("editor:request", "avatarCreatorRenderJobId", input),
+    validate: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_validate", input),
+    revisePart: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_revise_part", input),
+    review: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_review", input),
+    saveRevision: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_save_revision", input),
+    cancel: (jobId) =>
+      ipcRenderer.invoke("editor:request", "avatar_cancel", { jobId }),
+    importReference: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_import_reference", input),
+    analyzeReference: (input) =>
+      ipcRenderer.invoke("editor:request", "avatar_analyze_reference", input),
+  },
   onEvent: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, value: EditorEvent) =>
       callback(value);

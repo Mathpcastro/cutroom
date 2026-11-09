@@ -1,5 +1,22 @@
 import type { CaptionSettings } from "./captions";
 import type { AgentProvider } from "./providers";
+import type { AvatarPackage } from "./avatar";
+import type {
+  AvatarCandidate,
+  AvatarRenderedRevision,
+  AvatarRevisedCandidate,
+  AvatarSelectedCandidate,
+  AvatarValidationResult,
+  ReviewCandidateInput,
+  ReviewedCandidate,
+  RevisePartInput,
+} from "../../electron/core/avatar-service";
+import type { LocalAvatarStarters } from "../../electron/core/avatar-creator";
+import type { AvatarProofSheet } from "../../electron/core/avatar-render";
+import type {
+  AvatarReferenceAsset,
+} from "../../electron/core/avatar-store";
+import type { AvatarReferenceAnalysis } from "../../electron/core/avatar-vision";
 import type {
   CreateStudioProfileInput,
   StudioProfile,
@@ -256,9 +273,77 @@ export interface StudioProfilesAPI {
   select(profileId: string): Promise<void>;
   remove(profileId: string, confirmation: "DELETE"): Promise<void>;
 }
+export interface AvatarCreatorAPI {
+  createStarters(input: {
+    avatarId: string;
+    description: string;
+  }): Promise<LocalAvatarStarters>;
+  getRevision(input: {
+    avatarId: string;
+    revision: number;
+  }): Promise<{
+    package: AvatarPackage;
+    revision: number;
+    hash: string;
+    path: string;
+    candidate: AvatarCandidate;
+  }>;
+  getCandidate(input: {
+    avatarId: string;
+    candidateId: string;
+  }): Promise<AvatarCandidate>;
+  listRevisions(input: {
+    avatarId: string;
+  }): Promise<Array<{ revision: number; hash: string; approved: boolean }>>;
+  readArtifact(input: {
+    avatarId: string;
+    revision: number;
+    path: string;
+  }): Promise<{ path: string; mimeType: "image/png"; dataUrl: string }>;
+  selectCandidate(input: {
+    avatarId: string;
+    candidateId: string;
+  }): Promise<AvatarSelectedCandidate>;
+  render(input: {
+    avatarId: string;
+    revision: number;
+    sheets: AvatarProofSheet[];
+  }): Promise<AvatarRenderedRevision>;
+  renderJobId(input: {
+    avatarId: string;
+    revision: number;
+    sheets: AvatarProofSheet[];
+  }): Promise<string>;
+  validate(input: {
+    avatarId: string;
+    revision: number;
+  }): Promise<AvatarValidationResult>;
+  revisePart(input: RevisePartInput): Promise<AvatarRevisedCandidate>;
+  review(input: ReviewCandidateInput): Promise<ReviewedCandidate>;
+  saveRevision(input: {
+    avatarId: string;
+    candidateId: string;
+  }): Promise<AvatarSelectedCandidate>;
+  cancel(jobId: string): Promise<boolean>;
+  importReference(input: {
+    avatarId: string;
+    path: string;
+  }): Promise<AvatarReferenceAsset>;
+  analyzeReference(input: {
+    avatarId: string;
+    assetId: string;
+    providerId: string;
+    prompt: string;
+  }): Promise<AvatarReferenceAnalysis & {
+    avatarId: string;
+    assetId: string;
+    providerId: string;
+  }>;
+}
 export interface CutroomAPI {
   request<T = AppSnapshot>(method: string, params?: unknown): Promise<T>;
   studioProfiles: StudioProfilesAPI;
+  avatarCreator: AvatarCreatorAPI;
   onEvent(callback: (event: EditorEvent) => void): () => void;
   mediaUrl(path: string): string;
   pathForFile?(file: File): string;

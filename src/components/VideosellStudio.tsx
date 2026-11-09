@@ -11,6 +11,7 @@ import type { StudioProfile } from "../shared/profile";
 import type { StudioTab } from "../shared/types";
 import { BrandMark } from "./BrandMark";
 import { StudioHome, type CreateMode, type StudioProject } from "./studio/StudioHome";
+import { AvatarCreator } from "./studio/AvatarCreator";
 import { StudioNav } from "./studio/StudioNav";
 import "./studio/studio.css";
 
@@ -247,19 +248,38 @@ export function VideosellStudio({ onOpenAdvanced }: VideosellStudioProps) {
   } else if (page === "projects") {
     content = projectsPage;
   } else if (page === "avatars") {
-    content = (
+    content = profile?.defaultAvatar ? (
+      <AvatarCreator
+        profile={profile}
+        onProfileChange={(next) => onProfileChange(next, false)}
+        onBack={() => setPage("home")}
+      />
+    ) : (
       <IntermediatePage
         title="Meus avatares"
         eyebrow="SUA APRESENTAÇÃO"
-        text={profile?.defaultAvatar
-          ? "Este perfil tem uma revisão de avatar vinculada. A galeria visual será apresentada pelo criador de avatares na próxima etapa."
-          : "Nenhum avatar está vinculado a este perfil. O criador visual será conectado na próxima etapa, sem avatares de exemplo."}
+        text="Nenhum avatar está vinculado a este perfil. Nenhum avatar de exemplo será exibido."
         onPage={setPage}
         action={
           <button type="button" className="studio-primary-button" onClick={() => create("avatar")}>
             Criar meu avatar <ArrowRight size={14} />
           </button>
         }
+      />
+    );
+  } else if (page === "create" && createMode === "avatar") {
+    content = profile ? (
+      <AvatarCreator
+        profile={profile}
+        onProfileChange={(next) => onProfileChange(next, false)}
+        onBack={() => setPage("home")}
+      />
+    ) : (
+      <IntermediatePage
+        title="Criar meu avatar"
+        eyebrow="PERFIL NECESSÁRIO"
+        text="Crie ou selecione um perfil antes de criar e salvar um avatar."
+        onPage={setPage}
       />
     );
   } else if (page === "create") {

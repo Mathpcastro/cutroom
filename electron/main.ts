@@ -77,9 +77,10 @@ import { createRequire } from "node:module";
 import { localSpeech, localVoices } from "./core/local-voice";
 import type { MotionAssets } from "./core/motion-document";
 import { AvatarStore } from "./core/avatar-store";
-import { AvatarService } from "./core/avatar-service";
+import { AvatarService, avatarRenderJobId } from "./core/avatar-service";
 import { renderAvatarRevision } from "./core/avatar-render";
 import { AvatarVision } from "./core/avatar-vision";
+import { createLocalAvatarStarters } from "./core/avatar-creator";
 import { createAvatarToolDispatcher } from "./core/avatar-mcp";
 import { isAvatarTool } from "./core/avatar-tool-defs";
 import { ProfileService } from "./core/profile-service";
@@ -128,6 +129,8 @@ let publisher: Publisher;
 let secretStore: SecretStore;
 let brandStore: BrandStore;
 let profileService: ProfileService;
+let avatarStore: AvatarStore;
+let avatarService: AvatarService;
 let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
 let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
 /** Host images for scenes: the brand logo as data-asset="logo". */
@@ -1085,7 +1088,152 @@ async function connectCodex(value: unknown = {}) {
 }
 
 async function request(method: string, params?: unknown): Promise<unknown> {
+  if (isAvatarTool(method)) {
+    return dispatchAvatarTool(
+      method,
+      z.record(z.string(), z.unknown()).parse(params ?? {}),
+    );
+  }
   switch (method) {
+    case "avatarCreatorCreateStarters": {
+      const input = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          description: z.string().trim().min(1).max(4096),
+        })
+        .parse(params);
+      return createLocalAvatarStarters({
+        service: avatarService,
+        examplesDir: join(resources, "avatar-engine", "examples"),
+        ...input,
+      });
+    }
+    case "avatarCreatorGetRevision": {
+      const { avatarId, revision } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          revision: z.number().int().positive(),
+        })
+        .parse(params);
+      const loaded = await avatarStore.loadRevision(avatarId, revision);
+      const metadata = z
+        .strictObject({
+          revisions: z.record(
+            z.string(),
+            z.strictObject({ candidateId: z.string() }).passthrough(),
+          ),
+        })
+        .passthrough()
+        .parse(await avatarStore.readMetadata(avatarId, "avatar-service"));
+      const revisionState = metadata.revisions[String(revision)];
+      if (!revisionState) throw new Error(`Revisão ${revision} não gerenciada.`);
+      const candidate = await avatarService.getCandidate(
+        avatarId,
+        revisionState.candidateId,
+      );
+      return { ...loaded, package: loaded.avatar, revision, candidate };
+    }
+    case "avatarCreatorGetCandidate": {
+      const { avatarId, candidateId } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          candidateId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+        })
+        .parse(params);
+      return avatarService.getCandidate(avatarId, candidateId);
+    }
+    case "avatarCreatorListRevisions": {
+      const { avatarId } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+        })
+        .parse(params);
+      const metadata = await avatarStore.readMetadata(avatarId, "avatar-service");
+      if (metadata === undefined) return [];
+      const state = z
+        .strictObject({
+          candidates: z.record(
+            z.string(),
+            z
+              .strictObject({
+                hash: z.string().regex(/^[a-f0-9]{64}$/),
+                manualApproved: z.boolean(),
+                quality: z
+                  .strictObject({ ok: z.boolean() })
+                  .passthrough(),
+              })
+              .passthrough(),
+          ),
+          revisions: z.record(
+            z.string(),
+            z.strictObject({ candidateId: z.string() }).passthrough(),
+          ),
+        })
+        .passthrough()
+        .parse(metadata);
+      return Object.entries(state.revisions)
+        .map(([key, revision]) => {
+          const candidate = state.candidates[revision.candidateId];
+          if (!candidate) throw new Error("Revisão sem candidato gerenciado.");
+          return {
+            revision: Number(key),
+            hash: candidate.hash,
+            approved: candidate.manualApproved || candidate.quality.ok,
+          };
+        })
+        .sort((left, right) => left.revision - right.revision);
+    }
+    case "avatarCreatorReadArtifact": {
+      const { avatarId, revision, path } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          revision: z.number().int().positive(),
+          path: z.string().min(1).max(4096),
+        })
+        .parse(params);
+      const artifact = await avatarStore.readRevisionArtifact(
+        avatarId,
+        revision,
+        path,
+      );
+      if (
+        artifact.contents.length < 8 ||
+        artifact.contents.length > 25 * 1024 * 1024 ||
+        !artifact.contents
+          .subarray(0, 8)
+          .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+      ) {
+        throw new Error("O artefato de revisão deve ser um PNG válido.");
+      }
+      return {
+        path: artifact.path,
+        mimeType: "image/png" as const,
+        dataUrl: `data:image/png;base64,${artifact.contents.toString("base64")}`,
+      };
+    }
+    case "avatarCreatorRenderJobId": {
+      const input = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          revision: z.number().int().positive(),
+          sheets: z
+            .array(
+              z.enum([
+                "neutral",
+                "silhouette",
+                "grayscale",
+                "backgrounds",
+                "expressions",
+                "mouths",
+                "motion",
+              ]),
+            )
+            .min(1)
+            .max(7),
+        })
+        .parse(params);
+      return avatarRenderJobId(input);
+    }
     case "runChatCommand":
       return runChatCommand(params);
     case "setAppearance": {
@@ -1632,15 +1780,15 @@ app.whenReady().then(async () => {
           );
         return {
           worker: join(here, "render-motion.js"),
-          browser: motionBrowser(packages.root),
+          browser: process.env.CHROME_PATH || motionBrowser(packages.root),
         };
       },
       job: (kind, label, run) => job(kind, label, run),
     },
     studio,
   );
-  const avatarStore = new AvatarStore(join(userDir, "avatars"));
-  const avatarService = new AvatarService({
+  avatarStore = new AvatarStore(join(userDir, "avatars"));
+  avatarService = new AvatarService({
     store: avatarStore,
     renderer: renderAvatarRevision,
   });
@@ -1664,7 +1812,7 @@ app.whenReady().then(async () => {
           );
         return {
           worker: join(here, "render-motion.js"),
-          browser: motionBrowser(packages.root),
+          browser: process.env.CHROME_PATH || motionBrowser(packages.root),
         };
       },
     },
