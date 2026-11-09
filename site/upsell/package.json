@@ -1,0 +1,7 @@
+{
+  "name": "videosell-upsell-preview",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 0.0.0.0"
+  }
+}
