@@ -294,7 +294,7 @@
         display: block;
       }
 
-      /* Comparativo: 2 dobras de 3 */
+      /* Dois comparativos e tour pelo produto real */
       .fold {
         min-height: 100vh;
         display: flex;
@@ -315,8 +315,39 @@
       }
       .trio {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 22px;
+      }
+      .tour-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+      }
+      .tour-card {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--white);
+        box-shadow: 0 12px 36px rgba(20, 19, 24, 0.07);
+      }
+      .tour-card img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1440 / 1000;
+        object-fit: contain;
+        object-position: top;
+      }
+      .tour-card figcaption {
+        padding: 18px 20px 20px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .tour-card h3 {
+        margin-bottom: 6px;
+        color: var(--ink);
+        font-size: 20px;
       }
       .case {
         position: relative;
@@ -629,7 +660,8 @@
         .fold {
           min-height: auto;
         }
-        .trio {
+        .trio,
+        .tour-grid {
           grid-template-columns: minmax(0, 1fr);
           gap: 18px;
         }
@@ -806,8 +838,8 @@
       <div class="wrap">
         <h2>Feito no Videosell. <em>Sem câmera, sem editor.</em></h2>
         <p class="sub">
-          Seis referências de formato em vídeo feito com código para o seu SaaS.
-          Toque em um vídeo para ouvir.
+          Duas demonstrações geradas no Videosell a partir de referências de
+          formato para o seu SaaS. Toque em um vídeo para ouvir.
         </p>
         <div class="trio">
           <article class="case">
@@ -878,153 +910,86 @@
               transições e estados do produto em primeiro plano.
             </p>
           </article>
-          <article class="case">
-            <h3>Voo pela sua <span>landing page</span></h3>
-            <div class="reel">
-              <video
-                src="videos/landing-flyover.mp4"
-                poster="videos/landing-flyover.jpg"
-                muted
-                loop
-                playsinline
-                preload="metadata"
-                data-autoplay
-              ></video>
-              <span class="tag-ours">Feito no Videosell</span>
-              <a
-                class="orig"
-                href="https://x.com/twoclipping/status/2110329502676951367"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ver referência original de @twoclipping no X"
-              >
-                <img
-                  src="https://pbs.twimg.com/amplify_video_thumb/2110328827956068352/img/Yfz92C5G-vOXGdv4.jpg"
-                  alt="Referência original de @twoclipping"
-                  loading="lazy"
-                  data-handle="@twoclipping"
-                />
-                <span>Referência no X</span>
-              </a>
-            </div>
-            <p>
-              Referência de formato: sobrevoo de landing page com movimento de
-              câmera e destaque para a mensagem da marca.
-            </p>
-          </article>
-        </div>
-      </div>
-    </section>
-    <section class="soft fold" style="padding-top: 0">
-      <div class="wrap">
-        <h2 style="font-size: 34px">E para contar <em>histórias</em></h2>
-        <div class="trio">
-          <article class="case">
-            <h3>Suspense de <span>stickman</span></h3>
-            <div class="reel">
-              <video
-                src="videos/stickman.mp4"
-                poster="videos/stickman.jpg"
-                muted
-                loop
-                playsinline
-                preload="metadata"
-                data-autoplay
-              ></video>
-              <span class="tag-ours">Feito no Videosell</span>
-              <a
-                class="orig"
-                href="https://x.com/finnardley/status/2115786060231770351"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ver referência original de @finnardley no X"
-              >
-                <img
-                  src="https://pbs.twimg.com/amplify_video_thumb/2115784242701500416/img/a_e-E2kTPxvwNIU5.jpg"
-                  alt="Referência original de @finnardley"
-                  loading="lazy"
-                  data-handle="@finnardley"
-                />
-                <span>Referência no X</span>
-              </a>
-            </div>
-            <p>
-              Referência de formato: narrativa com stickman, cenário 3D, HUD e
-              uma pergunta final para conduzir a história.
-            </p>
-          </article>
-          <article class="case">
-            <h3>Narrativa de <span>e se</span></h3>
-            <div class="reel">
-              <video
-                src="videos/e-se.mp4"
-                poster="videos/e-se.jpg"
-                muted
-                loop
-                playsinline
-                preload="metadata"
-                data-autoplay
-              ></video>
-              <span class="tag-ours">Feito no Videosell</span>
-              <a
-                class="orig"
-                href="https://x.com/finnardley/status/2117997239125585942"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ver referência original de @finnardley no X"
-              >
-                <img
-                  src="https://pbs.twimg.com/amplify_video_thumb/2117994784631541761/img/VzOtyP3iKz8Z5d3a.jpg"
-                  alt="Referência original de @finnardley"
-                  loading="lazy"
-                  data-handle="@finnardley"
-                />
-                <span>Referência no X</span>
-              </a>
-            </div>
-            <p>
-              Referência de formato: narrativa hipotética conduzida por “e se”,
-              com cenas visuais que desenvolvem a pergunta inicial.
-            </p>
-          </article>
-          <article class="case">
-            <h3>Explainer <span>ilustrado</span></h3>
-            <div class="reel">
-              <video
-                src="videos/kurzgesagt.mp4"
-                poster="videos/kurzgesagt.jpg"
-                muted
-                loop
-                playsinline
-                preload="metadata"
-                data-autoplay
-              ></video>
-              <span class="tag-ours">Feito no Videosell</span>
-              <a
-                class="orig"
-                href="https://x.com/finnardley/status/2114305886420086817"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ver referência original de @finnardley no X"
-              >
-                <img
-                  src="https://pbs.twimg.com/amplify_video_thumb/2114305237498388481/img/DMcFgslJnlOdVQ94.jpg"
-                  alt="Referência original de @finnardley"
-                  loading="lazy"
-                  data-handle="@finnardley"
-                />
-                <span>Referência no X</span>
-              </a>
-            </div>
-            <p>
-              Referência de formato: explainer ilustrado com metáforas visuais,
-              narração e cenas que organizam uma ideia complexa.
-            </p>
-          </article>
         </div>
         <p class="note">
           Os vídeos desta seção foram gerados no Videosell. As referências
           externas pertencem aos respectivos autores e apresentam os formatos.
+        </p>
+      </div>
+    </section>
+
+    <section id="produto-por-dentro" aria-labelledby="tour-title">
+      <div class="wrap">
+        <h2 id="tour-title">O produto <em>por dentro</em></h2>
+        <p class="sub">
+          Do avatar à exportação: conheça as telas reais usadas para criar,
+          revisar e editar o seu vídeo.
+        </p>
+        <div class="tour-grid">
+          <figure class="tour-card">
+            <img
+              src="videos/studio-avatar.png"
+              alt="Criador de avatar do Videosell com três bases locais para escolha"
+              width="1440"
+              height="1000"
+              loading="lazy"
+              data-studio-screen
+            />
+            <figcaption>
+              <h3>Crie o seu avatar</h3>
+              Comece por uma das três bases locais e prepare um apresentador
+              para os seus vídeos.
+            </figcaption>
+          </figure>
+          <figure class="tour-card">
+            <img
+              src="videos/studio-profiles.png"
+              alt="Perfis do Videosell com perfil ativo e escolha entre avatar, Reel e sem avatar"
+              width="1440"
+              height="1000"
+              loading="lazy"
+              data-studio-screen
+            />
+            <figcaption>
+              <h3>Escolha o formato do perfil</h3>
+              Ative um perfil e use avatar, Reel ou a opção sem avatar na
+              criação do conteúdo.
+            </figcaption>
+          </figure>
+          <figure class="tour-card">
+            <img
+              src="videos/studio-reel.png"
+              alt="Revisão de Reel com os quadros reais do vídeo e validação sem erros ou alertas"
+              width="1440"
+              height="1000"
+              loading="lazy"
+              data-studio-screen
+            />
+            <figcaption>
+              <h3>Revise cada quadro</h3>
+              Confira os quadros reais e a validação antes de seguir para o
+              editor e a exportação.
+            </figcaption>
+          </figure>
+          <figure class="tour-card">
+            <img
+              src="videos/studio-editor.png"
+              alt="Editor avançado do Videosell com preview do vídeo e timeline de edição"
+              width="1440"
+              height="1000"
+              loading="lazy"
+              data-studio-screen
+            />
+            <figcaption>
+              <h3>Ajuste no editor</h3>
+              Use o preview, a timeline e os controles do editor avançado para
+              refinar o resultado.
+            </figcaption>
+          </figure>
+        </div>
+        <p class="note">
+          As telas acima usam uma fixture de demonstração, sem projetos ou
+          dados pessoais de clientes.
         </p>
       </div>
     </section>

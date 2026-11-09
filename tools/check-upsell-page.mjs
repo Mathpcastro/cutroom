@@ -28,6 +28,7 @@ const mimeTypes = new Map([
   [".mp4", "video/mp4"],
   [".jpg", "image/jpeg"],
   [".jpeg", "image/jpeg"],
+  [".png", "image/png"],
   [".svg", "image/svg+xml"],
 ]);
 
@@ -197,7 +198,7 @@ function externalResourceKind(url) {
 
 function isLocalMedia(url, baseUrl) {
   if (!url.startsWith(baseUrl)) return false;
-  return /\.(?:mp4|jpe?g|svg)(?:$|[?#])/i.test(url);
+  return /\.(?:mp4|jpe?g|png|svg)(?:$|[?#])/i.test(url);
 }
 
 function attachDiagnostics(page, baseUrl, label, problems, externalIssues) {
@@ -267,8 +268,8 @@ async function installRejectionCapture(page, label, problems) {
 async function settlePage(page) {
   await page.waitForFunction(
     () =>
-      document.querySelectorAll("video[data-autoplay]").length === 7 &&
-      document.querySelectorAll("button.sound").length === 7,
+      document.querySelectorAll("video[data-autoplay]").length === 3 &&
+      document.querySelectorAll("button.sound").length === 3,
   );
   // Rolagens reais em cada referência ativam loading=lazy e os observers.
   for (const original of await page.locator("a.orig").all()) {
@@ -300,7 +301,7 @@ async function checkStructureAndOverflow(page, width) {
     result.htmlWidth <= width && result.bodyWidth <= width,
     `overflow horizontal: viewport=${width}, html=${result.htmlWidth}, body=${result.bodyWidth}`,
   );
-  assert.ok(result.originals >= 6, `somente ${result.originals} elementos .orig`);
+  assert.equal(result.originals, 2, `esperados 2 elementos .orig; recebidos ${result.originals}`);
   assert.ok(result.ctas >= 2, `somente ${result.ctas} CTAs de upsell`);
 }
 
@@ -376,7 +377,7 @@ async function checkFirstCtaKeyboard(page) {
 async function checkReducedMotionAndSound(page, { playbackTimeout = 5_000 } = {}) {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload({ waitUntil: "load" });
-  await page.waitForFunction(() => document.querySelectorAll("button.sound").length === 7);
+  await page.waitForFunction(() => document.querySelectorAll("button.sound").length === 3);
   await page.evaluate(
     () =>
       new Promise((resolveFrame) =>

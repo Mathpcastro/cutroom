@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-11-09T17:56:33.607Z",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "fixture": {
+    "profile": "Demonstração Videosell",
+    "handle": "demo-videosell",
+    "avatar": "Estrategista",
+    "synthetic": true,
+    "filmId": "apresentar-o-videosell-com-clareza-3"
+  },
+  "captures": [
+    {
+      "name": "studio-avatar",
+      "file": "site/upsell/videos/studio-avatar.png",
+      "sha256": "a47a4cc1d8442ae326a2dbbf00b831b16c2e0a778be6bdefa1555b55dac00b8f",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "studio-profiles",
+      "file": "site/upsell/videos/studio-profiles.png",
+      "sha256": "3f41a1004033f3d1b2a803f087b32667eb9a03105e79f904332c2bcaac736e1f",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "studio-reel",
+      "file": "site/upsell/videos/studio-reel.png",
+      "sha256": "e2bf1695b07fee962f12c1887f24542980fd456c3f704c0d07ed90119731c21c",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "studio-editor",
+      "file": "site/upsell/videos/studio-editor.png",
+      "sha256": "36e53dae471b1f051a19afba3133d5e72cc49c064578749da00d21ac601fe1df",
+      "width": 1440,
+      "height": 1000
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "userData": "C:\\Users\\Admin2\\Documents\\Claude Code Editor\\cutroom\\worktrees\\formatos\\artifacts\\upsell-tour\\user-data-1794246993542",
+  "appCommit": "6ed17e8010a1a06b776913170bba8d346a4e1d88"
+}

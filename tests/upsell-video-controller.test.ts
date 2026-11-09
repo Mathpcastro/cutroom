@@ -94,7 +94,7 @@ describe("controller acessível dos vídeos de upsell", () => {
       route.fulfill({ status: 200, contentType: "image/jpeg", body: localThumbnail }),
     );
     await page.goto(pageUrl, { waitUntil: "load" });
-    await page.waitForFunction(() => document.querySelectorAll("button.sound").length === 7);
+    await page.waitForFunction(() => document.querySelectorAll("button.sound").length === 3);
   });
 
   afterEach(async () => {
@@ -221,7 +221,7 @@ describe("controller acessível dos vídeos de upsell", () => {
   }, 30_000);
 
   it("restaura texto, nome acessível e mute quando play falha", async () => {
-    const article = page.locator("article.case").nth(2);
+    const article = page.locator("article.case").nth(1);
     const title = await articleTitle(article);
     await article.scrollIntoViewIfNeeded();
     await article.locator("video").evaluate((video) => {

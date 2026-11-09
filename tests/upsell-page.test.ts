@@ -201,7 +201,7 @@ describe("contrato da página pública de upsell Videosell", () => {
     expect(prohibitedClaims(visibleText)).toEqual([]);
   });
 
-  it("referencia pelo menos 12 mídias locais e todas existem", async () => {
+  it("referencia pelo menos 8 mídias locais e todas existem", async () => {
     const domReferences = Array.from(
       document.querySelectorAll("video, source, img"),
     ).flatMap((element) => {
@@ -240,19 +240,31 @@ describe("contrato da página pública de upsell Videosell", () => {
     );
 
     expect(invalidReferences).toEqual([]);
-    expect(references.length).toBeGreaterThanOrEqual(12);
+    expect(references.length).toBeGreaterThanOrEqual(8);
     await Promise.all(
       references.map((reference) => access(localMediaPath(reference)!)),
     );
   });
 
-  it("inclui pelo menos seis comparativos com o original", () => {
-    const originalLinks = Array.from(document.querySelectorAll("a.orig"));
-
-    expect(originalLinks.length).toBeGreaterThanOrEqual(6);
-    for (const anchor of originalLinks) {
-      expect(anchor.getAttribute("href")).toMatch(/^https?:\/\//i);
-    }
+  it("mostra somente dois comparativos e um tour real do produto", async () => {
+    const originals = Array.from(document.querySelectorAll("a.orig"));
+    expect(originals).toHaveLength(2);
+    expect(originals.map((node) => node.getAttribute("href"))).toEqual(
+      expect.arrayContaining([
+        "https://x.com/finnardley/status/2116010421740007894",
+        "https://x.com/twoclipping/status/2103835273813496100",
+      ]),
+    );
+    expect(document.querySelector("#produto-por-dentro")).not.toBeNull();
+    const screens = Array.from(
+      document.querySelectorAll("#produto-por-dentro img[data-studio-screen]"),
+    );
+    expect(screens.length).toBeGreaterThanOrEqual(4);
+    await Promise.all(
+      screens.map((image) =>
+        access(localMediaPath(image.getAttribute("src")!)!),
+      ),
+    );
   });
 
   it("inclui as duas provas sociais externas", () => {

@@ -87,7 +87,7 @@ export function reelHtml(draft: ReelDraft, voice: VoiceResult) {
     var scene = { time: 0 };
     var avatarDraw = null;
     function build() {
-      tl.fromTo('.hook', { autoAlpha: 0, ${entrance} }, { autoAlpha: 1, y: 0, scale: 1, duration: .45, ease: 'power3.out' }, 0);
+      tl.fromTo('.hook', { ${entrance} }, { y: 0, scale: 1, duration: .45, ease: 'power3.out' }, 0);
       tl.to('.hook', { autoAlpha: 0, y: -35, duration: .3 }, Math.max(1.8, D * .31));
       tl.fromTo('.offer', { autoAlpha: 0, ${entrance} }, { autoAlpha: 1, y: 0, scale: 1, duration: .45, ease: 'power3.out' }, Math.max(2, D * .34));
       tl.to('.offer', { autoAlpha: 0, y: -35, duration: .3 }, Math.max(3, D * .70));
@@ -126,6 +126,7 @@ export function reelHtml(draft: ReelDraft, voice: VoiceResult) {
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <style>
   @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
   @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
@@ -134,6 +135,7 @@ export function reelHtml(draft: ReelDraft, voice: VoiceResult) {
   #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; color: #fff; background: radial-gradient(circle at 85% 12%, #6445d8 0, #141318 52%); font-family: "Instrument Sans", sans-serif; }
   #film::before { content: ''; position: absolute; left: 70px; top: 85px; width: 94px; height: 12px; background: #c8ff5a; border-radius: 10px; }
   .scene { position: absolute; left: 76px; right: 76px; top: 360px; visibility: hidden; opacity: 0; }
+  .hook { visibility: visible; opacity: 1; }
   .kicker { color: #c8ff5a; font-size: 30px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase; }
   h1, h2 { margin-top: 30px; font-family: Anton, sans-serif; font-weight: 400; line-height: 1.04; text-transform: uppercase; }
   h1 { font-size: 112px; } h2 { font-size: 94px; }
