@@ -124,6 +124,11 @@
       .showcase .sub { color: rgba(255,255,255,.65); }
       .rail { display: flex; gap: 22px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px max(24px, calc((100vw - 1160px) / 2 + 24px)) 24px; scrollbar-width: thin; }
       .slide { flex: 0 0 260px; scroll-snap-align: start; }
+      /* Auto, infinite rail: the script doubles the slides and the track slides half its width. */
+      .rail.loop { overflow: hidden; padding-left: 0; padding-right: 0; scroll-snap-type: none; }
+      .rail .track { display: flex; gap: 22px; width: max-content; animation: rail 48s linear infinite; }
+      .rail:hover .track, .rail:focus-within .track, .rail.paused .track { animation-play-state: paused; }
+      @keyframes rail { to { transform: translateX(calc(-50% - 11px)); } }
       .slide h3 { color: #fff; font-size: 16px; }
       .slide h3 span { color: var(--lime); }
 
@@ -210,6 +215,8 @@
         .slide { flex-basis: 220px; }
       }
       @media (prefers-reduced-motion: reduce) {
+        .rail.loop { overflow-x: auto; }
+        .rail .track [aria-hidden="true"] { display: none; }
         *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
       }
     </style>
@@ -376,7 +383,7 @@
     <section class="showcase" aria-labelledby="show-title">
       <div class="wrap">
         <h2 id="show-title">Um app. <em>Todos esses formatos.</em></h2>
-        <p class="sub">Deslize. Todos foram feitos no Videosell, com a minha voz. Toque em um para ouvir.</p>
+        <p class="sub">Todos foram feitos no Videosell, com a minha voz. Passe o mouse para pausar e toque em um para ouvir.</p>
       </div>
       <div class="rail" tabindex="0" aria-label="Vídeos feitos no Videosell">
         <article class="case slide"><h3>Aula com <span>avatar</span></h3><div class="reel"><video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
@@ -624,6 +631,45 @@
           t.addEventListener("click", function () { show(i); });
           t.addEventListener("mouseenter", function () { show(i); });
         });
+      })();
+    </script>
+    <script>
+      // Faixa de formatos: desliza sozinha e sem fim (os slides são duplicados; as cópias tocam mudas).
+      (function () {
+        var rail = document.querySelector(".rail");
+        if (!rail) return;
+        var track = document.createElement("div");
+        track.className = "track";
+        var slides = Array.from(rail.children);
+        slides.forEach(function (s) { track.appendChild(s); });
+        slides.forEach(function (s) {
+          var c = s.cloneNode(true);
+          c.setAttribute("aria-hidden", "true");
+          c.querySelectorAll(".sound").forEach(function (b) { b.remove(); });
+          c.querySelectorAll("video").forEach(function (v) { v.removeAttribute("data-autoplay"); v.muted = true; });
+          track.appendChild(c);
+        });
+        rail.appendChild(track);
+        rail.classList.add("loop");
+        rail.removeAttribute("tabindex");
+        // Copies play only while on screen.
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting && !matchMedia("(prefers-reduced-motion: reduce)").matches) { var p = e.target.play(); if (p && p.catch) p.catch(function () {}); }
+            else e.target.pause();
+          });
+        }, { threshold: 0.2 });
+        track.querySelectorAll('[aria-hidden="true"] video').forEach(function (v) { io.observe(v); });
+        // Stop sliding while a video is playing with sound, or while a finger is on the rail.
+        rail.addEventListener("click", function () {
+          setTimeout(function () {
+            rail.classList.toggle("paused", Array.from(rail.querySelectorAll("video")).some(function (v) { return !v.muted; }));
+          }, 60);
+        });
+        rail.addEventListener("touchstart", function () { rail.classList.add("paused"); }, { passive: true });
+        rail.addEventListener("touchend", function () {
+          setTimeout(function () { if (!Array.from(rail.querySelectorAll("video")).some(function (v) { return !v.muted; })) rail.classList.remove("paused"); }, 1500);
+        }, { passive: true });
       })();
     </script>
   </body>
