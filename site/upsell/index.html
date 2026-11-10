@@ -125,6 +125,28 @@
       .story-grid { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 64px; align-items: center; }
       .story .case { width: min(330px, 100%); justify-self: center; }
 
+      /* Autopilot */
+      .auto { background: var(--ink); color: #fff; }
+      .auto h2 em { color: var(--lime); }
+      .auto .eyebrow { color: var(--lime); }
+      .auto-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: end; margin-bottom: 44px; }
+      .auto .prose-lg { color: rgba(255,255,255,.78); }
+      .auto .prose-lg b { color: #fff; }
+      .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; list-style: none; padding: 0; margin-bottom: 44px; }
+      .week li { position: relative; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: rgba(255,255,255,.6); }
+      .week b { font: 800 13px "Sora", sans-serif; letter-spacing: .1em; color: rgba(255,255,255,.5); }
+      .week img { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 14px; opacity: .55; }
+      .week span { font-weight: 700; color: #fff; }
+      .week i { font-style: normal; }
+      .week .ok img { opacity: 1; }
+      .week .ok i { color: var(--lime); font-weight: 700; }
+      .week .next img { opacity: 1; outline: 3px solid var(--lime); outline-offset: 3px; }
+      .week .next b, .week .next i { color: var(--lime); font-weight: 800; }
+      .auto-points { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 56px; list-style: none; padding: 0; }
+      .auto-points li { padding: 18px 0; border-top: 1px solid rgba(255,255,255,.14); font-size: 16px; color: rgba(255,255,255,.72); }
+      .auto-points b { color: #fff; }
+      .auto .note { color: rgba(255,255,255,.5); }
+
       /* Offer */
       .offer { background: linear-gradient(180deg, var(--paper), #ece8fb); }
       .offer-box { padding: 48px; border: 3px solid var(--ink); border-radius: 30px; background: var(--white); box-shadow: 12px 12px 0 var(--ink); }
@@ -158,6 +180,10 @@
       @media (max-width: 900px) {
         section { padding: 72px 0; }
         .hero, .how-grid, .story-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+        .auto-head, .auto-points { grid-template-columns: minmax(0, 1fr); gap: 0; }
+        .auto-head { gap: 16px; }
+        .week { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 6px 12px; }
+        .week li { flex: 0 0 118px; scroll-snap-align: start; }
         .pair { grid-template-columns: minmax(0, 1fr); gap: 18px; }
         .vs { justify-self: center; transform: rotate(90deg); }
         .story-grid > .case { order: 2; }
@@ -377,6 +403,40 @@
           </p>
           <p class="fine">Modo História em prévia: chega nas próximas atualizações do app, sem custo extra.</p>
         </div>
+      </div>
+    </section>
+
+    <!-- 6b. PILOTO AUTOMÁTICO -->
+    <section class="auto" id="piloto-automatico" aria-labelledby="auto-title">
+      <div class="wrap">
+        <div class="auto-head">
+          <div>
+            <p class="eyebrow">Piloto automático</p>
+            <h2 id="auto-title">Grave zero vídeos. <em>Poste todo dia.</em></h2>
+          </div>
+          <p class="prose-lg">
+            Conecte o Instagram uma vez. Depois é escolher os Reels que você
+            aprovou, marcar o horário e ligar <b>“1 por dia”</b>. Na hora
+            marcada, o Videosell abre sozinho e publica, no Reels e no feed,
+            enquanto você cuida do seu produto.
+          </p>
+        </div>
+        <ol class="week" aria-label="Exemplo de uma semana no piloto automático">
+          <li class="ok"><b>SEG</b><img src="videos/avatar.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Avatar</span><i>Publicado ✓</i></li>
+          <li class="ok"><b>TER</b><img src="videos/ui-motion.jpg" alt="" width="720" height="1280" loading="lazy" /><span>App em ação</span><i>Publicado ✓</i></li>
+          <li class="next"><b>QUA</b><img src="videos/kurzgesagt.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Explicação</span><i>Hoje · 18:00</i></li>
+          <li class=""><b>QUI</b><img src="videos/professor.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Aula</span><i>18:00</i></li>
+          <li class=""><b>SEX</b><img src="videos/e-se.jpg" alt="" width="720" height="1280" loading="lazy" /><span>“E se…?”</span><i>18:00</i></li>
+          <li class=""><b>SÁB</b><img src="videos/historia.jpg" alt="" width="720" height="1280" loading="lazy" /><span>História</span><i>18:00</i></li>
+          <li class=""><b>DOM</b><img src="videos/landing-flyover.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Landing page</span><i>18:00</i></li>
+        </ol>
+        <ul class="auto-points">
+          <li><b>Postar agora, direto do app.</b> Terminou o vídeo? Um clique e ele vai para o Instagram. Sem baixar arquivo, sem passar para o celular.</li>
+          <li><b>Nada sai sem o seu ok.</b> Você confirma vídeo, legenda e horário antes de qualquer publicação.</li>
+          <li><b>Computador desligado na hora?</b> Ele publica assim que você ligar, com até 6 horas de tolerância.</li>
+          <li><b>A mesma conta do Carrossell.</b> Carrossel e Reels saindo no mesmo perfil, cada um no seu horário.</li>
+        </ul>
+        <p class="note">Exemplo de semana. Eu testei na minha própria conta: do app ao Instagram, sem tocar no celular.</p>
       </div>
     </section>
 
