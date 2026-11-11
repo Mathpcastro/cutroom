@@ -149,7 +149,7 @@ const CANVAS_SIZES = {
 } as const;
 const appearanceSchema = z
   .object({
-    mode: z.enum(["light", "dark"]),
+    mode: z.enum(["light", "dark", "system"]),
     background: z.string().regex(/^#[0-9a-f]{6}$/i),
     foreground: z.string().regex(/^#[0-9a-f]{6}$/i),
   })

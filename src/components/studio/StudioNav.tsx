@@ -14,12 +14,11 @@ import {
   Settings2,
   UserRound,
 } from "lucide-react";
-import { BrandMark } from "../BrandMark";
-import { brandName, brandTagline } from "../../shared/branding";
 import type { StudioTab } from "../../shared/types";
 import type { StudioPage } from "../VideosellStudio";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import type { StudioProfile } from "../../shared/profile";
+import type { StudioThemePreference } from "./studioTheme";
 
 interface StudioNavProps {
   page: StudioPage;
@@ -30,6 +29,8 @@ interface StudioNavProps {
   avatarSetupRequest: number;
   fontScale: number;
   onFontScaleChange: (scale: number) => void;
+  themePreference?: StudioThemePreference;
+  onThemePreference?: (preference: StudioThemePreference) => void;
 }
 
 const items = [
@@ -59,17 +60,12 @@ export function StudioNav({
   avatarSetupRequest,
   fontScale,
   onFontScaleChange,
+  themePreference = "auto",
+  onThemePreference,
 }: StudioNavProps) {
   const language = useStudioLanguage();
   return (
     <aside className="studio-sidebar">
-      <div className="studio-brand" aria-label={`${brandName}. ${brandTagline}`}>
-        <BrandMark size={34} />
-        <div>
-          <strong>{brandName}</strong>
-          <span>{t("Seu palco de vendas")}</span>
-        </div>
-      </div>
         <label className="studio-language-select">
           {t("Idioma")}
           <select value={language} onChange={(event) => setStudioLanguage(event.target.value as StudioLanguage)}>
@@ -119,6 +115,16 @@ export function StudioNav({
                 onClick={() => onFontScaleChange(scale)}
               >
                 {scale}%
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="studio-appearance" role="group" aria-label={t("Aparência")}>
+          <span>{t("Aparência")}</span>
+          <div>
+            {([["light", "Claro"], ["dark", "Escuro"], ["auto", "Automático"]] as const).map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={themePreference === id} onClick={() => onThemePreference?.(id)}>
+                {t(label)}
               </button>
             ))}
           </div>

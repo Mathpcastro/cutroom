@@ -53,6 +53,8 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   useEffect(() => {
     if (surface === "studio") setPlaying(false);
+    // The editor paints the window with its own theme; the studio repaints it when shown.
+    else applyTheme(document.documentElement.dataset.theme || "graphite");
   }, [surface]);
   const [selectedId, setSelectedId] = useState<string>();
   const [jobsOpen, setJobsOpen] = useState(false);
@@ -218,7 +220,7 @@ export default function App() {
   return (
     <>
       <div className="videosell-studio-host" hidden={surface !== "studio"}>
-        <VideosellStudio state={state} run={run} onOpenAdvanced={openAdvanced} />
+        <VideosellStudio state={state} run={run} onOpenAdvanced={openAdvanced} visible={surface === "studio"} />
       </div>
       <div className={`app-shell ${desktop ? "is-desktop" : ""}`} hidden={surface !== "editor"}>
       <header className="titlebar">

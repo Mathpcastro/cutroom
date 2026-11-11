@@ -24,6 +24,7 @@ import { InstagramAnalyticsPage, cachedInstagramAnalytics, topReelReferences } f
 import { Radar, ReelRoutine, VideoLibrary } from "./studio/ReelWorkspace";
 import { rememberReel, reopenReel, pendingReviews } from "./studio/reelRecords";
 import { useReelPilot } from "./studio/ReelPilot";
+import { useStudioTheme, type StudioThemePreference } from "./studio/studioTheme";
 import "./studio/studio.css";
 
 export type StudioPage =
@@ -46,7 +47,15 @@ interface VideosellStudioProps {
   state: AppSnapshot;
   run: (method: string, params?: unknown) => Promise<void>;
   onOpenAdvanced: (tab?: StudioTab) => void;
+  visible?: boolean;
 }
+
+const pageTitles: Partial<Record<StudioPage, string>> = {
+  home: "Início", create: "Criar Reel", analytics: "Instagram Analytics", radar: "Radar de pautas",
+  proofs: "Provas da marca", videos: "Vídeos exportados", routine: "Rotina", avatars: "Meus avatares",
+  projects: "Projetos", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
+  settings: "Ajustes avançados",
+};
 
 const FONT_SCALE_KEY = "videosell.studio.fontScale";
 const fontScales = [100, 115, 130] as const;
@@ -107,8 +116,9 @@ function IntermediatePage({
   );
 }
 
-export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioProps) {
+export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: VideosellStudioProps) {
   const language = useStudioLanguage();
+  const appearance = useStudioTheme(visible);
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [page, setPage] = useState<StudioPage>("home");
   const [avatarSetupRequest, setAvatarSetupRequest] = useState(0);
@@ -477,8 +487,12 @@ export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioP
   }
 
   return (
-    <div className="videosell-studio" data-font-scale={fontScale} lang={language}>
-      <div className="studio-window-drag" aria-hidden="true" />
+    <div className="videosell-studio" data-font-scale={fontScale} data-studio-theme={appearance.theme} lang={language}>
+      <header className="studio-topbar">
+        <span className="studio-topbar-brand"><BrandMark size={20} /> Videosell</span>
+        <span className="studio-topbar-title">{t(pageTitles[page] ?? "")}</span>
+        <span className="studio-topbar-native" aria-hidden="true" />
+      </header>
       <StudioNav
         page={page}
         onPage={navigate}
@@ -491,6 +505,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced }: VideosellStudioP
         }}
         fontScale={fontScale}
         onFontScaleChange={changeFontScale}
+        themePreference={appearance.preference}
+        onThemePreference={(next: StudioThemePreference) => appearance.setPreference(next)}
       />
       <main className="studio-main" id="studio-main-content">
         {content}

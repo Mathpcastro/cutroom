@@ -222,5 +222,11 @@ describe("VideosellStudio project loading", () => {
     expect(container.textContent).toContain("Crie ou selecione um perfil para ver os projetos vinculados.");
     expect(container.textContent).not.toContain("Nenhum projeto vinculado");
     expect(listProjects).not.toHaveBeenCalled();
+    const studio = container.querySelector(".videosell-studio")!;
+    expect(["light", "dark"]).toContain(studio.getAttribute("data-studio-theme"));
+    expect(container.querySelector(".studio-topbar")).toBeTruthy();
+    const dark = [...container.querySelectorAll(".studio-appearance button")].find((b) => b.textContent === "Escuro")!;
+    await act(async () => { (dark as unknown as HTMLButtonElement).click(); });
+    expect(studio.getAttribute("data-studio-theme")).toBe("dark");
   });
 });
