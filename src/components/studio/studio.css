@@ -2546,3 +2546,17 @@
 .videosell-studio .reel-form-card > button, .videosell-studio form.reel-form-card > .studio-primary-button { align-self: flex-start; }
 .videosell-studio .reel-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .brand-modes { align-self: flex-start; }
+/* Sub-screens: review fixes */
+.videosell-studio .studio-back-button { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; height: 28px; margin: 0 0 -4px; padding: 0 8px 0 4px; color: var(--studio-muted); background: none; border: 0; border-radius: 7px; font-size: 12.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.videosell-studio .studio-back-button:hover { color: var(--studio-text); background: var(--studio-surface-2); }
+.stories .studio-back-button + .stories-head, .stories .studio-back-button + header { margin-top: 0; }
+.stories { display: flex; flex-direction: column; gap: 14px; }
+.pilot-panel .pilot-badge, .video-viewer-side .pilot-badge { align-self: flex-start; }
+.pilot-panel .reel-action-row { gap: 6px; }
+.profile-create-dialog { color: var(--studio-text); background: var(--studio-surface); border: 1px solid var(--studio-line); }
+.profile-create-dialog h2 { color: var(--studio-text); font-family: "Sora", sans-serif; font-size: 20px; }
+.profile-create-dialog p, .profile-create-dialog small { color: var(--studio-muted); }
+.page > .studio-workspace > header { display: none; }
+.videosell-studio input[type="color"] { width: 56px; height: 36px; padding: 3px; background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 9px; cursor: pointer; }
+.videosell-studio .reel-action-row:has(input[type="color"]) { gap: 16px; }
+.story-ready .reel-field { max-width: 560px; }

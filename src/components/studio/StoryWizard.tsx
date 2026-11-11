@@ -77,7 +77,7 @@ export function ReadySeries({ profile, onOpen }: { profile: StudioProfile; onOpe
       <Chips label="Personagens" value={c.cast} onChange={(cast) => set({ cast })} options={[[2, "2"], [3, "3"]] as const} />
       <Chips label="O produto aparece?" value={c.product} onChange={(product) => set({ product })} options={[["never", "Nunca"], ["sometimes", "Às vezes"], ["end", "Sempre no final"]] as const} />
       <Chips label="Onde se passa" value={c.place} onChange={(place) => set({ place })} options={[["variado", "Variado"], ...STORY_PLACES.map((p) => [p, { quarto: "Quarto", escritorio: "Escritório", rua: "Rua", cafe: "Café" }[p]] as const)] as const} />
-      <label className="reel-field">{t("Ideia da série")} <small>{t("opcional")}</small>
+      <label className="reel-field">{t("Ideia da série (opcional)")}
         <input value={c.idea} maxLength={300} placeholder={t("Deixe em branco para a IA decidir pela sua marca")} onChange={(e) => set({ idea: e.target.value })} />
       </label>
       <label className="mcp-mode"><input type="checkbox" checked={c.render} onChange={(e) => set({ render: e.target.checked })} /> {t("Já gerar os vídeos de todos os episódios")}</label>
