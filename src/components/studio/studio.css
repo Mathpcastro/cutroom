@@ -1750,3 +1750,45 @@
 .reel-reference-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .reel-reference-palette i { width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
 .reel-reference-palette span { margin-left: 6px; color: var(--studio-muted, var(--studio-muted)); }
+
+/* The sidebar always fits the window height: no scrolling, items shrink on short screens. */
+.studio-sidebar { overflow: hidden; padding-top: clamp(8px, 2vh, 18px); padding-bottom: clamp(8px, 1.6vh, 18px); }
+.studio-nav { flex: 1 1 auto; min-height: 0; gap: clamp(0px, 0.4vh, 4px); }
+.studio-nav button { flex: 0 1 42px; min-height: 26px; }
+.studio-nav-label { padding-bottom: clamp(2px, 0.8vh, 8px); }
+.studio-nav-label-secondary { margin-top: clamp(6px, 2.2vh, 22px); }
+.studio-sidebar-bottom { flex: 0 0 auto; padding-top: clamp(6px, 1.6vh, 24px); }
+.studio-advanced-button { min-height: 30px; margin-top: clamp(4px, 1vh, 12px); }
+.studio-prefs {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr 1.2fr;
+  gap: 6px;
+  margin-top: clamp(6px, 1.2vh, 12px);
+  padding: 0 2px;
+}
+.studio-sidebar .studio-prefs label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  color: #88838f;
+  font-size: 9px;
+}
+.studio-sidebar .studio-prefs select {
+  width: 100%;
+  min-height: 26px;
+  padding: 0 4px;
+  color: #f1eff7;
+  background: #1c1a21;
+  border: 1px solid #35313d;
+  border-radius: 6px;
+  font-size: 10px;
+}
+@media (max-height: 820px) {
+  .studio-local-note { display: none; }
+  .profile-switcher { padding: 9px 10px; }
+}
+@media (max-height: 700px) {
+  .studio-nav-label { display: none; }
+  .studio-nav button { min-height: 24px; }
+}

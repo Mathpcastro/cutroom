@@ -66,14 +66,6 @@ export function StudioNav({
   const language = useStudioLanguage();
   return (
     <aside className="studio-sidebar">
-        <label className="studio-language-select">
-          {t("Idioma")}
-          <select value={language} onChange={(event) => setStudioLanguage(event.target.value as StudioLanguage)}>
-            <option value="pt-BR" lang="pt-BR">Português</option>
-            <option value="en" lang="en">English</option>
-            <option value="es" lang="es">Español</option>
-          </select>
-        </label>
       <nav className="studio-nav" aria-label={t("Navegação do estúdio")}>
         <span className="studio-nav-label">{t("CRIAR")}</span>
         {items.map(({ id, label, icon: Icon }) => (
@@ -104,30 +96,29 @@ export function StudioNav({
       </nav>
       <div className="studio-sidebar-bottom">
         <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
-        <div className="studio-font-scale" role="group" aria-label={t("Tamanho da fonte")}>
-          <span>{t("Fonte")}</span>
-          <div>
-            {[100, 115, 130].map((scale) => (
-              <button
-                key={scale}
-                type="button"
-                aria-pressed={fontScale === scale}
-                onClick={() => onFontScaleChange(scale)}
-              >
-                {scale}%
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="studio-appearance" role="group" aria-label={t("Aparência")}>
-          <span>{t("Aparência")}</span>
-          <div>
-            {([["light", "Claro"], ["dark", "Escuro"], ["auto", "Automático"]] as const).map(([id, label]) => (
-              <button key={id} type="button" aria-pressed={themePreference === id} onClick={() => onThemePreference?.(id)}>
-                {t(label)}
-              </button>
-            ))}
-          </div>
+        <div className="studio-prefs" role="group" aria-label={t("Preferências")}>
+          <label>
+            {t("Idioma")}
+            <select value={language} onChange={(event) => setStudioLanguage(event.target.value as StudioLanguage)}>
+              <option value="pt-BR" lang="pt-BR">Português</option>
+              <option value="en" lang="en">English</option>
+              <option value="es" lang="es">Español</option>
+            </select>
+          </label>
+          <label>
+            {t("Fonte")}
+            <select aria-label={t("Tamanho da fonte")} value={fontScale} onChange={(event) => onFontScaleChange(Number(event.target.value))}>
+              {[100, 115, 130].map((scale) => <option key={scale} value={scale}>{scale}%</option>)}
+            </select>
+          </label>
+          <label>
+            {t("Aparência")}
+            <select className="studio-appearance-select" value={themePreference} onChange={(event) => onThemePreference?.(event.target.value as StudioThemePreference)}>
+              <option value="light">{t("Claro")}</option>
+              <option value="dark">{t("Escuro")}</option>
+              <option value="auto">{t("Automático")}</option>
+            </select>
+          </label>
         </div>
         <button
           type="button"

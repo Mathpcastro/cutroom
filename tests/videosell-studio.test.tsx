@@ -225,8 +225,11 @@ describe("VideosellStudio project loading", () => {
     const studio = container.querySelector(".videosell-studio")!;
     expect(["light", "dark"]).toContain(studio.getAttribute("data-studio-theme"));
     expect(container.querySelector(".studio-topbar")).toBeTruthy();
-    const dark = [...container.querySelectorAll(".studio-appearance button")].find((b) => b.textContent === "Escuro")!;
-    await act(async () => { (dark as unknown as HTMLButtonElement).click(); });
+    const select = container.querySelector("select.studio-appearance-select") as unknown as HTMLSelectElement;
+    await act(async () => {
+      for (const option of [...select.querySelectorAll("option")]) option.toggleAttribute("selected", option.getAttribute("value") === "dark");
+      select.dispatchEvent(new window.Event("change", { bubbles: true }) as unknown as Event);
+    });
     expect(studio.getAttribute("data-studio-theme")).toBe("dark");
   });
 });
