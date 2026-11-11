@@ -2351,3 +2351,5 @@
 .ai-connect-options button[aria-checked="true"] { border-color: var(--studio-violet); background: var(--studio-accent-soft); }
 .ai-connect-options small { color: var(--studio-accent-text); font-weight: 600; }
 .ai-connect input { min-height: 38px; padding: 0 12px; color: var(--studio-text); background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 9px; }
+.ai-connect-login { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 10px; }
+.ai-connect-login small { color: var(--studio-muted); font-size: 12px; }

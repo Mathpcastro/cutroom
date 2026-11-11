@@ -44,6 +44,7 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
   const [model, setModel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [loginOpened, setLoginOpened] = useState(false);
   const connected = connection.status === "connected";
   useEffect(() => {
     const show = () => { setOpen(true); setError(""); };
@@ -53,6 +54,10 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
     return () => { window.removeEventListener(OPEN_AI_CONNECT, show); window.removeEventListener("keydown", close); };
   }, []);
   useEffect(() => { if (connected && busy) { setBusy(false); setOpen(false); } }, [connected, busy]);
+  // A failure reported only through the app state (status "error") also stops the spinner.
+  useEffect(() => {
+    if (busy && connection.status === "error") { setBusy(false); setError(connection.error || "Não deu para conectar."); }
+  }, [busy, connection.status, connection.error]);
   if (!open) return null;
 
   const missing = needsKey(provider) && provider !== "openai-compatible" && !apiKey.trim()
@@ -67,12 +72,25 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
     };
     setApiKey("");
     setError("");
+    setLoginOpened(false);
     setBusy(true);
     try {
-      await run("connectAgent", config);
-    } catch {
-      setError("Não deu para conectar. Confira os dados e tente de novo.");
+      // Called directly (not through `run`) so the failure comes back here instead of spinning forever.
+      if (window.cutroom) await window.cutroom.request("connectAgent", config);
+      else await run("connectAgent", config);
+    } catch (reason) {
+      const message = (reason instanceof Error ? reason.message : String(reason)).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+      setError(message || "Não deu para conectar. Confira os dados e tente de novo.");
       setBusy(false);
+    }
+  };
+  const needsClaudeLogin = provider === "claude-code" && /entrar na sua conta do Claude|auth login/i.test(error);
+  const openLogin = async () => {
+    try {
+      await window.cutroom?.request("openClaudeLogin");
+      setLoginOpened(true);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
     }
   };
 
@@ -102,6 +120,12 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
           <input type="password" autoComplete="off" placeholder={t("Chave (opcional)")} aria-label={t("Chave")} value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </>}
         {error && <p className="reel-error" role="alert">{t(error)}</p>}
+        {needsClaudeLogin && (
+          <div className="ai-connect-login">
+            <button type="button" className="studio-secondary-button" onClick={() => void openLogin()}>{t("Entrar no Claude")}</button>
+            <small>{t(loginOpened ? "Uma janela do terminal abriu: entre na sua conta pelo navegador e depois clique em Conectar." : "Abre o login oficial do Claude no terminal. Só precisa fazer uma vez.")}</small>
+          </div>
+        )}
         <div className="reel-action-row">
           <button type="button" className="studio-primary-button" disabled={busy} onClick={() => void connect()}>
             {busy ? <><LoaderCircle size={14} className="spin" /> {t(provider === "codex" ? "Faça o login no navegador…" : "Conectando…")}</> : t(connected ? "Trocar de IA" : "Conectar")}

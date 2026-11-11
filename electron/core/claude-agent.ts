@@ -67,7 +67,8 @@ export class ClaudeAgentClient implements AgentClient {
       ...(token ? { CUTROOM_MCP_TOKEN: token } : {}),
     };
   }
-  private run(args: string[], signal: AbortSignal) {
+  /** `allowFailure`: resolve with the output even on a non-zero exit (e.g. `auth status` exits 1 when logged out). */
+  private run(args: string[], signal: AbortSignal, allowFailure = false) {
     return new Promise<string>((resolve, reject) => {
       const child = (this.child = spawn(this.binary, args, {
         cwd: this.options.workspace,
@@ -88,7 +89,7 @@ export class ClaudeAgentClient implements AgentClient {
       );
       child.once("close", (code) => {
         if (this.child === child) this.child = undefined;
-        code === 0
+        code === 0 || (allowFailure && output.trim())
           ? resolve(output)
           : reject(
               new Error(
@@ -228,10 +229,15 @@ export class ClaudeAgentClient implements AgentClient {
         throw new Error(
           "Atualize a CLI oficial do Claude para 2.1.248 ou superior (claude update).",
         );
-      const status = JSON.parse(await this.run(["auth", "status"], signal));
+      let status: { loggedIn?: boolean } = {};
+      try {
+        status = JSON.parse(await this.run(["auth", "status"], signal, true));
+      } catch {
+        status = {};
+      }
       if (!status.loggedIn)
         throw new Error(
-          "Entre na sua conta no terminal com claude auth login.",
+          "Falta entrar na sua conta do Claude neste computador (o login do aplicativo Claude não vale para o terminal). Clique em Entrar no Claude, faça o login e conecte de novo.",
         );
       this.models = await this.discoverModels(signal);
       signal.throwIfAborted();

@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+import { spawn } from "node:child_process";
 import { BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, STORY_PLACES, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
@@ -55,7 +57,7 @@ import { PackageManager } from "./core/packages";
 import { CodexClient, toolActivityLabel } from "./core/codex";
 import type { AgentClient } from "./core/agent";
 import { ApiAgentClient } from "./core/api-agent";
-import { ClaudeAgentClient } from "./core/claude-agent";
+import { ClaudeAgentClient, resolveClaudeBinary } from "./core/claude-agent";
 import { DesktopMcpServer } from "./core/desktop-mcp";
 import { AGENT_PROVIDERS } from "../src/shared/providers";
 import { runProcess } from "./core/process";
@@ -1491,6 +1493,22 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         throw new Error("Link da publicação inválido.");
       await shell.openExternal(url.href);
       return { opened: true };
+    }
+    case "openClaudeLogin": {
+      // Opens a terminal running `claude auth login` (the CLI's own login; we never read its tokens).
+      const binary = resolveClaudeBinary();
+      if (process.platform === "win32") {
+        // A small .cmd in a folder without spaces: quoting a path through `start` is fragile.
+        const folder = /\s/.test(tmpdir()) ? "C:\\Users\\Public" : tmpdir();
+        const script = join(folder, "videosell-claude-login.cmd");
+        const lines = ["@echo off", "title Entrar no Claude", `"${binary}" auth login`, "echo.", "echo Pronto. Volte ao Videosell e clique em Conectar.", "pause"];
+        await writeFile(script, lines.join("\r\n") + "\r\n", "utf8");
+        spawn("cmd.exe", ["/d", "/c", "start", '"Entrar no Claude"', script], { detached: true, stdio: "ignore", windowsVerbatimArguments: true }).unref();
+      }
+      else if (process.platform === "darwin")
+        spawn("osascript", ["-e", `tell application "Terminal" to do script "${binary.replace(/"/g, '\\"')} auth login"`, "-e", 'tell application "Terminal" to activate'], { detached: true, stdio: "ignore" }).unref();
+      else throw new Error("Abra um terminal e rode: claude auth login");
+      return { ok: true };
     }
     case "previewVoiceLine": {
       // Spec 5 C: "Ouvir" — a sample line in the character's voice.
