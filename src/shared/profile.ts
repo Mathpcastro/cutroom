@@ -26,7 +26,7 @@ export interface StudioProfile {
     credentialRef?: string;
   };
   personality: { description: string; presentation: string };
-  brand: { name: string; accent: string; ink: string; paper: string; logoAssetId?: string };
+  brand: { name: string; accent: string; ink: string; paper: string; logoAssetId?: string; website?: string };
   instagram: { connectionId?: string; preferences: Record<string, unknown> };
   commercialGoal: string;
   preferences: Record<string, unknown>;
@@ -75,6 +75,7 @@ export const studioProfileSchema = z.strictObject({
     ink: color,
     paper: color,
     logoAssetId: id.optional(),
+    website: z.union([z.literal(""), z.string().max(2000).url().refine((value) => /^https?:\/\//i.test(value))]).optional(),
   }),
   instagram: z.strictObject({ connectionId: id.optional(), preferences }),
   commercialGoal: text(60_000),

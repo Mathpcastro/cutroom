@@ -1,4 +1,5 @@
-import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { extname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { ffmpegPath } from "./media";
@@ -150,6 +151,33 @@ export class FilmStudio {
     return this.host.films.addAsset(a.film, path, a.name ?? path.split(/[\\/]/).pop()!);
   }
 
+  async proofAsset(id: string, proofId: string, path: string) {
+    film.parse(id);
+    if (extname(path).toLowerCase() !== ".mp4") {
+      const { file } = await this.asset({ film: id, path, name: "proof-" + proofId });
+      return [file];
+    }
+    return this.host.job("inspection", "Preparando a gravação da prova…", async (signal) => {
+      const scratch = await mkdtemp(join(tmpdir(), "videosell-proof-"));
+      try {
+        await runProcess(ffmpegPath, [
+          "-v", "error", "-i", path, "-t", "8", "-an",
+          "-vf", "fps=8,scale=720:-2", "-q:v", "4", join(scratch, "frame-%03d.jpg"),
+        ], { signal });
+        const frames = (await readdir(scratch)).filter((name) => /^frame-\d{3}\.jpg$/.test(name)).sort();
+        if (!frames.length) throw new Error("Não consegui extrair quadros desta gravação.");
+        const assets: string[] = [];
+        for (const name of frames) {
+          const { file } = await this.host.films.addAsset(id, join(scratch, name), "proof-" + proofId + "-" + name);
+          assets.push(file);
+        }
+        return assets;
+      } finally {
+        await rm(scratch, { recursive: true, force: true });
+      }
+    });
+  }
+
   write(args: Record<string, unknown>) {
     const a = z.object({ film, path: z.string().min(1).max(200), content: z.string() }).strict().parse(args);
     return this.host.films.writeFile(a.film, a.path, a.content);
@@ -222,11 +250,11 @@ export class FilmStudio {
     const frames = (await this.stills({ film: id, times })) as { images: string[]; frameTimes: number[]; errors: string[] };
     const m = analysis.motion, s = analysis.speech;
     const flags: string[] = [];
-    if (m.firstMotion > 1) flags.push(`Primeiro movimento só em ${m.firstMotion}s: o gancho precisa mexer já no primeiro segundo.`);
-    if (m.longestStill > 1.5) flags.push(`Trecho parado de ${m.longestStill}s a partir de ${m.longestStillAt}s: entre com câmera, um elemento ou corte.`);
-    if (m.shotChangesPer10s < 2) flags.push(`Só ${m.shotChangesPer10s} trocas de plano a cada 10 s: o ritmo bom de Reels fica entre 3 e 6.`);
+    if (m.firstMotion > 1) flags.push(`Primeiro movimento em ${m.firstMotion}s.`);
+    if (m.longestStill > 1.5) flags.push(`Trecho parado de ${m.longestStill}s a partir de ${m.longestStillAt}s.`);
+    if (m.shotChangesPer10s < 2) flags.push(`${m.shotChangesPer10s} trocas de plano a cada 10 s.`);
     if (s.words && (s.wordsPerMinute < 140 || s.wordsPerMinute > 220)) flags.push(`Narração a ${s.wordsPerMinute} palavras/min: o confortável fica entre 150 e 200.`);
-    if (s.longestPause > 1.2) flags.push(`Pausa de ${s.longestPause}s na narração: preencha com imagem ou encurte.`);
+    if (s.longestPause > 1.2) flags.push(`Pausa de ${s.longestPause}s na narração.`);
     const format = FORMATS.find((f) => f.id === meta.format);
     return {
       images: frames.images,
@@ -237,7 +265,7 @@ export class FilmStudio {
       flags,
       checklist: format?.checklist ?? [],
       instructions:
-        "Avalie como alguém que NÃO fez o filme e vai decidir em 1 s se continua assistindo. Dê nota de 1 a 10 para cada item do checklist (justifique em uma linha olhando os quadros e as métricas), mais duas notas: 'história' (gancho, virada, final) e 'execução' (legibilidade, ritmo, acabamento). Corrija tudo abaixo de 8 e as flags antes de render_film.",
+        "Compare os quadros, o ritmo e a narração com o pedido e o checklist visual. As flags sinalizam pontos para inspecionar. Corrija o que prejudicar o resultado pedido antes de render_film.",
     };
   }
 

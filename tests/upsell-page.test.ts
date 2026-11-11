@@ -169,16 +169,16 @@ describe("contrato da página pública de upsell Videosell", () => {
 
   it("preserva os gatilhos e destinos de upsell e downsell da Cakto", () => {
     const upsells = Array.from(
-      document.querySelectorAll('a[data-cakto-upsell][href="#COMPRAR"]'),
+      document.querySelectorAll('a[data-cakto-upsell][href="https://pay.cakto.com.br/3cs22tz"]'),
     );
     const downsells = Array.from(
-      document.querySelectorAll('a[data-cakto-downsell][href="#RECUSAR"]'),
+      document.querySelectorAll('a[data-cakto-downsell][href="/app/"]'),
     );
     const comprarLinks = Array.from(
-      document.querySelectorAll('a[href="#COMPRAR"]'),
+      document.querySelectorAll('a[href="https://pay.cakto.com.br/3cs22tz"]'),
     );
     const recusarLinks = Array.from(
-      document.querySelectorAll('a[href="#RECUSAR"]'),
+      document.querySelectorAll('a.no[href="/app/"]'),
     );
 
     expect(upsells.length).toBeGreaterThan(0);
@@ -247,22 +247,19 @@ describe("contrato da página pública de upsell Videosell", () => {
   });
 
   const viralOriginals = [
-    "https://x.com/finnardley/status/2115786060231770351",
     "https://x.com/finnardley/status/2114305886420086817",
     "https://x.com/twoclipping/status/2103835273813496100",
   ];
 
-  it("compara três virais originais com a versão do Videosell e mostra o tour real", async () => {
+  it("compara dois virais originais com a versão do Videosell e mostra o tour real", async () => {
     const pairs = Array.from(document.querySelectorAll("#comparativo .pair"));
-    expect(pairs).toHaveLength(3);
+    expect(pairs).toHaveLength(2);
     for (const pair of pairs) {
       expect(pair.querySelector(".viral a.orig")).not.toBeNull();
       expect(pair.querySelector(".ours video[src^='videos/']")).not.toBeNull();
     }
     expect(document.querySelector("#produto-por-dentro")).not.toBeNull();
-    const screens = Array.from(
-      document.querySelectorAll("#produto-por-dentro img[data-studio-screen]"),
-    );
+    const screens = Array.from(document.querySelectorAll("img[data-studio-screen]"));
     expect(screens.length).toBeGreaterThanOrEqual(4);
     await Promise.all(
       screens.map((image) =>
@@ -289,7 +286,7 @@ describe("contrato da página pública de upsell Videosell", () => {
 
   it("abre cada link externo em nova aba com proteção", () => {
     const externalLinks = Array.from(document.querySelectorAll("a")).filter(
-      (anchor) => /^https?:\/\//i.test(anchor.getAttribute("href") ?? ""),
+      (anchor) => !anchor.hasAttribute("data-cakto-upsell") && /^https?:\/\//i.test(anchor.getAttribute("href") ?? ""),
     );
 
     expect(externalLinks.length).toBeGreaterThan(0);

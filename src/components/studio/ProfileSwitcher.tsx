@@ -1,3 +1,4 @@
+import { t } from "./studioLanguage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, LoaderCircle, Plus, RefreshCw, X } from "lucide-react";
 import {
@@ -8,10 +9,12 @@ import {
 import { useDialogKeyboard } from "../../lib/useDialogKeyboard";
 
 interface ProfileSwitcherProps {
+  onProfileCreated?: (path: "brand" | "avatar") => void;
+  avatarSetupRequest?: number;
   onProfileChange: (profile: StudioProfile | null, initializing: boolean) => void;
 }
 
-export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
+export function ProfileSwitcher({ onProfileChange, onProfileCreated, avatarSetupRequest }: ProfileSwitcherProps) {
   const [profiles, setProfiles] = useState<StudioProfile[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -75,7 +78,10 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
       await api.select(profileId);
       selectedRef.current = profileId;
       setSelectedId(profileId);
-      onProfileChange(profile, false);
+      const latest = await api.get(profileId);
+      const next = latest ?? profile;
+      setProfiles((current) => current.map((item) => item.id === profileId ? next : item));
+      onProfileChange(next, false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -83,17 +89,17 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
     }
   };
 
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
     setName("");
     setHandle("");
     setCreateError("");
     setCreating(true);
-  };
+  }, []);
+  useEffect(() => { if (avatarSetupRequest) openCreate(); }, [avatarSetupRequest, openCreate]);
 
-  const create = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const cleanName = name.trim();
-    const cleanHandle = handle.trim();
+  const create = async (path: "brand" | "avatar") => {
+    const cleanName = name.trim() || (path === "avatar" ? t("Meu avatar") : "");
+    const cleanHandle = handle.trim() || (path === "avatar" ? "avatar-" + crypto.randomUUID().slice(0, 8) : "");
     if (!cleanName) {
       setCreateError("Informe o nome do perfil.");
       return;
@@ -116,6 +122,7 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
       setSelectedId(profile.id);
       onProfileChange(profile, false);
       setCreating(false);
+      onProfileCreated?.(path);
     } catch (reason) {
       setCreateError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -128,7 +135,7 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
       <span className="profile-switcher-label">Perfil de criação</span>
       <div className="profile-select-wrap">
         <select
-          aria-label="Perfil ativo"
+          aria-label={t("Perfil ativo")}
           value={selectedId}
           disabled={loading || busy || !profiles.length}
           onChange={(event) => void select(event.target.value)}
@@ -164,7 +171,7 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
         onClick={openCreate}
         disabled={busy}
       >
-        <Plus size={14} /> Criar perfil
+        <Plus size={14} /> {t("Criar perfil")}
       </button>
 
       {creating && (
@@ -174,7 +181,7 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="profile-create-title"
-            onSubmit={(event) => void create(event)}
+            onSubmit={(event) => { event.preventDefault(); void create("brand"); }}
             noValidate
           >
             <button
@@ -187,10 +194,10 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
               <X size={18} />
             </button>
             <span className="studio-eyebrow">NOVO ESPAÇO DE CRIAÇÃO</span>
-            <h2 id="profile-create-title">Criar perfil</h2>
-            <p>Separe marca, voz e projetos de cada produto ou cliente.</p>
+            <h2 id="profile-create-title">{t("Criar perfil")}</h2>
+            <p>{t("Separe marca, voz e projetos de cada produto ou cliente.")}</p>
             <label>
-              Nome do perfil
+              {t("Nome do perfil")}
               <input
                 autoFocus
                 value={name}
@@ -201,7 +208,7 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
               />
             </label>
             <label>
-              Handle do perfil
+              {t("Handle do perfil")}
               <input
                 value={handle}
                 maxLength={32}
@@ -217,11 +224,12 @@ export function ProfileSwitcher({ onProfileChange }: ProfileSwitcherProps) {
             {createError && <div className="profile-form-error" role="alert">{createError}</div>}
             <div className="profile-dialog-actions">
               <button type="button" onClick={() => setCreating(false)} disabled={busy}>
-                Cancelar
+                {t("Cancelar")}
               </button>
+              <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => void create("avatar")}>{t("Começar pelo avatar")}</button>
               <button type="submit" className="studio-primary-button" disabled={busy}>
                 {busy ? <LoaderCircle size={14} className="spin" /> : <Plus size={14} />}
-                {busy ? "Criando…" : "Salvar perfil"}
+                {busy ? "Criando…" : t("Salvar perfil")}
               </button>
             </div>
           </form>

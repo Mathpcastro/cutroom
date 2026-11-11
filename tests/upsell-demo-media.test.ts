@@ -30,7 +30,7 @@ async function probe(file: string) {
 
 describe("vídeos reais da página de upsell", { timeout: 60_000 }, () => {
   it("a página toca os vídeos gerados pelo motor novo", () => {
-    expect(names).toEqual(expect.arrayContaining(["avatar", "professor", "ui-motion", "mentoria", "stickman", "kurzgesagt"]));
+    expect(names).toEqual(expect.arrayContaining(["avatar", "professor", "ui-motion", "mentoria", "kurzgesagt"]));
   });
 
   for (const name of names) {

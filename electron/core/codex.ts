@@ -902,6 +902,7 @@ export function toolActivityLabel(
     read_film_file: "Lendo o filme",
     film_check: "Checando o filme",
     film_capture_page: "Capturando a página",
+    analyze_reference: "Analisando o vídeo de referência",
     list_effects: "Procurando efeitos",
     film_add_effect: "Adicionando um efeito ao filme",
     film_review: "Revisando o filme",

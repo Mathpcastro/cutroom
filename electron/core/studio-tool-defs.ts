@@ -112,13 +112,13 @@ export const STUDIO_TOOLS = [
   {
     name: "list_formats",
     description:
-      "List the video formats CutRoom produces (explainer with a cartoon teacher, UI motion reel, 2D what-if cartoon, Kurzgesagt-style explainer...). Each has an id, aspect, length and what it is good for.",
+      "List the video formats CutRoom produces (explainer with a cartoon teacher, UI motion reel, 2D what-if cartoon, animated visual explainer without an avatar...). Each has an id, aspect, length and what it is good for.",
     inputSchema: objectSchema(),
   },
   {
     name: "get_format_guide",
     description:
-      "Read the full production guide of a format: script rules, pacing, scene structure, the reusable scene kit (HTML/SVG snippets and tween patterns), audio recipe and the quality checklist. Follow it step by step; it replaces generic advice.",
+      "Read the production guide and checklist for a format. Some presets provide visual direction only: take the subject, script, scenes and ending from the user brief.",
     inputSchema: objectSchema({ id: string("Format id from list_formats.") }, ["id"]),
   },
   {
@@ -226,6 +226,12 @@ export const STUDIO_TOOLS = [
     ),
   },
   {
+    name: "analyze_reference",
+    description:
+      "Read a reference video (a viral Reel, TikTok or post the user wants to recreate) and return its mold: duration, every cut, seconds per shot, words per second, energy (0–1), hook (first 3 s of speech), palette, and per scene: start, end, motion, colours and what is said; plus keyframes. Use it to recreate the SAME structure with the user's avatar, voice and product: keep the number of scenes, the hook pattern, the beat lengths and the rhythm; rewrite every line for the user's product; never copy the footage. Pass `style` to CRM.autoReel({ reference: style }) so cuts, colours and transition energy follow the reference. Input: an absolute file path, or a link to a post on X or a direct .mp4 (Instagram, TikTok and YouTube need the downloaded file).",
+    inputSchema: objectSchema({ path: string("Absolute path of the reference video."), url: string("Link of a post on X or a direct .mp4.") }, []),
+  },
+  {
     name: "list_effects",
     description:
       "Search the effects catalogue that ships with the app (236 HyperFrames components, offline): kinetic captions, text reveals, transitions and wipes, light/grain/VFX overlays, cursors and UI motion, notifications, counters, charts, CTAs, logo stings. Returns name, title, description and tags. Then film_add_effect puts one in a film.",
@@ -255,7 +261,7 @@ export const STUDIO_TOOLS = [
   {
     name: "film_review",
     description:
-      "Self-review the film before render_film: 7 key frames, measured metrics (first motion, longest still stretch, shot changes per 10 s, share of frames moving, narration words per minute and longest pause), flags for anything outside the ranges that hold attention, and the format checklist. Score every checklist row 1–10 as a viewer who did not make the film, plus 'história' and 'execução'; fix rows below 8 and every flag. Takes ~20–40 s.",
+      "Review 7 key frames, motion and narration metrics, inspection flags and the visual checklist before rendering. Compare them with the user brief. Keep deliberate choices such as a single shot or a long pause when they fit the request. Takes ~20–40 s.",
     inputSchema: objectSchema({ film: string("Film id.") }, ["film"]),
   },
   {

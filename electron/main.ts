@@ -1,3 +1,5 @@
+import { BrandProofStore } from "./core/brand-proofs";
+import { readProductPage } from "./core/product-page";
 import {
   app,
   BrowserWindow,
@@ -20,7 +22,7 @@ import {
   writeFile,
   rename,
 } from "node:fs/promises";
-import { dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 import { z } from "zod";
@@ -61,6 +63,7 @@ import {
 } from "./core/chat-commands";
 import { startWindowsAutoUpdate } from "./core/updater";
 import { SecretStore } from "./core/secrets";
+import { analyzeReference, blueprintSummary, fetchReference, referenceStyle } from "./core/reference";
 import {
   BrandStore,
   carrossellProfiles,
@@ -296,6 +299,35 @@ async function allowProjectFiles() {
   allowedFiles.clear();
   for (const path of nextFiles) allowedFiles.add(path);
 }
+/** Analyses a reference video (file or link) into a mold: cuts, rhythm, colours and speech, with keyframes. */
+async function referenceAnalysis(args: Record<string, unknown>) {
+  const a = z
+    .object({ path: z.string().max(2000).optional(), url: z.string().url().max(2000).optional() })
+    .strict()
+    .refine((v) => Boolean(v.path) !== Boolean(v.url), "Informe o arquivo (path) ou o link (url) do vídeo de referência.")
+    .parse(args);
+  const root = join(cacheDir, "references");
+  return job("inspection", "Analisando o vídeo de referência…", async (signal, progress) => {
+    const file = a.url ? (progress(2, "Baixando a referência…"), await fetchReference(a.url, root, signal)) : a.path!;
+    if (!isAbsolute(file)) throw new Error("Use o caminho absoluto do vídeo.");
+    const blueprint = await analyzeReference(
+      file,
+      {
+        root,
+        transcribe: (path, duration, s, p) =>
+          packages.transcribe({ id: `reference-${basename(path)}`, name: "Referência", path, duration, width: 1, height: 1, fps: 1, hasAudio: true }, cacheDir, (v) => p(v), s),
+      },
+      signal,
+      (v, label) => progress(Math.round(v * 100), label),
+    );
+    const images: string[] = [];
+    const step = Math.max(1, Math.ceil(blueprint.shots.length / 8));
+    for (let i = 0; i < blueprint.shots.length && images.length < 8; i += step)
+      images.push(`data:image/jpeg;base64,${(await readFile(blueprint.shots[i].frame)).toString("base64")}`);
+    return { ...blueprint, images };
+  });
+}
+
 async function job<T>(
   kind: string,
   label: string,
@@ -819,10 +851,18 @@ async function executeTool(
     read_film_file: (a) => filmStudio.read(a),
     film_check: (a) => filmStudio.check(a),
     film_capture_page: (a) => filmStudio.capture(a),
+    analyze_reference: async (a) => {
+      const r = await referenceAnalysis(a);
+      return { ...blueprintSummary(r), style: referenceStyle(r), images: r.images };
+    },
     list_effects: (a) => filmStudio.listEffects(a),
     film_add_effect: (a) => filmStudio.addEffect(a),
     film_review: (a) => filmStudio.review(a),
-    instagram_accounts: () => publisher.settings(),
+    // With a key but no accounts yet (key saved outside the Publish screen), look them up once.
+    instagram_accounts: async () => {
+      const s = await publisher.settings();
+      return s.hasKey && !s.accounts.length ? publisher.refresh() : s;
+    },
     schedule_reel: (a) => publisher.schedule(a),
     schedule_reels_daily: (a) => publisher.scheduleSeries(a),
     cancel_scheduled_reel: (a) =>
@@ -1302,6 +1342,8 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return studio.getFormatGuide(params as Record<string, unknown>);
     case "render_film":
       return filmStudio.render(params as Record<string, unknown>);
+    case "getInstagramAnalytics":
+      return publisher.analytics(params);
     case "getPublishSettings":
       return publisher.settings();
     case "setComposioKey": {
@@ -1318,6 +1360,28 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       );
     case "listVideos":
       return { videos: await publisher.videos() };
+    case "openInstagramPost": {
+      const { permalink } = z.object({ permalink: z.string().url().max(500) }).parse(params);
+      const url = new URL(permalink);
+      if (url.protocol !== "https:" || !["instagram.com", "www.instagram.com"].includes(url.hostname)
+        || !/^\/(reel|p)\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) || url.username || url.password)
+        throw new Error("Link da publicação inválido.");
+      await shell.openExternal(url.href);
+      return { opened: true };
+    }
+    case "previewExportedVideo": {
+      const { path } = z.object({ path: z.string().min(1).max(2000) }).parse(params);
+      if (!(await publisher.videos()).some((video) => video.path === path))
+        throw new Error("Escolha um MP4 da biblioteca do Videosell.");
+      const resolved = await realpath(path);
+      const folder = await realpath(dirname(path));
+      if (dirname(resolved) !== folder || extname(resolved).toLowerCase() !== ".mp4")
+        throw new Error("O arquivo está fora da biblioteca de vídeos.");
+      allowedFiles.add(resolved);
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", resolved);
+      return { url: url.href };
+    }
     case "publishReel":
       return publisher.publish(params);
     case "scheduleReel":
@@ -1405,6 +1469,52 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return dispatchProfileTool("profile_get", params as Record<string, unknown>);
     case "profileCreate":
       return dispatchProfileTool("profile_create", params as Record<string, unknown>);
+    case "attachBrandProof": {
+      const { profileId, proofId, film } = z.object({
+        profileId: z.string(), proofId: z.string().uuid(), film: z.string().max(120),
+      }).strict().parse(params);
+      await profileService.get(profileId);
+      const asset = await new BrandProofStore(userDir).asset(profileId, proofId);
+      return { frames: await filmStudio.proofAsset(film, proofId, asset.path) };
+    }
+    case "pickReference": {
+      const selection = await dialog.showOpenDialog(window!, {
+        properties: ["openFile"],
+        filters: [{ name: "Vídeo de referência", extensions: ["mp4", "mov", "webm", "m4v"] }],
+      });
+      return selection.canceled ? null : { path: selection.filePaths[0] };
+    }
+    case "analyzeReference": {
+      const r = await referenceAnalysis(params as Record<string, unknown>);
+      return { summary: blueprintSummary(r), style: referenceStyle(r), images: r.images };
+    }
+    case "listBrandProofs": {
+      const { profileId } = z.object({ profileId: z.string() }).strict().parse(params);
+      await profileService.get(profileId);
+      return new BrandProofStore(userDir).list(profileId);
+    }
+    case "addBrandProof": {
+      const { profileId, attach, ...proof } = z.object({
+        profileId: z.string(), attach: z.boolean(), title: z.string().trim().min(1).max(120),
+        description: z.string().trim().min(1).max(500),
+        kind: z.enum(["screenshot", "recording", "testimonial", "result"]),
+        confirmed: z.literal(true),
+      }).strict().parse(params);
+      await profileService.get(profileId);
+      let source: string | undefined;
+      if (attach) {
+        const selection = await dialog.showOpenDialog(window!, {
+          properties: ["openFile"],
+          filters: [{ name: "Imagem ou vídeo", extensions: ["png", "jpg", "jpeg", "webp", "mp4"] }],
+        });
+        if (selection.canceled) return null;
+        source = selection.filePaths[0];
+      }
+      const { confirmed: _confirmed, ...metadata } = proof;
+      return new BrandProofStore(userDir).add(profileId, metadata, source);
+    }
+    case "readProductPage":
+      return readProductPage(z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(params).url);
     case "profileUpdate":
       return dispatchProfileTool("profile_update", params as Record<string, unknown>);
     case "profileDuplicate":
@@ -1423,6 +1533,10 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return { brand: await brandStore.set(params) };
     case "carrossellProfiles":
       return carrossellProfiles();
+    case "previewCarrossellBrand": {
+      const { profileId } = z.object({ profileId: z.string().min(1).max(100) }).strict().parse(params);
+      return { brand: await importCarrossellBrand(profileId) };
+    }
     case "importCarrossellBrand": {
       const { profileId } = z
         .object({ profileId: z.string().max(100).optional() })
@@ -1797,7 +1911,6 @@ app.whenReady().then(async () => {
         join(app.getPath("videos"), "CutRoom", "filmes"),
         join(resources, "film-kit"),
         createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"),
-        join(resources, "film-recipes"),
       ),
       avatarStore,
       avatarEngineDir: join(resources, "avatar-engine"),

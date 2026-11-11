@@ -2,7 +2,11 @@ import React, { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { parseHTML } from "linkedom";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createProject } from "../electron/core/project";
+import type { AppSnapshot } from "../src/shared/types";
 import { VideosellStudio } from "../src/components/VideosellStudio";
+import { planSalesReel } from "../src/components/studio/salesReels";
+import { generateSalesReel, initialReelDraft } from "../src/components/studio/ReelCreator";
 import type { StudioProfile } from "../src/shared/profile";
 import type { CutroomAPI } from "../src/shared/types";
 
@@ -32,6 +36,11 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+const snapshot: AppSnapshot = {
+  project: createProject(), connection: { status: "disconnected", models: [] },
+  messages: [], jobs: [], packages: [], busy: false, canUndo: false, canRedo: false,
+};
+
 describe("VideosellStudio project loading", () => {
   const roots: ReturnType<typeof createRoot>[] = [];
 
@@ -44,6 +53,70 @@ describe("VideosellStudio project loading", () => {
     Reflect.deleteProperty(globalThis, "window");
     Reflect.deleteProperty(globalThis, "document");
     Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("accepts a one-scene brief with no headline, sales caption or extra labels", async () => {
+    const { window } = parseHTML("<html><body></body></html>");
+    Object.assign(globalThis, { window, document: window.document });
+    const request = vi.fn(async (method: string) => {
+      if (method === "listBrandProofs") return [];
+      return { ...snapshot, messages: [{ role: "assistant", text: JSON.stringify({
+        title: "Como a caixa chega",
+        scenes: [{ narration: "A caixa chega à porta.", visual: "result" }],
+      }) }] };
+    });
+    window.cutroom = { request } as unknown as CutroomAPI;
+
+    const brief = "Mostre uma caixa chegando à porta em um plano só. Sem título na tela ou chamada de venda.";
+    const plan = await planSalesReel(profile("teste", "Teste"), brief, false, false, "pt-BR");
+
+    expect(plan.caption).toBe("");
+    expect(plan.scenes).toEqual([expect.objectContaining({ headline: "", elements: [], narration: "A caixa chega à porta." })]);
+    expect(request).toHaveBeenCalledWith("sendChat", expect.objectContaining({ text: expect.stringContaining(brief) }));
+  });
+
+  it("composes the selected visual preset from app input and sends it to the film preview", async () => {
+    const { window } = parseHTML("<html><body></body></html>");
+    Object.assign(globalThis, { window, document: window.document });
+    const motion = [{ shape: { kind: "circle", cx: 200, cy: 500, r: 40 }, fill: "#CCEEFF",
+      move: { start: 0, end: 1, x: 300 } }];
+    const request = vi.fn(async (method: string, params?: { path?: string; content?: string }) => {
+      switch (method) {
+        case "listBrandProofs": return [];
+        case "sendChat": return { ...snapshot, messages: [{ role: "assistant", text: JSON.stringify({
+          title: "Uma gota de chuva",
+          scenes: [{ narration: "A gota atravessa a janela.", visual: "result", motion, captions: false }],
+        }) }] };
+        case "create_film": return { film: "gota", size: "1080x1920" };
+        case "write_film_file":
+          if (params?.path === "index.html") {
+            expect(params.content).toContain("sales-plan");
+            expect(params.content).toContain("#CCEEFF");
+          }
+          return {};
+        case "film_voiceover": return { voiceEnd: 3, duration: 3.2 };
+        case "film_check": return { errors: [], warnings: [] };
+        case "film_stills": return { images: ["frame"], frameTimes: [1], errors: [] };
+        case "get_format_guide": return { checklist: [] };
+        case "profileLinkProject": return {};
+        default: throw new Error(method);
+      }
+    });
+    window.cutroom = { request } as unknown as CutroomAPI;
+    const owner = profile("teste", "Teste");
+
+    const session = await generateSalesReel(owner, {
+      ...initialReelDraft(owner, false), brief: "Uma gota cruza a janela em um plano. Sem legendas.",
+      language: "pt-BR", motionStyle: "kurzgesagt",
+    }, vi.fn());
+
+    expect(request).toHaveBeenCalledWith("sendChat", expect.objectContaining({
+      text: expect.stringContaining("formas vetoriais"),
+    }));
+    expect(request).toHaveBeenCalledWith("create_film", expect.objectContaining({ format: "kurzgesagt" }));
+    expect(request).toHaveBeenCalledWith("film_stills", expect.objectContaining({ film: "gota" }));
+    expect(session.plan?.scenes[0].motion).toEqual(motion);
+    expect(session.review?.images).toEqual(["frame"]);
   });
 
   it("ignores an older profile project response that resolves after the new profile", async () => {
@@ -77,11 +150,11 @@ describe("VideosellStudio project loading", () => {
     const root = createRoot(container as unknown as HTMLElement);
     roots.push(root);
     await act(async () => {
-      root.render(<StrictMode><VideosellStudio state={undefined as never} run={async () => {}} onOpenAdvanced={() => {}} /></StrictMode>);
+      root.render(<StrictMode><VideosellStudio state={snapshot} run={async () => {}} onOpenAdvanced={() => {}} /></StrictMode>);
     });
     await vi.waitFor(() => expect(listProjects).toHaveBeenCalledWith(first.id));
 
-    const select = window.document.querySelector("select")!;
+    const select = window.document.querySelector<HTMLSelectElement>('select[aria-label="Perfil ativo"]')!;
     await act(async () => {
       for (const option of select.querySelectorAll("option")) {
         if (option.getAttribute("value") === second.id) option.setAttribute("selected", "");
@@ -133,7 +206,7 @@ describe("VideosellStudio project loading", () => {
     const root = createRoot(container as unknown as HTMLElement);
     roots.push(root);
     await act(async () => {
-      root.render(<StrictMode><VideosellStudio state={undefined as never} run={async () => {}} onOpenAdvanced={() => {}} /></StrictMode>);
+      root.render(<StrictMode><VideosellStudio state={snapshot} run={async () => {}} onOpenAdvanced={() => {}} /></StrictMode>);
     });
 
     expect(container.textContent).toContain("Carregando perfil ativo…");

@@ -12,7 +12,7 @@ export function cutroomSkill(version: string) {
   const formats = FORMATS.map((f) => `- \`${f.id}\` — **${f.name}** (${f.aspect}, ${f.length}). ${f.goodFor}`).join("\n");
   return `---
 name: ${SKILL_NAME}
-description: Produz vídeos curtos (Reels, Shorts, anúncios) feitos em código com o CutRoom — aula com apresentador em pixel art, UI motion do produto, voo 3D pela landing page, história de stickman, "e se…", explainer ilustrado. Use quando o usuário pedir um vídeo, reel, anúncio animado, explainer ou "vídeo pro meu SaaS" e o CutRoom estiver conectado por MCP (ferramentas create_film, film_voiceover, render_film).
+description: Produz vídeos curtos (Reels, Shorts, anúncios) feitos em código com o CutRoom — aula com apresentador em pixel art, UI motion do produto, voo 3D pela landing page, histórias em episódios, "e se…", motion UI explicativo sem avatar. Use quando o usuário pedir um vídeo, reel, anúncio animado, explainer ou "vídeo pro meu SaaS" e o CutRoom estiver conectado por MCP (ferramentas create_film, film_voiceover, render_film).
 ---
 
 # Vídeos com o CutRoom (v${version})
@@ -24,22 +24,22 @@ ${formats}
 
 ## Fluxo
 1. \`get_brand\` → o que a marca vende, para quem, tom, oferta, cores. Se \`configured:false\`, peça ao usuário para preencher a Marca no CutRoom (ou importar do Carrossell).
-2. \`list_formats\` / \`get_format_guide{id}\` → escolha o formato pelo objetivo e leia a receita inteira.
+2. \`list_formats\` / \`get_format_guide{id}\` → leia o guia escolhido. Use os presets para arte e movimento. O briefing define roteiro, cenas, duração e desfecho.
 3. Escreva o roteiro falado e mostre ao usuário antes de gerar a voz.
-4. \`create_film{name, format}\` → a pasta já vem com o filme inicial do formato (a versão do CutRoom, funcionando), \`CUTROOM.md\` e o kit. Se você tem acesso a arquivos, edite a pasta direto; senão use \`write_film_file\`/\`read_film_file\`.
+4. \`create_film{name, format}\` → a pasta vem com uma composição inicial, \`CUTROOM.md\` e o kit. Se você tem acesso a arquivos, edite a pasta direto; senão use \`write_film_file\`/\`read_film_file\`.
 5. \`film_voiceover{film, text}\` → \`timing.js\` com o tempo de cada palavra e o volume por quadro. Se responder \`status:"generating"\`, chame de novo com o mesmo texto.
-6. Adapte \`index.html\`: textos, telas, cores; reancore as cenas com \`CR.at("palavra", n, segundosReserva)\`. Música e efeitos: \`search_music\` → \`film_asset\`. Telas reais do produto: \`film_asset{path}\` ou \`film_capture_page{url}\`. Efeitos prontos (legendas cinéticas, transições, cursores, notificações): \`list_effects{query}\` → \`film_add_effect{film, name}\`. Acabamento: \`CRM.post(tl, D, {leaks})\` em todo filme.
-7. \`film_check\` → \`film_stills\` (5–6 momentos) → \`film_review\` (corrija toda nota abaixo de 8 e toda flag) → \`render_film\` (repita até \`status:"done"\`).
+6. Monte o filme em \`index.html\` e sincronize as cenas com \`CR.at("palavra", n, segundosReserva)\`. Música e efeitos: \`search_music\` → \`film_asset\`. Telas reais do produto: \`film_asset{path}\` ou \`film_capture_page{url}\`. Efeitos prontos (legendas cinéticas, transições, cursores, notificações): \`list_effects{query}\` → \`film_add_effect{film, name}\`. Acabamento: \`CRM.post(tl, D, {leaks})\` em todo filme.
+7. \`film_check\` → \`film_stills\` (5–6 momentos) → \`film_review\` (compare os quadros e as métricas com o pedido) → \`render_film\` (repita até \`status:"done"\`).
 8. Entregue o caminho do MP4 (fica em Vídeos/CutRoom) e a linha de crédito da música CC BY para a legenda do post. Postar no Instagram só com confirmação explícita do usuário: \`publish_reel\` (agora) ou \`schedule_reels_daily\` (piloto automático, um Reels por dia).
 
 ## O que segura a atenção
-- Gancho em imagem nos 3 primeiros segundos; novo plano a cada 1,5–3 s; nada parado mais de 1,5 s.
+- Dê foco visual à abertura e mantenha o ritmo de planos pedido.
 - Mostre em vez de listar; cada elemento entra até 0,15 s depois da palavra que ele mostra.
 - Texto ≤ 6 palavras por card, grande, fora da faixa de baixo (interface do Reels).
-- Virada no meio; final com pergunta que divide ou CTA claro. Números só os que o usuário deu.
+- Use virada, pergunta ou CTA quando o pedido comportar. Números precisam de base.
 
 ## Funil orgânico (sem tráfego pago)
-Reels (alcance) → visita no perfil → clique no link → venda; os carrosséis do Carrossell fazem o meio (confiança). Todo vídeo fecha com "link no perfil" falado e na tela (\`CR.profileCTA\`), uma ação só. Legenda: gancho repetido + 2–3 linhas de valor + "👉 link no perfil" + crédito da música. Cadência: 1 Reels por dia no mesmo horário + 1 carrossel por dia.
+Reels (alcance) → visita no perfil → clique no link → venda; os carrosséis do Carrossell fazem o meio (confiança). Quando o pedido for um Reel de venda com CTA de perfil, feche com "link no perfil" falado e na tela (\`CR.profileCTA\`), uma ação só. Legenda: gancho repetido + 2–3 linhas de valor + "👉 link no perfil" + crédito da música. Cadência: 1 Reels por dia no mesmo horário + 1 carrossel por dia.
 `;
 }
 

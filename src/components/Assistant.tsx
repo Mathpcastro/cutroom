@@ -433,7 +433,7 @@ export function Assistant({
                 </div>
                 <p>
                   Marca, voz e formato: o agente cria aulas, UI motion, voo pela
-                  landing page, stickman e explainers, prontos para o Reels.
+                  landing page, histórias e explainers, prontos para o Reels.
                 </p>
                 <button
                   className="button primary full-width"

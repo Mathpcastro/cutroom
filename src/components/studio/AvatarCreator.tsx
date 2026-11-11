@@ -1,3 +1,4 @@
+import { t } from "./studioLanguage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, Check, LoaderCircle, ShieldCheck } from "lucide-react";
 import type {
@@ -464,16 +465,16 @@ export function AvatarCreator({ profile, onProfileChange, onBack }: AvatarCreato
     <div className="avatar-creator" data-avatar-id={avatarId} aria-busy={Boolean(busy)}>
       <header className="avatar-creator-header">
         <button type="button" className="studio-back-button" onClick={onBack}>
-          <ArrowLeft size={15} /> Voltar ao início
+          <ArrowLeft size={15} /> {t("Voltar ao início")}
         </button>
         <div>
           <span className="studio-eyebrow">AVATAR DO PERFIL</span>
-          <h1>Criar meu avatar</h1>
+          <h1>{t("Criar meu avatar")}</h1>
           <p>Três bases autorais locais servem como ponto de partida. A arte inicial não é gerada por IA.</p>
         </div>
         <div className="avatar-profile-chip">
           <ShieldCheck size={17} />
-          <span>Perfil ativo<strong>{profile.name}</strong></span>
+          <span>{t("Perfil ativo")}<strong>{profile.name}</strong></span>
         </div>
       </header>
 
@@ -490,9 +491,9 @@ export function AvatarCreator({ profile, onProfileChange, onBack }: AvatarCreato
         <section className="avatar-start" aria-labelledby="avatar-start-title">
           <div className="avatar-start-form">
             <span className="avatar-step">01 · INTENÇÃO E REFERÊNCIA</span>
-            <h2 id="avatar-start-title">Como esse avatar deve apresentar?</h2>
+            <h2 id="avatar-start-title">{t("Como esse avatar deve apresentar?")}</h2>
             <label className="avatar-field">
-              Descrição do avatar
+              {t("Descrição do avatar")}
               <textarea
                 ref={descriptionRef}
                 value={description}
@@ -567,7 +568,7 @@ export function AvatarCreator({ profile, onProfileChange, onBack }: AvatarCreato
               disabled={!description.trim() || Boolean(busy)}
               onClick={() => void createStarters()}
             >
-              Criar três pontos de partida
+              {t("Criar três pontos de partida")}
             </button>
           </div>
           <aside className="avatar-local-explainer">
@@ -587,7 +588,7 @@ export function AvatarCreator({ profile, onProfileChange, onBack }: AvatarCreato
         <section className="avatar-starters" aria-labelledby="avatar-starters-title">
           <div className="avatar-section-title">
             <span className="avatar-step">02 · ESCOLHA UMA BASE</span>
-            <h2 id="avatar-starters-title">Três candidatos autorais reais</h2>
+            <h2 id="avatar-starters-title">{t("Três candidatos autorais reais")}</h2>
             <p>A seleção salva a primeira revisão imutável e congela os âncoras de identidade.</p>
           </div>
           <div className="avatar-candidate-grid">
@@ -641,8 +642,8 @@ export function AvatarCreator({ profile, onProfileChange, onBack }: AvatarCreato
             {([
               ["appearance", "Aparência"],
               ["expressions", "Expressões e poses"],
-              ["voice", "Voz e personalidade"],
-              ["brand", "Marca"],
+              ["voice", t("Voz e personalidade")],
+              ["brand", t("Marca")],
             ] as const).map(([id, label]) => (
               <button
                 type="button"
@@ -704,11 +705,11 @@ export function AvatarCreator({ profile, onProfileChange, onBack }: AvatarCreato
 
           {activeTab === "voice" && (
             <div className="avatar-profile-settings" role="tabpanel">
-              <div className="avatar-panel-heading"><span>PERFIL, NÃO PACOTE VISUAL</span><h2>Voz e personalidade</h2></div>
+              <div className="avatar-panel-heading"><span>PERFIL, NÃO PACOTE VISUAL</span><h2>{t("Voz e personalidade")}</h2></div>
               <p>Estas preferências são salvas no perfil. Nenhuma credencial ou prévia de áudio fictícia é criada aqui.</p>
               <label className="avatar-field">Voice ID<input value={voiceId} onChange={(event) => setVoiceId(event.target.value)} /></label>
-              <label className="avatar-field">Personalidade<textarea rows={4} value={personality} onChange={(event) => setPersonality(event.target.value)} /></label>
-              <label className="avatar-field">Estilo de apresentação<textarea rows={4} value={presentation} onChange={(event) => setPresentation(event.target.value)} /></label>
+              <label className="avatar-field">{t("Personalidade")}<textarea rows={4} value={personality} onChange={(event) => setPersonality(event.target.value)} /></label>
+              <label className="avatar-field">{t("Estilo de apresentação")}<textarea rows={4} value={presentation} onChange={(event) => setPresentation(event.target.value)} /></label>
               <button
                 type="button"
                 className="studio-primary-button"
@@ -723,16 +724,16 @@ export function AvatarCreator({ profile, onProfileChange, onBack }: AvatarCreato
 
           {activeTab === "brand" && (
             <div className="avatar-profile-settings" role="tabpanel">
-              <div className="avatar-panel-heading"><span>IDENTIDADE DO PERFIL</span><h2>Marca</h2></div>
+              <div className="avatar-panel-heading"><span>IDENTIDADE DO PERFIL</span><h2>{t("Marca")}</h2></div>
               <p>A marca do perfil não reescreve a paleta protegida do avatar.</p>
-              <label className="avatar-field">Nome da marca<input value={brandName} onChange={(event) => setBrandName(event.target.value)} /></label>
-              <label className="avatar-field avatar-color-field">Cor de destaque<input type="color" value={accent} onChange={(event) => setAccent(event.target.value)} /><code>{accent}</code></label>
+              <label className="avatar-field">{t("Nome da marca")}<input value={brandName} onChange={(event) => setBrandName(event.target.value)} /></label>
+              <label className="avatar-field avatar-color-field">{t("Cor de destaque")}<input type="color" value={accent} onChange={(event) => setAccent(event.target.value)} /><code>{accent}</code></label>
               <button
                 type="button"
                 className="studio-primary-button"
                 disabled={Boolean(busy) || !brandName.trim()}
                 onClick={() => void updateProfile({ brand: { name: brandName.trim(), accent } }, "Marca salva no perfil")}
-              >Salvar marca</button>
+              >{t("Salvar marca")}</button>
             </div>
           )}
 

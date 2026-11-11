@@ -1,3 +1,4 @@
+import { t } from "./studioLanguage";
 import { useEffect, useState } from "react";
 import { useStudioGuard } from "./useStudioGuard";
 
@@ -19,9 +20,9 @@ export function BrandSettings() {
     <section className="studio-section">
       {error && <p className="studio-error" role="alert">{error}</p>}
       {notice && <p className="studio-notice">{notice}</p>}
-      <p className="studio-lead">Os vídeos usam o nome, o tom, a oferta e as cores daqui. Importe do Carrossell ou preencha à mão.</p>
+      <p className="studio-lead">{t("Os vídeos usam o nome, o tom, a oferta e as cores daqui. Importe do Carrossell ou preencha à mão.")}</p>
       <div className="studio-actions">
-        <button className="button" onClick={() => void guard(async () => setProfiles((await api<{ profiles: { id: string; name: string }[] }>("carrossellProfiles")).profiles))}>Importar do Carrossell</button>
+        <button className="button" onClick={() => void guard(async () => setProfiles((await api<{ profiles: { id: string; name: string }[] }>("carrossellProfiles")).profiles))}>{t("Importar do Carrossell")}</button>
         {profiles?.map((p) => (
           <button key={p.id} className="button small" onClick={() => void guard(async () => { setBrand((await api<{ brand: Brand }>("importCarrossellBrand", { profileId: p.id })).brand); setProfiles(null); }, `Marca importada do perfil ${p.name}.`)}>
             {p.name}
@@ -29,14 +30,14 @@ export function BrandSettings() {
         ))}
       </div>
       <div className="field-pair">
-        <label className="field">Nome da marca<input value={brand.name} maxLength={200} onChange={(e) => setBrand({ ...brand, name: e.target.value })} /></label>
-        <label className="field">@ do Instagram<input value={brand.handle ?? ""} maxLength={100} onChange={(e) => setBrand({ ...brand, handle: e.target.value })} /></label>
+        <label className="field">{t("Nome da marca")}<input value={brand.name} maxLength={200} onChange={(e) => setBrand({ ...brand, name: e.target.value })} /></label>
+        <label className="field">{t("@ do Instagram")}<input value={brand.handle ?? ""} maxLength={100} onChange={(e) => setBrand({ ...brand, handle: e.target.value })} /></label>
       </div>
       <label className="field">
         O que vende, para quem, tom e oferta
         <textarea rows={5} value={brand.context} maxLength={60000} placeholder="Ex.: App de agenda para clínicas de estética. Tom direto e leve. Oferta: 7 dias grátis." onChange={(e) => setBrand({ ...brand, context: e.target.value })} />
       </label>
-      <label className="field">Site<input value={brand.website ?? ""} maxLength={500} placeholder="https://" onChange={(e) => setBrand({ ...brand, website: e.target.value })} /></label>
+      <label className="field">{t("Site")}<input value={brand.website ?? ""} maxLength={500} placeholder="https://" onChange={(e) => setBrand({ ...brand, website: e.target.value })} /></label>
       <div className="studio-colors">
         {(["accent", "ink", "paper"] as const).map((k) => (
           <label key={k} className="field color-field">
@@ -61,7 +62,7 @@ export function BrandSettings() {
         {brand.logo && <img className="studio-logo" src={brand.logo} alt="Logo da marca" />}
       </div>
       <div className="studio-actions">
-        <button className="button primary" onClick={() => void guard(async () => setBrand((await api<{ brand: Brand }>("saveBrand", { ...brand, source: brand.source ?? "manual" })).brand), "Marca salva.")}>Salvar marca</button>
+        <button className="button primary" onClick={() => void guard(async () => setBrand((await api<{ brand: Brand }>("saveBrand", { ...brand, source: brand.source ?? "manual" })).brand), "Marca salva.")}>{t("Salvar marca")}</button>
       </div>
     </section>
   );

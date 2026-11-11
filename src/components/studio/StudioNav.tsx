@@ -1,10 +1,16 @@
+import { t, setStudioLanguage, useStudioLanguage, type StudioLanguage } from "./studioLanguage";
 import {
   Clapperboard,
+  CalendarDays,
+  ChartNoAxesColumnIncreasing,
+  Lightbulb,
+  Film,
   FolderKanban,
   Home,
   Mic2,
   Palette,
   Plug,
+  Library,
   Settings2,
   UserRound,
 } from "lucide-react";
@@ -20,12 +26,20 @@ interface StudioNavProps {
   onPage: (page: StudioPage) => void;
   onOpenAdvanced: (tab?: StudioTab) => void;
   onProfileChange: (profile: StudioProfile | null, initializing: boolean) => void;
+  onProfileCreated: (path: "brand" | "avatar") => void;
+  avatarSetupRequest: number;
   fontScale: number;
   onFontScaleChange: (scale: number) => void;
 }
 
 const items = [
   { id: "home", label: "Início", icon: Home },
+  { id: "create", label: "Criar Reel", icon: Clapperboard },
+  { id: "analytics", label: "Instagram Analytics", icon: ChartNoAxesColumnIncreasing },
+  { id: "radar", label: "Radar de pautas", icon: Lightbulb },
+  { id: "proofs", label: "Provas da marca", icon: Library },
+  { id: "videos", label: "Vídeos exportados", icon: Film },
+  { id: "routine", label: "Rotina", icon: CalendarDays },
   { id: "avatars", label: "Meus avatares", icon: UserRound },
   { id: "projects", label: "Projetos", icon: FolderKanban },
 ] as const;
@@ -41,20 +55,31 @@ export function StudioNav({
   onPage,
   onOpenAdvanced,
   onProfileChange,
+  onProfileCreated,
+  avatarSetupRequest,
   fontScale,
   onFontScaleChange,
 }: StudioNavProps) {
+  const language = useStudioLanguage();
   return (
     <aside className="studio-sidebar">
       <div className="studio-brand" aria-label={`${brandName}. ${brandTagline}`}>
         <BrandMark size={34} />
         <div>
           <strong>{brandName}</strong>
-          <span>Seu palco de vendas</span>
+          <span>{t("Seu palco de vendas")}</span>
         </div>
       </div>
-      <nav className="studio-nav" aria-label="Navegação do estúdio">
-        <span className="studio-nav-label">CRIAR</span>
+        <label className="studio-language-select">
+          {t("Idioma")}
+          <select value={language} onChange={(event) => setStudioLanguage(event.target.value as StudioLanguage)}>
+            <option value="pt-BR" lang="pt-BR">Português</option>
+            <option value="en" lang="en">English</option>
+            <option value="es" lang="es">Español</option>
+          </select>
+        </label>
+      <nav className="studio-nav" aria-label={t("Navegação do estúdio")}>
+        <span className="studio-nav-label">{t("CRIAR")}</span>
         {items.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -64,10 +89,10 @@ export function StudioNav({
             onClick={() => onPage(id)}
           >
             <Icon size={17} strokeWidth={1.7} />
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </button>
         ))}
-        <span className="studio-nav-label studio-nav-label-secondary">PRODUÇÃO</span>
+        <span className="studio-nav-label studio-nav-label-secondary">{t("PRODUÇÃO")}</span>
         {advancedItems.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -77,14 +102,14 @@ export function StudioNav({
             onClick={() => onPage(id)}
           >
             <Icon size={17} strokeWidth={1.7} />
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </button>
         ))}
       </nav>
       <div className="studio-sidebar-bottom">
-        <ProfileSwitcher onProfileChange={onProfileChange} />
-        <div className="studio-font-scale" role="group" aria-label="Tamanho da fonte">
-          <span>Fonte</span>
+        <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
+        <div className="studio-font-scale" role="group" aria-label={t("Tamanho da fonte")}>
+          <span>{t("Fonte")}</span>
           <div>
             {[100, 115, 130].map((scale) => (
               <button
@@ -104,10 +129,10 @@ export function StudioNav({
           onClick={() => onOpenAdvanced()}
         >
           <Settings2 size={15} />
-          <span>Ajustes avançados</span>
+          <span>{t("Ajustes avançados")}</span>
           <Clapperboard size={14} />
         </button>
-        <span className="studio-local-note">Seus arquivos ficam neste computador.</span>
+        <span className="studio-local-note">{t("Seus arquivos ficam neste computador.")}</span>
       </div>
     </aside>
   );

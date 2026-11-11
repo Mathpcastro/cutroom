@@ -736,12 +736,12 @@
           root.appendChild(tt);
           CRM.popIn(tl, tt, t0, { rot: -4 }); CRM.out(tl, tt, next - 0.1);
         } else if (li === story.lines.length - 1) {
-          // End card: the scene dims behind the "continua" line and the follow CTA.
+          // Give the final narrator line an end card.
           var dim = document.createElement("div"); dim.style.cssText = "position:absolute;inset:0;z-index:24;background:rgba(14,12,24,.72);visibility:hidden;opacity:0";
           root.appendChild(dim); tl.to(dim, { autoAlpha: 1, duration: 0.35 }, t0);
-          var en = document.createElement("div"); en.className = "st-end"; en.textContent = l.text.replace(/\.$/, "") + "…";
+          var en = document.createElement("div"); en.className = "st-end"; en.textContent = l.text;
           root.appendChild(en); CRM.letters(tl, en, t0, { stagger: 0.03 });
-          CR.profileCTA(tl, t0 + 0.6, { x: 70, y: 1180, text: o.cta || "SEGUE PRA PARTE 2", color: accent, ink: "#FFFFFF", until: D });
+          if (o.cta) CR.profileCTA(tl, t0 + 0.6, { x: 70, y: 1180, text: o.cta, color: accent, ink: "#FFFFFF", until: D });
         } else {
           var nb = document.createElement("div"); nb.className = "st-nar"; nb.textContent = l.text; root.appendChild(nb);
           CRM.rise(tl, nb, t0, { times: l.words.map(function (w) { return Math.max(0, w.start - 0.05); }) });
@@ -801,6 +801,45 @@
    * app's "Reel com avatar" flow; agents can still direct scene by scene with the pieces above.
    *   CRM.autoReel({ tl, film: "#film", engine, avatar, duration, brand })
    */
+  function drawReelMotion(parent, layers, tl, start, end, last) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 1080 1920");
+    svg.style.cssText = "position:absolute;inset:0;width:100%;height:100%;visibility:hidden;pointer-events:none";
+    layers.forEach(function (layer) {
+      var shape = layer.shape, node = document.createElementNS(ns, shape.kind);
+      var attributes = {
+        rect: ["x", "y", "width", "height"],
+        circle: ["cx", "cy", "r"],
+        path: ["d"],
+        text: ["x", "y"],
+      };
+      attributes[shape.kind].forEach(function (name) { node.setAttribute(name, shape[name]); });
+      node.setAttribute("fill", layer.fill);
+      if (layer.stroke) node.setAttribute("stroke", layer.stroke);
+      if (layer.strokeWidth != null) node.setAttribute("stroke-width", layer.strokeWidth);
+      if (shape.kind === "rect" && shape.radius != null) node.setAttribute("rx", shape.radius);
+      if (shape.kind === "text") {
+        node.setAttribute("font-size", shape.fontSize);
+        node.setAttribute("font-family", "Fredoka, Instrument Sans, sans-serif");
+        node.setAttribute("font-weight", "700");
+        node.textContent = shape.text;
+      }
+      svg.appendChild(node);
+      if (layer.move) {
+        var move = layer.move, length = end - start;
+        tl.to(node, {
+          x: move.x || 0, y: move.y || 0, scale: move.scale ?? 1,
+          rotation: move.rotate || 0, opacity: move.opacity ?? 1,
+          transformOrigin: "50% 50%", ease: "power2.inOut", duration: length * (move.end - move.start),
+        }, start + length * move.start);
+      }
+    });
+    parent.appendChild(svg);
+    tl.set(svg, { visibility: "visible" }, start);
+    if (!last) tl.set(svg, { visibility: "hidden" }, end);
+  }
+
   CRM.autoReel = function (o) {
     var tl = o.tl, root = document.querySelector(o.film || "#film"), D = o.duration;
     var brand = o.brand || {}, accent = brand.accent || "#7C5CFF", pop = brand.pop || "#C8FF5A";
@@ -819,6 +858,7 @@
     var bgC = document.createElement("canvas"); bgC.width = 1080; bgC.height = 1920;
     var avC = document.createElement("canvas"); avC.width = 1080; avC.height = 1920;
     cam.appendChild(bgC);
+    var artLayer = document.createElement("div"); cam.appendChild(artLayer);
     var textLayer = document.createElement("div"); cam.appendChild(textLayer);
     cam.appendChild(avC);
     root.appendChild(cam);
@@ -832,6 +872,74 @@
     }
     if (!sentences.length) sentences.push([{ text: "", start: 0, end: D }]);
 
+    var planned = Array.isArray(o.scenes) ? o.scenes : [];
+    if (planned.length && words.length >= planned.length) {
+      var counts = planned.map(function (scene) { return scene.narration.trim().split(/\s+/).length; });
+      var total = counts.reduce(function (sum, count) { return sum + count; }, 0);
+      var cumulative = 0, offset = 0;
+      sentences = counts.map(function (count, index) {
+        cumulative += count;
+        var remaining = counts.length - index - 1;
+        var end = Math.min(words.length - remaining, Math.max(offset + 1, Math.round(words.length * cumulative / total)));
+        var sentence = words.slice(offset, end);
+        offset = end;
+        return sentence;
+      });
+    }
+    if (planned.length) {
+      var visualLayer = document.createElement("div");
+      cam.insertBefore(visualLayer, avC);
+      planned.forEach(function (scene, index) {
+        var start = index === 0 ? 0 : sentences[index] ? sentences[index][0].start : D * index / planned.length;
+        var end = index === planned.length - 1 ? D : sentences[index + 1] ? sentences[index + 1][0].start : D * (index + 1) / planned.length;
+        if (scene.motion && end > start) drawReelMotion(artLayer, scene.motion, tl, start, end, index === planned.length - 1);
+        if (end - start < 0.35) return;
+        var panel = document.createElement("section");
+        panel.style.cssText = "position:absolute;left:92px;right:92px;top:505px;visibility:hidden;color:white;font:700 48px Instrument Sans,sans-serif;line-height:1.12";
+        var title = document.createElement("h2");
+        title.style.cssText = "font:400 70px Anton,sans-serif;margin:0 0 36px;overflow-wrap:anywhere";
+        title.textContent = scene.headline;
+        if (scene.headline) panel.appendChild(title);
+        var row = document.createElement("div");
+        row.style.cssText = "display:flex;gap:24px";
+        if (scene.visual === "steps" || scene.visual === "interface") row.style.flexDirection = "column";
+        scene.elements.forEach(function (label, j) {
+          var item = document.createElement("div");
+          item.style.cssText = "flex:1;min-width:0;padding:32px;border:2px solid #ffffff44;border-radius:26px;background:#131023e8;overflow-wrap:anywhere";
+          if (scene.visual === "interface") item.style.borderLeft = "14px solid " + pop;
+          if (scene.visual === "contrast" && j > 0) item.style.marginTop = "70px";
+          if (scene.visual === "result" && j === scene.elements.length - 1) {
+            item.style.background = pop;
+            item.style.color = "#141318";
+          }
+          item.textContent = (scene.visual === "steps" ? (j + 1) + " · " : "") + label;
+          row.appendChild(item);
+        });
+        var frames = (scene.proofFrames || []).filter(function (file) { return /^assets\/[a-z0-9-]+\.(png|jpe?g|webp)$/i.test(file); });
+        if (frames.length) {
+          var proof = document.createElement("div");
+          proof.style.cssText = "position:relative;width:100%;height:500px;background:#131023;border-radius:24px;overflow:hidden";
+          var used = frames.slice(0, Math.max(1, Math.ceil((end - start) * 8)));
+          used.forEach(function (file, index) {
+            var image = document.createElement("img");
+            image.src = file;
+            image.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;visibility:hidden";
+            proof.appendChild(image);
+            tl.set(image, { visibility: "visible" }, start + index / 8);
+            if (index + 1 < used.length) tl.set(image, { visibility: "hidden" }, start + (index + 1) / 8);
+          });
+          panel.appendChild(proof);
+        } else if (row.children.length) {
+          panel.appendChild(row);
+          tl.fromTo(row.children, { autoAlpha: 0, x: -36 }, { autoAlpha: 1, x: 0, duration: 0.22, stagger: 0.09 }, start + 0.12);
+        }
+        if (!panel.children.length) return;
+        visualLayer.appendChild(panel);
+        tl.fromTo(panel, { autoAlpha: 0, y: 56 }, { autoAlpha: 1, y: 0, duration: 0.28 }, start);
+        tl.to(panel, { autoAlpha: 0, duration: 0.16 }, end - 0.17);
+      });
+    }
+
     var A = o.engine && o.avatar ? CRM.avatar({ engine: o.engine, avatar: o.avatar, outline: pop }) : null;
     var SHOTS = [
       { x: 540, y: 1720, scale: 11 },               // wide, centre
@@ -842,9 +950,22 @@
       { x: 540, y: 1900, scale: 8 },                // bottom
     ];
     var GRADS = [["#1b1530", "#0f0d17"], ["#3b26a8", "#120d2e"], ["#141318", "#251c4d"], ["#6445d8", "#1b1440"], ["#0f1c4a", "#2a1f6b"], ["#2a1f6b", "#141318"]];
+    // Molde de um vídeo de referência: cores, ritmo de cortes e energia (CRM.autoReel({ reference })).
+    var REF = o.reference || null;
+    function refShotAt(t) {
+      if (!REF || !REF.shots || !REF.shots.length) return null;
+      var f = t / Math.max(0.01, D), hit = REF.shots[0];
+      for (var k = 0; k < REF.shots.length; k++) if (REF.shots[k].start <= f) hit = REF.shots[k];
+      return hit;
+    }
+    function shade(hex, f) {
+      var m = /^#?([0-9a-f]{6})$/i.exec(hex || ""); if (!m) return hex;
+      var n = parseInt(m[1], 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) { return Math.max(0, Math.min(255, Math.round(v * f))); });
+      return "#" + c.map(function (v) { return ("0" + v.toString(16)).slice(-2); }).join("");
+    }
     var SC = [], BURSTS = [], LINES = [];
     var r = rng(77);
-    if (A) { A.shot(0, Object.assign({ d: 0 }, SHOTS[0])); A.enter(0.12, "drop"); A.act(0, "neutral", "happy"); BURSTS.push({ t: 0.44, x: 540, y: 1720, kind: "dust", n: 26, seed: 3 }); }
+    if (A) { A.shot(0, Object.assign({ d: 0 }, planned.length ? { x: 540, y: 1760, scale: planned[0].avatarSize === "small" ? 5 : 7 } : SHOTS[0])); A.enter(0.12, "drop"); A.act(0, "neutral", "happy"); BURSTS.push({ t: 0.44, x: 540, y: 1720, kind: "dust", n: 26, seed: 3 }); }
 
     sentences.forEach(function (sw, si) {
       var start = Math.max(0, sw[0].start - 0.08), next = si + 1 < sentences.length ? Math.max(0, sentences[si + 1][0].start - 0.08) : D;
@@ -854,10 +975,22 @@
       var question = /\?$/.test(text), last = si === sentences.length - 1, first = si === 0;
       // Background for the scene.
       var g = neg ? ["#2a0f18", "#0d0709"] : posv ? ["#7C5CFF", "#241a5e"] : GRADS[si % GRADS.length];
-      SC.push({ t: start, a: g[0], b: g[1], glow: neg ? "rgba(255,61,90,.35)" : "rgba(200,255,90,.30)", d: first ? 0 : 0.25 });
+      var rs = refShotAt(start);
+      // With a reference, the scene takes its colours (darkened so white captions stay readable).
+      if (rs && rs.palette && rs.palette.length) g = [shade(rs.palette[rs.palette.length - 1], 0.55), shade(rs.palette[0], 0.35)];
+      SC.push({ t: start, a: g[0], b: g[1], glow: neg ? "rgba(255,61,90,.35)" : rs && rs.palette ? shade(rs.palette[Math.min(1, rs.palette.length - 1)], 1) + "66" : "rgba(200,255,90,.30)", d: first ? 0 : 0.25 });
+      // Same cutting rhythm as the reference: extra camera cuts inside long scenes.
+      if (REF && REF.secondsPerShot > 0) {
+        var gap = Math.max(0.9, REF.secondsPerShot), k2 = 0;
+        for (var cutT = start + gap; cutT < next - 0.6; cutT += gap, k2++) {
+          if ((rs && rs.motion > 0.45) || REF.energy > 0.35) { if (k2 % 2) CRM.whip(tl, cam, cutT, k2 % 4 ? 1 : -1); else CRM.punch(tl, cam, cutT, 1.08, Math.min(0.5, gap * 0.4)); }
+          else CRM.punch(tl, cam, cutT, 1.04, Math.min(0.6, gap * 0.5));
+        }
+      }
       // Avatar framing and acting.
       if (A && !first) {
         var shot = last ? { x: 720, y: 1680, scale: 11 } : question ? SHOTS[1] : SHOTS[[2, 3, 4, 5, 0][si % 5]];
+        if (planned.length) shot = { x: si % 2 ? 350 : 730, y: 1760, scale: planned[si]?.avatarSize === "small" ? 5 : 7 };
         A.shot(start, Object.assign({ d: shot === SHOTS[1] ? 0.45 : 0 }, shot));
         if (shot.x === 800) A.enter(start, "right"); else if (shot.x === 280) A.enter(start, "left");
         var pose = last ? "pointing" : question ? "surprised" : posv ? "celebrating" : neg ? "neutral" : "explaining";
@@ -870,6 +1003,9 @@
       // Transition into the scene.
       if (!first) {
         var kind = si % 3;
+        // A calm reference keeps calm transitions; an energetic one hits harder.
+        if (REF && REF.energy < 0.2) kind = 2;
+        if (REF && REF.energy > 0.45 && kind === 2) { CRM.shake(tl, cam, start + 0.02, 18, 0.3); kind = si % 2; }
         if (kind === 0) CRM.whip(tl, cam, start, si % 2 ? 1 : -1);
         else if (kind === 1) CRM.flash(tl, root.querySelector(".ar-flash"), start, 0.45);
         else CRM.punch(tl, cam, start + 0.05, 1.06, 0.4);
@@ -879,6 +1015,7 @@
       var chunks = [], per = Math.ceil(sw.length / Math.ceil(sw.length / 4));
       for (var c = 0; c < sw.length; c += per) chunks.push(sw.slice(c, c + per));
       if (last && A) chunks = [sw];
+      if (planned[si]?.captions === false) chunks = [];
       chunks.forEach(function (ch, ci) {
         var el = document.createElement("div");
         el.className = "ar-t";
@@ -902,7 +1039,6 @@
         else CRM.out(tl, el, t1, 0.1);
       });
       if (question || posv) LINES.push([start, start + 0.8]);
-      if (last) CR.profileCTA(tl, Math.max(start + 0.3, sw[sw.length - 1].start - 0.6), { x: 70, y: 720, color: accent, ink: "#FFFFFF", until: D });
     });
 
     CRM.progress(tl, root.querySelector(".ar-bar"), D);

@@ -1,3 +1,4 @@
+import { t } from "./studioLanguage";
 import { useCallback, useEffect, useState } from "react";
 import type { AppSnapshot } from "../../shared/types";
 import { useStudioGuard } from "./useStudioGuard";
@@ -41,16 +42,16 @@ export function VoiceSettings({ packages, jobs, run }: { packages: AppSnapshot["
     <section className="studio-section">
       {error && <p className="studio-error" role="alert">{error}</p>}
       {notice && <p className="studio-notice">{notice}</p>}
-      <p className="studio-lead">A narração dos vídeos. O Kokoro roda no seu computador, sem internet e sem créditos. ElevenLabs e OpenAI usam a sua chave (o custo é da sua conta).</p>
+      <p className="studio-lead">{t("A narração dos vídeos. O Kokoro roda no seu computador, sem internet e sem créditos. ElevenLabs e OpenAI usam a sua chave (o custo é da sua conta).")}</p>
       <label className="field">
-        Provedor padrão
+        {t("Provedor padrão")}
         <select value={provider} onChange={(e) => { setProvider(e.target.value); setKeyInput(""); void loadVoices(e.target.value); }}>
           {PROVIDERS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
         </select>
       </label>
       {provider === "kokoro" && !voice?.kokoroAvailable && (
         <div className="studio-box">
-          <p>A Voz Kokoro ainda não está instalada (≈ 230 MB, download único).</p>
+          <p>{t("A Voz Kokoro ainda não está instalada (≈ 230 MB, download único).")}</p>
           <button className="button primary" disabled={busy || kokoroPackage?.status === "installing"} onClick={() => void guard(() => run("installPackage", { id: "kokoro-voice" }), "Voz Kokoro instalada.")}>
             {kokoroPackage?.status === "installing" ? "Instalando…" : "Instalar Voz Kokoro"}
           </button>
@@ -58,17 +59,17 @@ export function VoiceSettings({ packages, jobs, run }: { packages: AppSnapshot["
       )}
       {(provider === "elevenlabs" || provider === "openai") && (
         <div className="studio-box">
-          <p>{voice?.keys[`voice.${provider}`] ? "Chave cadastrada (guardada cifrada neste computador)." : "Cole a sua chave de API. Ela fica cifrada no seu computador e nunca vai para o chat."}</p>
+          <p>{voice?.keys[`voice.${provider}`] ? t("Chave cadastrada (guardada cifrada neste computador).") : t("Cole a sua chave de API. Ela fica cifrada no seu computador e nunca vai para o chat.")}</p>
           <div className="field-pair">
-            <input type="password" autoComplete="off" value={keyInput} placeholder={provider === "elevenlabs" ? "Chave da ElevenLabs" : "Chave da OpenAI (sk-…)"} onChange={(e) => setKeyInput(e.target.value)} />
-            <button className="button" disabled={!keyInput.trim()} onClick={() => void guard(async () => { setVoice(await api("setVoiceKey", { provider, key: keyInput })); setKeyInput(""); await loadVoices(provider); }, "Chave salva.")}>Salvar</button>
-            {voice?.keys[`voice.${provider}`] && <button className="button" onClick={() => void guard(async () => setVoice(await api("setVoiceKey", { provider })), "Chave removida.")}>Remover</button>}
+            <input type="password" autoComplete="off" value={keyInput} placeholder={provider === "elevenlabs" ? t("Chave da ElevenLabs") : t("Chave da OpenAI (sk-…)")} onChange={(e) => setKeyInput(e.target.value)} />
+            <button className="button" disabled={!keyInput.trim()} onClick={() => void guard(async () => { setVoice(await api("setVoiceKey", { provider, key: keyInput })); setKeyInput(""); await loadVoices(provider); }, "Chave salva.")}>{t("Salvar")}</button>
+            {voice?.keys[`voice.${provider}`] && <button className="button" onClick={() => void guard(async () => setVoice(await api("setVoiceKey", { provider })), "Chave removida.")}>{t("Remover")}</button>}
           </div>
         </div>
       )}
       {voices.length > 0 && (
         <label className="field">
-          Voz padrão
+          {t("Voz padrão")}
           <select
             value={voice?.preferences.voices?.[provider] ?? ""}
             onChange={(e) => void guard(async () => { await api("setVoicePreferences", { provider, voices: { ...(voice?.preferences.voices ?? {}), [provider]: e.target.value } }); setVoice(await api("getVoiceSettings")); }, "Voz padrão salva.")}

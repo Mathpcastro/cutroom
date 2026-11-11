@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <!--
   Formato "kurzgesagt" do CutRoom: explainer ilustrado em vetor chapado, espaço profundo, um planeta
-  sombreado, a estrela do conteúdo e um mascote astronauta. Tudo desenhado num canvas por draw(t)
+  sombreado e a estrela do conteúdo. Tudo desenhado num canvas por draw(t)
   (função pura do tempo), com câmera em zoom logarítmico, pops com mola, vinheta e grão.
 -->
 <script src="brand.js"></script>
@@ -17,7 +17,9 @@
   #cv { position: absolute; inset: 0; width: 1080px; height: 1920px; }
   .later { visibility: hidden; opacity: 0; }
   .line { position: absolute; left: 0; width: 1080px; text-align: center; overflow: hidden; padding: 10px 0; }
-  .line span { display: inline-block; padding: 18px 40px 22px; border-radius: 999px; background: rgba(6,20,40,.62); font-weight: 700; font-size: 64px; letter-spacing: 4px; text-transform: uppercase; }
+  .line span { display: inline-block; padding: 18px 40px 22px; border-radius: 999px; background: rgba(6,20,40,.62); font-weight: 700; max-width: 940px; overflow-wrap: anywhere; font-size: 60px; letter-spacing: 3px; text-transform: uppercase; }
+  .explain-captions { position: absolute; top: 1300px; left: 70px; width: 940px; }
+  .explain-captions .cr-cap { width: 100%; text-align: center; overflow-wrap: anywhere; padding: 18px 30px; border-radius: 32px; background: rgba(6,20,40,.78); font: 700 58px Fredoka, sans-serif; }
   .gold { color: #ffd98a; } .teal { color: #8fd8e6; }
   .l1 { top: 250px; } .l2 { top: 1290px; }
   .count { position: absolute; left: 0; width: 1080px; top: 380px; text-align: center; font: 700 200px/1 Fredoka; color: #ffd98a; text-shadow: 0 10px 40px rgba(0,0,0,.4); }
@@ -29,6 +31,7 @@
   <canvas id="cv" width="1080" height="1920"></canvas>
   <div class="line l1 later"><span class="t1"></span></div>
   <div class="line l2 later"><span class="t2"></span></div>
+  <div class="explain-captions"></div>
   <div class="count later"><span class="cn">0</span><small>CLIENTES</small></div>
   <audio id="voz" data-start="0" data-duration="36" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
   <!--MUSICA-->
@@ -44,13 +47,24 @@
     })();
     window.__timelines = window.__timelines || {};
     var tl = gsap.timeline({ paused: true });
-    var D = Math.max(CR.timing.voiceEnd + 2.2, 10), at = CR.at;
+    var D = CR.timing.voiceEnd > 0 ? CR.timing.voiceEnd + 2.2 : 30.2, at = CR.at;
     var B = {
       planeta: at("planeta", 1, 1.4), sozinho: at("sozinho", 1, 2.6), ninguem: at("ninguém", 1, 4.0), estrela: at("estrela", 1, 6.4), conteudo: at("conteúdo", 1, 7.0),
       post: at("post", 1, 8.0), carrossel: at("carrossel", 1, 10.0), reels: at("reels", 1, 12.0), anos: at("anos-luz", 1, 13.6), visitantes: at("visitantes", 1, 15.6),
       orbita: at("órbita", 1, 16.8), seguidores: at("seguidores", 1, 17.6), pousam: at("pousam", 1, 19.6), clientes: at("clientes", 1, 20.4), cento: at("cento", 1, 21.0),
       foguete: at("foguete", 1, 23.0), gravidade: at("gravidade", 1, 24.0), acender: at("acender", 1, 25.4), perfil: at("perfil", 1, 28.0), D: D,
     };
+    var scripted = document.getElementById("explicacao");
+    if (scripted) {
+      var beats = Object.keys(B).filter(function (key) { return key !== "D"; });
+      var words = CR.timing.words;
+      var spokenEnd = CR.timing.voiceEnd || D - 2.2;
+      beats.forEach(function (key, index) {
+        var fraction = (index + 1) / (beats.length + 1);
+        var word = words[Math.floor(fraction * words.length)];
+        B[key] = word ? word.start : spokenEnd * fraction;
+      });
+    }
     // Every line of text rises through a clip on an ease-out-quint.
     function say(sel, txt, cls, t, out) {
       tl.call(function () { var el = document.querySelector(sel); el.textContent = txt; el.className = sel.slice(1) + " " + (cls || ""); }, null, t);
@@ -58,21 +72,28 @@
       tl.fromTo(sel, { yPercent: 130 }, { yPercent: 0, duration: 0.45, ease: "quint.out" }, t);
       if (out) tl.to(sel, { yPercent: -130, duration: 0.3, ease: "quint.in" }, out - 0.3);
     }
-    say(".t1", "E se o seu SaaS", "", 0.05, B.planeta + 0.9);
-    say(".t2", "fosse um planeta", "gold", B.planeta - 0.4, B.sozinho);
-    say(".t2", "sozinho no escuro", "teal", B.sozinho, B.estrela - 0.2);
-    say(".t1", "o conteúdo", "gold", B.conteudo, B.carrossel - 0.1);
-    say(".t2", "carrossel: órbita perto", "", B.carrossel, B.reels - 0.1);
-    say(".t2", "reels: luz que vai longe", "teal", B.reels, B.visitantes - 0.1);
-    say(".t1", "visitantes", "teal", B.visitantes, B.orbita - 0.1);
-    say(".t1", "seguidores", "gold", B.seguidores - 0.2, B.pousam - 0.1);
-    CR.pop(tl, ".count", B.clientes - 0.1);
-    CR.count(tl, ".cn", 0, 112, B.clientes, Math.max(0.6, B.cento + 1.0 - B.clientes));
-    CR.exit(tl, ".count", B.foguete - 0.1);
-    say(".t2", "sem foguete pago", "", B.foguete, B.gravidade - 0.05);
-    say(".t2", "só gravidade", "gold", B.gravidade, B.acender - 0.1);
-    say(".t1", "acenda a sua estrela", "gold", B.acender, D);
-    CR.profileCTA(tl, B.perfil - 1.0, { y: 1180, ink: "#FFFFFF", until: D });
+    if (scripted) {
+      CR.captions(tl, {
+        el: ".explain-captions", maxWords: 4, ink: "#ffffff", grey: "#8fd8e6",
+        until: spokenEnd + 0.35,
+      });
+    } else {
+      say(".t1", "E se o seu SaaS", "", 0.05, B.planeta + 0.9);
+      say(".t2", "fosse um planeta", "gold", B.planeta - 0.4, B.sozinho);
+      say(".t2", "sozinho no escuro", "teal", B.sozinho, B.estrela - 0.2);
+      say(".t1", "o conteúdo", "gold", B.conteudo, B.carrossel - 0.1);
+      say(".t2", "carrossel: órbita perto", "", B.carrossel, B.reels - 0.1);
+      say(".t2", "reels: luz que vai longe", "teal", B.reels, B.visitantes - 0.1);
+      say(".t1", "visitantes", "teal", B.visitantes, B.orbita - 0.1);
+      say(".t1", "seguidores", "gold", B.seguidores - 0.2, B.pousam - 0.1);
+      CR.pop(tl, ".count", B.clientes - 0.1);
+      CR.count(tl, ".cn", 0, 112, B.clientes, Math.max(0.6, B.cento + 1.0 - B.clientes));
+      CR.exit(tl, ".count", B.foguete - 0.1);
+      say(".t2", "sem foguete pago", "", B.foguete, B.gravidade - 0.05);
+      say(".t2", "só gravidade", "gold", B.gravidade, B.acender - 0.1);
+      say(".t1", "acenda a sua estrela", "gold", B.acender, D);
+      CR.profileCTA(tl, B.perfil - 1.0, { y: 1180, ink: "#FFFFFF", until: D });
+    }
 
     // ---------- the illustration ----------
     var g = document.getElementById("cv").getContext("2d");
@@ -188,21 +209,16 @@
       g.strokeStyle = "rgba(143,216,230," + a + ")"; g.lineWidth = 3;
       for (var i = -6; i <= 6; i++) { g.beginPath(); for (var x = 0; x <= 1080; x += 20) { var dx = x - PLANET.x, base = PLANET.y + 360 + i * 60, dy = base - PLANET.y, dist = Math.sqrt(dx * dx + dy * dy), sink = 90000 / (dist + 120), y = base + sink * 0.9; if (x === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.stroke(); }
     }
-    function mascot(t) {
-      // A small astronaut: rounded suit, visor with glowing eyes, blinking antenna, idle bob, squash and stretch.
-      var on = spring(t, B.sozinho - 0.3); if (on <= 0.01) return;
-      var x = 870 + Math.sin(t * 0.7) * 20, y = 1700 + Math.sin(t * 1.3) * 16;
-      var wave = t > B.acender ? Math.sin(t * 10) * 0.6 : 0;
-      g.save(); g.translate(x, y); g.scale(on * (1 + Math.sin(t * 2.6) * 0.02), on * (1 - Math.sin(t * 2.6) * 0.02));
-      g.fillStyle = "#f3f7fb"; g.beginPath(); g.roundRect(-70, -40, 140, 150, 50); g.fill();
-      g.fillStyle = "#ff8f4a"; g.beginPath(); g.roundRect(-62, 98, 52, 30, 14); g.fill(); g.beginPath(); g.roundRect(10, 98, 52, 30, 14); g.fill();
-      g.save(); g.translate(64, -10); g.rotate(-0.6 + wave); g.fillStyle = "#f3f7fb"; g.beginPath(); g.roundRect(0, -14, 70, 28, 14); g.fill(); g.restore();
-      g.fillStyle = "#f3f7fb"; g.beginPath(); g.roundRect(-80, -150, 160, 130, 60); g.fill();
-      var vg = g.createLinearGradient(0, -130, 0, -40); vg.addColorStop(0, "#1f5a73"); vg.addColorStop(1, "#0a1c2c"); g.fillStyle = vg; g.beginPath(); g.roundRect(-60, -132, 120, 92, 40); g.fill();
-      var look = t < B.estrela ? 0 : -10, blink = Math.floor(t * 10) % 41 === 0;
-      g.fillStyle = "#7ff2ff"; [-24, 24].forEach(function (dx) { g.beginPath(); if (blink) g.fillRect(dx - 10 + look, -88, 20, 4); else { g.arc(dx + look, -86, 10, 0, 6.29); g.fill(); } });
-      g.strokeStyle = "#f3f7fb"; g.lineWidth = 6; g.beginPath(); g.moveTo(0, -150); g.lineTo(0, -184); g.stroke();
-      g.fillStyle = Math.floor(t * 2) % 2 ? "#ff8f4a" : "#ffd98a"; g.beginPath(); g.arc(0, -190, 10, 0, 6.29); g.fill();
+    function focusPulse(t, beat, x, y, color) {
+      var progress = (t - beat) / 0.85;
+      if (progress < 0 || progress >= 1) return;
+      g.save();
+      g.globalAlpha = (1 - progress) * 0.65;
+      g.strokeStyle = color;
+      g.lineWidth = 5 * (1 - progress) + 1;
+      g.beginPath();
+      g.ellipse(x, y, 50 + progress * 280, 25 + progress * 145, 0, 0, Math.PI * 2);
+      g.stroke();
       g.restore();
     }
     function finish(t) {
@@ -215,8 +231,11 @@
       background(t, c);
       g.setTransform(c.z, 0, 0, c.z, 540 - c.x * c.z, 960 - c.y * c.z);
       gravity(t); sun(t); beam(t); orbitRings(t); photons(t); planet(t); cardMoons(t); visitors(t);
+      focusPulse(t, B.carrossel, PLANET.x, PLANET.y, "#ffd98a");
+      focusPulse(t, B.orbita, PLANET.x, PLANET.y, "#8fd8e6");
+      focusPulse(t, B.pousam, PLANET.x, PLANET.y, "#ffd98a");
       g.setTransform(1, 0, 0, 1, 0, 0);
-      mascot(t); finish(t);
+      finish(t);
     }
     var st = { t: 0 };
     tl.to(st, { t: D, duration: D, ease: "none", onUpdate: function () { draw(st.t); } }, 0);

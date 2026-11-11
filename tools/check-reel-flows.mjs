@@ -50,6 +50,7 @@ async function createProfileAndAvatar() {
   await dialog.getByLabel("Nome do perfil", { exact: true }).fill("Reels Reais");
   await dialog.getByLabel("Handle do perfil", { exact: true }).fill("reels-reais");
   await dialog.getByRole("button", { name: "Salvar perfil", exact: true }).click();
+  await page.getByRole("button", { name: "Preencher depois", exact: true }).click();
   await expect(page.getByLabel("Perfil ativo", { exact: true })).toHaveValue("reels-reais");
 
   await page.getByRole("button", { name: "Criar meu avatar", exact: true }).click();
@@ -74,28 +75,14 @@ async function createProfileAndAvatar() {
 }
 
 async function createReel({ withAvatar }) {
-  const action = withAvatar ? "Criar um Reel com avatar" : "Criar sem avatar";
   const suffix = withAvatar ? "com-avatar" : "sem-avatar";
-  await page.getByRole("button", { name: action, exact: true }).click();
-  await expect(page.getByRole("heading", { name: action, exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Objetivo", exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Oferta", exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Roteiro", exact: true })).toBeVisible();
-  const formats = await page.getByRole("combobox", { name: "Formato", exact: true }).locator("option").allTextContents();
-  if (formats.length < 7 || !formats.some((text) => /UI motion/i.test(text))) {
-    throw new Error(`Formatos reais ausentes: ${JSON.stringify(formats)}`);
-  }
-  if (withAvatar) await expect(page.getByTestId("reel-avatar-reference")).toBeVisible();
-  else await expect(page.getByTestId("reel-avatar-reference")).toHaveCount(0);
-
-  await page.getByRole("textbox", { name: "Objetivo", exact: true }).fill(`Apresentar o produto ${suffix}`);
-  await page.getByRole("textbox", { name: "Oferta", exact: true }).fill("Demonstração gratuita pelo link do perfil");
-  await page.getByRole("textbox", { name: "Roteiro", exact: true }).fill(
-    `Seu produto merece uma demonstração clara. Conheça a oferta ${suffix}. Veja cada detalhe e comece agora pelo link do perfil.`,
-  );
-  if (!withAvatar) await page.getByRole("combobox", { name: "Formato", exact: true }).selectOption("ui-motion");
-  await expect(page.getByTestId("reel-profile-voice")).toContainText("local");
-  await page.getByRole("button", { name: "Gerar filme e revisar", exact: true }).click();
+  await page.getByRole("navigation", { name: "Navegação do estúdio" }).getByRole("button", { name: "Criar Reel", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Criar Reel", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: withAvatar ? "Com avatar" : "Sem avatar", exact: true }).click();
+  await page.getByRole("button", { name: withAvatar ? "História" : "Vídeo direto", exact: true }).click();
+  await page.getByRole("textbox", { name: "O que você quer criar?", exact: true }).fill("Crie um Reel sobre perder pedidos na planilha e mostre como organizar o atendimento.");
+  await expect(page.getByLabel("Prévia do estilo selecionado")).toBeVisible();
+  await page.getByRole("button", { name: /^(Gerar vídeo|Gerar nova versão)$/ }).click();
   await expect(page.getByRole("heading", { name: "Revisar Reel", exact: true })).toBeVisible({ timeout: 180_000 });
   const stills = page.locator(".reel-review-still");
   await expect(stills.first()).toBeVisible({ timeout: 180_000 });
@@ -113,11 +100,11 @@ async function createReel({ withAvatar }) {
   const meta = JSON.parse(await readFile(join(filmDir, "film.json"), "utf8"));
   const html = await readFile(join(filmDir, "index.html"), "utf8");
   if (meta.width !== 1080 || meta.height !== 1920) throw new Error(`Dimensões incorretas: ${meta.width}x${meta.height}`);
-  if (!html.includes('src="kit/gsap.min.js"') || !html.includes('src="timing.js"') || !html.includes("CR.captions")) {
+  if (!html.includes('src="kit/gsap.min.js"') || !html.includes('src="timing.js"') || !html.includes("sales-plan")) {
     throw new Error("HTML local não contém GSAP, timing e legendas reais.");
   }
   if (withAvatar) {
-    if (!meta.avatar || !html.includes('src="avatar/runtime.js"') || !html.includes('src="avatar/voice.js"') || !html.includes("renderAvatarPixels")) {
+    if (!meta.avatar || !html.includes('src="avatar/runtime.js"') || !html.includes('src="avatar/voice.js"') || !html.includes("CRM.autoReel")) {
       throw new Error("Snapshot/engine/voz do avatar não foram ligados ao HTML.");
     }
     await stat(join(filmDir, "avatar", "runtime.js"));
@@ -157,9 +144,50 @@ try {
   });
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
   await page.waitForFunction(() => !!window.cutroom);
+  // Stub only the external AI response. Electron, profiles, speech, rendering and disk stay real.
+  await app.evaluate(({ ipcMain }) => {
+    const channel = "editor:request";
+    const original = ipcMain._invokeHandlers.get(channel);
+    ipcMain.removeHandler(channel);
+    ipcMain.handle(channel, (event, method, params) => {
+      if (method !== "sendChat") return original(event, method, params);
+      const answer = params.displayText.includes("pautas") ? {
+        ideas: ["Dor", "Objeção", "Prova", "Oferta"].map((angle) => ({
+          title: "Pedidos fora do controle", hook: "Onde foi parar aquele pedido?",
+          angle, proof: "Demonstre uma fila de pedidos em teste.",
+          brief: "Mostre uma loja organizando a fila de pedidos.",
+        })),
+      } : {
+        title: "Pedidos fora do controle", caption: "Veja o fluxo no link do perfil.",
+        scenes: [
+          { narration: "O pedido sumiu na planilha.", headline: "Cadê o pedido?", visual: "contrast", elements: ["Mensagens", "Planilha"] },
+          { narration: "Coloque tudo em uma fila.", headline: "Fila única", visual: "interface", elements: ["Recebido", "Em preparo"] },
+          { narration: "Veja o fluxo no link do perfil.", headline: "Confira a demonstração", visual: "result", elements: ["Fila organizada", "Ver demonstração"] },
+        ],
+      };
+      return { messages: [{ role: "assistant", text: JSON.stringify(answer) }] };
+    });
+  });
   await createProfileAndAvatar();
+  await page.getByRole("button", { name: "Radar de pautas", exact: true }).click();
+  await page.getByRole("button", { name: "Gerar sugestões", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Usar esta pauta", exact: true })).toHaveCount(4);
+  await page.getByRole("button", { name: "Usar esta pauta", exact: true }).first().click();
+  await expect(page.getByRole("textbox", { name: "O que você quer criar?", exact: true })).toHaveValue("Mostre uma loja organizando a fila de pedidos.");
+  await page.getByRole("button", { name: "Rotina", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Piloto automático", exact: true })).toBeVisible();
+  evidence.checks.push("Radar com resposta de IA de teste, pauta abre no editor e Rotina acessível");
+
   await createReel({ withAvatar: true });
   await createReel({ withAvatar: false });
+  await page.getByRole("navigation", { name: "Navegação do estúdio" }).getByRole("button", { name: "Criar Reel", exact: true }).click();
+  for (const [width, height] of [[1440, 1000], [1050, 700]]) {
+    await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(...size), [width, height]);
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width);
+    const layout = await page.locator(".studio-main").evaluate((el) => ({ client: el.clientWidth, scroll: el.scrollWidth }));
+    if (layout.scroll > layout.client + 1) throw new Error("Overflow horizontal em " + width);
+    await page.screenshot({ path: join(evidenceDir, "criacao-" + width + ".png") });
+  }
   if (evidence.pageErrors.length || evidence.consoleErrors.length) {
     throw new Error(JSON.stringify({ pageErrors: evidence.pageErrors, consoleErrors: evidence.consoleErrors }));
   }

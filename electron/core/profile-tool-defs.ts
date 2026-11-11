@@ -76,6 +76,7 @@ const profilePatch = {
     ink: color,
     paper: color,
     logoAssetId: profileId,
+    website: { type: "string", maxLength: 2000 },
   }),
   instagram: objectSchema({
     connectionId: profileId,

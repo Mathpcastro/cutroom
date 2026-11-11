@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { Films, envelopeFromSamples, filmStills, remoteReferences, runFilmWorker, slug, withCsp } from "../electron/core/film";
+import { FORMATS, formatGuide } from "../electron/core/formats";
 import { ffmpegPath } from "../electron/core/media";
 
 const exec = promisify(execFile);
@@ -46,6 +47,25 @@ describe("films", () => {
     expect(report.errors).toEqual([]);
     expect((await films.create({ name: "Curtida ou assinatura?" })).id).toBe("curtida-ou-assinatura-2");
     expect((await films.list()).map((f) => f.id).sort()).toEqual(["curtida-ou-assinatura", "curtida-ou-assinatura-2"]);
+  });
+
+  it.each(FORMATS.map(({ id }) => id))("opens %s as a base composition with visual guidance", async (format) => {
+    const guide = formatGuide(format);
+    const film = await films.create({
+      name: `Como uma encomenda chega em casa — ${format}`,
+      aspect: "16:9",
+      format: guide.id,
+      guide: guide.guide,
+    });
+    expect(film.files).not.toContain("roteiro.txt");
+    expect(film.files).toContain("kit/cutroom-motion.js");
+    const html = (await films.readFile(film.id, "index.html")).content;
+    expect(html).toContain('data-width="1920" data-height="1080"');
+    const rules = (await films.readFile(film.id, "CUTROOM.md")).content;
+    expect(rules).toContain("O pedido define assunto");
+    expect(rules).not.toContain("Funil orgânico");
+    expect(rules).not.toContain("## Estrutura");
+    expect((await films.check(film.id)).errors).toEqual([]);
   });
 
   it("keeps writes inside the film folder and to text files", async () => {

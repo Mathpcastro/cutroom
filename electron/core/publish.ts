@@ -3,6 +3,7 @@ import { readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { COMPOSIO_KEY, Composio, accountInfo, publishReel, type InstagramAccount } from "./composio";
+import { fetchReelAnalytics } from "./instagram-analytics";
 import type { SecretStore } from "./secrets";
 import { dailySlots, dueReels, parseWhen, type OsReelScheduler, type ScheduledReel } from "./reel-schedule";
 
@@ -19,7 +20,7 @@ interface PublishHost {
 interface PublishState {
   accounts: InstagramAccount[];
   defaultAccount?: string;
-  history: { mediaId: string; permalink: string; username: string; video: string; publishedAt: string }[];
+  history: { accountId?: string; mediaId: string; permalink: string; username: string; video: string; publishedAt: string }[];
   scheduled?: ScheduledReel[];
 }
 
@@ -50,8 +51,17 @@ export class Publisher {
     const s = await this.state();
     const keys = await this.host.secrets.describe([COMPOSIO_KEY]);
     const scheduled = (s.scheduled ?? []).filter((e) => e.status !== "cancelled" && (e.status !== "published" || Date.now() - new Date(e.at).getTime() < 7 * 864e5));
-    return { hasKey: !!keys[COMPOSIO_KEY], accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
+    return { hasKey: !!keys[COMPOSIO_KEY], accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), publicationLinks: s.history.slice(-200).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
   }
+  async analytics(args: unknown) {
+    const { account: id } = z.object({ account: z.string().min(1).max(100) }).strict().parse(args);
+    const account = this.account(await this.state(), id);
+    const composio = await this.client();
+    return this.host.job("analytics", "Atualizando Insights dos Reels…", (signal) =>
+      fetchReelAnalytics(composio, account, signal),
+    );
+  }
+
   async setKey(key: string | undefined) {
     await this.host.secrets.set(COMPOSIO_KEY, key?.trim() || undefined);
     if (!key?.trim()) {
@@ -251,7 +261,7 @@ export class Publisher {
       publishReel({ composio, account, video: a.video, caption: a.caption, shareToFeed: a.shareToFeed, signal, onStep: (label) => progress(50, label) }),
     );
     const next = await this.state();
-    next.history.push({ ...result, video });
+    next.history.push({ ...result, video, accountId: account.id });
     await this.save(next);
     return result;
   }

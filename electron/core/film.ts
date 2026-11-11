@@ -100,8 +100,6 @@ export class Films {
     private root: string,
     private kit: string,
     private gsap: string,
-    /** resources/film-recipes: one folder per format with its starter film (our own example). */
-    private recipes?: string,
   ) {}
 
   dir(id: string) {
@@ -243,16 +241,8 @@ export class Films {
     }
     await writeFile(join(dir, "timing.js"), `window.TIMING = { words: [], envelope: { fps: 30, db: [] }, voiceEnd: 0 };\n`, "utf8");
     await writeFile(join(dir, "index.html"), starterHtml(meta), "utf8");
-    let starter = false;
-    if (options.format && this.recipes && /^[a-z0-9-]+$/.test(options.format)) {
-      const recipe = join(this.recipes, options.format);
-      if (await stat(recipe).then((s) => s.isDirectory(), () => false)) {
-        await cp(recipe, dir, { recursive: true, force: true });
-        starter = true;
-      }
-    }
-    await writeFile(join(dir, "CUTROOM.md"), filmRules(meta, options.guide, starter), "utf8");
-    return { ...meta, path: dir, starter, files: await this.files(id) };
+    await writeFile(join(dir, "CUTROOM.md"), filmRules(meta, options.guide), "utf8");
+    return { ...meta, path: dir, files: await this.files(id) };
   }
 
   async updateAvatar(id: string, avatar: FilmAvatarRef) {
@@ -300,7 +290,7 @@ export class Films {
     const meta = await this.meta(id),
       dir = this.dir(id),
       name = "voice.wav";
-    // Always assets/voice.wav (48 kHz mono), whatever the provider: recipe starters reference that name.
+    // Always assets/voice.wav (48 kHz mono), whatever the provider.
     await runProcess(ffmpegPath, ["-v", "error", "-y", "-i", voice.file, "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le", join(dir, "assets", name)], { signal });
     const db = await audioEnvelope(voice.file, meta.fps, signal);
     const words = (voice.words ?? []).map((w) => ({ text: w.text, start: +w.start.toFixed(3), end: +w.end.toFixed(3) }));
@@ -574,13 +564,7 @@ export function starterHtml(meta: FilmMeta) {
 `;
 }
 
-const STARTER_NOTE = `
-## Filme inicial deste formato
-
-O \`index.html\` desta pasta é a versão do CutRoom deste formato, completa e funcionando (com o roteiro de exemplo em \`roteiro.txt\`). Reescreva o roteiro para a marca do usuário, grave a voz com \`film_voiceover\` e reancore cada cena nas palavras do novo roteiro: \`CR.at("palavra", n, segundosReserva)\` não quebra se a palavra sumir. Troque textos, cores e telas; mantenha a estrutura de cenas, o ritmo e os movimentos.
-`;
-
-export function filmRules(meta: FilmMeta, guide?: string, starter = false) {
+export function filmRules(meta: FilmMeta, guide?: string) {
   return `# Filme: ${meta.name}
 
 Pasta de um filme do CutRoom (projeto HyperFrames). Você escreve \`index.html\` (e outros arquivos de texto); o CutRoom grava a narração (\`film_voiceover\` → \`assets/voice.*\` + \`timing.js\`), baixa música e efeitos (\`film_asset\`), checa (\`film_check\`), mostra quadros (\`film_stills\`) e renderiza (\`render_film\`).
@@ -610,12 +594,12 @@ Pasta de um filme do CutRoom (projeto HyperFrames). Você escreve \`index.html\`
 \`list_effects{query}\` procura entre 236 efeitos (legendas cinéticas, transições, luz/grão, cursores e UI motion, notificações, contadores, CTA); \`film_add_effect{film, name}\` copia para \`compositions/components/\` e devolve a montagem (\`div.clip\` com \`data-composition-src\`, variáveis e \`cues\` nos tempos da narração).
 
 ## Qualidade (o que o review cobra)
-- Gancho em momento nos 3 primeiros segundos; virada no meio; pergunta final que divide os comentários.
+- Dê um foco visual aos primeiros segundos. Use viradas, perguntas ou chamadas para ação quando fizerem sentido para o roteiro.
 - Mostre em vez de listar: demonstração do que a voz diz, com o produto real (prints, cards, telas) quando houver.
-- Novo plano a cada 1,5–3 s; nada parado mais de 1,5 s (câmera em deriva lenta e "socos" nas palavras-chave).
+- A duração de cada plano acompanha o roteiro. Use movimento para destacar ações e informações importantes.
 - Cada card entra até 0,15 s depois da palavra que ele mostra; contadores chegam ao número na palavra falada.
 - Texto ≤ 6 palavras por card, legível no celular, longe da faixa inferior (interface do Reels).
-${starter ? STARTER_NOTE : ""}${guide ? `\n## Guia do formato\n\n${guide}\n` : ""}`;
+${guide ? `\n## Guia do formato\n\n${guide}\n` : ""}`;
 }
 
 /** Picture-change metrics from film_review samples (diff 0–1 between frames `step` s apart). */

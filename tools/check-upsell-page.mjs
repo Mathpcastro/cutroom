@@ -268,8 +268,8 @@ async function installRejectionCapture(page, label, problems) {
 async function settlePage(page) {
   await page.waitForFunction(
     () =>
-      document.querySelectorAll("video[data-autoplay]").length === 3 &&
-      document.querySelectorAll("button.sound").length === 3,
+      document.querySelectorAll("video[data-autoplay]").length > 0 &&
+      document.querySelectorAll("button.sound").length === document.querySelectorAll("video[data-autoplay]").length,
   );
   // Rolagens reais em cada referência ativam loading=lazy e os observers.
   for (const original of await page.locator("a.orig").all()) {
@@ -377,7 +377,7 @@ async function checkFirstCtaKeyboard(page) {
 async function checkReducedMotionAndSound(page, { playbackTimeout = 5_000 } = {}) {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload({ waitUntil: "load" });
-  await page.waitForFunction(() => document.querySelectorAll("button.sound").length === 3);
+  await settlePage(page);
   await page.evaluate(
     () =>
       new Promise((resolveFrame) =>

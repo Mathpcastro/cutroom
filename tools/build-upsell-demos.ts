@@ -123,7 +123,7 @@ async function main() {
     job: async (_kind, _label, run) => run(new AbortController().signal, () => undefined),
   };
   const { Films } = await import("../electron/core/film");
-  const films = new Films(join(runtime, "films"), join(root, "resources", "film-kit"), createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"), join(root, "resources", "film-recipes"));
+  const films = new Films(join(runtime, "films"), join(root, "resources", "film-kit"), createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"));
   host.films = films;
   const studio = new FilmStudio(host, {} as Studio);
   const manifest: Record<string, unknown> = { generatedAt: new Date().toISOString(), avatar, renderer: "FilmStudio + Films.setVoice + renderFilm", demos: [] };

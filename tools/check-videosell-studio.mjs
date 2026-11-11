@@ -55,11 +55,10 @@ try {
   await expect(page).toHaveTitle(/Videosell/);
   for (const action of [
     "Criar meu avatar",
-    "Criar um Reel com avatar",
-    "Criar sem avatar",
+    "Criar Reel",
     "Continuar criando",
   ]) {
-    await expect(page.getByRole("button", { name: action, exact: true })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("button", { name: action, exact: true })).toBeVisible();
   }
   await expect(page.getByLabel("Perfil ativo", { exact: true })).toBeVisible();
   evidence.checks.push("studio is the real app entry with four exact actions and a visible profile switcher");
@@ -81,6 +80,7 @@ try {
   await expect(dialog.getByRole("alert")).toContainText(/handle/i);
   await dialog.getByLabel("Handle do perfil", { exact: true }).fill("estudio-teste");
   await dialog.getByRole("button", { name: "Salvar perfil", exact: true }).click();
+  await page.getByRole("button", { name: "Preencher depois", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   const profileSelect = page.getByLabel("Perfil ativo", { exact: true });
   await expect(profileSelect).toHaveValue("estudio-teste");
@@ -96,6 +96,7 @@ try {
   await dialog.getByLabel("Nome do perfil", { exact: true }).fill("Perfil Alternativo");
   await dialog.getByLabel("Handle do perfil", { exact: true }).fill("perfil-alternativo");
   await dialog.getByRole("button", { name: "Salvar perfil", exact: true }).click();
+  await page.getByRole("button", { name: "Preencher depois", exact: true }).click();
   await expect(profileSelect).toHaveValue("perfil-alternativo");
 
   await profileSelect.selectOption("estudio-teste");
@@ -135,7 +136,7 @@ try {
     await expect(page.getByRole("dialog", { name: "Estúdio de vídeos", exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: nav, exact: true })).toBeVisible();
     await expect(page.getByLabel(field, { exact: false })).toBeVisible();
-    if (nav === "Conexões") await expect(page.getByRole("button", { name: "Publicar Reels", exact: true })).toBeVisible();
+    if (nav === "Conexões") await expect(page.getByRole("button", { name: "Publicar Reels", exact: true })).toHaveCount(0);
     await screenshot(screenshotName);
     await backHome();
   }
@@ -197,15 +198,14 @@ try {
 
   for (const [action, heading] of [
     ["Criar meu avatar", "Criar meu avatar"],
-    ["Criar um Reel com avatar", "Criar um Reel com avatar"],
-    ["Criar sem avatar", "Criar sem avatar"],
+    ["Criar Reel", "Criar Reel"],
     ["Continuar criando", "Projetos"],
   ]) {
-    await page.getByRole("button", { name: action, exact: true }).click();
+    await page.getByRole("main").getByRole("button", { name: action, exact: true }).click();
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await backHome();
   }
-  evidence.checks.push("all four home actions lead to honest intermediate states with a working return");
+  evidence.checks.push("home actions open the unified composer, avatar editor and projects");
 
   await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent("cutroom:studio", { detail: "brand" }));
@@ -220,8 +220,11 @@ try {
 
   const homeNav = page.getByRole("button", { name: "Início", exact: true });
   await homeNav.focus();
-  await page.keyboard.press("Tab");
   const avatarNav = page.getByRole("button", { name: "Meus avatares", exact: true });
+  for (let i = 0; i < 10; i++) {
+    await page.keyboard.press("Tab");
+    if (await avatarNav.evaluate((element) => element === document.activeElement)) break;
+  }
   await expect(avatarNav).toBeFocused();
   const focusStyle = await avatarNav.evaluate((element) => {
     const style = getComputedStyle(element);

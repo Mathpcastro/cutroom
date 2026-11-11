@@ -1,6 +1,6 @@
+import { t, getStudioLanguage } from "./studioLanguage";
 import {
   ArrowRight,
-  Clapperboard,
   FileVideo2,
   LoaderCircle,
   Sparkles,
@@ -28,6 +28,7 @@ interface StudioHomeProps {
   projectsLoading: boolean;
   projectsError: string;
   onPage: (page: StudioPage) => void;
+  nextAction?: { label: string; description: string; run: () => void };
   onCreate: (mode: CreateMode) => void;
 }
 
@@ -40,16 +41,9 @@ const choices = [
     className: "avatar-choice",
   },
   {
-    mode: "avatar-reel",
-    label: "Criar um Reel com avatar",
-    description: "Combine apresentador, roteiro e formato vertical.",
-    icon: Clapperboard,
-    className: "reel-choice",
-  },
-  {
     mode: "without-avatar",
-    label: "Criar sem avatar",
-    description: "Use sua marca, telas e narração para apresentar o produto.",
+    label: "Criar Reel",
+    description: "Descreva a ideia. Escolha com ou sem avatar, vídeo direto ou história.",
     icon: Video,
     className: "video-choice",
   },
@@ -59,7 +53,7 @@ function projectDate(value?: string) {
   if (!value) return "Metadados não encontrados";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Data não disponível";
-  return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat(getStudioLanguage(), {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -74,46 +68,52 @@ export function StudioHome({
   projectsError,
   onPage,
   onCreate,
+  nextAction,
 }: StudioHomeProps) {
   return (
     <div className="studio-home">
       <header className="studio-home-header">
         <div>
-          <span className="studio-eyebrow">PALCO DE CRIAÇÃO</span>
-          <h1>Seu próximo vídeo começa aqui.</h1>
-          <p>{brandTagline}</p>
+          <span className="studio-eyebrow">{t("PALCO DE CRIAÇÃO")}</span>
+          <h1>{t("Seu próximo vídeo começa aqui.")}</h1>
+          <p>{t(brandTagline)}</p>
         </div>
         <div className="studio-profile-context" aria-label="Contexto do perfil">
-          <span>PERFIL EM USO</span>
-          <strong>{profileInitializing ? "Carregando perfil ativo…" : profile?.name ?? "Nenhum perfil selecionado"}</strong>
+          <span>{t("PERFIL EM USO")}</span>
+          <strong>{profileInitializing ? t("Carregando perfil ativo…") : profile?.name ?? t("Nenhum perfil selecionado")}</strong>
           <small>{profileInitializing
             ? "Aguarde a leitura do perfil persistido."
             : profile ? `@${profile.handle}` : "Crie um perfil para organizar seu trabalho."}</small>
         </div>
       </header>
 
+      {nextAction && <section className="studio-next-action" aria-labelledby="next-action-title">
+        <div><h2 id="next-action-title">{t("Próximo passo")}</h2><p>{t(nextAction.description)}</p></div>
+        <button type="button" className="studio-primary-button" onClick={nextAction.run}>{t(nextAction.label)} <ArrowRight size={16} /></button>
+      </section>}
+
       <section className="studio-creation-section" aria-labelledby="creation-title">
         <div className="studio-section-heading">
           <div>
             <span className="studio-section-index">01</span>
-            <h2 id="creation-title">Escolha como quer criar</h2>
+            <h2 id="creation-title">{t("Escolha como quer criar")}</h2>
           </div>
-          <span className="studio-section-note">Um ponto de partida, sem fórmulas prontas.</span>
+          <span className="studio-section-note">{t("Um ponto de partida, sem fórmulas prontas.")}</span>
         </div>
-        <div className="studio-creation-grid">
+        <div className="studio-creation-grid studio-creation-grid-unified">
           {choices.map(({ mode, label, description, icon: Icon, className }, index) => (
             <button
               key={mode}
               type="button"
               className={`studio-creation-card ${className}`}
-              aria-label={label}
+              aria-label={t(label)}
               onClick={() => onCreate(mode)}
             >
               <span className="studio-card-number">0{index + 1}</span>
               <span className="studio-choice-icon"><Icon size={23} strokeWidth={1.5} /></span>
-              <strong>{label}</strong>
-              <span className="studio-choice-description">{description}</span>
-              <span className="studio-choice-action">Começar <ArrowRight size={15} /></span>
+              <strong>{t(label)}</strong>
+              <span className="studio-choice-description">{t(description)}</span>
+              <span className="studio-choice-action">{t("Começar")} <ArrowRight size={15} /></span>
             </button>
           ))}
         </div>
@@ -123,20 +123,20 @@ export function StudioHome({
         <div className="studio-section-heading">
           <div>
             <span className="studio-section-index">02</span>
-            <h2 id="recent-title">Projetos recentes</h2>
+            <h2 id="recent-title">{t("Projetos recentes")}</h2>
           </div>
           <button
             type="button"
             className="studio-continue-button"
-            aria-label="Continuar criando"
+            aria-label={t("Continuar criando")}
             onClick={() => onPage("projects")}
           >
-            Continuar criando <ArrowRight size={15} />
+            {t("Continuar criando")} <ArrowRight size={15} />
           </button>
         </div>
         {profileInitializing && (
           <div className="studio-projects-status" role="status">
-            <LoaderCircle size={16} className="spin" /> Carregando perfil ativo…
+            <LoaderCircle size={16} className="spin" /> {t("Carregando perfil ativo…")}
           </div>
         )}
         {!profileInitializing && !profile && (
@@ -146,14 +146,14 @@ export function StudioHome({
               <Sparkles size={13} />
             </div>
             <div>
-              <strong>Nenhum perfil selecionado</strong>
-              <p>Crie ou selecione um perfil para ver os projetos vinculados.</p>
+              <strong>{t("Nenhum perfil selecionado")}</strong>
+              <p>{t("Crie ou selecione um perfil para ver os projetos vinculados.")}</p>
             </div>
           </div>
         )}
         {!profileInitializing && profile && projectsLoading && (
           <div className="studio-projects-status" role="status">
-            <LoaderCircle size={16} className="spin" /> Carregando projetos do perfil…
+            <LoaderCircle size={16} className="spin" /> {t("Carregando projetos do perfil…")}
           </div>
         )}
         {!profileInitializing && profile && !projectsLoading && projectsError && (
@@ -168,8 +168,8 @@ export function StudioHome({
               <Sparkles size={13} />
             </div>
             <div>
-              <strong>Nenhum projeto vinculado a este perfil ainda.</strong>
-              <p>Quando um filme for associado a este perfil, ele aparecerá aqui.</p>
+              <strong>{t("Nenhum projeto vinculado a este perfil ainda.")}</strong>
+              <p>{t("Quando um filme for associado a este perfil, ele aparecerá aqui.")}</p>
             </div>
           </div>
         )}
