@@ -83,7 +83,20 @@ const INSTAGRAM_ACCOUNTS_RULE: PreferenceRule = {
  * prototypes) discards the entire containing field during legacy migration.
  */
 export const PROFILE_FREE_FIELD_ALLOWLIST = {
-  preferences: { kind: "object", fields: {} },
+  preferences: {
+    kind: "object",
+    fields: {
+      // Avatar creator: name, personality and the layer choices (JSON, validated again when saving).
+      avatarStudio: {
+        kind: "object",
+        fields: {
+          name: { kind: "string", maxLength: 40, allowEmpty: false },
+          personality: { kind: "string", maxLength: 600, allowEmpty: true },
+          choice: { kind: "string", maxLength: 600, allowEmpty: false },
+        },
+      },
+    },
+  },
   instagramPreferences: {
     kind: "object",
     fields: {

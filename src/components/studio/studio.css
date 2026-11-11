@@ -2560,3 +2560,25 @@
 .videosell-studio input[type="color"] { width: 56px; height: 36px; padding: 3px; background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 9px; cursor: pointer; }
 .videosell-studio .reel-action-row:has(input[type="color"]) { gap: 16px; }
 .story-ready .reel-field { max-width: 560px; }
+
+/* Avatar creator: one screen, live engine preview + layered choices */
+.avatar-studio-body { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.avatar-stage { position: sticky; top: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px; background: radial-gradient(circle at 50% 35%, var(--studio-accent-soft), var(--studio-surface) 70%); border: 1px solid var(--studio-line); border-radius: 16px; }
+.avatar-live { display: grid; place-items: center; width: 100%; aspect-ratio: 1; }
+.avatar-live canvas { width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; }
+.avatar-stage-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.avatar-stage-name { font-family: "Sora", sans-serif; font-size: 18px; }
+.avatar-stage-personality { margin: 0; color: var(--studio-muted); font-size: 12.5px; line-height: 1.5; text-align: center; }
+.avatar-controls { display: flex; flex-direction: column; gap: 14px; padding: 18px; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 16px; }
+.avatar-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 12px; }
+.avatar-row > span { font-size: 13px; font-weight: 600; }
+.avatar-options { width: auto; justify-self: start; flex-wrap: wrap; }
+.avatar-options button { flex: 0 0 auto; padding: 7px 14px; }
+.avatar-stage .avatar-options button { padding: 6px 10px; font-size: 11.5px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.swatches > button { width: 28px; height: 28px; padding: 0; border: 2px solid var(--studio-line); border-radius: 50%; cursor: pointer; }
+.swatches > button[aria-checked="true"] { outline: 2px solid var(--studio-violet); outline-offset: 2px; border-color: var(--studio-surface); }
+.swatch-custom { position: relative; width: 28px; height: 28px; overflow: hidden; border: 2px dashed var(--studio-line); border-radius: 50%; cursor: pointer; }
+.swatch-custom input[type="color"] { position: absolute; inset: -6px; width: 40px; height: 40px; opacity: 0; cursor: pointer; }
+.avatar-save { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 6px; border-top: 1px solid var(--studio-line); }
+@media (max-width: 1100px) { .avatar-studio-body { grid-template-columns: 1fr; } .avatar-stage { position: static; } }

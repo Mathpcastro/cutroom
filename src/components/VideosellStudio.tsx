@@ -13,7 +13,6 @@ import type { StudioProfile } from "../shared/profile";
 import type { AppSnapshot, StudioTab } from "../shared/types";
 import { BrandMark } from "./BrandMark";
 import { StudioHome, type CreateMode, type StudioProject } from "./studio/StudioHome";
-import { AvatarCreator } from "./studio/AvatarCreator";
 import { BrandOnboarding } from "./studio/BrandOnboarding";
 import { VoiceSettings } from "./studio/VoiceSettings";
 import { PublishSettings } from "./studio/PublishSettings";
@@ -25,6 +24,7 @@ import { Radar } from "./studio/Radar";
 import { rememberReel, reopenReel, pendingReviews } from "./studio/reelRecords";
 import { useReelPilot } from "./studio/ReelPilot";
 import { AutoPilot } from "./studio/AutoPilot";
+import { AvatarStudio } from "./studio/AvatarStudio";
 import { QuickCreate, lastChoices, type Pending, type QuickChoices } from "./studio/QuickCreate";
 import { ReelFlow, flowEstimate, rememberFlowTime, renderReel, stageOf, type FlowState } from "./studio/ReelFlow";
 import { MyReels } from "./studio/MyReels";
@@ -63,7 +63,7 @@ interface VideosellStudioProps {
 
 const pageTitles: Partial<Record<StudioPage, string>> = {
   home: "Criar", create: "Criar Reel", analytics: "Ideias", radar: "Ideias",
-  proofs: "Biblioteca da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Meus avatares",
+  proofs: "Biblioteca da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Seu avatar",
   projects: "Meus Reels", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
   settings: "Ajustes",
 };
@@ -504,25 +504,11 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   } else if (page === "stories") {
     content = profile ? <Stories key={profile.id} profile={profile} onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} />
       : <IntermediatePage title={t("Histórias")} eyebrow={t("PERFIL NECESSÁRIO")} text={t("Crie um perfil para criar séries.")} onPage={setPage} />;
-  } else if (page === "avatars") {
-    content = profile?.defaultAvatar ? (
-      <AvatarCreator
-        profile={profile}
-        onProfileChange={(next) => onProfileChange(next, false)}
-        onBack={() => setPage("home")}
-      />
+  } else if (page === "avatars" || (page === "create" && createMode === "avatar")) {
+    content = profile ? (
+      <AvatarStudio key={profile.id} profile={profile} aiConnected={state.connection.status === "connected"} onSaved={(next) => onProfileChange(next, false)} />
     ) : (
-      <IntermediatePage
-        title={t(t("Meus avatares"))}
-        eyebrow="SUA APRESENTAÇÃO"
-        text="Nenhum avatar está vinculado a este perfil. Nenhum avatar de exemplo será exibido."
-        onPage={setPage}
-        action={
-          <button type="button" className="studio-primary-button" onClick={() => create("avatar")}>
-            {t(t("Criar meu avatar"))} <ArrowRight size={14} />
-          </button>
-        }
-      />
+      <IntermediatePage title={t("Seu avatar")} eyebrow={t("PERFIL NECESSÁRIO")} text={t("Crie um perfil para criar o seu avatar.")} onPage={setPage} />
     );
   } else if (page === "create" && profile && flow && reelSession?.draft.profileId === profile.id) {
     const session = reelSession;
@@ -541,21 +527,6 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
           onAdvanced={() => onOpenAdvanced("films")}
           onPilot={() => setPage("routine")} />
       </div>
-    );
-  } else if (page === "create" && createMode === "avatar") {
-    content = profile ? (
-      <AvatarCreator
-        profile={profile}
-        onProfileChange={(next) => onProfileChange(next, false)}
-        onBack={() => setPage("home")}
-      />
-    ) : (
-      <IntermediatePage
-        title={t(t("Criar meu avatar"))}
-        eyebrow={t("PERFIL NECESSÁRIO")}
-        text="Crie ou selecione um perfil antes de criar e salvar um avatar."
-        onPage={setPage}
-      />
     );
   } else if (page === "create" && profile && reelSession?.draft.profileId === profile.id) {
     content = (
