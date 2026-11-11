@@ -565,7 +565,9 @@ describe("avatar reference import", () => {
     await expect(
       call("avatar_import_reference", {
         avatarId: "videosell-presenter",
-        path: relative(process.cwd(), png),
+        // A literal relative path: relative(cwd, png) returns an absolute path when the project and the
+        // temp folder are on different drives (D: and C: on the GitHub Windows runner).
+        path: join("referencias", "reference.png"),
       }),
     ).rejects.toThrow(/absolut/i);
     await expect(
