@@ -1,5 +1,5 @@
 import { t, setStudioLanguage, useStudioLanguage, type StudioLanguage } from "./studioLanguage";
-import { BookOpen, CalendarDays, Clapperboard, Film, Lightbulb, Settings2 } from "lucide-react";
+import { BookOpen, CalendarDays, Clapperboard, Film, Lightbulb, Monitor, Moon, Settings2, Sun } from "lucide-react";
 import type { StudioTab } from "../../shared/types";
 import type { StudioPage } from "../VideosellStudio";
 import { ProfileSwitcher } from "./ProfileSwitcher";
@@ -28,6 +28,8 @@ const items = [
   { id: "radar", label: "Ideias", icon: Lightbulb, owns: ["radar", "analytics"] },
   { id: "stories", label: "Histórias", icon: BookOpen, owns: ["stories"] },
 ] as const;
+const themeLabel: Record<StudioThemePreference, string> = { light: "Claro", dark: "Escuro", auto: "Automático" };
+const nextTheme: Record<StudioThemePreference, StudioThemePreference> = { auto: "light", light: "dark", dark: "auto" };
 const settingsPages = ["settings", "avatars", "voices", "brand", "proofs", "publish"];
 
 export function StudioNav({
@@ -63,42 +65,30 @@ export function StudioNav({
         })}
       </nav>
       <div className="studio-sidebar-bottom">
-        <ConnectionBadge onOpen={() => onPage("publish")} />
-        <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
-        <div className="studio-prefs" role="group" aria-label={t("Preferências")}>
-          <label>
-            {t("Idioma")}
-            <select value={language} onChange={(event) => setStudioLanguage(event.target.value as StudioLanguage)}>
-              <option value="pt-BR" lang="pt-BR">Português</option>
-              <option value="en" lang="en">English</option>
-              <option value="es" lang="es">Español</option>
-            </select>
-          </label>
-          <label>
-            {t("Fonte")}
-            <select aria-label={t("Tamanho da fonte")} value={fontScale} onChange={(event) => onFontScaleChange(Number(event.target.value))}>
-              {[100, 115, 130].map((scale) => <option key={scale} value={scale}>{scale}%</option>)}
-            </select>
-          </label>
-          <label>
-            {t("Aparência")}
-            <select className="studio-appearance-select" value={themePreference} onChange={(event) => onThemePreference?.(event.target.value as StudioThemePreference)}>
-              <option value="light">{t("Claro")}</option>
-              <option value="dark">{t("Escuro")}</option>
-              <option value="auto">{t("Automático")}</option>
-            </select>
-          </label>
+        <div className="sidebar-account">
+          <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
+          <ConnectionBadge onOpen={() => onPage("publish")} />
         </div>
-        <button
-          type="button"
-          className={`studio-advanced-button ${settingsPages.includes(page) ? "active" : ""}`}
-          aria-current={settingsPages.includes(page) ? "page" : undefined}
-          onClick={() => onPage("settings")}
-        >
-          <Settings2 size={15} />
-          <span>{t("Ajustes")}</span>
-        </button>
-        <span className="studio-local-note">{t("Seus arquivos ficam neste computador.")}</span>
+        <div className="sidebar-footer">
+          <button
+            type="button"
+            className={`studio-advanced-button ${settingsPages.includes(page) ? "active" : ""}`}
+            aria-current={settingsPages.includes(page) ? "page" : undefined}
+            onClick={() => onPage("settings")}
+          >
+            <Settings2 size={16} />
+            <span>{t("Ajustes")}</span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-theme"
+            aria-label={`${t("Aparência")}: ${t(themeLabel[themePreference])}`}
+            title={`${t("Aparência")}: ${t(themeLabel[themePreference])}`}
+            onClick={() => onThemePreference?.(nextTheme[themePreference])}
+          >
+            {themePreference === "light" ? <Sun size={16} /> : themePreference === "dark" ? <Moon size={16} /> : <Monitor size={16} />}
+          </button>
+        </div>
       </div>
     </aside>
   );

@@ -5,7 +5,7 @@ import { structuredReply, studioRequest } from "./salesReels";
 import { getStudioLanguage, studioLanguageName, t } from "./studioLanguage";
 
 const hex = z.string().regex(/^#[0-9a-f]{6}$/i);
-const brandSuggestion = z.object({
+export const brandSuggestion = z.object({
   name: z.string().trim().min(1).max(200),
   context: z.string().trim().min(1).max(9000),
   goal: z.string().trim().max(2000),
@@ -15,7 +15,7 @@ const brandSuggestion = z.object({
 type BrandForm = z.infer<typeof brandSuggestion> & { website: string };
 type Mode = "link" | "prompt" | "manual";
 
-function brandPrompt(source: string) {
+export function brandPrompt(source: string) {
   return `Configure a marca de um SaaS para vender com Reels no Videosell. Responda em ${studioLanguageName[getStudioLanguage()]}.
 Descreva o produto, comprador, problema antes da compra, alternativas, diferencial, objeções e provas disponíveis no campo context.
 Use goal para oferta e próxima ação; use tone para a voz editorial. Marque lacunas ou hipóteses explicitamente. Não invente números, clientes, resultados, ofertas ou preços. Use cores hexadecimais somente quando houver referência; omita as demais.
@@ -25,7 +25,7 @@ Responda somente com JSON, sem explicações, neste formato (accent, ink e paper
 Fonte: ${JSON.stringify(source)}`;
 }
 
-function website(value: string) {
+export function website(value: string) {
   if (!value.trim()) return undefined;
   const url = new URL(/^https?:\/\//i.test(value.trim()) ? value.trim() : "https://" + value.trim());
   if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || !url.hostname.includes(".")) throw new Error(t("Use um endereço válido para o produto."));

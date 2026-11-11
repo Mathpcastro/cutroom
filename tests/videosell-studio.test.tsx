@@ -222,17 +222,16 @@ describe("VideosellStudio project loading", () => {
       await Promise.resolve();
     });
     // With no profile, the home is the first-use guide (Spec 4 D).
-    expect(container.textContent).toContain("Sobre o que você vende?");
+    expect(container.textContent).toContain("O que você vende?");
     expect(container.textContent).not.toContain("Nenhum projeto vinculado");
     expect(listProjects).not.toHaveBeenCalled();
     const studio = container.querySelector(".videosell-studio")!;
     expect(["light", "dark"]).toContain(studio.getAttribute("data-studio-theme"));
     expect(container.querySelector(".studio-topbar")).toBeTruthy();
-    const select = container.querySelector("select.studio-appearance-select") as unknown as HTMLSelectElement;
-    await act(async () => {
-      for (const option of [...select.querySelectorAll("option")]) option.toggleAttribute("selected", option.getAttribute("value") === "dark");
-      select.dispatchEvent(new window.Event("change", { bubbles: true }) as unknown as Event);
-    });
+    // The theme button cycles Automático → Claro → Escuro.
+    const themeButton = container.querySelector(".sidebar-theme") as unknown as HTMLButtonElement;
+    await act(async () => { themeButton.click(); });
+    await act(async () => { themeButton.click(); });
     expect(studio.getAttribute("data-studio-theme")).toBe("dark");
   });
 });

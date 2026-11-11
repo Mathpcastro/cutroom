@@ -132,7 +132,8 @@ export function ProfileSwitcher({ onProfileChange, onProfileCreated, avatarSetup
 
   return (
     <section className="profile-switcher" aria-label="Perfil de criação">
-      <span className="profile-switcher-label">Perfil de criação</span>
+      <div className="profile-row">
+      <span className="profile-initial" aria-hidden="true">{(profiles.find((p) => p.id === selectedId)?.name ?? "?").trim().charAt(0).toUpperCase()}</span>
       <div className="profile-select-wrap">
         <select
           aria-label={t("Perfil ativo")}
@@ -149,13 +150,24 @@ export function ProfileSwitcher({ onProfileChange, onProfileCreated, avatarSetup
         </select>
         <ChevronDown size={14} aria-hidden="true" />
       </div>
+      <button
+        type="button"
+        className="profile-create-button"
+        onClick={openCreate}
+        disabled={busy}
+        aria-label={t("Criar perfil")}
+        title={t("Criar perfil")}
+      >
+        <Plus size={15} />
+      </button>
+      </div>
       {loading && (
         <span className="profile-status" role="status">
           <LoaderCircle size={12} className="spin" /> Carregando perfis…
         </span>
       )}
       {!loading && !error && !profiles.length && (
-        <span className="profile-status">Nenhum perfil criado ainda.</span>
+        <span className="profile-status">{t("Crie um perfil para começar.")}</span>
       )}
       {error && (
         <div className="profile-error" role="alert">
@@ -165,15 +177,6 @@ export function ProfileSwitcher({ onProfileChange, onProfileCreated, avatarSetup
           </button>
         </div>
       )}
-      <button
-        type="button"
-        className="profile-create-button"
-        onClick={openCreate}
-        disabled={busy}
-      >
-        <Plus size={14} /> {t("Criar perfil")}
-      </button>
-
       {creating && (
         <div className="studio-modal-backdrop">
           <form

@@ -3,14 +3,14 @@ import { ArrowRight, Check } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import { PROFILE_HANDLE_PATTERN } from "../../shared/profile";
 import { t } from "./studioLanguage";
-import { studioRequest } from "./salesReels";
 import { InstagramConnect } from "./InstagramConnect";
+import { WhatYouSell, type BrandDraft } from "./WhatYouSell";
 
 /** Spec 4 D: first use in up to 4 steps, each one skippable and resumable. */
 
 const STEP_KEY = "videosell.firstRun.step";
 const DONE_KEY = "videosell.firstRun.done";
-export const FIRST_RUN_STEPS = ["Sobre o que você vende", "Seu apresentador", "Sua voz", "Onde postar"] as const;
+export const FIRST_RUN_STEPS = ["O que você vende", "Seu apresentador", "Sua voz", "Onde postar"] as const;
 
 export function firstRunDone() {
   try { return localStorage.getItem(DONE_KEY) === "1"; } catch { return true; }
@@ -32,17 +32,15 @@ export function firstSuggestion(name: string, about: string) {
     : `Mostre em 30 segundos o problema que ${name} resolve e termine com um convite para testar.`;
 }
 
-export function FirstRun({ profile, onProfile, onAvatar, onDone }: {
+export function FirstRun({ profile, aiConnected, onProfile, onAvatar, onDone }: {
   profile: StudioProfile | null;
+  aiConnected: boolean;
   onProfile: (profile: StudioProfile) => void;
   onAvatar: () => void;
   onDone: (suggestion: string) => void;
 }) {
   const [step, setStepState] = useState(savedStep);
-  const [input, setInput] = useState(profile?.brand.website ?? "");
   const [name, setName] = useState(profile?.brand.name ?? profile?.name ?? "");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [about, setAbout] = useState(profile?.personality.description ?? "");
   const setStep = (n: number) => {
     setStepState(n);
@@ -54,39 +52,29 @@ export function FirstRun({ profile, onProfile, onAvatar, onDone }: {
   };
   const next = () => (step >= 3 ? finish() : setStep(step + 1));
 
-  async function saveProduct() {
-    setBusy(true);
-    setError("");
-    try {
-      const api = window.cutroom;
-      if (!api) throw new Error("Abra o Videosell no aplicativo desktop.");
-      const isLink = /^(https?:\/\/|[\w-]+\.[\w.-]+\/?)\S*$/i.test(input.trim());
-      let text = input.trim(), site = "", title = "";
-      if (isLink) {
-        const page = await studioRequest<{ url: string; title: string; text: string }>("readProductPage", { url: input.trim() });
-        site = page.url;
-        title = page.title;
-        text = page.text.slice(0, 1200);
-      }
-      const brandName = (name.trim() || title.split(/[|·–-]/)[0].trim() || "Minha marca").slice(0, 80);
-      let current = profile;
-      if (!current) {
-        current = await api.studioProfiles.create({ name: brandName, handle: handleFrom(brandName) });
-        await api.studioProfiles.select(current.id);
-      }
-      const updated = await api.studioProfiles.update(current.id, {
-        brand: { ...current.brand, name: brandName, ...(site ? { website: site } : {}) },
-        personality: { ...current.personality, description: text },
-      });
-      setName(brandName);
-      setAbout(text);
-      onProfile(updated);
-      next();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "") : String(reason));
-    } finally {
-      setBusy(false);
+  /** Step 1 result (link + AI, prompt or interview), already reviewed by the user. */
+  async function saveBrand(draft: BrandDraft) {
+    const api = window.cutroom;
+    if (!api) throw new Error("Abra o Videosell no aplicativo desktop.");
+    const brandName = draft.name.trim().slice(0, 80) || "Minha marca";
+    let current = profile;
+    if (!current) {
+      current = await api.studioProfiles.create({ name: brandName, handle: handleFrom(brandName) });
+      await api.studioProfiles.select(current.id);
     }
+    const updated = await api.studioProfiles.update(current.id, {
+      brand: {
+        ...current.brand, name: brandName,
+        ...(draft.website ? { website: draft.website } : {}),
+        ...(draft.accent ? { accent: draft.accent } : {}), ...(draft.ink ? { ink: draft.ink } : {}), ...(draft.paper ? { paper: draft.paper } : {}),
+      },
+      personality: { description: draft.context, presentation: draft.tone },
+      commercialGoal: draft.goal,
+    });
+    setName(brandName);
+    setAbout(draft.context.replace(/^Produto:\s*/, ""));
+    onProfile(updated);
+    next();
   }
 
   return (
@@ -101,21 +89,9 @@ export function FirstRun({ profile, onProfile, onAvatar, onDone }: {
 
       {step === 0 && (
         <section className="first-run-step">
-          <h1>{t("Sobre o que você vende?")}</h1>
-          <p>{t("Cole o link do site ou do produto. Se preferir, escreva uma frase.")}</p>
-          <label className="reel-field">{t("Link ou frase")}
-            <input value={input} placeholder="seusite.com.br" onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && input.trim()) void saveProduct(); }} />
-          </label>
-          <label className="reel-field">{t("Nome da marca (opcional)")}
-            <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
-          </label>
-          {error && <p className="reel-error" role="alert">{error}</p>}
-          <div className="reel-action-row">
-            <button type="button" className="studio-primary-button" disabled={busy || !input.trim()} title={input.trim() ? "" : t("Cole um link ou escreva uma frase.")} onClick={() => void saveProduct()}>
-              {busy ? t("Lendo…") : t("Continuar")} <ArrowRight size={14} />
-            </button>
-            <button type="button" className="ig-link" onClick={next}>{t("Pular")}</button>
-          </div>
+          <h1>{t("O que você vende?")}</h1>
+          <p>{t("Cole o link da página do produto ou descreva em uma frase. O Videosell monta a sua marca a partir disso.")}</p>
+          <WhatYouSell aiConnected={aiConnected} initial={profile?.brand.website} onReady={saveBrand} onSkip={next} />
         </section>
       )}
 

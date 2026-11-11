@@ -432,7 +432,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     ...(profile && !profile.defaultAvatar ? [{ id: "avatar", label: "Aprovar um avatar", run: () => create("avatar") }] : []),
   ];
   if (page === "home" && (showFirstRun || (!profileInitializing && !profile))) {
-    content = <FirstRun profile={profile} onProfile={(next) => onProfileChange(next, false)}
+    content = <FirstRun profile={profile} aiConnected={state.connection.status === "connected"} onProfile={(next) => onProfileChange(next, false)}
       onAvatar={() => create("avatar")}
       onDone={(text) => { setShowFirstRun(false); setSuggestion(text); }} />;
   } else if (page === "home" && profile) {
@@ -589,7 +589,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       </div>
     );
   } else if (page === "settings") {
-    content = <SettingsHub onPage={setPage} onAdvanced={() => onOpenAdvanced()} theme={appearance.preference} onTheme={appearance.setPreference} />;
+    content = <SettingsHub onPage={setPage} onAdvanced={() => onOpenAdvanced()} theme={appearance.preference} onTheme={appearance.setPreference} fontScale={fontScale} onFontScale={changeFontScale} />;
   } else {
     content = (
       <IntermediatePage

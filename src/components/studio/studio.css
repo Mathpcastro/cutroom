@@ -2169,3 +2169,110 @@
 .settings-card.static { cursor: default; }
 .settings-card .reel-toggle { display: flex; gap: 4px; color: inherit; }
 .studio-advanced-button.active { color: #fff; background: #292532; border-radius: 7px; }
+
+/* ---- Polish (anti-ui-slop pass): sidebar bottom + Ajustes ---- */
+.studio-sidebar { padding-left: 12px; padding-right: 12px; }
+.studio-nav { gap: 2px; }
+.studio-nav button { min-height: 40px; padding: 0 12px; border-radius: 9px; font-size: 13px; }
+.studio-sidebar-bottom { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
+.sidebar-account {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: #1a1820; border: 1px solid #2c2934; border-radius: 12px;
+}
+.sidebar-account .profile-switcher { padding: 10px; background: none; border: 0; border-radius: 0; }
+.profile-row { display: flex; align-items: center; gap: 8px; }
+.profile-initial {
+  flex: 0 0 30px; height: 30px; display: grid; place-items: center; color: #141318;
+  background: var(--studio-lime); border-radius: 9px; font-family: "Sora", sans-serif; font-size: 13px; font-weight: 700;
+}
+.sidebar-account .profile-select-wrap { flex: 1 1 auto; min-width: 0; }
+.sidebar-account .profile-select-wrap select {
+  width: 100%; min-height: 30px; padding: 0 22px 0 4px; color: #f1eff7; background: transparent;
+  border: 0; font-size: 13px; font-weight: 600; text-overflow: ellipsis; cursor: pointer;
+}
+.sidebar-account .profile-select-wrap select:hover { background: #24212c; border-radius: 7px; }
+.sidebar-account .profile-create-button {
+  flex: 0 0 30px; width: 30px; height: 30px; min-height: 0; display: grid; place-items: center; padding: 0; margin: 0;
+  color: #bcb8c4; background: #24212c; border: 1px solid #34303f; border-radius: 8px;
+}
+.sidebar-account .profile-create-button:hover { color: #fff; border-color: #4b3f80; }
+.sidebar-account .profile-status { display: block; margin: 6px 0 0 38px; color: #88838f; font-size: 11px; }
+.sidebar-account .profile-error { margin-top: 6px; }
+.sidebar-account .studio-connection-badge {
+  margin: 0; min-height: 34px; padding: 0 12px; color: #bcb8c4; background: none;
+  border: 0; border-top: 1px solid #2c2934; border-radius: 0; font-size: 11.5px;
+}
+.sidebar-account .studio-connection-badge:hover { color: #fff; background: #211e28; }
+.sidebar-footer { display: flex; align-items: center; gap: 6px; }
+.sidebar-footer .studio-advanced-button {
+  flex: 1 1 auto; min-height: 38px; margin: 0; padding: 0 12px; gap: 10px;
+  color: #bcb8c4; border: 1px solid transparent; border-radius: 9px; font-size: 13px;
+}
+.sidebar-footer .studio-advanced-button:hover { color: #fff; background: #1f1c26; }
+.sidebar-footer .studio-advanced-button.active { color: #fff; background: #292532; border-color: #34303f; }
+.sidebar-theme {
+  flex: 0 0 38px; width: 38px; height: 38px; display: grid; place-items: center; color: #bcb8c4;
+  background: none; border: 1px solid #2c2934; border-radius: 9px; cursor: pointer;
+}
+.sidebar-theme:hover { color: var(--studio-lime); border-color: #4a4454; }
+
+.settings-v2 { width: min(1080px, 100%); margin: 0 auto; padding: 32px 32px 40px; display: flex; flex-direction: column; gap: 26px; color: var(--studio-text); }
+.settings-v2 header h1 { margin: 0; font-family: "Sora", sans-serif; font-size: calc(28px * var(--studio-font-scale)); letter-spacing: -0.8px; }
+.settings-v2 section { display: flex; flex-direction: column; gap: 12px; }
+.settings-v2 h2 { margin: 0; color: var(--studio-muted); font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+.settings-grid { display: grid; gap: 12px; grid-auto-rows: 1fr; }
+.settings-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.settings-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.settings-v2 .settings-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-height: 132px; padding: 16px;
+  color: var(--studio-text); background: var(--studio-surface); border: 1px solid var(--studio-line);
+  border-radius: 14px; text-align: left; cursor: pointer; position: relative; transition: border-color .15s, transform .15s;
+}
+.settings-grid.two .settings-card { min-height: 0; flex-direction: row; align-items: center; }
+.settings-v2 .settings-card:hover { border-color: var(--studio-accent-line); transform: translateY(-1px); }
+.settings-card-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; color: var(--studio-accent-text); background: var(--studio-accent-soft); border-radius: 10px; }
+.settings-card-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.settings-card-text strong { font-size: 14px; }
+.settings-card-text span { color: var(--studio-muted); font-size: 12px; line-height: 1.5; }
+.settings-card-arrow { position: absolute; top: 16px; right: 16px; color: var(--studio-muted); opacity: 0; transition: opacity .15s; }
+.settings-grid.two .settings-card-arrow { position: static; opacity: 0.6; }
+.settings-v2 .settings-card:hover .settings-card-arrow { opacity: 1; color: var(--studio-accent-text); }
+.settings-prefs {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding: 18px;
+  background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 14px;
+}
+.settings-pref { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.settings-pref > span { font-size: 13px; font-weight: 650; }
+.segmented { display: flex; padding: 3px; background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 10px; }
+.segmented button { flex: 1; min-width: 0; padding: 7px 6px; color: var(--studio-muted); background: none; border: 0; border-radius: 7px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.segmented button[aria-checked="true"] { color: var(--studio-text); background: var(--studio-surface); box-shadow: 0 1px 3px var(--studio-shadow); }
+.settings-note { margin: 0; color: var(--studio-muted); font-size: 12px; }
+@media (max-width: 1100px) {
+  .settings-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-prefs { grid-template-columns: 1fr; }
+}
+
+/* First run, step 1: same three paths as the Carrossell onboarding */
+.wys { display: flex; flex-direction: column; gap: 14px; }
+.wys-lead { margin: 0; color: var(--studio-muted); }
+.wys-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; grid-auto-rows: 1fr; }
+.wys-path {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px; color: var(--studio-text); text-align: left;
+  background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 12px; cursor: pointer;
+}
+.wys-path b { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }
+.wys-path small { color: var(--studio-muted); font-size: 11.5px; line-height: 1.45; }
+.wys-path.main { border-color: var(--studio-accent-line); background: var(--studio-accent-soft); }
+.wys-path.main b { color: var(--studio-accent-text); }
+.wys-path:hover:not(:disabled) { border-color: var(--studio-accent-line); }
+.wys-path:disabled { opacity: 0.55; cursor: not-allowed; }
+.wys-prompt { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--studio-line); border-radius: 12px; }
+.wys-prompt-box { max-height: 160px; overflow: auto; margin: 0; padding: 10px; color: var(--studio-muted); background: var(--studio-surface-2); border-radius: 8px; font-size: 11px; white-space: pre-wrap; }
+.wys-interview-progress { display: flex; gap: 4px; }
+.wys-interview-progress span { flex: 1; height: 4px; border-radius: 4px; background: var(--studio-line); }
+.wys-interview-progress span.done { background: var(--studio-success); }
+.wys-interview-progress span.current { background: var(--studio-violet); }
+.wys-skip { align-self: flex-start; }
+@media (max-width: 900px) { .wys-paths { grid-template-columns: 1fr; } }
+.wys-path b { align-items: flex-start; }
+.wys-path b svg { flex: 0 0 auto; margin-top: 1px; }
