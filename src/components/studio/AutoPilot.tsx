@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, Check, Info, Plus, Send, SkipForward, Trash2, X } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import { t, getStudioLanguage } from "./studioLanguage";
@@ -110,18 +110,23 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
   const [confirmAdd, setConfirmAdd] = useState<string>("");
   const [sideTab, setSideTab] = useState<"ready" | "create">("ready");
   const [dragging, setDragging] = useState("");
+  const [draggingVideo, setDraggingVideo] = useState("");
+  const [dropDay, setDropDay] = useState("");
+  const ruleLoaded = useRef(false);
 
   const reload = useCallback(async () => {
     try {
       const [s, v] = await Promise.all([studioRequest<PilotState>("getPublishSettings"), studioRequest<{ videos: ExportedVideo[] }>("listVideos")]);
       setState(s);
       setVideos(v.videos);
-      announceInstagram(s);
-      if (s.pilot) {
+      // Load the saved rule once; later reloads must not undo what the user is choosing.
+      if (s.pilot && !ruleLoaded.current) {
+        ruleLoaded.current = true;
         setPerDay(s.pilot.times.length);
         setTimes(s.pilot.times);
         setDays(s.pilot.days);
       }
+      announceInstagram(s);
     } catch (reason) {
       setError(explainError(reason));
     }
@@ -199,6 +204,32 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
     [ids[from], ids[to]] = [ids[to], ids[from]];
     await run(() => studioRequest("reorderScheduledReels", { ids }));
   }
+  /** Kanban: drop a queued Reel or a ready video on a day; it takes the first free time of that day. */
+  async function dropOnDay(key: string) {
+    setDropDay("");
+    const itemId = dragging, video = draggingVideo;
+    setDragging("");
+    setDraggingVideo("");
+    if (!itemId && !video) return;
+    const moving = items.find((i) => i.id === itemId);
+    if (moving && dayKey(new Date(moving.at)) === key) return;
+    const onDay = items.filter((i) => (i.status === "scheduled" || i.status === "publishing" || i.status === "published") && dayKey(new Date(i.at)) === key);
+    if (onDay.length >= times.length) {
+      setError({ message: `Esse dia já tem ${onDay.length} ${onDay.length === 1 ? "Reels" : "Reels"} (o limite é ${times.length} por dia). Aumente "Reels por dia" ou escolha outro dia.`, details: "" });
+      return;
+    }
+    const taken = new Set(onDay.map((i) => hour(i.at)));
+    const soon = Date.now() + 3 * 60_000;
+    const free = [...times].sort().find((time) => !taken.has(time) && new Date(`${key}T${time}:00`).getTime() > soon);
+    if (!free) {
+      setError({ message: "Não sobrou horário livre nesse dia. Escolha outro dia.", details: "" });
+      return;
+    }
+    const at = `${key} ${free}`;
+    if (moving) await run(() => studioRequest("updateScheduledReel", { id: moving.id, at }), `Movido para ${new Date(`${key}T${free}`).toLocaleDateString(getStudioLanguage(), { weekday: "long", day: "2-digit", month: "2-digit" })} às ${free}.`);
+    else await run(() => studioRequest("addToReelPilot", { video, caption: meta(video).caption, title: meta(video).title, at, confirm: true }), `Agendado para ${free}.`);
+  }
+
   async function dropOn(target: QueueItem) {
     if (!dragging || dragging === target.id) return;
     const ids = queued.map((i) => i.id).filter((id) => id !== dragging);
@@ -319,11 +350,14 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
         <section className="pilot-cal" aria-label={t("Próximas 2 semanas")}>
           <div className="pilot-grid">
             {calendar.map(({ day, key, real, ghost, active }) => (
-              <div key={key} className={`pilot-cell ${active ? "" : "inactive"} ${key === todayKey ? "today" : ""}`}
-                onDragOver={(e) => e.preventDefault()}>
+              <div key={key} className={`pilot-cell ${active ? "" : "inactive"} ${key === todayKey ? "today" : ""} ${dropDay === key ? "drop" : ""} ${real.filter((r) => r.status !== "failed" && r.status !== "late").length >= times.length ? "full" : ""}`}
+                onDragOver={(e) => { e.preventDefault(); if (dropDay !== key) setDropDay(key); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropDay(""); }}
+                onDrop={(e) => { e.preventDefault(); void dropOnDay(key); }}>
                 <div className="pilot-cell-head">
                   <span>{day.toLocaleDateString(getStudioLanguage(), { weekday: "short" }).replace(".", "")}</span>
                   <b>{day.getDate()}</b>
+                  <small className="pilot-cell-count">{real.filter((r) => r.status !== "failed" && r.status !== "late").length}/{times.length}</small>
                   {real.some((r) => r.pilot && r.status === "scheduled") && (
                     <button type="button" className="pilot-skip" title={t("Pular este dia")} aria-label={t("Pular este dia")} disabled={busy}
                       onClick={() => void run(() => studioRequest("skipReelDay", { date: key }), "Dia pulado. Os vídeos seguintes andaram um espaço.")}>
@@ -335,7 +369,8 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
                   {real.map((item) => (
                     <button key={item.id} type="button" className={`pilot-chip ${item.status}`} draggable={item.status === "scheduled"}
                       title={`${hour(item.at)} · ${title(item)} · ${t(statusLabel[item.status] ?? item.status)}`}
-                      onDragStart={() => setDragging(item.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => void dropOn(item)}
+                      onDragStart={() => setDragging(item.id)} onDragEnd={() => setDropDay("")} onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => { const sameDay = items.find((i) => i.id === dragging) && dayKey(new Date(items.find((i) => i.id === dragging)!.at)) === key; if (sameDay) { e.stopPropagation(); void dropOn(item); } }}
                       onClick={() => open(item)}>
                       <Thumb path={item.video} />
                       <span><b>{hour(item.at)}</b><i>{title(item)}</i></span>
@@ -354,7 +389,7 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
               </div>
             ))}
           </div>
-          <p className="pilot-legend">{t("Arraste para trocar a ordem. Clique num vídeo para ver, mudar a legenda ou o horário.")}</p>
+          <p className="pilot-legend">{t("Arraste os vídeos entre os dias (ou da lista de prontos para um dia). Cada dia aceita até o número de Reels por dia. Clique num vídeo para ver, mudar a legenda ou o horário.")}</p>
         </section>
 
         <aside className="pilot-side">
@@ -373,7 +408,8 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
                 </div>
               ))}
               {ready.map((v) => (
-                <div key={v.path} className="pilot-ready-item">
+                <div key={v.path} className="pilot-ready-item" draggable title={t("Arraste para um dia do calendário")}
+                  onDragStart={() => setDraggingVideo(v.path)} onDragEnd={() => setDropDay("")}>
                   <Thumb path={v.path} />
                   <span className="pilot-ready-text"><i title={meta(v.path).title}>{meta(v.path).title}</i>
                     {confirmAdd === v.path && <small>{t("Entra no primeiro horário livre.")}</small>}

@@ -2362,3 +2362,9 @@
 .mcp-target strong { font-size: 13px; }
 .mcp-target small { color: var(--studio-muted); font-size: 11.5px; line-height: 1.4; }
 .mcp-setup .ig-link { align-self: flex-start; font-size: 12px; }
+.pilot-cell.drop { border-color: var(--studio-violet); background: var(--studio-accent-soft); }
+.pilot-cell.full.drop { border-color: var(--studio-danger-line); background: var(--studio-danger-soft); }
+.pilot-cell-count { margin-left: auto; color: var(--studio-muted); font-size: 10px; font-weight: 700; }
+.pilot-cell-head .pilot-skip { margin-left: 4px; }
+.pilot-ready-item[draggable="true"] { cursor: grab; }
+.pilot-chip[draggable="true"] { cursor: grab; }

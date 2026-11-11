@@ -222,9 +222,11 @@ export class Publisher {
 
   /** A new video joins the autopilot at the first free slot (the user confirms this one video). */
   async addToPilot(args: unknown) {
-    const a = z.object({ video: z.string().min(1).max(2000), caption: z.string().max(2200).optional(), title: z.string().max(120).optional(), confirm: z.literal(true) }).strict().parse(args);
+    const a = z.object({ video: z.string().min(1).max(2000), caption: z.string().max(2200).optional(), title: z.string().max(120).optional(), at: z.string().max(40).optional(), confirm: z.literal(true) }).strict().parse(args);
     const s = await this.state();
     const rule = s.pilot ?? { enabled: false, times: DEFAULT_TIMES[1], days: "daily" as PilotDays };
+    // Dropped on a specific day/time of the calendar (kanban).
+    if (a.at) return this.addScheduled([{ video: a.video, caption: a.caption ?? "", at: parseWhen(a.at), pilot: true, title: a.title }], rule.account);
     const taken = (s.scheduled ?? []).filter((e) => e.status === "scheduled" || e.status === "publishing").map((e) => new Date(e.at).getTime());
     const last = Math.max(Date.now(), ...(s.scheduled ?? []).filter((e) => e.pilot && e.status === "scheduled").map((e) => new Date(e.at).getTime()));
     const [at] = planSlots(1, rule, new Date(), { taken, skip: rule.skipped, from: new Date(last) });

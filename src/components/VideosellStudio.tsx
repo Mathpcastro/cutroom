@@ -25,7 +25,7 @@ import { Radar } from "./studio/ReelWorkspace";
 import { rememberReel, reopenReel, pendingReviews } from "./studio/reelRecords";
 import { useReelPilot } from "./studio/ReelPilot";
 import { AutoPilot } from "./studio/AutoPilot";
-import { QuickCreate, type Pending, type QuickChoices } from "./studio/QuickCreate";
+import { QuickCreate, lastChoices, type Pending, type QuickChoices } from "./studio/QuickCreate";
 import { ReelFlow, flowEstimate, rememberFlowTime, renderReel, stageOf, type FlowState } from "./studio/ReelFlow";
 import { MyReels } from "./studio/MyReels";
 import { Stories } from "./studio/Stories";
@@ -310,17 +310,26 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     }
   }
 
-  function quickCreate(brief: string, choices: QuickChoices) {
+  function quickCreate(brief: string, choices: QuickChoices, origin?: ReelOrigin) {
     if (!profile) return;
+    // Never detour to the avatar screen: without an approved avatar the Reel is made without one.
+    const withAvatar = choices.avatar && Boolean(profile.defaultAvatar);
     const draft = {
-      ...initialReelDraft(profile, choices.avatar),
+      ...initialReelDraft(profile, withAvatar),
       brief,
+      origin,
       narrative: choices.story,
       motionStyle: choices.style || undefined,
       language: choices.language,
     };
     void runFlow({ step: "brief", draft });
   }
+  /** Ideas (Radar, Analytics, pilot) go straight to the 4-step flow with the profile's last choices. */
+  const createFromIdea = (brief: string, origin?: ReelOrigin) => {
+    if (!profile) return;
+    if (state.connection.status !== "connected") { setPage("home"); openAiConnect(); return; }
+    quickCreate(brief, lastChoices(profile), origin);
+  };
 
   const navigate = (target: StudioPage) => {
     openGeneration.current += 1;
@@ -478,7 +487,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       <IntermediatePage title={t(t("Instagram Analytics"))} eyebrow="DESEMPENHO" text="Selecione um perfil para analisar seus Reels." onPage={setPage} />
     );
   } else if (page === "radar") {
-    content = profile ? <Radar key={profile.id} profile={profile} onCreate={(brief, origin) => create("without-avatar", brief, origin)} onAnalytics={() => setPage("analytics")} /> : (
+    content = profile ? <Radar key={profile.id} profile={profile} onCreate={(brief, origin) => createFromIdea(brief, origin)} onAnalytics={() => setPage("analytics")} /> : (
       <IntermediatePage title={t(t("Radar de pautas"))} eyebrow="ESTRATÉGIA" text="Selecione um perfil para sugerir pautas para seu SaaS." onPage={setPage} />
     );
   } else if (page === "routine") {

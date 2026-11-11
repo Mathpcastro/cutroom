@@ -133,6 +133,15 @@ describe("reels autopilot", () => {
     expect(new Date(added.scheduled[0].at).getTime()).toBeGreaterThan(last);
     await fs.rm(dir, { recursive: true, force: true });
   });
+  it("autopilot: a video dropped on a calendar day keeps that day and time (kanban)", async () => {
+    const { dir, video, publisher } = await setup();
+    const day = new Date(Date.now() + 3 * 864e5);
+    const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    const r = await publisher.addToPilot({ video, caption: "x", at: `${key} 12:00`, confirm: true });
+    const at = new Date(r.scheduled[0].at);
+    expect([at.getDate(), at.getHours()]).toEqual([day.getDate(), 12]);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
   it("autopilot: a paused pilot does not post its items", async () => {
     const { dir, video, publisher, posted } = await setup();
     const r = await publisher.scheduleSeries({ posts: [{ video }], times: ["18:00"], pilot: true, confirm: true });
