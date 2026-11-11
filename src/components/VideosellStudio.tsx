@@ -21,7 +21,7 @@ import { StudioNav } from "./studio/StudioNav";
 import { ReelCreator, initialReelDraft, type ReelDraft, type ReelOrigin, type ReelSession } from "./studio/ReelCreator";
 import { ReelReview } from "./studio/ReelReview";
 import { InstagramAnalyticsPage, cachedInstagramAnalytics, topReelReferences } from "./studio/InstagramAnalyticsPage";
-import { Radar } from "./studio/ReelWorkspace";
+import { Radar } from "./studio/Radar";
 import { rememberReel, reopenReel, pendingReviews } from "./studio/reelRecords";
 import { useReelPilot } from "./studio/ReelPilot";
 import { AutoPilot } from "./studio/AutoPilot";
@@ -159,7 +159,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [page, setPage] = useState<StudioPage>("home");
   const [avatarSetupRequest, setAvatarSetupRequest] = useState(0);
-  const [createMode, setCreateMode] = useState<CreateMode>("avatar");
+  const [createMode, setCreateMode] = useState<CreateMode>("without-avatar");
   const [reelSession, setReelSession] = useState<ReelSession | null>(null);
   /** Spec 4: the quick flow runs here, so leaving the screen never cancels it. */
   const [flow, setFlow] = useState<FlowState | null>(null);
@@ -289,6 +289,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     let session: ReelSession = { ...base, step: "generating", error: undefined };
     setReelSession(session);
     setFlow({ stage: revised ? 1 : 0, message: "Escrevendo o roteiro…", startedAt: started, previous });
+    // The studio starts in "avatar" mode; a video flow must never fall into the avatar screen.
+    setCreateMode("without-avatar");
     setPage("create");
     try {
       if (!session.filmId || !session.review || revised) {
@@ -487,7 +489,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       <IntermediatePage title={t(t("Instagram Analytics"))} eyebrow="DESEMPENHO" text="Selecione um perfil para analisar seus Reels." onPage={setPage} />
     );
   } else if (page === "radar") {
-    content = profile ? <Radar key={profile.id} profile={profile} onCreate={(brief, origin) => createFromIdea(brief, origin)} onAnalytics={() => setPage("analytics")} /> : (
+    content = profile ? <Radar key={profile.id} profile={profile} aiConnected={state.connection.status === "connected"} onCreate={(brief, origin) => createFromIdea(brief, origin)} /> : (
       <IntermediatePage title={t(t("Radar de pautas"))} eyebrow="ESTRATÉGIA" text="Selecione um perfil para sugerir pautas para seu SaaS." onPage={setPage} />
     );
   } else if (page === "routine") {
@@ -522,21 +524,6 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         }
       />
     );
-  } else if (page === "create" && createMode === "avatar") {
-    content = profile ? (
-      <AvatarCreator
-        profile={profile}
-        onProfileChange={(next) => onProfileChange(next, false)}
-        onBack={() => setPage("home")}
-      />
-    ) : (
-      <IntermediatePage
-        title={t(t("Criar meu avatar"))}
-        eyebrow={t("PERFIL NECESSÁRIO")}
-        text="Crie ou selecione um perfil antes de criar e salvar um avatar."
-        onPage={setPage}
-      />
-    );
   } else if (page === "create" && profile && flow && reelSession?.draft.profileId === profile.id) {
     const session = reelSession;
     content = (
@@ -554,6 +541,21 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
           onAdvanced={() => onOpenAdvanced("films")}
           onPilot={() => setPage("routine")} />
       </div>
+    );
+  } else if (page === "create" && createMode === "avatar") {
+    content = profile ? (
+      <AvatarCreator
+        profile={profile}
+        onProfileChange={(next) => onProfileChange(next, false)}
+        onBack={() => setPage("home")}
+      />
+    ) : (
+      <IntermediatePage
+        title={t(t("Criar meu avatar"))}
+        eyebrow={t("PERFIL NECESSÁRIO")}
+        text="Crie ou selecione um perfil antes de criar e salvar um avatar."
+        onPage={setPage}
+      />
     );
   } else if (page === "create" && profile && reelSession?.draft.profileId === profile.id) {
     content = (

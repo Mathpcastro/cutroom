@@ -2368,3 +2368,23 @@
 .pilot-cell-head .pilot-skip { margin-left: 4px; }
 .pilot-ready-item[draggable="true"] { cursor: grab; }
 .pilot-chip[draggable="true"] { cursor: grab; }
+
+/* Radar de pautas (modelo do Carrossell 1.10.2) */
+.radar-v2 { width: min(1100px, 100%); margin: 0 auto; padding: 4px 22px 30px; display: flex; flex-direction: column; gap: 12px; color: var(--studio-text); }
+.radar-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.radar-head .reels-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+.radar-head .spacer, .radar-form-row .spacer { flex: 1; }
+.radar-form { display: flex; flex-direction: column; gap: 8px; padding: 14px; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px; }
+.radar-form .reel-field { margin: 0; }
+.radar-form-row { display: flex; align-items: center; gap: 10px; }
+.radar-analysis { margin: 0; color: var(--studio-muted); font-size: 12.5px; line-height: 1.5; }
+.radar-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.radar-idea { background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px; }
+.radar-idea-top { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+.radar-idea-title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 4px; color: var(--studio-text); background: none; border: 0; text-align: left; font-size: 14px; font-weight: 600; cursor: pointer; }
+.radar-idea-top .studio-primary-button { min-height: 32px; padding: 0 12px; font-size: 12px; }
+.radar-idea-more { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px 12px; font-size: 12.5px; line-height: 1.5; color: var(--studio-muted); }
+.radar-idea-more b { display: block; color: var(--studio-text); font-size: 11px; letter-spacing: .6px; text-transform: uppercase; }
+.radar-idea-more .wide { grid-column: 1 / -1; }
+.radar-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px; color: var(--studio-muted); background: var(--studio-surface); border: 1px dashed var(--studio-line); border-radius: 12px; }
+.radar-empty p { margin: 0; }
