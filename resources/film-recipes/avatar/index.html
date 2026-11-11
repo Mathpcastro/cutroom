@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!--
+  Formato "avatar" do Videosell: o avatar de IA em pixel art apresenta o Reels, com câmera viva
+  (zoom no rosto, chicote, tremida), tipografia que bate na tela, cenas que trocam a cada frase e
+  partículas. O avatar do perfil entra sozinho quando o filme tem um avatar; sem ele, usa a amostra
+  do kit. Tudo é função do tempo: draw(t) pinta os canvases e o GSAP cuida do texto.
+-->
+<script src="brand.js"></script>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
+  @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
+  @font-face { font-family: Silkscreen; src: url(fonts/Silkscreen-Regular.ttf); }
+  :root { --accent: #7C5CFF; --pop: #C8FF5A; --ink: #141318; --hot: #FF3D5A; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--ink); }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--ink); color: #fff; font-family: "Instrument Sans", sans-serif; }
+  #cam { position: absolute; inset: 0; transform-origin: 50% 45%; }
+  canvas { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  .later { visibility: hidden; opacity: 0; }
+  .t { position: absolute; left: 60px; right: 60px; text-align: center; font-family: Anton, sans-serif; text-transform: uppercase; line-height: 0.98; text-shadow: 0 8px 0 rgba(0,0,0,.35); }
+  .t .w, .t .l { display: inline-block; }
+  .t em { font-style: normal; color: var(--pop); }
+  .t .hot { color: var(--hot); }
+  .xl { font-size: 150px; } .l2 { font-size: 118px; } .m { font-size: 92px; } .s { font-size: 70px; }
+  .tag { position: absolute; padding: 14px 26px; border-radius: 16px; font: 700 40px/1 Silkscreen, monospace; letter-spacing: 2px; text-transform: uppercase; }
+  .card { position: absolute; width: 560px; padding: 30px 34px; border-radius: 30px; background: #F7F6F1; color: var(--ink); box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+  .card b { display: block; font: 400 64px/1 Anton, sans-serif; text-transform: uppercase; }
+  .card span { display: block; margin-top: 8px; font-size: 32px; font-weight: 600; color: #555; }
+  .num { position: absolute; display: inline-grid; place-items: center; width: 74px; height: 74px; left: -24px; top: -24px; border-radius: 22px; background: var(--pop); color: var(--ink); font: 400 46px/1 Anton, sans-serif; transform: rotate(-8deg); }
+  .price { position: absolute; left: 470px; top: 640px; width: 520px; padding: 34px; border-radius: 34px; background: #fff; color: var(--ink); text-align: center; transform: rotate(4deg); }
+  .price small { display: block; font: 700 34px Silkscreen, monospace; color: #888; }
+  .price strong { display: block; font: 400 150px/1 Anton, sans-serif; }
+  .price .bar { position: absolute; left: 30px; right: 30px; top: 50%; height: 22px; margin-top: -6px; border-radius: 12px; background: var(--hot); }
+  .stamp { position: absolute; left: 420px; top: 1080px; padding: 18px 34px; border: 10px solid var(--hot); border-radius: 22px; color: var(--hot); font: 400 96px/1 Anton, sans-serif; transform: rotate(-10deg); text-transform: uppercase; }
+  .phone { position: absolute; left: 90px; top: 520px; width: 440px; height: 820px; border-radius: 60px; background: #0b0a10; border: 14px solid #2b2a33; box-shadow: 0 40px 100px rgba(0,0,0,.5); overflow: hidden; }
+  .phone .screen { position: absolute; inset: 0; background: linear-gradient(160deg, #7C5CFF, #1b1440); }
+  .phone .views { position: absolute; left: 0; right: 0; bottom: 120px; text-align: center; font: 400 92px/1 Anton, sans-serif; }
+  .phone .lbl { position: absolute; left: 0; right: 0; bottom: 70px; text-align: center; font: 700 30px Silkscreen, monospace; color: var(--pop); }
+  .phone .play { position: absolute; left: 50%; top: 250px; width: 0; height: 0; margin-left: -40px; border-left: 100px solid rgba(255,255,255,.9); border-top: 60px solid transparent; border-bottom: 60px solid transparent; }
+  .no3 { position: absolute; left: 0; right: 0; text-align: center; }
+  .no3 .t { position: relative; left: 0; right: 0; display: block; margin: 0 auto; }
+  .strike { position: absolute; left: 140px; right: 140px; top: 50%; height: 18px; margin-top: -9px; border-radius: 10px; background: var(--hot); }
+  .notif { position: absolute; right: 70px; width: 600px; padding: 26px 30px; border-radius: 28px; background: rgba(255,255,255,.96); color: var(--ink); font-size: 38px; font-weight: 700; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .notif i { font-style: normal; display: inline-block; width: 22px; height: 22px; margin-right: 14px; border-radius: 50%; background: var(--accent); }
+  .zzz { position: absolute; font: 400 90px/1 Anton, sans-serif; color: #b9c2ff; }
+  .arrow { position: absolute; left: 50%; width: 0; height: 0; margin-left: -40px; border-top: 50px solid var(--pop); border-left: 40px solid transparent; border-right: 40px solid transparent; }
+  .bar-top { position: absolute; left: 0; top: 0; height: 14px; width: 1080px; background: var(--pop); z-index: 50; }
+  #flash { position: absolute; inset: 0; background: #fff; z-index: 60; visibility: hidden; opacity: 0; pointer-events: none; }
+  .vignette { position: absolute; inset: 0; pointer-events: none; z-index: 55; background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.45) 100%); }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="34" data-width="1080" data-height="1920">
+  <div id="cam">
+    <canvas id="bg" width="1080" height="1920"></canvas>
+
+    <div class="t xl later" id="t-criou" style="top:150px">Você criou<br>um <em>SaaS</em></div>
+    <div class="t xl later" id="t-incrivel" style="top:470px;color:var(--pop)">incrível</div>
+    <div class="t l2 later" id="t-ninguem" style="top:130px"><span class="hot">ninguém</span> sabe<br>que ele existe</div>
+
+    <div class="tag later" id="tag-ads" style="left:470px;top:540px;background:#fff;color:#141318">anúncio</div>
+    <div class="price later" id="price"><small>por dia</small><strong>R$ 50</strong><div class="bar later" id="price-bar"></div></div>
+    <div class="stamp later" id="stamp">caro demais</div>
+
+    <div class="t m later" id="t-videos" style="top:140px">vídeos feitos<br>em <em>código</em></div>
+    <div class="phone later" id="phone"><div class="screen"></div><div class="play"></div><div class="views" id="views">0</div><div class="lbl">visualizações</div></div>
+
+    <div class="no3 later" id="no3" style="top:300px">
+      <div style="position:relative;margin-bottom:60px"><div class="t l2 later" id="n1">sem câmera</div><div class="strike later" id="s1"></div></div>
+      <div style="position:relative;margin-bottom:60px"><div class="t l2 later" id="n2">sem editor</div><div class="strike later" id="s2"></div></div>
+      <div style="position:relative"><div class="t l2 later" id="n3">sem animador</div><div class="strike later" id="s3"></div></div>
+    </div>
+
+    <div class="t s later" id="t-prazer" style="top:150px">prazer,</div>
+    <div class="t l2 later" id="t-sou" style="top:250px">sou um <em>avatar</em><br>de IA</div>
+
+    <div class="card later" id="c1" style="left:460px;top:430px"><div class="num">1</div><b>escrevo o roteiro</b><span>com a IA que você já usa</span></div>
+    <div class="card later" id="c2" style="left:460px;top:720px"><div class="num">2</div><b>falo com a sua voz</b><span style="height:70px"></span></div>
+    <div class="card later" id="c3" style="left:460px;top:1010px"><div class="num">3</div><b>1 Reels por dia</b><span>no seu perfil, sozinho</span></div>
+
+    <div class="t m later" id="t-dorme" style="top:150px">enquanto você<br><em>dorme</em></div>
+    <div class="t m later" id="t-trabalha" style="top:150px">o perfil<br><em>trabalha</em></div>
+    <div class="zzz later" id="z1" style="left:640px;top:1000px">Z</div>
+    <div class="zzz later" id="z2" style="left:700px;top:930px;font-size:70px">z</div>
+    <div class="notif later" id="nt1" style="top:470px"><i></i>+1 seguidor</div>
+    <div class="notif later" id="nt2" style="top:610px"><i></i>+12 visitas no perfil</div>
+    <div class="notif later" id="nt3" style="top:750px"><i></i>Novo clique no link</div>
+
+    <div class="t l2 later" id="f1" style="top:180px">visita no <em>perfil</em></div>
+    <div class="arrow later" id="a1" style="top:330px"></div>
+    <div class="t l2 later" id="f2" style="top:400px">clique no <em>link</em></div>
+    <div class="arrow later" id="a2" style="top:550px"></div>
+    <div class="t xl later" id="f3" style="top:610px"><em>venda!</em></div>
+
+    <div class="t l2 later" id="t-quer" style="top:150px">quer o seu<br><em>avatar?</em></div>
+
+    <canvas id="av" width="1080" height="1920"></canvas>
+  </div>
+  <div class="vignette"></div>
+  <div class="bar-top" id="progress"></div>
+  <div id="flash"></div>
+  <audio id="voz" data-start="0" data-duration="32" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
+  <!--MUSICA-->
+  <!--SFX-->
+  <script src="kit/gsap.min.js"></script>
+  <script src="timing.js"></script>
+  <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
+  <script src="kit/avatar/sample.js"></script>
+  <script src="kit/avatar/engine.js"></script>
+  <script>
+    var p = (window.BRAND && window.BRAND.palette) || {};
+    if (p.accent) document.documentElement.style.setProperty("--accent", p.accent);
+    var engine = window.AvatarEngine, pkg = window.FILM_AVATAR || window.CRM_SAMPLE_AVATAR;
+
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = Math.max(CR.timing.voiceEnd + 2, 10), at = CR.at;
+    // Beats, anchored to the spoken words (fallbacks keep a draft rendering after script edits).
+    var B = {
+      criou: at("criou", 1, 0.4), incrivel: at("incrível", 1, 1.3), ninguem: at("ninguém", 1, 2.4),
+      anuncio: at("anúncio", 1, 4.0), caro: at("caro", 1, 4.7), demais: at("demais", 1, 5.0),
+      olha: at("olha", 1, 5.8), videos: at("vídeos", 1, 6.4), duzentas: at("duzentas", 1, 8.2), views: at("visualizações", 1, 9.0),
+      camera: at("câmera", 1, 10.2), editor: at("editor", 1, 10.9), animador: at("animador", 1, 11.6),
+      prazer: at("prazer", 1, 12.6), avatar: at("avatar", 1, 13.6),
+      roteiro: at("roteiro", 1, 15.0), voz: at("voz", 1, 16.0), reels: at("reels", 1, 17.0), dia: at("dia", 1, 17.6),
+      dorme: at("dorme", 1, 19.4), trabalha: at("trabalha", 1, 20.4),
+      visita: at("visita", 1, 21.4), clique: at("clique", 1, 22.4), venda: at("venda", 1, 23.3),
+      quer: at("quer", 1, 24.2), link: at("link", 2, 25.3),
+    };
+    // The sale needs a beat to land: the CTA scene starts on "avatar?" when "quer" follows too fast.
+    B.quer = Math.max(B.quer, B.venda + 0.85);
+    var cut = function (k) { return B[k] - 0.08; };
+
+    /* ---------- the avatar: framing, acting and entrances ---------- */
+    var A = CRM.avatar({ engine: engine.renderAvatarPixels, avatar: pkg, outline: "#C8FF5A" });
+    A.shot(0, { x: 540, y: 1700, scale: 11, d: 0 });
+    A.enter(0.12, "drop"); A.act(0, "neutral", "happy");
+    A.act(B.incrivel, "celebrating", "happy"); A.hop(B.incrivel + 0.05, 22);
+    // Ninguém sabe: push in to the face.
+    A.shot(cut("ninguem"), { x: 540, y: 2750, scale: 26, d: 0.45, e: "out" });
+    A.act(cut("ninguem"), "surprised", "surprised");
+    // Anúncio: small on the left, the price card on the right.
+    A.shot(cut("anuncio"), { x: 270, y: 1780, scale: 8, d: 0 });
+    A.act(cut("anuncio"), "pointing", "thinking"); A.act(B.caro, null, "serious");
+    // Olha isso: right side, pointing at the phone.
+    A.shot(cut("olha"), { x: 800, y: 1760, scale: 9, d: 0 }); A.enter(cut("olha"), "right");
+    A.act(cut("olha"), "pointing", "surprised"); A.act(B.duzentas, "celebrating", "happy"); A.hop(B.duzentas, 20);
+    // Sem câmera / editor / animador: bottom, shaking its head at each one.
+    A.shot(cut("camera"), { x: 540, y: 1880, scale: 8, d: 0 });
+    A.act(cut("camera"), "explaining", "serious");
+    A.hit(B.camera); A.hit(B.editor); A.hit(B.animador);
+    // Prazer: spins into a big hero shot.
+    A.spin(B.prazer - 0.1);
+    A.shot(B.prazer - 0.1, { x: 540, y: 1840, scale: 13, d: 0.5 });
+    A.act(B.prazer, "celebrating", "confident"); A.hop(B.avatar, 26);
+    // Roteiro / voz / Reels: bottom-left, talking with its hands.
+    A.shot(cut("roteiro"), { x: 250, y: 1860, scale: 8, d: 0.3, e: "inOut" });
+    A.act(cut("roteiro"), "explaining", "happy"); A.talk(B.roteiro, B.dorme - 0.3, ["explaining", "pointing"]);
+    // Dorme: eyes shut in the night; trabalha: wakes up proud.
+    A.shot(cut("dorme"), { x: 400, y: 1820, scale: 10, d: 0 });
+    A.act(cut("dorme"), "neutral", "neutral"); A.sleep(cut("dorme"), B.trabalha - 0.05);
+    A.act(B.trabalha, "celebrating", "confident"); A.hop(B.trabalha, 16);
+    // Funil: centre bottom, celebrating at the sale.
+    A.shot(cut("visita"), { x: 540, y: 1900, scale: 8, d: 0 });
+    A.act(cut("visita"), "pointing", "confident"); A.act(B.venda, "celebrating", "happy");
+    A.hop(B.venda, 30); A.hit(B.venda);
+    // CTA: big, pointing down to the link.
+    A.shot(cut("quer"), { x: 720, y: 1680, scale: 11, d: 0.4, e: "inOut" });
+    A.act(cut("quer"), "pointing", "happy"); A.talk(B.quer, D, ["pointing", "explaining"]);
+
+    /* ---------- backgrounds (iris wipe into each scene) ---------- */
+    var SC = [
+      { t: 0, a: "#1b1530", b: "#0f0d17" },
+      { t: cut("ninguem"), a: "#2a0f18", b: "#0d0709", glow: "rgba(255,61,90,.35)", d: 0.2 },
+      { t: cut("anuncio"), a: "#141318", b: "#22202b", glow: "rgba(255,255,255,.12)" },
+      { t: cut("olha"), a: "#3b26a8", b: "#120d2e", glow: "rgba(200,255,90,.30)" },
+      { t: cut("camera"), a: "#1a1418", b: "#0b0a0c", glow: "rgba(255,61,90,.30)" },
+      { t: B.prazer - 0.1, a: "#6445d8", b: "#1b1440", glow: "rgba(200,255,90,.45)", d: 0.35 },
+      { t: cut("roteiro"), a: "#141318", b: "#251c4d", glow: "rgba(124,92,255,.45)" },
+      { t: cut("dorme"), a: "#060b24", b: "#0f1c4a", glow: "rgba(150,170,255,.25)", dots: "rgba(255,255,255,.18)" },
+      { t: B.trabalha, a: "#0f1c4a", b: "#2a1f6b", glow: "rgba(200,255,90,.35)", d: 0.3 },
+      { t: cut("visita"), a: "#1b1530", b: "#0f0d17", glow: "rgba(200,255,90,.30)" },
+      { t: B.venda, a: "#7C5CFF", b: "#241a5e", glow: "rgba(200,255,90,.55)", d: 0.2 },
+      { t: cut("quer"), a: "#2a1f6b", b: "#141318", glow: "rgba(124,92,255,.55)" },
+    ];
+    var BURSTS = [
+      { t: 0.44, x: 540, y: 1700, kind: "dust", n: 26, seed: 3 },
+      { t: B.incrivel + 0.05, x: 540, y: 620, kind: "spark", n: 40, spread: 700, seed: 5 },
+      { t: B.duzentas, x: 310, y: 900, kind: "heart", n: 14, spread: 650, angle: -Math.PI / 2, cone: 1.4, seed: 9 },
+      { t: B.views, x: 310, y: 1100, kind: "confetti", n: 70, spread: 1100, seed: 13 },
+      { t: B.prazer + 0.3, x: 540, y: 900, kind: "confetti", n: 90, spread: 1300, seed: 17 },
+      { t: B.trabalha, x: 400, y: 1300, kind: "spark", n: 40, spread: 800, seed: 19 },
+      { t: B.venda, x: 540, y: 820, kind: "coin", n: 26, spread: 1200, angle: -Math.PI / 2, cone: 2.2, seed: 23 },
+      { t: B.venda + 0.05, x: 540, y: 820, kind: "confetti", n: 110, spread: 1500, seed: 29 },
+    ];
+    var bg = document.getElementById("bg").getContext("2d"), av = document.getElementById("av").getContext("2d");
+    function stars(ctx, t) {
+      if (t < cut("dorme") || t > B.trabalha + 0.4) return;
+      var r = CRM.rng(41);
+      for (var i = 0; i < 70; i++) {
+        var x = r() * 1080, y = r() * 1300, tw = 0.5 + 0.5 * Math.sin(t * (2 + r() * 4) + i);
+        ctx.globalAlpha = tw; ctx.fillStyle = "#fff"; ctx.fillRect(Math.round(x), Math.round(y), 6, 6);
+      }
+      ctx.globalAlpha = 1; ctx.fillStyle = "#F4F1C9";
+      ctx.beginPath(); ctx.arc(860, 330, 110, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#0a1236"; ctx.beginPath(); ctx.arc(810, 300, 100, 0, Math.PI * 2); ctx.fill();
+    }
+    function draw(t) {
+      bg.clearRect(0, 0, 1080, 1920);
+      CRM.background(bg, t, SC);
+      CRM.mesh(bg, t, ["#000", "#7C5CFF", "#C8FF5A", "#FF5A36"], { base: false, grid: false, strength: 0.16 });
+      stars(bg, t);
+      CRM.speedLines(bg, t, B.incrivel - 0.05, B.incrivel + 0.7, 540, 620, "#C8FF5A");
+      CRM.speedLines(bg, t, B.duzentas - 0.1, B.views + 0.6, 310, 930, "#ffffff");
+      CRM.speedLines(bg, t, B.prazer - 0.1, B.prazer + 1.2, 540, 1100, "#C8FF5A");
+      CRM.speedLines(bg, t, B.venda - 0.05, B.venda + 0.9, 540, 820, "#ffffff");
+      av.clearRect(0, 0, 1080, 1920);
+      A.draw(av, t);
+      // The voice card's live waveform (scene 2 of the trio).
+      if (t >= B.voz && t < cut("dorme")) CRM.waveform(av, t, 500, 815, 470, 64, "#7C5CFF", 26);
+      CRM.particles(av, t, BURSTS);
+    }
+
+    /* ---------- text, cards and camera ---------- */
+    var hideAt = function (sel, k) { CRM.out(tl, sel, cut(k)); };
+    CRM.progress(tl, "#progress", D);
+    // 1. Hook
+    CRM.slam(tl, "#t-criou", B.criou - 0.25, { gap: 0.1 });
+    CRM.letters(tl, "#t-incrivel", B.incrivel - 0.05, { stagger: 0.04 });
+    CRM.flash(tl, "#flash", B.incrivel, 0.5);
+    hideAt("#t-criou", "ninguem"); hideAt("#t-incrivel", "ninguem");
+    // 2. Ninguém sabe
+    CRM.slam(tl, "#t-ninguem", B.ninguem, { gap: 0.12, amp: 22 });
+    CRM.glitch(tl, "#t-ninguem .hot", B.ninguem + 0.1, 0.4);
+    CRM.whip(tl, "#cam", cut("anuncio"), 1);
+    hideAt("#t-ninguem", "anuncio");
+    // 3. Anúncio, caro demais
+    CRM.popIn(tl, "#tag-ads", B.anuncio - 0.05);
+    CRM.popIn(tl, "#price", B.anuncio + 0.1, { rot: 12 });
+    CRM.strike(tl, "#price-bar", B.caro);
+    tl.fromTo("#stamp", { autoAlpha: 0, scale: 3.2, rotation: -24 }, { autoAlpha: 1, scale: 1, rotation: -10, duration: 0.2, ease: "power4.in" }, B.demais - 0.12);
+    CRM.shake(tl, "#cam", B.demais + 0.08, 26, 0.35);
+    hideAt("#tag-ads", "olha"); hideAt("#price", "olha"); hideAt("#stamp", "olha");
+    // 4. Olha isso: vídeos em código, views counting
+    CRM.slam(tl, "#t-videos", B.videos - 0.1, { gap: 0.09 });
+    CRM.slideIn(tl, "#phone", B.olha, "left");
+    var views = { v: 0 }, viewsEl = document.getElementById("views");
+    tl.to(views, { v: 258000, duration: Math.max(0.8, B.views - B.videos + 0.4), ease: "power2.in", onUpdate: function () { viewsEl.textContent = Math.round(views.v).toLocaleString("pt-BR"); } }, B.videos);
+    CRM.punch(tl, "#phone", B.duzentas, 1.14, 0.6);
+    CRM.punch(tl, "#cam", B.duzentas, 1.05, 0.5);
+    CRM.whip(tl, "#cam", cut("camera"), -1);
+    hideAt("#t-videos", "camera"); hideAt("#phone", "camera");
+    // 5. Sem câmera, sem editor, sem animador
+    tl.set("#no3", { autoAlpha: 1 }, cut("camera"));
+    ["camera", "editor", "animador"].forEach(function (k, i) {
+      CRM.slam(tl, "#n" + (i + 1), B[k] - 0.3, { gap: 0.07, amp: 18 });
+      CRM.strike(tl, "#s" + (i + 1), B[k] + 0.18);
+      CRM.flash(tl, "#flash", B[k] + 0.18, 0.35);
+    });
+    hideAt("#no3", "prazer");
+    // 6. Prazer, sou um avatar de IA
+    CRM.flash(tl, "#flash", B.prazer - 0.1, 0.9);
+    CRM.popIn(tl, "#t-prazer", B.prazer, { rot: -6 });
+    CRM.slam(tl, "#t-sou", B.prazer + 0.35, { gap: 0.1, amp: 12 });
+    CRM.punch(tl, "#cam", B.avatar, 1.07, 0.5);
+    hideAt("#t-prazer", "roteiro"); hideAt("#t-sou", "roteiro");
+    // 7. Roteiro, voz, Reels por dia
+    CRM.slideIn(tl, "#c1", B.roteiro - 0.25, "right");
+    CRM.slideIn(tl, "#c2", B.voz - 0.25, "right");
+    CRM.slideIn(tl, "#c3", B.reels - 0.25, "right");
+    CRM.punch(tl, "#c3", B.dia, 1.1, 0.4);
+    CRM.whip(tl, "#cam", cut("dorme"), 1);
+    hideAt("#c1", "dorme"); hideAt("#c2", "dorme"); hideAt("#c3", "dorme");
+    // 8. Enquanto você dorme, o perfil trabalha
+    CRM.slam(tl, "#t-dorme", B.dorme - 0.45, { gap: 0.12, shake: false });
+    ["#z1", "#z2"].forEach(function (z, i) {
+      var z0 = B.dorme + i * 0.3;
+      tl.fromTo(z, { autoAlpha: 0, y: 30, x: 0 }, { autoAlpha: 1, y: -160, x: 40, duration: Math.max(0.3, B.trabalha - 0.12 - z0), ease: "sine.out" }, z0);
+      tl.to(z, { autoAlpha: 0, duration: 0.2 }, B.trabalha - 0.1);
+    });
+    CRM.out(tl, "#t-dorme", B.trabalha - 0.1);
+    CRM.slam(tl, "#t-trabalha", B.trabalha - 0.15, { gap: 0.1, amp: 20 });
+    ["#nt1", "#nt2", "#nt3"].forEach(function (n, i) { CRM.slideIn(tl, n, B.trabalha + 0.05 + i * 0.16, "right"); });
+    hideAt("#t-trabalha", "visita"); hideAt("#nt1", "visita"); hideAt("#nt2", "visita"); hideAt("#nt3", "visita");
+    // 9. Funil
+    CRM.slam(tl, "#f1", B.visita - 0.08, { gap: 0.08 });
+    CRM.popIn(tl, "#a1", B.clique - 0.2, { rot: 0 });
+    CRM.slam(tl, "#f2", B.clique - 0.08, { gap: 0.08 });
+    CRM.popIn(tl, "#a2", B.venda - 0.2, { rot: 0 });
+    CRM.slam(tl, "#f3", B.venda - 0.05, { from: 4, amp: 34 });
+    CRM.flash(tl, "#flash", B.venda, 0.8);
+    CRM.punch(tl, "#cam", B.venda + 0.05, 1.1, 0.6);
+    ["#f1", "#a1", "#f2", "#a2", "#f3"].forEach(function (s) { hideAt(s, "quer"); });
+    // 10. CTA
+    CRM.slam(tl, "#t-quer", B.quer - 0.05, { gap: 0.1 });
+    CR.profileCTA(tl, B.link - 0.4, { x: 70, y: 620, color: "#7C5CFF", ink: "#FFFFFF", until: D });
+
+    var st = { t: 0 };
+    tl.to(st, { t: D, duration: D, ease: "none", onUpdate: function () { draw(st.t); } }, 0);
+    draw(0);
+    CRM.post(tl, D, { film: "#film", leaks: [cut("ninguem"), cut("anuncio"), cut("olha"), cut("camera"), B.prazer - 0.1, cut("roteiro"), cut("dorme"), cut("visita"), B.venda, cut("quer")] });
+    CRM.shimmer(tl, "#c1", B.roteiro + 0.3); CRM.shimmer(tl, "#c2", B.voz + 0.3); CRM.shimmer(tl, "#c3", B.dia);
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>

@@ -43,6 +43,11 @@ export function Timeline({
   const project = state.project;
   const total = duration(project);
   const motions = project.motions ?? [];
+  // Narration, music and sound effects: one lane per kind that exists (they do not move with cuts).
+  const audioLanes = (["voice", "music", "sfx"] as const)
+    .map((kind) => ({ kind, tracks: (project.audio ?? []).filter((t) => t.kind === kind) }))
+    .filter((lane) => lane.tracks.length);
+  const AUDIO_LABEL = { voice: "Narração", music: "Música", sfx: "Efeitos sonoros" } as const;
   const selectedMotion = motions.find((scene) => scene.id === selectedId);
   const editMotion = () =>
     window.dispatchEvent(new Event("cutroom:motion-edit"));
@@ -63,7 +68,7 @@ export function Timeline({
   const timelineWidth = `${scale * 100}%`;
   return (
     <section
-      className={`timeline-section ${motions.length ? "has-motions" : ""}`}
+      className={`timeline-section ${motions.length ? "has-motions" : ""} ${audioLanes.length ? `has-audio audio-lanes-${audioLanes.length}` : ""}`}
       aria-label="Timeline de edição"
     >
       <div className="timeline-toolbar">
@@ -163,6 +168,12 @@ export function Timeline({
               <span>Efeitos</span>
             </div>
           )}
+          {audioLanes.map((lane) => (
+            <div key={lane.kind} className="audio-track-label">
+              <Volume2 size={12} />
+              <span>{AUDIO_LABEL[lane.kind]}</span>
+            </div>
+          ))}
         </div>
         <div className="timeline-scroll">
           <div className="timeline-canvas" style={{ width: timelineWidth }}>
@@ -299,6 +310,28 @@ export function Timeline({
                   ))}
                 </div>
               )}
+              {audioLanes.map((lane) => (
+                <div key={lane.kind} className="audio-lane" aria-label={`Trilha de ${AUDIO_LABEL[lane.kind].toLowerCase()}`}>
+                  {lane.tracks.map((track) => (
+                    <button
+                      key={track.id}
+                      className={`audio-block audio-${track.kind} ${track.id === selectedId ? "active" : ""}`}
+                      style={{
+                        left: `${(Math.min(track.start, seconds) / seconds) * 100}%`,
+                        width: `${(Math.max(0, Math.min(track.duration, seconds - track.start)) / seconds) * 100}%`,
+                      }}
+                      title={`${track.name} · ${timecode(track.start, true)} → ${timecode(track.start + track.duration, true)}${track.gain ? ` · ${track.gain} dB` : ""}${track.source?.license ? ` · ${track.source.license}` : ""}`}
+                      aria-label={`${AUDIO_LABEL[track.kind]}: ${track.name}`}
+                      onClick={() => {
+                        setSelectedId(track.id);
+                        setTime(track.start);
+                      }}
+                    >
+                      <span>{track.name}</span>
+                    </button>
+                  ))}
+                </div>
+              ))}
             </div>
             <div
               className="playhead"

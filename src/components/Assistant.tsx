@@ -43,6 +43,13 @@ export interface ActionProps {
   selectedId?: string;
 }
 
+
+/**
+ * "Claude Code" (the terminal CLI with a Claude subscription) is not offered: using a Claude
+ * subscription inside a third-party app is not allowed by Anthropic's terms. Claude stays available
+ * through the API with the user's own key ("anthropic").
+ */
+const OFFERED_PROVIDERS: AgentProvider[] = AGENT_PROVIDERS.filter((p) => p !== "claude-code");
 export function Assistant({
   state,
   run,
@@ -153,7 +160,7 @@ export function Assistant({
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [apiKey, setApiKey] = useState("");
-  const [provider, setProvider] = useState<AgentProvider>(connectedProvider);
+  const [provider, setProvider] = useState<AgentProvider>(connectedProvider === "claude-code" ? "codex" : connectedProvider);
   const [providerPickerOpen, setProviderPickerOpen] = useState(false);
   const [providerIndex, setProviderIndex] = useState(0);
   const [baseUrl, setBaseUrl] = useState("");
@@ -191,7 +198,7 @@ export function Assistant({
   });
   useEffect(() => {
     if (!providerPickerOpen) return;
-    setProviderIndex(Math.max(0, AGENT_PROVIDERS.indexOf(provider)));
+    setProviderIndex(Math.max(0, OFFERED_PROVIDERS.indexOf(provider)));
     const outside = (event: PointerEvent) => {
       if (!providerRoot.current?.contains(event.target as Node))
         setProviderPickerOpen(false);
@@ -425,6 +432,30 @@ export function Assistant({
       {tab === "chat" ? (
         <>
           <div className="conversation-scroll">
+            {!state.onboarding?.dismissed && desktop && (
+              <section className="setup-guide" aria-label="Vídeos do zero">
+                <div className="setup-guide-heading">
+                  <Package size={17} />
+                  <strong>Vídeos do zero com IA</strong>
+                </div>
+                <p>
+                  Marca, voz e formato: o agente cria aulas, UI motion, voo pela
+                  landing page, histórias e explainers, prontos para o Reels.
+                </p>
+                <button
+                  className="button primary full-width"
+                  onClick={() => window.dispatchEvent(new CustomEvent("cutroom:studio", { detail: "start" }))}
+                >
+                  Abrir o Estúdio de vídeos
+                </button>
+                <button
+                  className="button full-width"
+                  onClick={() => window.dispatchEvent(new CustomEvent("cutroom:studio", { detail: "brand" }))}
+                >
+                  Configurar a marca
+                </button>
+              </section>
+            )}
             {!state.onboarding?.dismissed && desktop && (
               <section className="setup-guide" aria-label="Primeiros passos">
                 <div className="setup-guide-heading">
@@ -859,21 +890,21 @@ export function Assistant({
                             event.key === "Home"
                               ? 0
                               : event.key === "End"
-                                ? AGENT_PROVIDERS.length - 1
+                                ? OFFERED_PROVIDERS.length - 1
                                 : (index +
                                     (event.key === "ArrowDown" ? 1 : -1) +
-                                    AGENT_PROVIDERS.length) %
-                                  AGENT_PROVIDERS.length,
+                                    OFFERED_PROVIDERS.length) %
+                                  OFFERED_PROVIDERS.length,
                           );
                         }
                         if (["Enter", " "].includes(event.key)) {
                           event.preventDefault();
-                          chooseProvider(AGENT_PROVIDERS[providerIndex]);
+                          chooseProvider(OFFERED_PROVIDERS[providerIndex]);
                         }
                         if (event.key === "Tab") setProviderPickerOpen(false);
                       }}
                     >
-                      {AGENT_PROVIDERS.map((item, index) => (
+                      {OFFERED_PROVIDERS.map((item, index) => (
                         <button
                           key={item}
                           type="button"

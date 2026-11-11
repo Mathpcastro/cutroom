@@ -12,6 +12,10 @@ import {
   type CodexStatus,
 } from "./codex";
 import { AgentTools, cancelled, httpError, type AgentClient } from "./agent";
+import type {
+  AvatarVisionProvider,
+  AvatarVisionRequest,
+} from "./avatar-vision";
 
 type Model = Connection["models"][number];
 type Json = Record<string, any>;
@@ -119,6 +123,38 @@ export function mapApiModels(provider: ApiProvider, data: Json[]): Model[] {
     });
 }
 
+async function responseTextWithLimit(
+  response: Response,
+  limit: number,
+): Promise<string> {
+  const reader = response.body?.getReader?.();
+  if (!reader) {
+    const text = await response.text();
+    if (Buffer.byteLength(text, "utf8") > limit) {
+      throw new Error("Resposta de visão acima do limite.");
+    }
+    return text;
+  }
+
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      bytes += value.byteLength;
+      if (bytes > limit) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error("Resposta de visão acima do limite.");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock?.();
+  }
+}
+
 /** Decode SSE across arbitrary UTF-8 and network boundaries. Reject truncated/error streams upstream. */
 export async function* sse(response: Response): AsyncGenerator<Json> {
   if (!response.body) throw new Error("O provedor não retornou uma resposta.");
@@ -172,6 +208,7 @@ export class ApiAgentClient implements AgentClient {
   private history: Json[] = [];
   private models: Model[] = [];
   private controller?: AbortController;
+  private visionController?: AbortController;
   private connected = false;
   private selected?: string;
   private activeModel = "";
@@ -520,18 +557,20 @@ export class ApiAgentClient implements AgentClient {
           .flatMap((c) => (c.type === "inputText" ? [c.text] : []))
           .join("\n"),
       });
-      const image = content.find((c) => c.type === "inputImage");
-      if (image?.type === "inputImage")
-        images.push({
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Quadro real retornado pela ferramenta inspect_frame (dados do vídeo).",
-            },
-            { type: "image_url", image_url: { url: image.imageUrl } },
-          ],
-        });
+      if (model.supportsVision === true) {
+        const image = content.find((c) => c.type === "inputImage");
+        if (image?.type === "inputImage")
+          images.push({
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Quadro real retornado pela ferramenta inspect_frame (dados do vídeo).",
+              },
+              { type: "image_url", image_url: { url: image.imageUrl } },
+            ],
+          });
+      }
     }
     this.history.push(...images);
     return tools.length > 0;
@@ -612,13 +651,21 @@ export class ApiAgentClient implements AgentClient {
         signal,
         model.supportsVision,
       );
-      const content = toolResultContent(result).map((c) => {
-        if (c.type === "inputText") return { type: "text", text: c.text };
+      const content: Json[] = [];
+      for (const item of toolResultContent(result)) {
+        if (item.type === "inputText") {
+          content.push({ type: "text", text: item.text });
+          continue;
+        }
+        if (model.supportsVision !== true) continue;
         const [, media_type, data] = /^data:(image\/[^;]+);base64,(.+)$/.exec(
-          c.imageUrl,
+          item.imageUrl,
         )!;
-        return { type: "image", source: { type: "base64", media_type, data } };
-      });
+        content.push({
+          type: "image",
+          source: { type: "base64", media_type, data },
+        });
+      }
       results.push({
         type: "tool_result",
         tool_use_id: block.id,
@@ -629,11 +676,105 @@ export class ApiAgentClient implements AgentClient {
     if (results.length) this.history.push({ role: "user", content: results });
     return results.length > 0;
   }
+  /** Narrow one-shot vision adapter used only by avatar_analyze_reference. */
+  avatarVisionProvider(providerId: string): AvatarVisionProvider | undefined {
+    const model = this.models.find((item) => item.id === providerId);
+    if (!this.connected || !model) return undefined;
+    return {
+      id: model.id,
+      supportsVision: model.supportsVision === true,
+      analyze: (request) => this.analyzeVision(model, request),
+    };
+  }
+
+  private async analyzeVision(
+    model: Model,
+    request: AvatarVisionRequest,
+  ): Promise<unknown> {
+    if (!this.connected || model.supportsVision !== true) {
+      throw new Error("O modelo selecionado não oferece visão.");
+    }
+    if (this.visionController) {
+      throw new Error("Aguarde a análise visual atual terminar.");
+    }
+    const controller = (this.visionController = new AbortController());
+    const signal = AbortSignal.any([
+      controller.signal,
+      AbortSignal.timeout(120_000),
+    ]);
+    try {
+      const dataUrl = `data:${request.image.mimeType};base64,${request.image.data}`;
+      const anthropic = this.provider === "anthropic";
+      const body: Json = anthropic
+        ? {
+            model: model.id,
+            max_tokens: 4096,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: request.prompt },
+                  {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: request.image.mimeType,
+                      data: request.image.data,
+                    },
+                  },
+                ],
+              },
+            ],
+          }
+        : {
+            model: model.id,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: request.prompt },
+                  { type: "image_url", image_url: { url: dataUrl } },
+                ],
+              },
+            ],
+          };
+      const response = await this.fetch(
+        anthropic ? "/messages" : "/chat/completions",
+        { method: "POST", body: JSON.stringify(body) },
+        signal,
+      );
+      const text = await responseTextWithLimit(response, 2_000_000);
+      const payload = JSON.parse(text) as Json;
+      const content = anthropic
+        ? (payload.content || [])
+            .filter((block: Json) => block.type === "text")
+            .map((block: Json) => block.text)
+            .join("\n")
+        : payload.choices?.[0]?.message?.content;
+      if (Array.isArray(content)) {
+        return content.map((item) => item.text || "").join("\n");
+      }
+      if (typeof content !== "string" || !content.trim()) {
+        throw new Error("O provedor não retornou uma análise visual.");
+      }
+      return content;
+    } catch (error) {
+      if (cancelled(error, signal)) throw new Error("Operação cancelada.");
+      throw error;
+    } finally {
+      if (this.visionController === controller)
+        this.visionController = undefined;
+    }
+  }
+
   async interrupt() {
     this.controller?.abort();
+    this.visionController?.abort();
   }
   disconnect() {
     this.controller?.abort();
+    this.visionController?.abort();
     this.connected = false;
     this.key = "";
     this.history = [];

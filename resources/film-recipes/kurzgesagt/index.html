@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!--
+  Formato "kurzgesagt" do CutRoom: explainer ilustrado em vetor chapado, espaço profundo, um planeta
+  sombreado e a estrela do conteúdo. Tudo desenhado num canvas por draw(t)
+  (função pura do tempo), com câmera em zoom logarítmico, pops com mola, vinheta e grão.
+-->
+<script src="brand.js"></script>
+<style>
+  @font-face { font-family: Fredoka; src: url(fonts/Fredoka.ttf); font-weight: 300 700; }
+  :root { --accent: #ff7a45; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #081d2c; }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #081d2c; font-family: Fredoka; color: #fff; }
+  #cv { position: absolute; inset: 0; width: 1080px; height: 1920px; }
+  .later { visibility: hidden; opacity: 0; }
+  .line { position: absolute; left: 0; width: 1080px; text-align: center; overflow: hidden; padding: 10px 0; }
+  .line span { display: inline-block; padding: 18px 40px 22px; border-radius: 999px; background: rgba(6,20,40,.62); font-weight: 700; max-width: 940px; overflow-wrap: anywhere; font-size: 60px; letter-spacing: 3px; text-transform: uppercase; }
+  .explain-captions { position: absolute; top: 1300px; left: 70px; width: 940px; }
+  .explain-captions .cr-cap { width: 100%; text-align: center; overflow-wrap: anywhere; padding: 18px 30px; border-radius: 32px; background: rgba(6,20,40,.78); font: 700 58px Fredoka, sans-serif; }
+  .gold { color: #ffd98a; } .teal { color: #8fd8e6; }
+  .l1 { top: 250px; } .l2 { top: 1290px; }
+  .count { position: absolute; left: 0; width: 1080px; top: 380px; text-align: center; font: 700 200px/1 Fredoka; color: #ffd98a; text-shadow: 0 10px 40px rgba(0,0,0,.4); }
+  .count small { display: block; font: 600 48px Fredoka; letter-spacing: 8px; color: #8fd8e6; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="38" data-width="1080" data-height="1920">
+  <canvas id="cv" width="1080" height="1920"></canvas>
+  <div class="line l1 later"><span class="t1"></span></div>
+  <div class="line l2 later"><span class="t2"></span></div>
+  <div class="explain-captions"></div>
+  <div class="count later"><span class="cn">0</span><small>CLIENTES</small></div>
+  <audio id="voz" data-start="0" data-duration="36" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
+  <!--MUSICA-->
+  <!--SFX-->
+  <script src="kit/gsap.min.js"></script>
+  <script src="timing.js"></script>
+  <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
+  <script>
+    (function () {
+      var p = (window.BRAND && window.BRAND.palette) || {};
+      if (p.accent) document.documentElement.style.setProperty("--accent", p.accent);
+    })();
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = CR.timing.voiceEnd > 0 ? CR.timing.voiceEnd + 2.2 : 30.2, at = CR.at;
+    var B = {
+      planeta: at("planeta", 1, 1.4), sozinho: at("sozinho", 1, 2.6), ninguem: at("ninguém", 1, 4.0), estrela: at("estrela", 1, 6.4), conteudo: at("conteúdo", 1, 7.0),
+      post: at("post", 1, 8.0), carrossel: at("carrossel", 1, 10.0), reels: at("reels", 1, 12.0), anos: at("anos-luz", 1, 13.6), visitantes: at("visitantes", 1, 15.6),
+      orbita: at("órbita", 1, 16.8), seguidores: at("seguidores", 1, 17.6), pousam: at("pousam", 1, 19.6), clientes: at("clientes", 1, 20.4), cento: at("cento", 1, 21.0),
+      foguete: at("foguete", 1, 23.0), gravidade: at("gravidade", 1, 24.0), acender: at("acender", 1, 25.4), perfil: at("perfil", 1, 28.0), D: D,
+    };
+    var scripted = document.getElementById("explicacao");
+    if (scripted) {
+      var beats = Object.keys(B).filter(function (key) { return key !== "D"; });
+      var words = CR.timing.words;
+      var spokenEnd = CR.timing.voiceEnd || D - 2.2;
+      beats.forEach(function (key, index) {
+        var fraction = (index + 1) / (beats.length + 1);
+        var word = words[Math.floor(fraction * words.length)];
+        B[key] = word ? word.start : spokenEnd * fraction;
+      });
+    }
+    // Every line of text rises through a clip on an ease-out-quint.
+    function say(sel, txt, cls, t, out) {
+      tl.call(function () { var el = document.querySelector(sel); el.textContent = txt; el.className = sel.slice(1) + " " + (cls || ""); }, null, t);
+      tl.set(sel === ".t1" ? ".l1" : ".l2", { autoAlpha: 1 }, t);
+      tl.fromTo(sel, { yPercent: 130 }, { yPercent: 0, duration: 0.45, ease: "quint.out" }, t);
+      if (out) tl.to(sel, { yPercent: -130, duration: 0.3, ease: "quint.in" }, out - 0.3);
+    }
+    if (scripted) {
+      CR.captions(tl, {
+        el: ".explain-captions", maxWords: 4, ink: "#ffffff", grey: "#8fd8e6",
+        until: spokenEnd + 0.35,
+      });
+    } else {
+      say(".t1", "E se o seu SaaS", "", 0.05, B.planeta + 0.9);
+      say(".t2", "fosse um planeta", "gold", B.planeta - 0.4, B.sozinho);
+      say(".t2", "sozinho no escuro", "teal", B.sozinho, B.estrela - 0.2);
+      say(".t1", "o conteúdo", "gold", B.conteudo, B.carrossel - 0.1);
+      say(".t2", "carrossel: órbita perto", "", B.carrossel, B.reels - 0.1);
+      say(".t2", "reels: luz que vai longe", "teal", B.reels, B.visitantes - 0.1);
+      say(".t1", "visitantes", "teal", B.visitantes, B.orbita - 0.1);
+      say(".t1", "seguidores", "gold", B.seguidores - 0.2, B.pousam - 0.1);
+      CR.pop(tl, ".count", B.clientes - 0.1);
+      CR.count(tl, ".cn", 0, 112, B.clientes, Math.max(0.6, B.cento + 1.0 - B.clientes));
+      CR.exit(tl, ".count", B.foguete - 0.1);
+      say(".t2", "sem foguete pago", "", B.foguete, B.gravidade - 0.05);
+      say(".t2", "só gravidade", "gold", B.gravidade, B.acender - 0.1);
+      say(".t1", "acenda a sua estrela", "gold", B.acender, D);
+      CR.profileCTA(tl, B.perfil - 1.0, { y: 1180, ink: "#FFFFFF", until: D });
+    }
+
+    // ---------- the illustration ----------
+    var g = document.getElementById("cv").getContext("2d");
+    var ACC = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#ff7a45";
+    function rnd(n) { var s = n * 9301 + 49297; return function () { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
+    var clamp = function (x, a, b) { return Math.max(a, Math.min(b, x)); };
+    var easeIO = function (x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+    // Damped spring pop (0 → 1 with overshoot), started at t0.
+    function spring(t, t0) { var k = t - t0; if (k <= 0) return 0; return 1 - Math.exp(-k * 7) * Math.cos(k * 14); }
+    var r0 = rnd(1), STARS = [];
+    for (var i = 0; i < 260; i++) STARS.push({ x: r0() * 1600 - 260, y: r0() * 2600 - 340, r: 0.8 + r0() * 2.6, d: [0.12, 0.35, 0.6][i % 3], ph: r0() * 6.28, sp: i % 5 === 0 });
+    var NEB = [[0.2, 0.25, 520, "rgba(24,150,160,0.20)"], [0.8, 0.35, 600, "rgba(40,95,195,0.16)"], [0.3, 0.75, 560, "rgba(220,95,110,0.10)"], [0.75, 0.8, 640, "rgba(60,70,175,0.15)"], [0.5, 0.5, 700, "rgba(24,150,160,0.08)"]];
+    // Camera: zooms interpolated in log space on easeInOutCubic, with a slow breathing drift.
+    var CAM = [[0, 2.2, 600, 980], [B.planeta, 1.0, 540, 980], [B.estrela, 0.82, 470, 980], [B.carrossel, 1.25, 600, 980], [B.reels, 0.55, 760, 900], [B.visitantes, 0.9, 600, 980], [B.pousam, 1.35, 600, 960], [B.foguete, 1.0, 560, 980], [B.acender, 0.85, 520, 940]];
+    function camera(t) {
+      var i = 0; for (var k = 0; k < CAM.length; k++) if (t >= CAM[k][0]) i = k;
+      var prev = CAM[Math.max(0, i - 1)], cur = CAM[i], u = easeIO(clamp((t - cur[0]) / 1.2, 0, 1));
+      if (i === 0) prev = cur;
+      var z = Math.exp(Math.log(prev[1]) + (Math.log(cur[1]) - Math.log(prev[1])) * u);
+      return { z: z * (1 + Math.sin(t * 0.35) * 0.015), x: prev[2] + (cur[2] - prev[2]) * u, y: prev[3] + (cur[3] - prev[3]) * u };
+    }
+    var PLANET = { x: 600, y: 980, r: 210 }, STAR = { x: -120, y: 860 };
+    function background(t, c) {
+      var gr = g.createLinearGradient(0, 0, 0, 1920); gr.addColorStop(0, "#081d2c"); gr.addColorStop(1, "#102348"); g.fillStyle = gr; g.fillRect(0, 0, 1080, 1920);
+      NEB.forEach(function (n) { var px = n[0] * 1080 - (c.x - 540) * 0.08, py = n[1] * 1920 - (c.y - 960) * 0.08; var rg = g.createRadialGradient(px, py, 0, px, py, n[2]); rg.addColorStop(0, n[3]); rg.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = rg; g.fillRect(0, 0, 1080, 1920); });
+      STARS.forEach(function (s) {
+        var px = 540 + (s.x - c.x) * (0.5 + s.d) * c.z * 0.6, py = 960 + (s.y - c.y) * (0.5 + s.d) * c.z * 0.6;
+        if (px < -10 || px > 1090 || py < -10 || py > 1930) return;
+        var tw = 0.55 + 0.45 * Math.sin(t * 2.2 + s.ph);
+        g.fillStyle = "rgba(255,255,255," + (0.35 + 0.6 * tw) + ")";
+        if (s.sp) { g.fillRect(px - s.r * 2.2, py - 0.8, s.r * 4.4, 1.6); g.fillRect(px - 0.8, py - s.r * 2.2, 1.6, s.r * 4.4); }
+        g.beginPath(); g.arc(px, py, s.r * 0.8, 0, 6.29); g.fill();
+      });
+    }
+    function sun(t) {
+      var on = spring(t, B.estrela), r = 260 * on;
+      if (r < 1) return;
+      var flash = clamp(1 - (t - B.estrela) * 2.2, 0, 1);
+      [2.1, 1.76, 1.48, 1.23].forEach(function (k, j) { g.fillStyle = "rgba(255,200,87," + (0.05 + j * 0.03) + ")"; g.beginPath(); g.arc(STAR.x, STAR.y, r * k, 0, 6.29); g.fill(); });
+      g.save(); g.translate(STAR.x, STAR.y); g.rotate(t * 0.05);
+      for (var w = 0; w < 18; w++) { g.rotate((Math.PI * 2) / 18); g.fillStyle = "rgba(255,230,160,0.05)"; g.beginPath(); g.moveTo(0, 0); g.lineTo(r * 2.6, -r * 0.12); g.lineTo(r * 2.6, r * 0.12); g.fill(); }
+      g.restore();
+      var sg = g.createRadialGradient(STAR.x + r * 0.25, STAR.y - r * 0.25, r * 0.1, STAR.x, STAR.y, r); sg.addColorStop(0, "#fff7dc"); sg.addColorStop(0.55, "#ffc857"); sg.addColorStop(1, "#ff8f4a");
+      g.fillStyle = sg; g.beginPath(); g.arc(STAR.x, STAR.y, r, 0, 6.29); g.fill();
+      var rr = rnd(4); for (var q = 0; q < 28; q++) { var a = rr() * 6.28 + t * 0.1, d = rr() * r * 0.8; g.fillStyle = "rgba(255,247,220,0.35)"; g.beginPath(); g.arc(STAR.x + Math.cos(a) * d, STAR.y + Math.sin(a) * d, 6 + rr() * 10, 0, 6.29); g.fill(); }
+      if (flash > 0) { g.strokeStyle = "rgba(255,255,255," + flash + ")"; g.lineWidth = 10; g.beginPath(); g.arc(STAR.x, STAR.y, r + (1 - flash) * 900, 0, 6.29); g.stroke(); }
+    }
+    function planet(t) {
+      var lit = clamp((t - B.estrela) / 1.2, 0, 1), P = PLANET, r = P.r * (0.92 + 0.08 * spring(t, 0.2));
+      var halo = g.createRadialGradient(P.x - 20 * lit, P.y, r * 0.9, P.x, P.y, r * 1.35); halo.addColorStop(0, "rgba(143,216,230," + (0.12 + 0.35 * lit) + ")"); halo.addColorStop(1, "rgba(143,216,230,0)");
+      g.fillStyle = halo; g.beginPath(); g.arc(P.x, P.y, r * 1.35, 0, 6.29); g.fill();
+      g.save(); g.beginPath(); g.arc(P.x, P.y, r, 0, 6.29); g.clip();
+      var oc = g.createLinearGradient(P.x - r, P.y - r, P.x + r, P.y + r); oc.addColorStop(0, "#4dc7eb"); oc.addColorStop(1, "#1a66b8"); g.fillStyle = oc; g.fillRect(P.x - r, P.y - r, 2 * r, 2 * r);
+      var rr = rnd(12), spin = t * 22;
+      for (var k = 0; k < 9; k++) { var lx = ((rr() * 3 * r + spin) % (3 * r)) - 1.5 * r, ly = (rr() - 0.5) * 1.5 * r, s = 40 + rr() * 70; g.fillStyle = k % 3 ? "#5fc47a" : "#48ad6b"; g.beginPath(); g.ellipse(P.x + lx, P.y + ly, s * 1.4, s * 0.8, rr() * 3, 0, 6.29); g.fill(); if (k % 4 === 0) { g.fillStyle = "#f5c75f"; g.beginPath(); g.ellipse(P.x + lx + 12, P.y + ly, s * 0.5, s * 0.3, 0, 0, 6.29); g.fill(); } }
+      g.fillStyle = "#f1f8ff"; g.fillRect(P.x - r, P.y - r, 2 * r, r * 0.16); g.fillRect(P.x - r, P.y + r * 0.86, 2 * r, r * 0.2);
+      // Night side with city lights; the terminator sweeps across when the star ignites.
+      var nx = P.x + r * (0.35 + 1.25 * lit), nr = r * 1.45;
+      var ng = g.createRadialGradient(nx, P.y, 0, nx, P.y, nr);
+      ng.addColorStop(0, "rgba(8,14,44,0.94)"); ng.addColorStop(0.8, "rgba(10,18,56,0.9)"); ng.addColorStop(0.9, "rgba(255,120,110,0.28)"); ng.addColorStop(1, "rgba(255,120,110,0)");
+      g.fillStyle = "rgba(8,14,44," + (0.94 * (1 - lit)) + ")"; g.fillRect(P.x - r, P.y - r, 2 * r, 2 * r);
+      g.fillStyle = ng; g.beginPath(); g.arc(nx, P.y, nr, 0, 6.29); g.fill();
+      var cr = rnd(30); for (var c = 0; c < 70; c++) { var cx = P.x + (cr() - 0.5) * 2 * r, cy = P.y + (cr() - 0.5) * 2 * r, dx = cx - nx, dy = cy - P.y; if (lit < 0.02 || dx * dx + dy * dy < nr * nr * 0.6) { g.fillStyle = "rgba(255,210,122," + (0.5 + 0.5 * Math.sin(t * 3 + c)) + ")"; g.fillRect(cx, cy, 3, 3); } }
+      g.restore();
+      g.strokeStyle = "rgba(143,216,230," + (0.25 + 0.4 * lit) + ")"; g.lineWidth = 5; g.beginPath(); g.arc(P.x, P.y, r, 0, 6.29); g.stroke();
+    }
+    function orbitRings(t) {
+      var a = clamp((t - B.ninguem) * 2, 0, 1) * (t < B.carrossel ? 1 : 0.6);
+      if (a <= 0) return;
+      g.setLineDash([18, 22]); g.strokeStyle = "rgba(143,216,230," + 0.35 * a + ")"; g.lineWidth = 4;
+      [1.7, 2.3].forEach(function (k) { g.beginPath(); g.ellipse(PLANET.x, PLANET.y, PLANET.r * k, PLANET.r * k * 0.36, -0.2, 0, 6.29); g.stroke(); });
+      g.setLineDash([]);
+    }
+    function photons(t) {
+      if (t < B.post || t > B.reels + 2) return;
+      for (var i = 0; i < 6; i++) { var ph = ((t - B.post) * 0.9 + i / 6) % 1, x = STAR.x + 260 + ph * (PLANET.x - PLANET.r - STAR.x - 260), y = STAR.y + 40 + Math.sin(i * 2) * 50 + (PLANET.y - STAR.y) * ph * 0.6; var lg = g.createLinearGradient(x - 90, y, x, y); lg.addColorStop(0, "rgba(255,217,138,0)"); lg.addColorStop(1, "rgba(255,247,220,0.9)"); g.strokeStyle = lg; g.lineWidth = 6; g.beginPath(); g.moveTo(x - 90, y); g.lineTo(x, y); g.stroke(); }
+    }
+    function cardMoons(t) {
+      if (t < B.carrossel) return;
+      var on = spring(t, B.carrossel);
+      for (var i = 0; i < 5; i++) {
+        var ang = t * 0.9 + (i / 5) * 6.28, x = PLANET.x + Math.cos(ang) * PLANET.r * 1.7, y = PLANET.y + Math.sin(ang) * PLANET.r * 0.6;
+        if (Math.sin(ang) < -0.2) continue; // behind the planet
+        g.save(); g.translate(x, y); g.rotate(Math.sin(ang) * 0.2); g.scale(on, on);
+        g.fillStyle = ["#ffffff", "#ffd98a", ACC, "#8fd8e6", "#ffffff"][i]; g.beginPath(); g.roundRect(-34, -42, 68, 84, 12); g.fill();
+        g.fillStyle = "rgba(6,20,40,0.6)"; g.fillRect(-22, -26, 44, 8); g.fillRect(-22, -12, 30, 6);
+        g.restore();
+      }
+    }
+    function beam(t) {
+      if (t < B.reels || t > B.visitantes + 1) return;
+      var k = clamp((t - B.reels) / 1.4, 0, 1), x0 = STAR.x + 200, y0 = STAR.y - 120, x1 = 2400, y1 = 120;
+      var lg = g.createLinearGradient(x0, y0, x1, y1); lg.addColorStop(0, "rgba(255,79,163,0.9)"); lg.addColorStop(1, "rgba(255,79,163,0)");
+      g.strokeStyle = lg; g.lineWidth = 18; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k); g.stroke();
+      var fr = rnd(44); for (var i = 0; i < 6; i++) { var px = 1200 + fr() * 1100, py = 150 + fr() * 700, lit = t > B.anos && px - x0 < (x1 - x0) * k; g.fillStyle = lit ? "#ffd98a" : "#3b4f7a"; g.beginPath(); g.arc(px, py, 18 + fr() * 26, 0, 6.29); g.fill(); }
+    }
+    function visitors(t) {
+      if (t < B.visitantes) return;
+      var vr = rnd(77);
+      for (var i = 0; i < 26; i++) {
+        var sx = 1300 + vr() * 400, sy = vr() * 1900, delay = vr() * 1.2, k = clamp((t - B.visitantes - delay) / 1.6, 0, 1), role = i % 13 === 0 ? 2 : i % 3 === 0 ? 1 : 0;
+        var orbitR = PLANET.r * (1.6 + (i % 4) * 0.18), ang = t * (0.8 + (i % 5) * 0.1) + i;
+        var ox = PLANET.x + Math.cos(ang) * orbitR, oy = PLANET.y + Math.sin(ang) * orbitR * 0.4;
+        var x = sx + (ox - sx) * easeIO(k), y = sy + (oy - sy) * easeIO(k);
+        if (role === 2 && t > B.pousam) { var l = clamp((t - B.pousam - (i % 3) * 0.3) / 0.8, 0, 1); x += (PLANET.x + Math.cos(i) * PLANET.r * 0.95 - x) * l; y += (PLANET.y - Math.abs(Math.sin(i)) * PLANET.r * 0.95 - y) * l; if (l >= 1) { g.fillStyle = "rgba(255,217,138,0.5)"; g.beginPath(); g.arc(x, y, 18 + Math.sin(t * 6 + i) * 4, 0, 6.29); g.fill(); } }
+        g.fillStyle = role === 2 ? "#ffd98a" : role === 1 && t > B.orbita ? "#8fd8e6" : "#ffffff";
+        g.beginPath(); g.arc(x, y, role === 2 ? 11 : 7, 0, 6.29); g.fill();
+      }
+    }
+    function gravity(t) {
+      if (t < B.gravidade - 0.2) return;
+      var a = clamp((t - B.gravidade) * 1.5, 0, 0.6);
+      g.strokeStyle = "rgba(143,216,230," + a + ")"; g.lineWidth = 3;
+      for (var i = -6; i <= 6; i++) { g.beginPath(); for (var x = 0; x <= 1080; x += 20) { var dx = x - PLANET.x, base = PLANET.y + 360 + i * 60, dy = base - PLANET.y, dist = Math.sqrt(dx * dx + dy * dy), sink = 90000 / (dist + 120), y = base + sink * 0.9; if (x === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.stroke(); }
+    }
+    function focusPulse(t, beat, x, y, color) {
+      var progress = (t - beat) / 0.85;
+      if (progress < 0 || progress >= 1) return;
+      g.save();
+      g.globalAlpha = (1 - progress) * 0.65;
+      g.strokeStyle = color;
+      g.lineWidth = 5 * (1 - progress) + 1;
+      g.beginPath();
+      g.ellipse(x, y, 50 + progress * 280, 25 + progress * 145, 0, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+    }
+    function finish(t) {
+      var vg = g.createRadialGradient(540, 960, 600, 540, 960, 1200); vg.addColorStop(0, "rgba(4,4,20,0)"); vg.addColorStop(1, "rgba(4,4,20,0.45)"); g.fillStyle = vg; g.fillRect(0, 0, 1080, 1920);
+      var gr = rnd(Math.floor(t * 24) + 3); g.fillStyle = "rgba(255,255,255,0.05)"; for (var i = 0; i < 900; i++) g.fillRect(gr() * 1080, gr() * 1920, 2, 2);
+    }
+    function draw(t) {
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      var c = camera(t);
+      background(t, c);
+      g.setTransform(c.z, 0, 0, c.z, 540 - c.x * c.z, 960 - c.y * c.z);
+      gravity(t); sun(t); beam(t); orbitRings(t); photons(t); planet(t); cardMoons(t); visitors(t);
+      focusPulse(t, B.carrossel, PLANET.x, PLANET.y, "#ffd98a");
+      focusPulse(t, B.orbita, PLANET.x, PLANET.y, "#8fd8e6");
+      focusPulse(t, B.pousam, PLANET.x, PLANET.y, "#ffd98a");
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      finish(t);
+    }
+    var st = { t: 0 };
+    tl.to(st, { t: D, duration: D, ease: "none", onUpdate: function () { draw(st.t); } }, 0);
+    draw(0);
+    tl.set({}, {}, D);
+    // Motion kit, kept gentle for the explainer: light where the star turns on, particles at the payoffs.
+    var FX = CRM.overlay(tl, D, [
+      { t: B.estrela, x: 330, y: 820, kind: "spark", n: 50, spread: 900, colors: ["#ffd35c", "#ffffff"], seed: 3 },
+      { t: B.clientes, x: 540, y: 900, kind: "confetti", n: 80, spread: 1200, seed: 5 },
+      { t: B.acender, x: 330, y: 820, kind: "spark", n: 60, spread: 1000, colors: ["#ffd35c", "#ffffff"], seed: 7 },
+    ], { flashColor: "#fff6d6" });
+    CRM.flash(tl, FX.flash, B.estrela, 0.55);
+    CRM.punch(tl, "#film", B.cento, 1.05, 0.5);
+    CRM.flash(tl, FX.flash, B.acender, 0.45);
+    CRM.post(tl, D, { film: "#film", leaks: [B.estrela, B.clientes, B.acender], grain: 0.06, warm: "#ffc36b", cool: "#4fd1c5" });
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>

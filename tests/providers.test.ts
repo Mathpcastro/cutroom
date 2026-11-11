@@ -39,6 +39,48 @@ const options = (
   ) => Promise<unknown> = vi.fn(async () => ({ clips: [] })),
 ) => ({ workspace: ".", onText: vi.fn(), onTool, onActivity: vi.fn() });
 
+async function visionProvider(response: Response) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      url.endsWith("/models")
+        ? new Response(
+            JSON.stringify({
+              data: [
+                { id: "vision-stream", input_modalities: ["text", "image"] },
+              ],
+            }),
+          )
+        : response,
+    ),
+  );
+  const client = new ApiAgentClient(options(), {
+    provider: "openai-compatible",
+    baseUrl: "http://127.0.0.1:1234/v1",
+  });
+  await client.connect();
+  return {
+    client,
+    provider: client.avatarVisionProvider("vision-stream")!,
+  };
+}
+
+function analyzeReference(provider: {
+  analyze(request: {
+    prompt: string;
+    image: { mimeType: "image/png"; data: string };
+  }): Promise<unknown>;
+}) {
+  return provider.analyze({
+    prompt: "Analise a referência",
+    image: { mimeType: "image/png", data: "aW1hZ2Vt" },
+  });
+}
+
+function openAIVisionPayload(content: string) {
+  return JSON.stringify({ choices: [{ message: { content } }] });
+}
+
 describe("provider transport and editing", () => {
   it("maps actual OpenRouter reasoning metadata and mandatory defaults without inventing high effort", () => {
     const models = mapApiModels("openrouter", [
@@ -446,6 +488,194 @@ describe("provider transport and editing", () => {
     expect(callbacks.onText).toHaveBeenCalledWith("Projeto lido");
     client.disconnect();
   });
+  it.each([false, true])(
+    "gates avatar_render images by supportsVision=%s in OpenAI-compatible history",
+    async (supportsVision) => {
+      const bodies: any[] = [];
+      const avatarImage = "data:image/jpeg;base64,YXZhdGFyLWpwZWc=";
+      let round = 0;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string, init: RequestInit) => {
+          if (url.endsWith("/models")) {
+            return new Response(
+              JSON.stringify({
+                data: [
+                  {
+                    id: "avatar-model",
+                    input_modalities: supportsVision
+                      ? ["text", "image"]
+                      : ["text"],
+                  },
+                ],
+              }),
+            );
+          }
+          bodies.push(JSON.parse(String(init.body)));
+          return stream(
+            round++ === 0
+              ? [
+                  delta(
+                    {
+                      tool_calls: [
+                        {
+                          index: 0,
+                          id: "render",
+                          function: {
+                            name: "avatar_render",
+                            arguments:
+                              '{"avatarId":"videosell-presenter","revision":1,"sheets":["neutral"]}',
+                          },
+                        },
+                      ],
+                    },
+                    "tool_calls",
+                  ),
+                ]
+              : [delta({ content: "Render concluído" }, "stop")],
+          );
+        }),
+      );
+      const callbacks = options(
+        vi.fn(async () => ({
+          jobId: "render-known",
+          complete: true,
+          files: [{ sheet: "neutral", png: "native.png" }],
+          imageUrl: avatarImage,
+        })),
+      );
+      const client = new ApiAgentClient(callbacks, {
+        provider: "openai-compatible",
+        baseUrl: "http://127.0.0.1:1234/v1",
+      });
+      await client.connect();
+      await client.send("Renderize o avatar", "avatar-model");
+
+      const serialized = JSON.stringify(bodies[1]);
+      expect(callbacks.onTool).toHaveBeenCalledWith("avatar_render", {
+        avatarId: "videosell-presenter",
+        revision: 1,
+        sheets: ["neutral"],
+      });
+      expect(serialized).toContain("native.png");
+      expect(serialized).toContain("render-known");
+      if (supportsVision) {
+        expect(serialized).toContain(avatarImage);
+        expect(serialized).toContain("image_url");
+      } else {
+        expect(serialized).not.toContain(avatarImage);
+        expect(serialized).not.toContain("image_url");
+        expect(serialized).not.toContain("base64");
+      }
+      client.disconnect();
+    },
+  );
+  it.each([false, true])(
+    "gates avatar_render images by supportsVision=%s in Anthropic tool results",
+    async (supportsVision) => {
+      const bodies: any[] = [];
+      const avatarImage = "data:image/jpeg;base64,YXZhdGFyLWpwZWc=";
+      let round = 0;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string, init: RequestInit) => {
+          if (url.includes("/models")) {
+            return new Response(
+              JSON.stringify({
+                data: [
+                  {
+                    id: "claude-avatar",
+                    capabilities: {
+                      image_input: { supported: supportsVision },
+                    },
+                  },
+                ],
+              }),
+            );
+          }
+          bodies.push(JSON.parse(String(init.body)));
+          return stream(
+            round++ === 0
+              ? [
+                  {
+                    type: "content_block_start",
+                    index: 0,
+                    content_block: {
+                      type: "tool_use",
+                      id: "render",
+                      name: "avatar_render",
+                      input: {},
+                    },
+                  },
+                  {
+                    type: "content_block_delta",
+                    index: 0,
+                    delta: {
+                      type: "input_json_delta",
+                      partial_json:
+                        '{"avatarId":"videosell-presenter","revision":1,"sheets":["neutral"]}',
+                    },
+                  },
+                  {
+                    type: "message_delta",
+                    delta: { stop_reason: "tool_use" },
+                  },
+                  { type: "message_stop" },
+                ]
+              : [
+                  {
+                    type: "content_block_start",
+                    index: 0,
+                    content_block: { type: "text", text: "" },
+                  },
+                  {
+                    type: "content_block_delta",
+                    index: 0,
+                    delta: {
+                      type: "text_delta",
+                      text: "Render concluído",
+                    },
+                  },
+                  {
+                    type: "message_delta",
+                    delta: { stop_reason: "end_turn" },
+                  },
+                  { type: "message_stop" },
+                ],
+          );
+        }),
+      );
+      const callbacks = options(
+        vi.fn(async () => ({
+          jobId: "render-known",
+          complete: true,
+          files: [{ sheet: "neutral", png: "native.png" }],
+          imageUrl: avatarImage,
+        })),
+      );
+      const client = new ApiAgentClient(callbacks, { provider: "anthropic" });
+      await client.connect("test-key");
+      await client.send("Renderize o avatar", "claude-avatar");
+
+      const serialized = JSON.stringify(bodies[1]);
+      expect(callbacks.onTool).toHaveBeenCalledWith("avatar_render", {
+        avatarId: "videosell-presenter",
+        revision: 1,
+        sheets: ["neutral"],
+      });
+      expect(serialized).toContain("native.png");
+      expect(serialized).toContain("render-known");
+      if (supportsVision) {
+        expect(serialized).toContain("YXZhdGFyLWpwZWc=");
+        expect(serialized).toContain('"type":"image"');
+      } else {
+        expect(serialized).not.toContain("YXZhdGFyLWpwZWc=");
+        expect(serialized).not.toContain('"type":"image"');
+        expect(serialized).not.toContain("base64");
+      }
+      client.disconnect();
+    },
+  );
   it("aborts a real open HTTP stream and completes the same activity as cancelled", async () => {
     let started!: () => void;
     const ready = new Promise<void>((resolve) => (started = resolve));
@@ -495,6 +725,70 @@ describe("provider transport and editing", () => {
     expect(JSON.stringify(bodies[1])).not.toContain("partial");
     client.disconnect();
   });
+  it("cancels an incremental vision response as soon as its chunks exceed 2 MB", async () => {
+    const chunks = [new Uint8Array(1_500_000), new Uint8Array(600_000)];
+    let reads = 0;
+    const cancel = vi.fn(async () => undefined);
+    const reader = {
+      read: vi.fn(async () =>
+        reads < chunks.length
+          ? { done: false, value: chunks[reads++] }
+          : { done: true, value: undefined },
+      ),
+      cancel,
+    };
+    const text = vi.fn(async () => "x".repeat(2_000_001));
+    const response = {
+      ok: true,
+      status: 200,
+      body: { getReader: () => reader },
+      text,
+    } as unknown as Response;
+    const { client, provider } = await visionProvider(response);
+
+    await expect(analyzeReference(provider)).rejects.toThrow(
+      "Resposta de visão acima do limite.",
+    );
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(text).not.toHaveBeenCalled();
+    client.disconnect();
+  });
+  it("accepts a streamed vision body exactly at the 2 MB limit", async () => {
+    const wrapper = openAIVisionPayload("");
+    const body = openAIVisionPayload("x".repeat(2_000_000 - wrapper.length));
+    expect(Buffer.byteLength(body)).toBe(2_000_000);
+    const bytes = new TextEncoder().encode(body);
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(bytes.subarray(0, 17));
+          controller.enqueue(bytes.subarray(17));
+          controller.close();
+        },
+      }),
+    );
+    const { client, provider } = await visionProvider(response);
+
+    await expect(analyzeReference(provider)).resolves.toHaveLength(
+      2_000_000 - wrapper.length,
+    );
+    client.disconnect();
+  });
+  it("keeps vision compatibility when the response has no stream reader", async () => {
+    const response = {
+      ok: true,
+      status: 200,
+      body: undefined,
+      text: vi.fn(async () => openAIVisionPayload("análise compatível")),
+    } as unknown as Response;
+    const { client, provider } = await visionProvider(response);
+
+    await expect(analyzeReference(provider)).resolves.toBe(
+      "análise compatível",
+    );
+    expect(response.text).toHaveBeenCalledTimes(1);
+    client.disconnect();
+  });
 });
 
 describe("Claude loopback bridge", () => {
@@ -526,6 +820,69 @@ describe("Claude loopback bridge", () => {
       "inspect_frame",
       "create_blank_canvas",
       "import_media",
+      "add_audio",
+      "list_voices",
+      "add_voiceover",
+      "search_music",
+      "add_music",
+      "get_brand",
+      "list_formats",
+      "get_format_guide",
+      "render_frame",
+      "job_status",
+      "review_video",
+      "create_film",
+      "update_film_avatar",
+      "list_films",
+      "film_voiceover",
+      "film_asset",
+      "write_film_file",
+      "read_film_file",
+      "film_capture_page",
+      "analyze_reference",
+      "list_effects",
+      "film_add_effect",
+      "film_check",
+      "film_stills",
+      "film_review",
+      "open_studio",
+      "instagram_accounts",
+      "schedule_reel",
+      "schedule_reels_daily",
+      "cancel_scheduled_reel",
+      "publish_reel",
+      "render_film",
+      "film_dialogue",
+      "series_list",
+      "series_create",
+      "series_get",
+      "series_update",
+      "series_delete",
+      "character_upsert",
+      "episode_create",
+      "episode_write_script",
+      "episode_update",
+      "episode_generate",
+      "profile_create",
+      "profile_get",
+      "profile_list",
+      "profile_update",
+      "profile_duplicate",
+      "profile_delete",
+      "profile_select",
+      "profile_list_projects",
+      "avatar_get_contract",
+      "avatar_create_candidate",
+      "avatar_render",
+      "avatar_validate",
+      "avatar_review",
+      "avatar_select_candidate",
+      "avatar_revise_part",
+      "avatar_save_revision",
+      "avatar_compare_revisions",
+      "avatar_cancel",
+      "avatar_import_reference",
+      "avatar_analyze_reference",
     ]);
     expect(
       (await (await rpc("tools/call", { name: "shell", arguments: {} })).json())

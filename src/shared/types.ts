@@ -1,5 +1,27 @@
 import type { CaptionSettings } from "./captions";
 import type { AgentProvider } from "./providers";
+import type { AvatarPackage } from "./avatar";
+import type {
+  AvatarCandidate,
+  AvatarRenderedRevision,
+  AvatarRevisedCandidate,
+  AvatarSelectedCandidate,
+  AvatarValidationResult,
+  ReviewCandidateInput,
+  ReviewedCandidate,
+  RevisePartInput,
+} from "../../electron/core/avatar-service";
+import type { LocalAvatarStarters } from "../../electron/core/avatar-creator";
+import type { AvatarProofSheet } from "../../electron/core/avatar-render";
+import type {
+  AvatarReferenceAsset,
+} from "../../electron/core/avatar-store";
+import type { AvatarReferenceAnalysis } from "../../electron/core/avatar-vision";
+import type {
+  CreateStudioProfileInput,
+  StudioProfile,
+  StudioProfilePatch,
+} from "./profile";
 export type ReasoningEffort =
   "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export interface AgentActivity {
@@ -89,6 +111,42 @@ export interface MotionScene {
   accent?: string;
   background?: string;
 }
+export type AudioKind = "voice" | "music" | "sfx";
+/** Word inside an audio file, in FILE seconds (before track.offset/start are applied). */
+export interface AudioWord {
+  text: string;
+  start: number;
+  end: number;
+}
+export interface AudioTrack {
+  id: string;
+  kind: AudioKind;
+  name: string;
+  path: string;
+  /** Timeline second where the track starts. Tracks are not moved by video cuts. */
+  start: number;
+  /** Second inside the file where playback starts. */
+  offset?: number;
+  /** Seconds played on the timeline (with loop, may exceed the file). */
+  duration: number;
+  fileDuration: number;
+  /** Volume change in dB. */
+  gain?: number;
+  fadeIn?: number;
+  fadeOut?: number;
+  loop?: boolean;
+  /** Music only: lower it while voice/clip audio plays. Default true for music. */
+  duck?: boolean;
+  words?: AudioWord[];
+  source?: {
+    provider: string;
+    title?: string;
+    author?: string;
+    license?: string;
+    url?: string;
+    voice?: string;
+  };
+}
 export interface Project {
   version: 1;
   id: string;
@@ -100,6 +158,7 @@ export interface Project {
   words: Word[];
   overlays: Overlay[];
   motions?: MotionScene[];
+  audio?: AudioTrack[];
   settings: {
     captions: boolean;
     normalize: boolean;
@@ -186,6 +245,8 @@ export type CommandName =
   | "overlay"
   | "motion"
   | "delete_motion"
+  | "audio"
+  | "delete_audio"
   | "remove_silence"
   | "remove_fillers"
   | "preset"
@@ -196,12 +257,93 @@ export interface EditCommand {
   name: CommandName;
   args: Record<string, unknown>;
 }
-export interface EditorEvent {
-  type: "state";
-  state: AppSnapshot;
+export type StudioTab = "start" | "brand" | "voices" | "films" | "publish";
+export type EditorEvent = { type: "state"; state: AppSnapshot } | { type: "studio"; tab: StudioTab };
+export interface StudioProfilesAPI {
+  list(): Promise<StudioProfile[]>;
+  getActive(): Promise<StudioProfile | undefined>;
+  listProjects(profileId: string): Promise<string[]>;
+  get(profileId: string): Promise<StudioProfile>;
+  create(input: CreateStudioProfileInput): Promise<StudioProfile>;
+  update(profileId: string, patch: StudioProfilePatch): Promise<StudioProfile>;
+  duplicate(
+    profileId: string,
+    input: Pick<CreateStudioProfileInput, "name" | "handle">,
+  ): Promise<StudioProfile>;
+  select(profileId: string): Promise<void>;
+  remove(profileId: string, confirmation: "DELETE"): Promise<void>;
+}
+export interface AvatarCreatorAPI {
+  createStarters(input: {
+    avatarId: string;
+    description: string;
+  }): Promise<LocalAvatarStarters>;
+  getRevision(input: {
+    avatarId: string;
+    revision: number;
+  }): Promise<{
+    package: AvatarPackage;
+    revision: number;
+    hash: string;
+    path: string;
+    candidate: AvatarCandidate;
+  }>;
+  getCandidate(input: {
+    avatarId: string;
+    candidateId: string;
+  }): Promise<AvatarCandidate>;
+  listRevisions(input: {
+    avatarId: string;
+  }): Promise<Array<{ revision: number; hash: string; approved: boolean }>>;
+  readArtifact(input: {
+    avatarId: string;
+    revision: number;
+    path: string;
+  }): Promise<{ path: string; mimeType: "image/png"; dataUrl: string }>;
+  selectCandidate(input: {
+    avatarId: string;
+    candidateId: string;
+  }): Promise<AvatarSelectedCandidate>;
+  render(input: {
+    avatarId: string;
+    revision: number;
+    sheets: AvatarProofSheet[];
+  }): Promise<AvatarRenderedRevision>;
+  renderJobId(input: {
+    avatarId: string;
+    revision: number;
+    sheets: AvatarProofSheet[];
+  }): Promise<string>;
+  validate(input: {
+    avatarId: string;
+    revision: number;
+  }): Promise<AvatarValidationResult>;
+  revisePart(input: RevisePartInput): Promise<AvatarRevisedCandidate>;
+  review(input: ReviewCandidateInput): Promise<ReviewedCandidate>;
+  saveRevision(input: {
+    avatarId: string;
+    candidateId: string;
+  }): Promise<AvatarSelectedCandidate>;
+  cancel(jobId: string): Promise<boolean>;
+  importReference(input: {
+    avatarId: string;
+    path: string;
+  }): Promise<AvatarReferenceAsset>;
+  analyzeReference(input: {
+    avatarId: string;
+    assetId: string;
+    providerId: string;
+    prompt: string;
+  }): Promise<AvatarReferenceAnalysis & {
+    avatarId: string;
+    assetId: string;
+    providerId: string;
+  }>;
 }
 export interface CutroomAPI {
   request<T = AppSnapshot>(method: string, params?: unknown): Promise<T>;
+  studioProfiles: StudioProfilesAPI;
+  avatarCreator: AvatarCreatorAPI;
   onEvent(callback: (event: EditorEvent) => void): () => void;
   mediaUrl(path: string): string;
   pathForFile?(file: File): string;

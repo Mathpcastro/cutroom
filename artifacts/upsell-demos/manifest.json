@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-11-09T17:57:15.692Z",
+  "avatar": {
+    "avatarId": "expert",
+    "revision": 2,
+    "hash": "13d20afc34a76ceff75f188b825a8fac8a7579ca76f41f1f98482c232964ab95"
+  },
+  "renderer": "FilmStudio + Films.setVoice + renderFilm",
+  "demos": [
+    {
+      "name": "professor",
+      "filmId": "upsell-professor-1794247035757",
+      "duration": 31.2,
+      "originalAudioMd5": "MD5=f9e92aac7c30066d6c1c14d7554ff98c",
+      "deliveredAudioMd5": "MD5=f9e92aac7c30066d6c1c14d7554ff98c",
+      "videoSha256": "1bc2844a500a63e0144757a980572e789e2839888ab5af6a755f1457c88a74c5",
+      "posterSha256": "dfe85971083fb7365f6b2953ec4e5cf9db7191a9c8b815bffb29e5072fd50899",
+      "reviewFrames": [
+        0.5,
+        5.88,
+        11.76,
+        17.639999999999997,
+        23.52,
+        29.2
+      ]
+    },
+    {
+      "name": "ui-motion",
+      "filmId": "upsell-ui-motion-1794247125780",
+      "duration": 19.1,
+      "originalAudioMd5": "MD5=69ef269a49f6f0a5d148eded5a258bde",
+      "deliveredAudioMd5": "MD5=69ef269a49f6f0a5d148eded5a258bde",
+      "videoSha256": "20a1aef8871925cc310fd0100566e7f0e15919639c945fb544d6f3ba8668051c",
+      "posterSha256": "d417bf60870df96a9cc3adb574ce15a3b666630bdaaa076cc26f04c2665809e1",
+      "reviewFrames": [
+        0.5,
+        3.4600000000000004,
+        6.920000000000001,
+        10.38,
+        13.840000000000002,
+        17.1
+      ]
+    }
+  ]
+}

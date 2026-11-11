@@ -1,9 +1,27 @@
-# Marca CutRoom
+# Marca Videosell
 
-A marca usa a mesma geometria da landing: duas barras de larguras iguais, alturas 15/21 e inclinação de −13°. Os dados em `src/shared/branding.ts` são compartilhados pelo componente da interface e pelo gerador dos ícones.
+A identidade **Palco digital** usa o nome `Videosell` e a assinatura `Avatares de IA para apresentar e vender seu produto.`. `src/shared/branding.ts` é a fonte única do nome, da assinatura, do viewBox `0 0 64 64`, da paleta e do traço do `V`. `BrandMark` e o gerador usam a mesma geometria: quadrado violeta arredondado, traço branco de 7 px com extremidades arredondadas e ponto lima em `(46, 18)`.
 
-`npx tsx tools/generate-brand.ts` gera SVG, PNG e ICO em `resources/branding`, além do favicon em `public/`. É necessário um Chromium instalado pelo Playwright; `--browser <caminho-do-executavel>` permite reutilizar um navegador já disponível. O ICO inclui tamanhos 16, 24, 32, 48, 64, 128 e 256.
+## Geração determinística
 
-A interface herda a cor do tema. O ícone do Windows usa a marca escura sobre um fundo claro arredondado para manter contraste na área de trabalho e na barra de tarefas. A tipografia da marca é Manrope; a licença está em `resources/licenses/Manrope-OFL.txt`.
+Execute na raiz do projeto:
 
-O empacotador mantém a edição dos recursos do executável habilitada para aplicar os ícones, com `signExecutable: false` enquanto não houver assinatura digital.
+```sh
+npx tsx tools/generate-brand.ts
+```
+
+O comando valida as fontes e licenças locais e gera, a partir da mesma geometria e das mesmas cores:
+
+- `resources/branding/cutroom-mark.svg` e `cutroom-icon.svg`;
+- o favicon `public/cutroom.svg`;
+- PNGs de 16, 24, 32, 48, 64, 128, 256, 512 e 1024 px;
+- `icon.ico`, com PNGs de 16, 24, 32, 48, 64, 128 e 256 px;
+- `icon.icns`, com as entradas `icp4`, `icp5`, `icp6`, `ic07`–`ic10` e `ic11`–`ic14` preenchidas por esses PNGs.
+
+O gerador usa o Chromium do Playwright quando disponível e, como fallback, procura Chrome/Chromium/Edge instalado no sistema. `--browser <caminho-do-executavel>` ou `CHROMIUM_EXECUTABLE_PATH` seleciona um navegador explicitamente. Os arquivos gerados não contêm data, hora ou caminho da máquina; uma nova execução com os mesmos fontes e navegador preserva os bytes.
+
+## Fontes locais
+
+Sora e Inter são distribuídas com o aplicativo em `resources/fonts/Sora-Variable.ttf` e `resources/fonts/Inter-Variable.ttf`. Suas licenças SIL OFL 1.1 estão em `resources/licenses/Sora-OFL.txt` e `resources/licenses/Inter-OFL.txt`. Os arquivos foram obtidos do repositório oficial `google/fonts`, nos caminhos `ofl/sora` e `ofl/inter`, e ficam versionados localmente: o render do aplicativo não precisa baixar fontes nem acessar Google Fonts.
+
+O empacotador mantém `signExecutable: false` enquanto não houver assinatura digital.

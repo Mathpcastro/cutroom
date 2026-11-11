@@ -48,14 +48,14 @@ export function applyTheme(id: string): ThemeId {
   const theme = themes.find((item) => item.id === id) || themes[0];
   document.documentElement.dataset.theme = theme.id;
   document.documentElement.style.colorScheme = theme.light ? "light" : "dark";
-  const tokens = getComputedStyle(document.documentElement);
+  const tokens = typeof getComputedStyle === "function" ? getComputedStyle(document.documentElement) : null;
   if (window.cutroom)
     void window.cutroom
       .request("setAppearance", {
         mode: theme.light ? "light" : "dark",
-        background: tokens.getPropertyValue("--panel").trim() || theme.color,
+        background: tokens?.getPropertyValue("--panel")?.trim() || theme.color,
         foreground:
-          tokens.getPropertyValue("--text").trim() ||
+          tokens?.getPropertyValue("--text")?.trim() ||
           (theme.light ? "#252525" : "#e8e8e8"),
       })
       .catch(() => {

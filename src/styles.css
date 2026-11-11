@@ -3137,3 +3137,86 @@ svg {
     font-size: 11px !important;
   }
 }
+
+/* Videosell chrome refinements; layout and rendered artwork remain unchanged. */
+.app-shell button,
+.app-shell input,
+.app-shell textarea,
+.app-shell select {
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+.app-shell .wordmark,
+.app-shell .assistant-welcome h1,
+.app-shell .empty-player h2,
+.app-shell .packages-panel h2,
+.app-shell .modal h2 {
+  font-family: "Sora", "Inter", sans-serif;
+}
+.app-shell .wordmark {
+  color: var(--text);
+  font-weight: 650;
+  letter-spacing: -0.6px;
+}
+.app-shell .wordmark > svg,
+.app-shell .brand-icon {
+  color: var(--accent);
+}
+.app-shell .button,
+.app-shell .composer,
+.app-shell .modal,
+.app-shell .desktop-menu-panel,
+.app-shell .choice-popover {
+  border-color: var(--line);
+  border-radius: 8px;
+}
+.app-shell .button.primary,
+.app-shell .send-button:not(:disabled) {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.app-shell .titlebar,
+.app-shell .assistant-panel,
+.app-shell .workspace-drawer,
+.app-shell .statusbar {
+  background: var(--panel);
+  border-color: var(--line);
+}
+.app-shell ::selection {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+/* Estúdio de vídeos (formatos, marca, vozes, filmes, publicar) */
+.studio-panel { width: min(760px, calc(100vw - 50px)); }
+.studio-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 16px; border-bottom: 1px solid var(--line); }
+.studio-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.studio-tabs button.active { color: var(--text); border-bottom-color: var(--accent, currentColor); }
+.studio-section { display: flex; flex-direction: column; gap: 12px; }
+.studio-lead { font-size: 12px; line-height: 1.6; color: var(--text); }
+.studio-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+.studio-choices, .studio-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.studio-choices .choice { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.studio-choices .choice.active, .format-card.active { border-color: var(--line-strong); background: var(--accent-soft); }
+.studio-formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.format-card { display: flex; flex-direction: column; gap: 4px; padding: 12px; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.format-card strong { font-size: 13px; font-weight: 600; }
+.format-card span { font-size: 11px; color: var(--muted); }
+.format-card small { font-size: 11px; line-height: 1.45; color: var(--text); opacity: .85; }
+.studio-box { padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.studio-colors { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.color-field input[type="color"] { width: 64px; height: 34px; padding: 2px; }
+.studio-logo { height: 48px; border-radius: 6px; border: 1px solid var(--line); }
+.studio-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.studio-list li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.studio-list li > div { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 12px; min-width: 0; }
+.studio-list small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-confirm { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.5; }
+.studio-error { color: #e5484d; font-size: 12px; }
+.studio-notice { color: var(--text); font-size: 12px; opacity: .85; word-break: break-all; }
+.studio-empty { font-size: 12px; color: var(--muted); }
+
+.studio-picks { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow: auto; }
+.studio-pick { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.studio-pick b { min-width: 16px; height: 16px; border-radius: 8px; background: var(--accent-soft); text-align: center; font-size: 10px; line-height: 16px; }
+.studio-player { width: 240px; aspect-ratio: 9 / 16; align-self: center; border-radius: 12px; background: #000; }

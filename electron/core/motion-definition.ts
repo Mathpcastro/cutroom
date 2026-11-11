@@ -21,6 +21,8 @@ const color = (v: unknown, fallback: string) =>
     : typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)
       ? v
       : fail("Cor de animação inválida.");
+/** A 60 s narrated reel puts a few cards on each spoken phrase: 100 tweens was not enough. */
+export const MAX_TWEENS = 800;
 const PROPS = new Set([
   "x",
   "y",
@@ -45,13 +47,20 @@ const PROPS = new Set([
   "clipPath",
   "filter",
   "transformOrigin",
+  "strokeDashoffset",
+  "strokeDasharray",
+  "fill",
+  "stroke",
+  "skewX",
+  "skewY",
+  "z",
 ]);
 export function validateMotionHtml(html: string) {
-  if (!html.trim() || html.length > 100000)
+  if (!html.trim() || html.length > 200000)
     fail("HTML de animação vazio ou grande demais.");
   const { document } = parseHTML(`<html><body>${html}</body></html>`);
   const allowed = new Set(
-    "html head body div section article span p h1 h2 h3 h4 strong em b i small br ul ol li style svg g path rect circle ellipse line polyline polygon text defs lineargradient radialgradient stop clippath mask symbol use".split(
+    "html head body div section article span p h1 h2 h3 h4 strong em b i small br ul ol li style svg g path rect circle ellipse line polyline polygon text tspan defs lineargradient radialgradient stop clippath mask symbol use img".split(
       " ",
     ),
   );
@@ -60,6 +69,12 @@ export function validateMotionHtml(html: string) {
       fail(
         `Elemento não permitido na animação: ${node.localName}. Use HTML/CSS sem scripts ou mídia externa.`,
       );
+    // Images come only from the host: <img data-asset="logo|IMAGE_ID">, inlined as data: URLs at render time.
+    if (
+      node.localName.toLowerCase() === "img" &&
+      !/^[\w-]{1,100}$/.test(node.getAttribute("data-asset") ?? "")
+    )
+      fail('Use <img data-asset="logo"> ou o id de uma imagem importada; links externos não são permitidos.');
     for (const attr of Array.from(node.attributes)) {
       if (
         /^on|^(src|href|xlink:href|srcset|nonce|is|formaction)$/i.test(
@@ -93,9 +108,9 @@ export function validateMotion(scene: MotionScene): MotionScene {
     fail("A cena excede a duração da animação.");
   if (!["overlay", "fullscreen"].includes(scene.mode))
     fail("Composição inválida.");
-  validateMotionHtml(text(scene.html, 100000));
+  validateMotionHtml(text(scene.html, 200000));
   const { document } = parseHTML(`<html><body>${scene.html}</body></html>`);
-  if (!Array.isArray(scene.animations) || scene.animations.length > 100)
+  if (!Array.isArray(scene.animations) || scene.animations.length > MAX_TWEENS)
     fail("Lista de animações inválida.");
   for (const tween of scene.animations) {
     const selector = text(tween.selector, 200);
@@ -186,7 +201,7 @@ export function makeMotion(
         },
         duration,
       )
-    : { html: text(a.html, 100000), animations: a.animations as MotionTween[] };
+    : { html: text(a.html, 200000), animations: a.animations as MotionTween[] };
   // Moving/resizing an existing custom scene retimes its visible interval. Keep
   // the authored clock, including any phase retained after a video cut.
   const preserve =

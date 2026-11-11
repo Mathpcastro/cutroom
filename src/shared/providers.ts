@@ -22,4 +22,6 @@ export interface AgentConnectConfig {
   baseUrl?: string;
   model?: string;
   cliPath?: string;
+  /** false = connect only with an existing session (app start); never opens a sign-in page. */
+  interactive?: boolean;
 }

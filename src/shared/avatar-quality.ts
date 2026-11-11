@@ -1,0 +1,784 @@
+import { createHash } from "node:crypto";
+import {
+  AVATAR_EXPRESSIONS,
+  AVATAR_MOUTHS,
+  AVATAR_POSES,
+  parseAvatar,
+  reviseAvatar,
+  type AvatarPackage,
+  type AvatarPart,
+  type AvatarPrimitive,
+} from "./avatar";
+import {
+  evaluatePart,
+  renderAvatarPixels,
+  type AvatarPixels,
+  type AvatarRenderState,
+} from "../../resources/avatar-engine/avatar-engine.js";
+
+export interface AvatarFinding {
+  code: string;
+  message: string;
+  partId?: string;
+}
+
+export interface AvatarQualityReport {
+  ok: boolean;
+  findings: AvatarFinding[];
+  hashes: Record<string, string>;
+}
+
+const NEUTRAL_STATE: AvatarRenderState = {
+  pose: "neutral",
+  expression: "neutral",
+  mouth: "A",
+  blink: 0,
+  frame: 0,
+};
+
+// At 96x96, 64 opaque pixels require at least the area of one readable 8x8 block.
+const MINIMUM_SILHOUETTE_PIXELS = 64;
+const BREATHING_CYCLE = [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, -1, -1, -1, -1, 0, 0];
+
+function failed(findings: AvatarFinding[]): AvatarQualityReport {
+  return { ok: false, findings, hashes: {} };
+}
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([key, child]) => [key, canonicalValue(child)]),
+    );
+  }
+  return value;
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+  return (
+    JSON.stringify(canonicalValue(left)) ===
+    JSON.stringify(canonicalValue(right))
+  );
+}
+
+interface SchemaIssue {
+  message?: string;
+  path?: (string | number)[];
+}
+
+function schemaIssues(error: unknown): SchemaIssue[] {
+  const issues = (error as { issues?: unknown } | null)?.issues;
+  return Array.isArray(issues) ? (issues as SchemaIssue[]) : [];
+}
+
+function rawPartId(avatar: unknown, path: (string | number)[] = []) {
+  if (!avatar || typeof avatar !== "object") return undefined;
+  if (path[0] === "parts" && typeof path[1] === "number") {
+    const parts = (avatar as { parts?: unknown }).parts;
+    if (Array.isArray(parts)) {
+      const candidate = parts[path[1]] as { id?: unknown } | undefined;
+      return typeof candidate?.id === "string" ? candidate.id : undefined;
+    }
+  }
+  if (
+    (path[0] === "poses" ||
+      path[0] === "expressions" ||
+      path[0] === "mouths") &&
+    typeof path[2] === "string"
+  ) {
+    return path[2];
+  }
+  return undefined;
+}
+
+function schemaFinding(avatar: unknown, error: unknown): AvatarFinding {
+  const issues = schemaIssues(error);
+  const missingState = issues.find(
+    (issue) =>
+      issue.path?.length === 2 &&
+      (issue.path[0] === "poses" ||
+        issue.path[0] === "expressions" ||
+        issue.path[0] === "mouths"),
+  );
+  if (missingState) {
+    return {
+      code: "STATE_MISSING",
+      message: `Mandatory avatar state "${String(missingState.path?.[1])}" is absent.`,
+    };
+  }
+
+  const paletteIssue = issues.find((issue) =>
+    /outside the palette/i.test(issue.message ?? ""),
+  );
+  if (paletteIssue) {
+    return {
+      code: "PALETTE_COLOR_UNKNOWN",
+      message: "Avatar pixels must use colors declared in the palette.",
+      partId: rawPartId(avatar, paletteIssue.path),
+    };
+  }
+
+  const hierarchyIssue = issues.find((issue) =>
+    /hierarchy|cycle|unknown parent/i.test(issue.message ?? ""),
+  );
+  if (hierarchyIssue) {
+    return {
+      code: "HIERARCHY_INVALID",
+      message:
+        "Avatar part hierarchy must be acyclic and reference known parents.",
+      partId: rawPartId(avatar, hierarchyIssue.path),
+    };
+  }
+
+  return {
+    code: "SCHEMA_INVALID",
+    message: "Avatar package does not satisfy the approved schema.",
+  };
+}
+
+function protectedIdentity(avatar: AvatarPackage) {
+  return {
+    id: avatar.id,
+    revision: avatar.revision,
+    canvas: avatar.canvas,
+    identity: avatar.identity,
+    artBible: avatar.artBible,
+    palette: avatar.palette,
+  };
+}
+
+function revisionFinding(
+  previous: AvatarPackage,
+  next: AvatarPackage,
+  error: unknown,
+): AvatarFinding {
+  if (!sameValue(protectedIdentity(previous), protectedIdentity(next))) {
+    return {
+      code: "IDENTITY_CHANGED",
+      message:
+        "Avatar revision changed protected identity or package invariants.",
+    };
+  }
+  const match = /Part "([^"]+)"/.exec(
+    error instanceof Error ? error.message : String(error),
+  );
+  return {
+    code: "UNAUTHORIZED_PART_CHANGE",
+    message: "Avatar revision changed a part outside allowedPartIds.",
+    partId: match?.[1],
+  };
+}
+
+function alphaFindings(avatar: AvatarPackage): AvatarFinding[] {
+  const findings: AvatarFinding[] = [];
+  for (const [token, color] of Object.entries(avatar.palette)) {
+    if (color.length === 9 && color.slice(7).toLowerCase() !== "ff") {
+      findings.push({
+        code: "ALPHA_PARTIAL",
+        message: `Palette color "${token}" must be opaque; partial alpha is not supported.`,
+      });
+    }
+  }
+  return findings;
+}
+
+interface PrimitiveBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+function primitiveBounds(primitive: AvatarPrimitive): PrimitiveBounds {
+  switch (primitive.type) {
+    case "rect":
+      return {
+        left: primitive.x,
+        top: primitive.y,
+        right: primitive.x + primitive.width,
+        bottom: primitive.y + primitive.height,
+      };
+    case "run":
+      return {
+        left: primitive.x,
+        top: primitive.y,
+        right: primitive.x + primitive.length,
+        bottom: primitive.y + 1,
+      };
+    case "matrix": {
+      let left = Infinity;
+      let top = Infinity;
+      let right = -Infinity;
+      let bottom = -Infinity;
+      for (const [row, cells] of primitive.rows.entries()) {
+        for (const [column, color] of cells.entries()) {
+          if (color === null) continue;
+          left = Math.min(left, primitive.x + column);
+          top = Math.min(top, primitive.y + row);
+          right = Math.max(right, primitive.x + column + 1);
+          bottom = Math.max(bottom, primitive.y + row + 1);
+        }
+      }
+      if (left === Infinity) {
+        return { left: 0, top: 0, right: 0, bottom: 0 };
+      }
+      return { left, top, right, bottom };
+    }
+    case "polygon":
+      return {
+        left: Math.min(...primitive.points.map((point) => point.x)),
+        top: Math.min(...primitive.points.map((point) => point.y)),
+        right: Math.max(...primitive.points.map((point) => point.x)),
+        bottom: Math.max(...primitive.points.map((point) => point.y)),
+      };
+  }
+}
+
+function outsideCanvas(bounds: PrimitiveBounds, size: number): boolean {
+  return (
+    bounds.left < 0 ||
+    bounds.top < 0 ||
+    bounds.right > size ||
+    bounds.bottom > size
+  );
+}
+
+function boundsFindings(avatar: AvatarPackage): AvatarFinding[] {
+  const findings: AvatarFinding[] = [];
+  const checked = new Set<AvatarPrimitive>();
+  const check = (partId: string, primitives: AvatarPrimitive[]) => {
+    for (const primitive of primitives) {
+      if (!canBeVisible(primitive)) continue;
+      if (checked.has(primitive)) continue;
+      checked.add(primitive);
+      if (outsideCanvas(primitiveBounds(primitive), avatar.canvas.full)) {
+        findings.push({
+          code: "OUT_OF_BOUNDS",
+          message: `Part "${partId}" has authored geometry outside the ${avatar.canvas.full}x${avatar.canvas.full} canvas.`,
+          partId,
+        });
+      }
+    }
+  };
+
+  for (const part of avatar.parts) check(part.id, part.primitives);
+  const groups = [avatar.poses, avatar.expressions, avatar.mouths];
+  for (const group of groups) {
+    for (const states of Object.values(group)) {
+      for (const [partId, state] of Object.entries(states)) {
+        if (state?.primitives) check(partId, state.primitives);
+      }
+    }
+  }
+  return findings;
+}
+
+function evaluatedPrimitives(
+  avatar: AvatarPackage,
+  part: AvatarPart,
+  state: AvatarRenderState,
+): AvatarPrimitive[] {
+  const evaluation = evaluatePart(avatar, state, part);
+  return evaluation.hidden ? [] : evaluation.primitives;
+}
+
+function canBeVisible(primitive: AvatarPrimitive): boolean {
+  if (primitive.type === "matrix") {
+    return primitive.rows.some((row) => row.some((color) => color !== null));
+  }
+  if (primitive.type !== "polygon") return true;
+  const first = primitive.points[0];
+  const second = primitive.points.find(
+    (point) => point.x !== first.x || point.y !== first.y,
+  );
+  if (!second) return false;
+  const dx = second.x - first.x;
+  const dy = second.y - first.y;
+  return primitive.points.some(
+    (point) => dx * (point.y - first.y) - dy * (point.x - first.x) !== 0,
+  );
+}
+
+const BLINK_LIMITS = [0, 0.5, 1] as const;
+
+// Every pose x expression x mouth x blink x motionLoop frame: 10,080 states.
+function* composedStates(): Generator<AvatarRenderState> {
+  for (const pose of AVATAR_POSES) {
+    for (const expression of AVATAR_EXPRESSIONS) {
+      for (const mouth of AVATAR_MOUTHS) {
+        for (const blink of BLINK_LIMITS) {
+          for (let frame = 0; frame < BREATHING_CYCLE.length; frame += 1) {
+            yield { pose, expression, mouth, blink, frame };
+          }
+        }
+      }
+    }
+  }
+}
+
+function clippingFindings(avatar: AvatarPackage): AvatarFinding[] {
+  const findings: AvatarFinding[] = [];
+  const reported = new Set<string>();
+  for (const state of composedStates()) {
+    for (const part of avatar.parts) {
+      if (reported.has(part.id)) continue;
+      const clipped = evaluatedPrimitives(avatar, part, state).some(
+        (primitive) =>
+          canBeVisible(primitive) &&
+          outsideCanvas(primitiveBounds(primitive), avatar.canvas.full),
+      );
+      if (clipped) {
+        findings.push({
+          code: "VISUAL_CLIPPING",
+          message: `Part "${part.id}" clips visible geometry in ${state.pose}/${state.expression}/${state.mouth} at frame ${state.frame}.`,
+          partId: part.id,
+        });
+        reported.add(part.id);
+      }
+    }
+  }
+  return findings;
+}
+
+function silhouetteStats(pixels: AvatarPixels) {
+  let count = 0;
+  let maximumY = -1;
+  for (let offset = 0; offset < pixels.data.length; offset += 4) {
+    if (pixels.data[offset + 3] === 0) continue;
+    count += 1;
+    maximumY = Math.max(maximumY, Math.floor(offset / 4 / pixels.width));
+  }
+  return { count, maximumY };
+}
+
+function emptyStateGroup<T extends string>(values: readonly T[]) {
+  return Object.fromEntries(values.map((value) => [value, {}]));
+}
+
+interface SilhouetteRun {
+  startX: number;
+  endX: number;
+  parent: number;
+  count: number;
+  maximumY: number;
+}
+
+function findRun(runs: SilhouetteRun[], index: number): number {
+  const parent = runs[index].parent;
+  if (parent === index) return index;
+  const root = findRun(runs, parent);
+  runs[index].parent = root;
+  return root;
+}
+
+function joinRuns(runs: SilhouetteRun[], left: number, right: number): void {
+  let leftRoot = findRun(runs, left);
+  let rightRoot = findRun(runs, right);
+  if (leftRoot === rightRoot) return;
+  if (runs[leftRoot].count < runs[rightRoot].count) {
+    [leftRoot, rightRoot] = [rightRoot, leftRoot];
+  }
+  runs[rightRoot].parent = leftRoot;
+  runs[leftRoot].count += runs[rightRoot].count;
+  runs[leftRoot].maximumY = Math.max(
+    runs[leftRoot].maximumY,
+    runs[rightRoot].maximumY,
+  );
+}
+
+function mainComponentMaximumY(pixels: AvatarPixels): number {
+  // One-pixel dilation plus 8-connectivity links original pixels up to three
+  // Chebyshev units apart. Horizontal runs compute those components without
+  // visiting pixels introduced only by the dilation.
+  const runs: SilhouetteRun[] = [];
+  const rows: number[][] = Array.from({ length: pixels.height }, () => []);
+  for (let y = 0; y < pixels.height; y += 1) {
+    const row = rows[y];
+    for (let x = 0; x < pixels.width; x += 1) {
+      if (pixels.data[(y * pixels.width + x) * 4 + 3] === 0) continue;
+      const last = runs[row[row.length - 1]];
+      if (last && x - last.endX <= 3) {
+        last.endX = x;
+        last.count += 1;
+      } else {
+        runs.push({
+          startX: x,
+          endX: x,
+          parent: runs.length,
+          count: 1,
+          maximumY: y,
+        });
+        row.push(runs.length - 1);
+      }
+    }
+
+    for (const currentIndex of row) {
+      const current = runs[currentIndex];
+      for (let previousY = Math.max(0, y - 3); previousY < y; previousY += 1) {
+        for (const previousIndex of rows[previousY]) {
+          const previous = runs[previousIndex];
+          if (current.startX > previous.endX + 3) continue;
+          if (previous.startX > current.endX + 3) break;
+          joinRuns(runs, currentIndex, previousIndex);
+        }
+      }
+    }
+  }
+
+  let mainCount = 0;
+  let mainMaximumY = -1;
+  for (let index = 0; index < runs.length; index += 1) {
+    if (findRun(runs, index) !== index || runs[index].count <= mainCount) {
+      continue;
+    }
+    mainCount = runs[index].count;
+    mainMaximumY = runs[index].maximumY;
+  }
+  return mainMaximumY;
+}
+
+function baselineFindings(avatar: AvatarPackage): AvatarFinding[] {
+  // Render already-evaluated primitives without applying their states twice.
+  const rasterAvatar: AvatarPackage = {
+    ...avatar,
+    parts: [{ id: "body", primitives: [] }],
+    poses: emptyStateGroup(AVATAR_POSES) as AvatarPackage["poses"],
+    expressions: emptyStateGroup(
+      AVATAR_EXPRESSIONS,
+    ) as AvatarPackage["expressions"],
+    mouths: emptyStateGroup(AVATAR_MOUTHS) as AvatarPackage["mouths"],
+  };
+  const cache = new Map<string, AvatarPixels>();
+  const opaqueOffsetsCache = new Map<string, number[]>();
+  const rasterPixels = (primitive: AvatarPrimitive, key: string) => {
+    const cached = cache.get(key);
+    const cachedOffsets = opaqueOffsetsCache.get(key);
+    if (cached && cachedOffsets) {
+      return { pixels: cached, opaqueOffsets: cachedOffsets };
+    }
+
+    rasterAvatar.parts[0].primitives = [primitive];
+    const pixels = renderAvatarPixels(rasterAvatar, NEUTRAL_STATE);
+    const opaqueOffsets: number[] = [];
+    for (let offset = 0; offset < pixels.data.length; offset += 4) {
+      if (pixels.data[offset + 3] !== 0) opaqueOffsets.push(offset);
+    }
+    cache.set(key, pixels);
+    opaqueOffsetsCache.set(key, opaqueOffsets);
+    return { pixels, opaqueOffsets };
+  };
+  const orderedParts = avatar.parts
+    .map((part, index) => ({
+      part,
+      index,
+      zIndex:
+        typeof part.zIndex === "number" && Number.isFinite(part.zIndex)
+          ? part.zIndex
+          : 0,
+    }))
+    .sort(
+      (left, right) => left.zIndex - right.zIndex || left.index - right.index,
+    );
+  const maximumYCache = new Map<string, number>();
+
+  for (const state of composedStates()) {
+    const stateKeys: string[] = [];
+    const statePrimitives: ReturnType<typeof rasterPixels>[] = [];
+    for (const { part } of orderedParts) {
+      for (const primitive of evaluatedPrimitives(avatar, part, state)) {
+        const key = JSON.stringify(primitive);
+        stateKeys.push(key);
+        statePrimitives.push(rasterPixels(primitive, key));
+      }
+    }
+
+    const stateKey = stateKeys.join("\n");
+    let maximumY = maximumYCache.get(stateKey);
+    if (maximumY === undefined) {
+      const size = avatar.canvas.full;
+      const composite: AvatarPixels = {
+        width: size,
+        height: size,
+        data: new Uint8ClampedArray(size * size * 4),
+      };
+      for (const { pixels, opaqueOffsets } of statePrimitives) {
+        for (const offset of opaqueOffsets) {
+          for (let channel = 0; channel < 4; channel += 1) {
+            composite.data[offset + channel] = pixels.data[offset + channel];
+          }
+        }
+      }
+      maximumY = mainComponentMaximumY(composite);
+      maximumYCache.set(stateKey, maximumY);
+    }
+    if (maximumY + 1 !== avatar.canvas.baseline) {
+      return [
+        {
+          code: "BASELINE_FLOATING",
+          message: `Silhouette ends at y=${maximumY + 1}, but the declared baseline is y=${avatar.canvas.baseline} in ${state.pose}/${state.expression}/${state.mouth}, blink=${state.blink}, frame=${state.frame}.`,
+        },
+      ];
+    }
+  }
+  return [];
+}
+
+function isolatedPartPixels(
+  avatar: AvatarPackage,
+  partId: string,
+  state: AvatarRenderState,
+): AvatarPixels {
+  return renderAvatarPixels(
+    { ...avatar, parts: avatar.parts.filter((part) => part.id === partId) },
+    state,
+  );
+}
+
+function masksTouch(accessory: AvatarPixels, parent: AvatarPixels): boolean {
+  const parentPixels = new Set<number>();
+  for (let offset = 0; offset < parent.data.length; offset += 4) {
+    if (parent.data[offset + 3] !== 0) parentPixels.add(offset / 4);
+  }
+  for (let offset = 0; offset < accessory.data.length; offset += 4) {
+    if (accessory.data[offset + 3] === 0) continue;
+    const index = offset / 4;
+    const x = index % accessory.width;
+    const y = Math.floor(index / accessory.width);
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= parent.width || ny >= parent.height) {
+          continue;
+        }
+        if (parentPixels.has(ny * parent.width + nx)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function accessoryIsHidden(
+  avatar: AvatarPackage,
+  part: AvatarPart,
+  state: AvatarRenderState,
+): boolean {
+  return evaluatePart(avatar, state, part).hidden;
+}
+
+function accessoryFindings(avatar: AvatarPackage): AvatarFinding[] {
+  const findings: AvatarFinding[] = [];
+  const reported = new Set<string>();
+  const accessories = avatar.parts.filter(
+    (part) => part.id === "accessory" || part.id.startsWith("accessory."),
+  );
+  for (const part of accessories) {
+    if (!part.parent) {
+      findings.push({
+        code: "ACCESSORY_DETACHED",
+        message: `Accessory "${part.id}" has no declared parent anchor.`,
+        partId: part.id,
+      });
+      reported.add(part.id);
+    }
+  }
+
+  const maskCache = new Map<string, AvatarPixels>();
+  const maskFor = (part: AvatarPart, state: AvatarRenderState) => {
+    const primitives = evaluatedPrimitives(avatar, part, state);
+    const key = `${part.id}:${JSON.stringify(primitives)}`;
+    const cached = maskCache.get(key);
+    if (cached) return cached;
+    const pixels = isolatedPartPixels(avatar, part.id, state);
+    maskCache.set(key, pixels);
+    return pixels;
+  };
+
+  for (const state of composedStates()) {
+    for (const part of accessories) {
+      if (reported.has(part.id) || !part.parent) continue;
+      if (accessoryIsHidden(avatar, part, state)) continue;
+      const parent = avatar.parts.find(
+        (candidate) => candidate.id === part.parent,
+      );
+      if (!parent) continue;
+      if (!masksTouch(maskFor(part, state), maskFor(parent, state))) {
+        findings.push({
+          code: "ACCESSORY_DETACHED",
+          message: `Accessory "${part.id}" has no opaque-pixel contact with parent "${parent.id}" in ${state.pose}/${state.expression}/${state.mouth}, blink=${state.blink}, frame=${state.frame}.`,
+          partId: part.id,
+        });
+        reported.add(part.id);
+      }
+    }
+  }
+  return findings;
+}
+
+function mapPixels(
+  source: AvatarPixels,
+  map: (
+    pixel: readonly [number, number, number, number],
+  ) => readonly [number, number, number, number],
+): AvatarPixels {
+  const data = new Uint8ClampedArray(source.data.length);
+  for (let offset = 0; offset < source.data.length; offset += 4) {
+    const pixel = map([
+      source.data[offset],
+      source.data[offset + 1],
+      source.data[offset + 2],
+      source.data[offset + 3],
+    ]);
+    data.set(pixel, offset);
+  }
+  return { width: source.width, height: source.height, data };
+}
+
+function horizontalSheet(frames: AvatarPixels[]): AvatarPixels {
+  const width = frames.reduce((total, frame) => total + frame.width, 0);
+  const height = frames[0].height;
+  const data = new Uint8ClampedArray(width * height * 4);
+  let originX = 0;
+  for (const frame of frames) {
+    for (let y = 0; y < height; y += 1) {
+      const start = y * frame.width * 4;
+      data.set(
+        frame.data.subarray(start, start + frame.width * 4),
+        (y * width + originX) * 4,
+      );
+    }
+    originX += frame.width;
+  }
+  return { width, height, data };
+}
+
+function pixelHash(pixels: AvatarPixels): string {
+  return createHash("sha256").update(pixels.data).digest("hex");
+}
+
+function renderState(overrides: Partial<AvatarRenderState>): AvatarRenderState {
+  return { ...NEUTRAL_STATE, ...overrides };
+}
+
+function qualityHashes(
+  avatar: AvatarPackage,
+  neutral: AvatarPixels,
+): Record<string, string> {
+  // neutral: the native 96x96 RGBA neutral/neutral/A frame, without encoding.
+  // silhouette: the same alpha mask with every opaque pixel replaced by opaque black.
+  const silhouette = mapPixels(neutral, ([, , , alpha]) =>
+    alpha === 0 ? [0, 0, 0, 0] : [0, 0, 0, 255],
+  );
+  // grayscale: integer Rec.601 luma of neutral RGB, preserving binary alpha.
+  const grayscale = mapPixels(neutral, ([red, green, blue, alpha]) => {
+    if (alpha === 0) return [0, 0, 0, 0];
+    const luma = Math.floor(
+      (299 * red + 587 * green + 114 * blue + 500) / 1000,
+    );
+    return [luma, luma, luma, alpha];
+  });
+  // backgrounds: neutral source pixels over opaque white and opaque black respectively.
+  const background = (value: number) =>
+    mapPixels(neutral, ([red, green, blue, alpha]) =>
+      alpha === 0 ? [value, value, value, 255] : [red, green, blue, 255],
+    );
+
+  // expressionSheet: six 96x96 frames concatenated horizontally in AVATAR_EXPRESSIONS order.
+  const expressionSheet = horizontalSheet(
+    AVATAR_EXPRESSIONS.map((expression) =>
+      renderAvatarPixels(avatar, renderState({ expression })),
+    ),
+  );
+  // mouthSheet: seven 96x96 frames concatenated horizontally in AVATAR_MOUTHS order.
+  const mouthSheet = horizontalSheet(
+    AVATAR_MOUTHS.map((mouth) =>
+      renderAvatarPixels(avatar, renderState({ mouth })),
+    ),
+  );
+  // motionLoop: the sixteen native breathing frames 0..15, concatenated horizontally.
+  const motionLoop = horizontalSheet(
+    BREATHING_CYCLE.map((_, frame) =>
+      renderAvatarPixels(avatar, renderState({ frame })),
+    ),
+  );
+
+  return {
+    neutral: pixelHash(neutral),
+    silhouette: pixelHash(silhouette),
+    grayscale: pixelHash(grayscale),
+    backgroundLight: pixelHash(background(255)),
+    backgroundDark: pixelHash(background(0)),
+    expressionSheet: pixelHash(expressionSheet),
+    mouthSheet: pixelHash(mouthSheet),
+    motionLoop: pixelHash(motionLoop),
+  };
+}
+
+export function validateAvatarPackage(
+  avatar: unknown,
+  context: { previous?: AvatarPackage; allowedPartIds?: string[] } = {},
+): AvatarQualityReport {
+  let parsed: AvatarPackage;
+  try {
+    parsed = parseAvatar(avatar);
+  } catch (error) {
+    return failed([schemaFinding(avatar, error)]);
+  }
+
+  if (context.previous) {
+    let previous: AvatarPackage | undefined;
+    try {
+      previous = parseAvatar(context.previous);
+      reviseAvatar(previous, parsed, context.allowedPartIds ?? []);
+    } catch (error) {
+      if (previous) {
+        return failed([revisionFinding(previous, parsed, error)]);
+      }
+      return failed([
+        {
+          code: "SCHEMA_INVALID",
+          message:
+            "Previous avatar package does not satisfy the approved schema.",
+        },
+      ]);
+    }
+  }
+
+  const staticFindings = [...alphaFindings(parsed), ...boundsFindings(parsed)];
+  if (staticFindings.length > 0) return failed(staticFindings);
+
+  const clipping = clippingFindings(parsed);
+  if (clipping.length > 0) return failed(clipping);
+
+  const neutral = renderAvatarPixels(parsed, NEUTRAL_STATE);
+  const silhouette = silhouetteStats(neutral);
+  if (silhouette.count === 0) {
+    return failed([
+      {
+        code: "SILHOUETTE_EMPTY",
+        message: "Neutral avatar render has no opaque silhouette pixels.",
+      },
+    ]);
+  }
+
+  const findings: AvatarFinding[] = [];
+  if (silhouette.count < MINIMUM_SILHOUETTE_PIXELS) {
+    findings.push({
+      code: "SILHOUETTE_INSUFFICIENT",
+      message: `Neutral silhouette has ${silhouette.count} opaque pixels; at least ${MINIMUM_SILHOUETTE_PIXELS} (one 8x8 block) are required.`,
+    });
+  }
+  const baselineAnchor = parsed.identity.anchors.baseline;
+  if (baselineAnchor && baselineAnchor.y !== parsed.canvas.baseline) {
+    findings.push({
+      code: "BASELINE_FLOATING",
+      message: "Identity baseline anchor does not match the canvas baseline.",
+    });
+  }
+  findings.push(...baselineFindings(parsed), ...accessoryFindings(parsed));
+  if (findings.length > 0) return failed(findings);
+
+  return { ok: true, findings: [], hashes: qualityHashes(parsed, neutral) };
+}

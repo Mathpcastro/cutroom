@@ -1,0 +1,5097 @@
+{
+  "schemaVersion": 1,
+  "id": "strategist",
+  "revision": 1,
+  "canvas": {
+    "full": 96,
+    "portrait": 64,
+    "baseline": 90
+  },
+  "identity": {
+    "anchors": {
+      "head": {
+        "x": 47,
+        "y": 28
+      },
+      "eye.left": {
+        "x": 39,
+        "y": 27
+      },
+      "eye.right": {
+        "x": 55,
+        "y": 27
+      },
+      "mouth": {
+        "x": 48,
+        "y": 37
+      },
+      "hand.left": {
+        "x": 23,
+        "y": 74
+      },
+      "hand.right": {
+        "x": 75,
+        "y": 69
+      },
+      "baseline": {
+        "x": 48,
+        "y": 90
+      }
+    },
+    "inferred": [
+      "angular-quiff",
+      "structured-jacket",
+      "tablet",
+      "decisive-asymmetric-body-language",
+      "organic-stepped-eye-clusters"
+    ]
+  },
+  "artBible": {
+    "light": "top-left",
+    "outline": "outline",
+    "notes": [
+      "Original 96x96 pixel clusters; nearest-neighbor presentation only.",
+      "Top-left warm highlights and cool lower-right shadows share one light direction.",
+      "Colored one-pixel internal outlines preserve readable face, cloth and accessory clusters."
+    ]
+  },
+  "palette": {
+    "outline": "#24243A",
+    "skin.light": "#FFD7B5",
+    "skin": "#E9AE86",
+    "skin.shadow": "#C77D62",
+    "skin.deep": "#925047",
+    "hair.light": "#6E6078",
+    "hair": "#453B56",
+    "hair.shadow": "#322C45",
+    "hair.deep": "#242338",
+    "cloth.light": "#5F80A8",
+    "cloth": "#385579",
+    "cloth.shadow": "#293D60",
+    "cloth.deep": "#1E2C49",
+    "accent.light": "#FFE29A",
+    "accent": "#E7B85C",
+    "accent.shadow": "#A97038",
+    "eye": "#FFF8EC",
+    "pupil": "#26314A",
+    "mouth": "#874154",
+    "tongue": "#E98586",
+    "cheek": "#E79A85",
+    "shoe.light": "#596073",
+    "shoe": "#34394E",
+    "shoe.shadow": "#22263A",
+    "metal.light": "#D9E4EA",
+    "metal": "#91A4B5",
+    "metal.shadow": "#53677E",
+    "detail.light": "#78D4D0",
+    "detail": "#318F9B",
+    "detail.shadow": "#235769"
+  },
+  "parts": [
+    {
+      "id": "body",
+      "zIndex": 10,
+      "primitives": [
+        {
+          "type": "rect",
+          "x": 40,
+          "y": 39,
+          "width": 16,
+          "height": 14,
+          "color": "outline"
+        },
+        {
+          "type": "rect",
+          "x": 43,
+          "y": 40,
+          "width": 11,
+          "height": 12,
+          "color": "skin"
+        },
+        {
+          "type": "run",
+          "x": 44,
+          "y": 49,
+          "length": 9,
+          "color": "skin.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 32,
+              "y": 66
+            },
+            {
+              "x": 48,
+              "y": 66
+            },
+            {
+              "x": 46,
+              "y": 89
+            },
+            {
+              "x": 28,
+              "y": 89
+            }
+          ],
+          "color": "cloth.deep"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 35,
+              "y": 67
+            },
+            {
+              "x": 46,
+              "y": 67
+            },
+            {
+              "x": 44,
+              "y": 85
+            },
+            {
+              "x": 32,
+              "y": 85
+            }
+          ],
+          "color": "cloth.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 49,
+              "y": 66
+            },
+            {
+              "x": 64,
+              "y": 66
+            },
+            {
+              "x": 68,
+              "y": 89
+            },
+            {
+              "x": 50,
+              "y": 89
+            }
+          ],
+          "color": "cloth.deep"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 51,
+              "y": 67
+            },
+            {
+              "x": 61,
+              "y": 67
+            },
+            {
+              "x": 64,
+              "y": 85
+            },
+            {
+              "x": 53,
+              "y": 85
+            }
+          ],
+          "color": "cloth"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 29,
+              "y": 84
+            },
+            {
+              "x": 45,
+              "y": 84
+            },
+            {
+              "x": 48,
+              "y": 90
+            },
+            {
+              "x": 26,
+              "y": 90
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 31,
+              "y": 85
+            },
+            {
+              "x": 43,
+              "y": 85
+            },
+            {
+              "x": 44,
+              "y": 88
+            },
+            {
+              "x": 29,
+              "y": 88
+            }
+          ],
+          "color": "shoe"
+        },
+        {
+          "type": "run",
+          "x": 31,
+          "y": 85,
+          "length": 8,
+          "color": "shoe.light"
+        },
+        {
+          "type": "run",
+          "x": 29,
+          "y": 89,
+          "length": 17,
+          "color": "shoe.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 53,
+              "y": 84
+            },
+            {
+              "x": 67,
+              "y": 84
+            },
+            {
+              "x": 72,
+              "y": 90
+            },
+            {
+              "x": 50,
+              "y": 90
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 55,
+              "y": 85
+            },
+            {
+              "x": 65,
+              "y": 85
+            },
+            {
+              "x": 68,
+              "y": 88
+            },
+            {
+              "x": 53,
+              "y": 88
+            }
+          ],
+          "color": "shoe"
+        },
+        {
+          "type": "run",
+          "x": 55,
+          "y": 85,
+          "length": 7,
+          "color": "shoe.light"
+        },
+        {
+          "type": "run",
+          "x": 53,
+          "y": 89,
+          "length": 17,
+          "color": "shoe.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 35,
+              "y": 43
+            },
+            {
+              "x": 61,
+              "y": 43
+            },
+            {
+              "x": 72,
+              "y": 49
+            },
+            {
+              "x": 66,
+              "y": 71
+            },
+            {
+              "x": 30,
+              "y": 71
+            },
+            {
+              "x": 24,
+              "y": 49
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 36,
+              "y": 45
+            },
+            {
+              "x": 60,
+              "y": 45
+            },
+            {
+              "x": 69,
+              "y": 50
+            },
+            {
+              "x": 63,
+              "y": 68
+            },
+            {
+              "x": 33,
+              "y": 68
+            },
+            {
+              "x": 27,
+              "y": 50
+            }
+          ],
+          "color": "cloth"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 36,
+              "y": 45
+            },
+            {
+              "x": 43,
+              "y": 45
+            },
+            {
+              "x": 39,
+              "y": 67
+            },
+            {
+              "x": 33,
+              "y": 67
+            },
+            {
+              "x": 28,
+              "y": 50
+            }
+          ],
+          "color": "cloth.light"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 58,
+              "y": 45
+            },
+            {
+              "x": 69,
+              "y": 50
+            },
+            {
+              "x": 63,
+              "y": 68
+            },
+            {
+              "x": 57,
+              "y": 68
+            }
+          ],
+          "color": "cloth.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 43,
+              "y": 44
+            },
+            {
+              "x": 53,
+              "y": 44
+            },
+            {
+              "x": 55,
+              "y": 60
+            },
+            {
+              "x": 48,
+              "y": 66
+            },
+            {
+              "x": 41,
+              "y": 60
+            }
+          ],
+          "color": "accent.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 44,
+              "y": 45
+            },
+            {
+              "x": 52,
+              "y": 45
+            },
+            {
+              "x": 52,
+              "y": 59
+            },
+            {
+              "x": 48,
+              "y": 63
+            },
+            {
+              "x": 44,
+              "y": 59
+            }
+          ],
+          "color": "accent"
+        },
+        {
+          "type": "run",
+          "x": 45,
+          "y": 46,
+          "length": 6,
+          "color": "accent.light"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 36,
+              "y": 44
+            },
+            {
+              "x": 43,
+              "y": 44
+            },
+            {
+              "x": 47,
+              "y": 57
+            },
+            {
+              "x": 40,
+              "y": 52
+            }
+          ],
+          "color": "cloth.deep"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 60,
+              "y": 44
+            },
+            {
+              "x": 53,
+              "y": 44
+            },
+            {
+              "x": 49,
+              "y": 57
+            },
+            {
+              "x": 56,
+              "y": 52
+            }
+          ],
+          "color": "cloth.shadow"
+        },
+        {
+          "type": "run",
+          "x": 48,
+          "y": 57,
+          "length": 1,
+          "color": "metal.light"
+        },
+        {
+          "type": "run",
+          "x": 48,
+          "y": 61,
+          "length": 1,
+          "color": "metal"
+        },
+        {
+          "type": "run",
+          "x": 48,
+          "y": 65,
+          "length": 1,
+          "color": "metal.shadow"
+        },
+        {
+          "type": "run",
+          "x": 35,
+          "y": 67,
+          "length": 28,
+          "color": "cloth.deep"
+        }
+      ]
+    },
+    {
+      "id": "arm.left",
+      "parent": "body",
+      "zIndex": 15,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 24,
+              "y": 49
+            },
+            {
+              "x": 21,
+              "y": 61
+            },
+            {
+              "x": 31,
+              "y": 63
+            },
+            {
+              "x": 34,
+              "y": 51
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 26,
+              "y": 49
+            },
+            {
+              "x": 23,
+              "y": 61
+            },
+            {
+              "x": 29,
+              "y": 63
+            },
+            {
+              "x": 32,
+              "y": 51
+            }
+          ],
+          "color": "cloth"
+        },
+        {
+          "type": "run",
+          "x": 28,
+          "y": 50,
+          "length": 2,
+          "color": "cloth.light"
+        }
+      ]
+    },
+    {
+      "id": "arm.right",
+      "parent": "body",
+      "zIndex": 15,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 63,
+              "y": 52
+            },
+            {
+              "x": 68,
+              "y": 62
+            },
+            {
+              "x": 76,
+              "y": 58
+            },
+            {
+              "x": 71,
+              "y": 48
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 64,
+              "y": 51
+            },
+            {
+              "x": 69,
+              "y": 61
+            },
+            {
+              "x": 75,
+              "y": 59
+            },
+            {
+              "x": 70,
+              "y": 49
+            }
+          ],
+          "color": "cloth.shadow"
+        },
+        {
+          "type": "run",
+          "x": 66,
+          "y": 50,
+          "length": 2,
+          "color": "cloth.light"
+        }
+      ]
+    },
+    {
+      "id": "forearm.left",
+      "parent": "arm.left",
+      "zIndex": 16,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 22,
+              "y": 61
+            },
+            {
+              "x": 19,
+              "y": 70
+            },
+            {
+              "x": 27,
+              "y": 72
+            },
+            {
+              "x": 30,
+              "y": 63
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 24,
+              "y": 61
+            },
+            {
+              "x": 21,
+              "y": 70
+            },
+            {
+              "x": 25,
+              "y": 72
+            },
+            {
+              "x": 28,
+              "y": 63
+            }
+          ],
+          "color": "cloth"
+        },
+        {
+          "type": "run",
+          "x": 25,
+          "y": 62,
+          "length": 2,
+          "color": "cloth.light"
+        }
+      ]
+    },
+    {
+      "id": "forearm.right",
+      "parent": "arm.right",
+      "zIndex": 16,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 68,
+              "y": 62
+            },
+            {
+              "x": 71,
+              "y": 70
+            },
+            {
+              "x": 79,
+              "y": 66
+            },
+            {
+              "x": 76,
+              "y": 58
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 70,
+              "y": 61
+            },
+            {
+              "x": 73,
+              "y": 69
+            },
+            {
+              "x": 77,
+              "y": 67
+            },
+            {
+              "x": 74,
+              "y": 59
+            }
+          ],
+          "color": "cloth.shadow"
+        },
+        {
+          "type": "run",
+          "x": 71,
+          "y": 60,
+          "length": 2,
+          "color": "cloth.light"
+        }
+      ]
+    },
+    {
+      "id": "hand.left",
+      "parent": "forearm.left",
+      "zIndex": 17,
+      "primitives": [
+        {
+          "type": "matrix",
+          "x": 19,
+          "y": 69,
+          "rows": [
+            [
+              null,
+              null,
+              null,
+              "skin.deep",
+              "skin.deep",
+              "skin.deep",
+              "skin.deep",
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep",
+              null
+            ],
+            [
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep",
+              null
+            ],
+            [
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep",
+              null
+            ],
+            [
+              null,
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep",
+              null,
+              null
+            ],
+            [
+              null,
+              "skin.deep",
+              "skin",
+              "skin.deep",
+              null,
+              "skin",
+              "skin.deep",
+              null,
+              null
+            ],
+            [
+              null,
+              "skin.deep",
+              "skin",
+              "skin.deep",
+              null,
+              "skin",
+              "skin.deep",
+              null,
+              null
+            ],
+            [null, null, null, "skin.deep", null, "skin.deep", null, null, null]
+          ]
+        },
+        {
+          "type": "run",
+          "x": 21,
+          "y": 71,
+          "length": 3,
+          "color": "skin.light"
+        }
+      ]
+    },
+    {
+      "id": "hand.right",
+      "parent": "forearm.right",
+      "zIndex": 42,
+      "primitives": [
+        {
+          "type": "matrix",
+          "x": 71,
+          "y": 66,
+          "rows": [
+            [
+              null,
+              null,
+              "skin.deep",
+              "skin.deep",
+              "skin.deep",
+              "skin.deep",
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep",
+              null,
+              null
+            ],
+            [
+              null,
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep"
+            ],
+            [
+              null,
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep"
+            ],
+            [
+              null,
+              null,
+              "skin.deep",
+              "skin",
+              "skin",
+              "skin",
+              "skin",
+              "skin.deep",
+              null
+            ],
+            [
+              null,
+              null,
+              "skin.deep",
+              "skin",
+              null,
+              "skin.deep",
+              "skin",
+              "skin.deep",
+              null
+            ],
+            [
+              null,
+              null,
+              "skin.deep",
+              "skin",
+              null,
+              "skin.deep",
+              "skin",
+              "skin.deep",
+              null
+            ],
+            [null, null, null, "skin.deep", null, "skin.deep", null, null, null]
+          ]
+        },
+        {
+          "type": "run",
+          "x": 73,
+          "y": 68,
+          "length": 3,
+          "color": "skin.light"
+        }
+      ]
+    },
+    {
+      "id": "hair.back",
+      "parent": "head",
+      "zIndex": 19,
+      "primitives": [
+        {
+          "type": "matrix",
+          "x": 27,
+          "y": 7,
+          "rows": [
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null
+            ],
+            [
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "hair.shadow",
+              "hair.shadow",
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              "hair.shadow",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "hair.shadow",
+              null,
+              null,
+              null
+            ]
+          ]
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 29,
+              "y": 13
+            },
+            {
+              "x": 38,
+              "y": 7
+            },
+            {
+              "x": 54,
+              "y": 6
+            },
+            {
+              "x": 66,
+              "y": 12
+            },
+            {
+              "x": 62,
+              "y": 17
+            },
+            {
+              "x": 39,
+              "y": 15
+            }
+          ],
+          "color": "hair"
+        },
+        {
+          "type": "run",
+          "x": 32,
+          "y": 15,
+          "length": 5,
+          "color": "hair.deep"
+        },
+        {
+          "type": "run",
+          "x": 62,
+          "y": 17,
+          "length": 4,
+          "color": "hair.deep"
+        }
+      ]
+    },
+    {
+      "id": "ears",
+      "parent": "head",
+      "zIndex": 20,
+      "primitives": [
+        {
+          "type": "matrix",
+          "x": 27,
+          "y": 25,
+          "rows": [
+            [null, "skin.deep", "skin.deep", null],
+            ["skin.deep", "skin.shadow", "skin.shadow", "skin.deep"],
+            ["skin.deep", "skin.shadow", "skin.shadow", "skin.deep"],
+            [null, "skin.deep", "skin.deep", null]
+          ]
+        },
+        {
+          "type": "matrix",
+          "x": 65,
+          "y": 25,
+          "rows": [
+            [null, "skin.deep", "skin.deep", null],
+            ["skin.deep", "skin", "skin", "skin.deep"],
+            ["skin.deep", "skin", "skin", "skin.deep"],
+            [null, "skin.deep", "skin.deep", null]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "zIndex": 21,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 39,
+              "y": 11
+            },
+            {
+              "x": 57,
+              "y": 11
+            },
+            {
+              "x": 65,
+              "y": 17
+            },
+            {
+              "x": 66,
+              "y": 31
+            },
+            {
+              "x": 62,
+              "y": 38
+            },
+            {
+              "x": 55,
+              "y": 44
+            },
+            {
+              "x": 43,
+              "y": 44
+            },
+            {
+              "x": 35,
+              "y": 40
+            },
+            {
+              "x": 29,
+              "y": 31
+            },
+            {
+              "x": 29,
+              "y": 19
+            },
+            {
+              "x": 34,
+              "y": 14
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 40,
+              "y": 13
+            },
+            {
+              "x": 56,
+              "y": 13
+            },
+            {
+              "x": 63,
+              "y": 18
+            },
+            {
+              "x": 64,
+              "y": 30
+            },
+            {
+              "x": 60,
+              "y": 36
+            },
+            {
+              "x": 54,
+              "y": 42
+            },
+            {
+              "x": 44,
+              "y": 42
+            },
+            {
+              "x": 37,
+              "y": 38
+            },
+            {
+              "x": 31,
+              "y": 30
+            },
+            {
+              "x": 31,
+              "y": 20
+            },
+            {
+              "x": 35,
+              "y": 16
+            }
+          ],
+          "color": "skin"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 31,
+              "y": 23
+            },
+            {
+              "x": 34,
+              "y": 18
+            },
+            {
+              "x": 38,
+              "y": 17
+            },
+            {
+              "x": 35,
+              "y": 33
+            },
+            {
+              "x": 32,
+              "y": 35
+            }
+          ],
+          "color": "skin.light"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 58,
+              "y": 17
+            },
+            {
+              "x": 63,
+              "y": 19
+            },
+            {
+              "x": 64,
+              "y": 30
+            },
+            {
+              "x": 60,
+              "y": 36
+            },
+            {
+              "x": 54,
+              "y": 42
+            },
+            {
+              "x": 50,
+              "y": 42
+            },
+            {
+              "x": 57,
+              "y": 35
+            }
+          ],
+          "color": "skin.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 37,
+              "y": 38
+            },
+            {
+              "x": 44,
+              "y": 42
+            },
+            {
+              "x": 54,
+              "y": 42
+            },
+            {
+              "x": 60,
+              "y": 36
+            },
+            {
+              "x": 58,
+              "y": 40
+            },
+            {
+              "x": 54,
+              "y": 44
+            },
+            {
+              "x": 43,
+              "y": 44
+            },
+            {
+              "x": 35,
+              "y": 40
+            }
+          ],
+          "color": "skin.deep"
+        },
+        {
+          "type": "run",
+          "x": 36,
+          "y": 38,
+          "length": 5,
+          "color": "skin.light"
+        },
+        {
+          "type": "run",
+          "x": 44,
+          "y": 41,
+          "length": 9,
+          "color": "skin"
+        }
+      ]
+    },
+    {
+      "id": "hair.front",
+      "parent": "head",
+      "zIndex": 26,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 29,
+              "y": 16
+            },
+            {
+              "x": 31,
+              "y": 10
+            },
+            {
+              "x": 39,
+              "y": 6
+            },
+            {
+              "x": 55,
+              "y": 5
+            },
+            {
+              "x": 66,
+              "y": 10
+            },
+            {
+              "x": 64,
+              "y": 16
+            },
+            {
+              "x": 55,
+              "y": 13
+            },
+            {
+              "x": 50,
+              "y": 18
+            },
+            {
+              "x": 45,
+              "y": 13
+            },
+            {
+              "x": 37,
+              "y": 18
+            },
+            {
+              "x": 37,
+              "y": 14
+            },
+            {
+              "x": 31,
+              "y": 20
+            }
+          ],
+          "color": "hair.deep"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 31,
+              "y": 13
+            },
+            {
+              "x": 39,
+              "y": 8
+            },
+            {
+              "x": 54,
+              "y": 7
+            },
+            {
+              "x": 62,
+              "y": 10
+            },
+            {
+              "x": 54,
+              "y": 11
+            },
+            {
+              "x": 49,
+              "y": 16
+            },
+            {
+              "x": 44,
+              "y": 11
+            },
+            {
+              "x": 37,
+              "y": 15
+            },
+            {
+              "x": 35,
+              "y": 12
+            },
+            {
+              "x": 31,
+              "y": 17
+            }
+          ],
+          "color": "hair"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 38,
+              "y": 8
+            },
+            {
+              "x": 48,
+              "y": 6
+            },
+            {
+              "x": 55,
+              "y": 7
+            },
+            {
+              "x": 47,
+              "y": 9
+            },
+            {
+              "x": 40,
+              "y": 12
+            },
+            {
+              "x": 35,
+              "y": 13
+            }
+          ],
+          "color": "hair.light"
+        },
+        {
+          "type": "run",
+          "x": 54,
+          "y": 10,
+          "length": 6,
+          "color": "hair.shadow"
+        },
+        {
+          "type": "run",
+          "x": 31,
+          "y": 18,
+          "length": 3,
+          "color": "hair.shadow"
+        }
+      ]
+    },
+    {
+      "id": "eyes",
+      "parent": "head",
+      "zIndex": 27,
+      "primitives": [
+        {
+          "type": "matrix",
+          "x": 36,
+          "y": 26,
+          "rows": [
+            [null, null, "skin.shadow", "skin.shadow", null, null, null],
+            [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+            ["skin.shadow", "eye", "eye", "eye", "eye", "eye", "skin.shadow"],
+            [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+            [null, null, "skin.shadow", "skin.shadow", null, null, null]
+          ]
+        },
+        {
+          "type": "matrix",
+          "x": 53,
+          "y": 26,
+          "rows": [
+            [null, null, null, "skin.shadow", "skin.shadow", null, null],
+            [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+            ["skin.shadow", "eye", "eye", "eye", "eye", "eye", "skin.shadow"],
+            [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+            [null, null, "skin.shadow", "skin.shadow", null, null, null]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pupils",
+      "parent": "eyes",
+      "zIndex": 28,
+      "primitives": [
+        {
+          "type": "rect",
+          "x": 38,
+          "y": 27,
+          "width": 2,
+          "height": 2,
+          "color": "pupil"
+        },
+        {
+          "type": "rect",
+          "x": 55,
+          "y": 27,
+          "width": 2,
+          "height": 2,
+          "color": "pupil"
+        },
+        {
+          "type": "run",
+          "x": 38,
+          "y": 27,
+          "length": 1,
+          "color": "eye"
+        },
+        {
+          "type": "run",
+          "x": 55,
+          "y": 27,
+          "length": 1,
+          "color": "eye"
+        }
+      ]
+    },
+    {
+      "id": "brows",
+      "parent": "head",
+      "zIndex": 29,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 35,
+              "y": 23
+            },
+            {
+              "x": 42,
+              "y": 22
+            },
+            {
+              "x": 43,
+              "y": 24
+            },
+            {
+              "x": 36,
+              "y": 25
+            }
+          ],
+          "color": "hair.deep"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 53,
+              "y": 22
+            },
+            {
+              "x": 60,
+              "y": 23
+            },
+            {
+              "x": 59,
+              "y": 25
+            },
+            {
+              "x": 53,
+              "y": 24
+            }
+          ],
+          "color": "hair.deep"
+        }
+      ]
+    },
+    {
+      "id": "lids",
+      "parent": "eyes",
+      "zIndex": 30,
+      "primitives": [
+        {
+          "type": "run",
+          "x": 36,
+          "y": 25,
+          "length": 5,
+          "color": "skin.light"
+        },
+        {
+          "type": "run",
+          "x": 53,
+          "y": 25,
+          "length": 5,
+          "color": "skin.light"
+        }
+      ]
+    },
+    {
+      "id": "nose",
+      "parent": "head",
+      "zIndex": 28,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 47,
+              "y": 28
+            },
+            {
+              "x": 45,
+              "y": 34
+            },
+            {
+              "x": 50,
+              "y": 34
+            }
+          ],
+          "color": "skin.shadow"
+        },
+        {
+          "type": "run",
+          "x": 46,
+          "y": 33,
+          "length": 3,
+          "color": "skin.deep"
+        },
+        {
+          "type": "run",
+          "x": 46,
+          "y": 29,
+          "length": 1,
+          "color": "skin.light"
+        }
+      ]
+    },
+    {
+      "id": "cheeks",
+      "parent": "head",
+      "zIndex": 27,
+      "primitives": [
+        {
+          "type": "run",
+          "x": 34,
+          "y": 34,
+          "length": 4,
+          "color": "cheek"
+        },
+        {
+          "type": "run",
+          "x": 57,
+          "y": 34,
+          "length": 4,
+          "color": "cheek"
+        },
+        {
+          "type": "run",
+          "x": 34,
+          "y": 33,
+          "length": 2,
+          "color": "skin.light"
+        }
+      ]
+    },
+    {
+      "id": "mouth",
+      "parent": "head",
+      "zIndex": 31,
+      "primitives": [
+        {
+          "type": "run",
+          "x": 44,
+          "y": 37,
+          "length": 7,
+          "color": "mouth"
+        },
+        {
+          "type": "run",
+          "x": 46,
+          "y": 38,
+          "length": 3,
+          "color": "skin.light"
+        }
+      ]
+    },
+    {
+      "id": "accessory.tablet",
+      "parent": "hand.right",
+      "zIndex": 40,
+      "primitives": [
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 61,
+              "y": 53
+            },
+            {
+              "x": 77,
+              "y": 52
+            },
+            {
+              "x": 80,
+              "y": 70
+            },
+            {
+              "x": 64,
+              "y": 73
+            }
+          ],
+          "color": "outline"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 63,
+              "y": 54
+            },
+            {
+              "x": 75,
+              "y": 54
+            },
+            {
+              "x": 77,
+              "y": 68
+            },
+            {
+              "x": 65,
+              "y": 70
+            }
+          ],
+          "color": "metal.shadow"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 65,
+              "y": 55
+            },
+            {
+              "x": 74,
+              "y": 55
+            },
+            {
+              "x": 75,
+              "y": 66
+            },
+            {
+              "x": 66,
+              "y": 68
+            }
+          ],
+          "color": "detail"
+        },
+        {
+          "type": "polygon",
+          "points": [
+            {
+              "x": 66,
+              "y": 56
+            },
+            {
+              "x": 72,
+              "y": 56
+            },
+            {
+              "x": 66,
+              "y": 64
+            }
+          ],
+          "color": "detail.light"
+        },
+        {
+          "type": "run",
+          "x": 67,
+          "y": 67,
+          "length": 7,
+          "color": "detail.shadow"
+        },
+        {
+          "type": "run",
+          "x": 64,
+          "y": 54,
+          "length": 8,
+          "color": "metal.light"
+        },
+        {
+          "type": "run",
+          "x": 76,
+          "y": 57,
+          "length": 1,
+          "color": "metal"
+        },
+        {
+          "type": "run",
+          "x": 68,
+          "y": 70,
+          "length": 4,
+          "color": "metal"
+        }
+      ]
+    }
+  ],
+  "poses": {
+    "neutral": {},
+    "explaining": {
+      "arm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 25,
+                "y": 46
+              },
+              {
+                "x": 17,
+                "y": 54
+              },
+              {
+                "x": 25,
+                "y": 62
+              },
+              {
+                "x": 33,
+                "y": 54
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 27,
+                "y": 48
+              },
+              {
+                "x": 19,
+                "y": 56
+              },
+              {
+                "x": 23,
+                "y": 60
+              },
+              {
+                "x": 31,
+                "y": 52
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 28,
+            "y": 49,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 24,
+                "y": 55
+              },
+              {
+                "x": 17,
+                "y": 49
+              },
+              {
+                "x": 11,
+                "y": 55
+              },
+              {
+                "x": 18,
+                "y": 61
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 23,
+                "y": 56
+              },
+              {
+                "x": 16,
+                "y": 50
+              },
+              {
+                "x": 12,
+                "y": 54
+              },
+              {
+                "x": 19,
+                "y": 60
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 22,
+            "y": 57,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.left": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 9,
+            "y": 44,
+            "rows": [
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 12,
+            "y": 51,
+            "length": 4,
+            "color": "skin.light"
+          },
+          {
+            "type": "run",
+            "x": 13,
+            "y": 53,
+            "length": 3,
+            "color": "skin.shadow"
+          }
+        ]
+      },
+      "arm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 63,
+                "y": 53
+              },
+              {
+                "x": 69,
+                "y": 62
+              },
+              {
+                "x": 77,
+                "y": 56
+              },
+              {
+                "x": 71,
+                "y": 47
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 65,
+                "y": 52
+              },
+              {
+                "x": 71,
+                "y": 61
+              },
+              {
+                "x": 75,
+                "y": 57
+              },
+              {
+                "x": 69,
+                "y": 48
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 66,
+            "y": 51,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 69,
+                "y": 60
+              },
+              {
+                "x": 71,
+                "y": 69
+              },
+              {
+                "x": 79,
+                "y": 67
+              },
+              {
+                "x": 77,
+                "y": 58
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 71,
+                "y": 60
+              },
+              {
+                "x": 73,
+                "y": 69
+              },
+              {
+                "x": 77,
+                "y": 67
+              },
+              {
+                "x": 75,
+                "y": 58
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 72,
+            "y": 59,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.right": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 71,
+            "y": 66,
+            "rows": [
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 73,
+            "y": 68,
+            "length": 3,
+            "color": "skin.light"
+          }
+        ]
+      },
+      "accessory.tablet": {
+        "dx": 0,
+        "dy": 0
+      }
+    },
+    "pointing": {
+      "arm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 25,
+                "y": 46
+              },
+              {
+                "x": 18,
+                "y": 53
+              },
+              {
+                "x": 26,
+                "y": 61
+              },
+              {
+                "x": 33,
+                "y": 54
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 27,
+                "y": 48
+              },
+              {
+                "x": 20,
+                "y": 55
+              },
+              {
+                "x": 24,
+                "y": 59
+              },
+              {
+                "x": 31,
+                "y": 52
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 28,
+            "y": 49,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 25,
+                "y": 53
+              },
+              {
+                "x": 17,
+                "y": 47
+              },
+              {
+                "x": 11,
+                "y": 55
+              },
+              {
+                "x": 19,
+                "y": 61
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 24,
+                "y": 55
+              },
+              {
+                "x": 16,
+                "y": 49
+              },
+              {
+                "x": 12,
+                "y": 53
+              },
+              {
+                "x": 20,
+                "y": 59
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 23,
+            "y": 56,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.left": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 3,
+            "y": 47,
+            "rows": [
+              [
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 12,
+            "y": 52,
+            "length": 4,
+            "color": "skin.light"
+          }
+        ]
+      },
+      "arm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 62,
+                "y": 52
+              },
+              {
+                "x": 67,
+                "y": 64
+              },
+              {
+                "x": 77,
+                "y": 60
+              },
+              {
+                "x": 72,
+                "y": 48
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 64,
+                "y": 51
+              },
+              {
+                "x": 69,
+                "y": 63
+              },
+              {
+                "x": 75,
+                "y": 61
+              },
+              {
+                "x": 70,
+                "y": 49
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 66,
+            "y": 50,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 68,
+                "y": 63
+              },
+              {
+                "x": 70,
+                "y": 70
+              },
+              {
+                "x": 78,
+                "y": 68
+              },
+              {
+                "x": 76,
+                "y": 61
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 70,
+                "y": 63
+              },
+              {
+                "x": 72,
+                "y": 70
+              },
+              {
+                "x": 76,
+                "y": 68
+              },
+              {
+                "x": 74,
+                "y": 61
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 71,
+            "y": 62,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.right": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 70,
+            "y": 67,
+            "rows": [
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 72,
+            "y": 69,
+            "length": 3,
+            "color": "skin.light"
+          }
+        ]
+      },
+      "accessory.tablet": {
+        "dx": -1,
+        "dy": 1
+      }
+    },
+    "surprised": {
+      "arm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 27,
+                "y": 45
+              },
+              {
+                "x": 18,
+                "y": 49
+              },
+              {
+                "x": 22,
+                "y": 59
+              },
+              {
+                "x": 31,
+                "y": 55
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 28,
+                "y": 47
+              },
+              {
+                "x": 19,
+                "y": 51
+              },
+              {
+                "x": 21,
+                "y": 57
+              },
+              {
+                "x": 30,
+                "y": 53
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 29,
+            "y": 49,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 23,
+                "y": 51
+              },
+              {
+                "x": 15,
+                "y": 42
+              },
+              {
+                "x": 9,
+                "y": 48
+              },
+              {
+                "x": 17,
+                "y": 57
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 22,
+                "y": 52
+              },
+              {
+                "x": 14,
+                "y": 43
+              },
+              {
+                "x": 10,
+                "y": 47
+              },
+              {
+                "x": 18,
+                "y": 56
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 21,
+            "y": 53,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.left": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 7,
+            "y": 37,
+            "rows": [
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 10,
+            "y": 44,
+            "length": 4,
+            "color": "skin.light"
+          },
+          {
+            "type": "run",
+            "x": 11,
+            "y": 46,
+            "length": 3,
+            "color": "skin.shadow"
+          }
+        ]
+      },
+      "arm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 65,
+                "y": 55
+              },
+              {
+                "x": 76,
+                "y": 60
+              },
+              {
+                "x": 80,
+                "y": 50
+              },
+              {
+                "x": 69,
+                "y": 45
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 66,
+                "y": 53
+              },
+              {
+                "x": 77,
+                "y": 58
+              },
+              {
+                "x": 79,
+                "y": 52
+              },
+              {
+                "x": 68,
+                "y": 47
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 67,
+            "y": 51,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 82,
+                "y": 57
+              },
+              {
+                "x": 88,
+                "y": 48
+              },
+              {
+                "x": 80,
+                "y": 44
+              },
+              {
+                "x": 74,
+                "y": 53
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 80,
+                "y": 56
+              },
+              {
+                "x": 86,
+                "y": 47
+              },
+              {
+                "x": 82,
+                "y": 45
+              },
+              {
+                "x": 76,
+                "y": 54
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 79,
+            "y": 55,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.right": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 80,
+            "y": 44,
+            "rows": [
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 82,
+            "y": 46,
+            "length": 3,
+            "color": "skin.light"
+          }
+        ]
+      },
+      "accessory.tablet": {
+        "dx": 9,
+        "dy": -22
+      }
+    },
+    "celebrating": {
+      "arm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 33,
+                "y": 47
+              },
+              {
+                "x": 24,
+                "y": 37
+              },
+              {
+                "x": 16,
+                "y": 43
+              },
+              {
+                "x": 25,
+                "y": 53
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 31,
+                "y": 48
+              },
+              {
+                "x": 22,
+                "y": 38
+              },
+              {
+                "x": 18,
+                "y": 42
+              },
+              {
+                "x": 27,
+                "y": 52
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 30,
+            "y": 49,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.left": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 24,
+                "y": 41
+              },
+              {
+                "x": 29,
+                "y": 26
+              },
+              {
+                "x": 21,
+                "y": 24
+              },
+              {
+                "x": 16,
+                "y": 39
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 22,
+                "y": 41
+              },
+              {
+                "x": 27,
+                "y": 26
+              },
+              {
+                "x": 23,
+                "y": 24
+              },
+              {
+                "x": 18,
+                "y": 39
+              }
+            ],
+            "color": "cloth"
+          },
+          {
+            "type": "run",
+            "x": 21,
+            "y": 40,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.left": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 20,
+            "y": 17,
+            "rows": [
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 23,
+            "y": 24,
+            "length": 4,
+            "color": "skin.light"
+          },
+          {
+            "type": "run",
+            "x": 24,
+            "y": 26,
+            "length": 3,
+            "color": "skin.shadow"
+          }
+        ]
+      },
+      "arm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 68,
+                "y": 55
+              },
+              {
+                "x": 81,
+                "y": 53
+              },
+              {
+                "x": 79,
+                "y": 43
+              },
+              {
+                "x": 66,
+                "y": 45
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 67,
+                "y": 53
+              },
+              {
+                "x": 80,
+                "y": 51
+              },
+              {
+                "x": 80,
+                "y": 45
+              },
+              {
+                "x": 67,
+                "y": 47
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 67,
+            "y": 51,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "forearm.right": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 84,
+                "y": 50
+              },
+              {
+                "x": 90,
+                "y": 37
+              },
+              {
+                "x": 82,
+                "y": 33
+              },
+              {
+                "x": 76,
+                "y": 46
+              }
+            ],
+            "color": "outline"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 82,
+                "y": 49
+              },
+              {
+                "x": 88,
+                "y": 36
+              },
+              {
+                "x": 84,
+                "y": 34
+              },
+              {
+                "x": 78,
+                "y": 47
+              }
+            ],
+            "color": "cloth.shadow"
+          },
+          {
+            "type": "run",
+            "x": 81,
+            "y": 48,
+            "length": 2,
+            "color": "cloth.light"
+          }
+        ]
+      },
+      "hand.right": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 82,
+            "y": 33,
+            "rows": [
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                "skin.deep",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep"
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                "skin",
+                "skin",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                "skin.deep",
+                "skin",
+                null,
+                "skin.deep",
+                "skin",
+                "skin.deep",
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                "skin.deep",
+                null,
+                "skin.deep",
+                null,
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "run",
+            "x": 84,
+            "y": 35,
+            "length": 3,
+            "color": "skin.light"
+          }
+        ]
+      },
+      "accessory.tablet": {
+        "dx": 11,
+        "dy": -33
+      }
+    }
+  },
+  "expressions": {
+    "neutral": {},
+    "happy": {
+      "eyes": {
+        "hidden": true
+      },
+      "pupils": {
+        "hidden": true
+      },
+      "lids": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 36,
+            "y": 28,
+            "rows": [
+              [
+                null,
+                null,
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                null,
+                null
+              ],
+              [
+                null,
+                "hair.deep",
+                "hair.deep",
+                null,
+                null,
+                "hair.deep",
+                "hair.deep",
+                null
+              ]
+            ]
+          },
+          {
+            "type": "matrix",
+            "x": 53,
+            "y": 28,
+            "rows": [
+              [
+                null,
+                null,
+                null,
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                null
+              ],
+              [
+                null,
+                "hair.deep",
+                "hair.deep",
+                null,
+                null,
+                "hair.deep",
+                "hair.deep",
+                null
+              ]
+            ]
+          }
+        ]
+      },
+      "brows": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 35,
+                "y": 22
+              },
+              {
+                "x": 42,
+                "y": 21
+              },
+              {
+                "x": 43,
+                "y": 23
+              },
+              {
+                "x": 36,
+                "y": 24
+              }
+            ],
+            "color": "hair.deep"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 53,
+                "y": 21
+              },
+              {
+                "x": 60,
+                "y": 22
+              },
+              {
+                "x": 59,
+                "y": 24
+              },
+              {
+                "x": 53,
+                "y": 23
+              }
+            ],
+            "color": "hair.deep"
+          }
+        ]
+      },
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 43,
+            "y": 35,
+            "rows": [
+              ["mouth", null, null, null, null, null, null, "mouth"],
+              ["mouth", "mouth", null, null, null, null, "mouth", "mouth"],
+              [null, "mouth", "eye", "eye", "eye", "eye", "mouth", null],
+              [null, null, "mouth", "mouth", "mouth", "mouth", null, null]
+            ]
+          }
+        ]
+      },
+      "cheeks": {
+        "dy": -1
+      }
+    },
+    "thinking": {
+      "pupils": {
+        "dx": 2,
+        "dy": 1
+      },
+      "lids": {
+        "primitives": [
+          {
+            "type": "run",
+            "x": 35,
+            "y": 27,
+            "length": 7,
+            "color": "skin.shadow"
+          },
+          {
+            "type": "run",
+            "x": 53,
+            "y": 26,
+            "length": 6,
+            "color": "skin.shadow"
+          }
+        ]
+      },
+      "brows": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 35,
+                "y": 23
+              },
+              {
+                "x": 42,
+                "y": 22
+              },
+              {
+                "x": 42,
+                "y": 24
+              },
+              {
+                "x": 35,
+                "y": 25
+              }
+            ],
+            "color": "hair.deep"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 53,
+                "y": 20
+              },
+              {
+                "x": 60,
+                "y": 19
+              },
+              {
+                "x": 60,
+                "y": 21
+              },
+              {
+                "x": 53,
+                "y": 22
+              }
+            ],
+            "color": "hair.deep"
+          }
+        ]
+      },
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 44,
+            "y": 37,
+            "rows": [
+              [null, null, null, "mouth", "mouth", "mouth", "mouth", null],
+              [null, null, "mouth", "mouth", null, null, "mouth", null],
+              [null, null, null, "mouth", "mouth", "mouth", null, null]
+            ]
+          }
+        ]
+      }
+    },
+    "surprised": {
+      "eyes": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 35,
+            "y": 25,
+            "rows": [
+              [
+                null,
+                null,
+                "skin.shadow",
+                "skin.shadow",
+                "skin.shadow",
+                null,
+                null
+              ],
+              [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+              ["skin.shadow", "eye", "eye", "eye", "eye", "eye", "skin.shadow"],
+              ["skin.shadow", "eye", "eye", "eye", "eye", "eye", "skin.shadow"],
+              [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+              [
+                null,
+                null,
+                "skin.shadow",
+                "skin.shadow",
+                "skin.shadow",
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "matrix",
+            "x": 52,
+            "y": 25,
+            "rows": [
+              [
+                null,
+                null,
+                "skin.shadow",
+                "skin.shadow",
+                "skin.shadow",
+                null,
+                null
+              ],
+              [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+              ["skin.shadow", "eye", "eye", "eye", "eye", "eye", "skin.shadow"],
+              ["skin.shadow", "eye", "eye", "eye", "eye", "eye", "skin.shadow"],
+              [null, "skin.shadow", "eye", "eye", "eye", "skin.shadow", null],
+              [
+                null,
+                null,
+                "skin.shadow",
+                "skin.shadow",
+                "skin.shadow",
+                null,
+                null
+              ]
+            ]
+          }
+        ]
+      },
+      "pupils": {
+        "dy": -1
+      },
+      "lids": {
+        "primitives": [
+          {
+            "type": "run",
+            "x": 36,
+            "y": 24,
+            "length": 5,
+            "color": "skin.light"
+          },
+          {
+            "type": "run",
+            "x": 53,
+            "y": 24,
+            "length": 5,
+            "color": "skin.light"
+          }
+        ]
+      },
+      "brows": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 35,
+                "y": 20
+              },
+              {
+                "x": 42,
+                "y": 19
+              },
+              {
+                "x": 43,
+                "y": 21
+              },
+              {
+                "x": 36,
+                "y": 22
+              }
+            ],
+            "color": "hair.deep"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 53,
+                "y": 19
+              },
+              {
+                "x": 60,
+                "y": 20
+              },
+              {
+                "x": 59,
+                "y": 22
+              },
+              {
+                "x": 53,
+                "y": 21
+              }
+            ],
+            "color": "hair.deep"
+          }
+        ]
+      },
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 45,
+            "y": 34,
+            "rows": [
+              [null, null, "mouth", "mouth", "mouth", "mouth", null, null],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null
+              ],
+              ["mouth", "mouth", null, null, null, null, "mouth", "mouth"],
+              ["mouth", "mouth", null, null, null, null, "mouth", "mouth"],
+              [
+                "mouth",
+                "mouth",
+                null,
+                "tongue",
+                "tongue",
+                null,
+                "mouth",
+                "mouth"
+              ],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null
+              ],
+              [null, null, "mouth", "mouth", "mouth", "mouth", null, null]
+            ]
+          }
+        ]
+      },
+      "cheeks": {
+        "hidden": true
+      }
+    },
+    "serious": {
+      "pupils": {
+        "dy": 1
+      },
+      "lids": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 35,
+            "y": 26,
+            "rows": [
+              ["skin", "skin", "skin", "skin", "skin", "skin", "skin", "skin"],
+              ["skin", "skin", "skin", "skin", "skin", "skin", "skin", "skin"],
+              [
+                null,
+                null,
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                null,
+                null
+              ]
+            ]
+          },
+          {
+            "type": "matrix",
+            "x": 52,
+            "y": 26,
+            "rows": [
+              ["skin", "skin", "skin", "skin", "skin", "skin", "skin", "skin"],
+              ["skin", "skin", "skin", "skin", "skin", "skin", "skin", "skin"],
+              [
+                null,
+                null,
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                null,
+                null
+              ]
+            ]
+          }
+        ]
+      },
+      "brows": {
+        "primitives": [
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 35,
+                "y": 21
+              },
+              {
+                "x": 43,
+                "y": 24
+              },
+              {
+                "x": 43,
+                "y": 25
+              },
+              {
+                "x": 35,
+                "y": 22
+              }
+            ],
+            "color": "hair.deep"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 53,
+                "y": 24
+              },
+              {
+                "x": 60,
+                "y": 21
+              },
+              {
+                "x": 61,
+                "y": 22
+              },
+              {
+                "x": 53,
+                "y": 25
+              }
+            ],
+            "color": "hair.deep"
+          }
+        ]
+      },
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 44,
+            "y": 38,
+            "rows": [
+              [
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth"
+              ],
+              [null, null, "mouth", "mouth", "mouth", "mouth", null, null]
+            ]
+          }
+        ]
+      }
+    },
+    "confident": {
+      "pupils": {
+        "dx": 1,
+        "dy": 1
+      },
+      "lids": {
+        "primitives": [
+          {
+            "type": "run",
+            "x": 35,
+            "y": 27,
+            "length": 7,
+            "color": "skin.shadow"
+          },
+          {
+            "type": "matrix",
+            "x": 52,
+            "y": 26,
+            "rows": [
+              ["skin", "skin", "skin", "skin", "skin", "skin", "skin", "skin"],
+              [
+                null,
+                null,
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                "hair.deep",
+                null,
+                null
+              ]
+            ]
+          }
+        ]
+      },
+      "brows": {
+        "primitives": [
+          {
+            "type": "run",
+            "x": 35,
+            "y": 20,
+            "length": 8,
+            "color": "hair.deep"
+          },
+          {
+            "type": "polygon",
+            "points": [
+              {
+                "x": 53,
+                "y": 23
+              },
+              {
+                "x": 60,
+                "y": 21
+              },
+              {
+                "x": 60,
+                "y": 23
+              },
+              {
+                "x": 53,
+                "y": 25
+              }
+            ],
+            "color": "hair.deep"
+          }
+        ]
+      },
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 43,
+            "y": 36,
+            "rows": [
+              ["mouth", null, null, null, null, null, null, null],
+              ["mouth", "mouth", null, null, null, null, null, "mouth"],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth"
+              ],
+              [null, null, null, "mouth", "mouth", "mouth", "mouth", null]
+            ]
+          }
+        ]
+      },
+      "cheeks": {
+        "dy": -1
+      }
+    }
+  },
+  "mouths": {
+    "A": {
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 43,
+            "y": 35,
+            "rows": [
+              [
+                null,
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null
+              ],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "mouth",
+                "mouth",
+                null
+              ],
+              [
+                null,
+                null,
+                "mouth",
+                "tongue",
+                "tongue",
+                "tongue",
+                "tongue",
+                "mouth",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null,
+                null
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "B": {
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 45,
+            "y": 34,
+            "rows": [
+              [null, null, "mouth", "mouth", "mouth", null, null],
+              [null, "mouth", "mouth", null, "mouth", "mouth", null],
+              ["mouth", "mouth", null, null, null, "mouth", "mouth"],
+              ["mouth", "mouth", null, null, null, "mouth", "mouth"],
+              ["mouth", "mouth", null, "tongue", null, "mouth", "mouth"],
+              [null, "mouth", "mouth", "mouth", "mouth", "mouth", null],
+              [null, null, "mouth", "mouth", "mouth", null, null]
+            ]
+          }
+        ]
+      }
+    },
+    "C": {
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 42,
+            "y": 36,
+            "rows": [
+              [null, null, null, null, "mouth", "mouth", "mouth", "mouth"],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth"
+              ],
+              [
+                "mouth",
+                "mouth",
+                "mouth",
+                "tongue",
+                "tongue",
+                "tongue",
+                "mouth",
+                null
+              ],
+              [null, "mouth", "mouth", "mouth", "mouth", "mouth", null, null],
+              [null, null, "mouth", "mouth", "mouth", null, null, null]
+            ]
+          }
+        ]
+      }
+    },
+    "D": {
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 43,
+            "y": 36,
+            "rows": [
+              [
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null
+              ],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth"
+              ],
+              [
+                null,
+                "mouth",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "mouth"
+              ],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth"
+              ],
+              [
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "E": {
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 41,
+            "y": 34,
+            "rows": [
+              [
+                null,
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null
+              ],
+              [
+                "mouth",
+                "mouth",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "mouth",
+                "mouth",
+                null
+              ],
+              [
+                "mouth",
+                "mouth",
+                "mouth",
+                "tongue",
+                "tongue",
+                "tongue",
+                "tongue",
+                "tongue",
+                "tongue",
+                "mouth",
+                "mouth",
+                null
+              ],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null,
+                null,
+                null
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "F": {
+      "mouth": {
+        "primitives": [
+          {
+            "type": "matrix",
+            "x": 42,
+            "y": 36,
+            "rows": [
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null
+              ],
+              [
+                "mouth",
+                "mouth",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "mouth",
+                "mouth"
+              ],
+              [
+                "mouth",
+                "mouth",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "eye",
+                "mouth",
+                "mouth"
+              ],
+              [
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null
+              ],
+              [
+                null,
+                null,
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                "mouth",
+                null,
+                null
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "X": {}
+  }
+}

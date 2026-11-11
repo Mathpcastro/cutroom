@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!--
+  Formato "historia" do Videosell: uma série de episódios com personagens fixos (avatares em pixel art).
+  O roteiro fica no <template id="roteiro"> abaixo: "# Episódio N: Título", "[cena: lugar, dia|noite]" e falas
+  "Nome (humor): fala". Linhas sem nome são do narrador. CRM.autoStory monta cenas, câmera em quem fala,
+  balões, expressões e o cartão final. A narração (film_voiceover) recebe só as falas, sem os nomes.
+  Elenco: o 1º personagem usa o avatar do perfil (FILM_AVATAR); os outros usam as amostras do kit.
+-->
+<script src="brand.js"></script>
+<style>
+  @font-face { font-family: Anton; src: url(fonts/Anton-Regular.ttf); }
+  @font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.ttf); font-weight: 100 900; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #141318; }
+  #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #141318; font-family: "Instrument Sans", sans-serif; }
+</style>
+</head>
+<body>
+<div id="film" data-composition-id="film" data-start="0" data-duration="30" data-width="1080" data-height="1920">
+  <audio id="voz" data-start="0" data-duration="28" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
+  <!--MUSICA-->
+  <!--SFX-->
+  <template id="roteiro">
+# Episódio 1: O primeiro cliente
+[cena: quarto, noite]
+Narrador: Episódio um. O primeiro cliente.
+Léo (animado): Bia, acorda! Alguém pagou!
+Bia (sonolenta): Pagou o quê? A gente nem tem botão de pagar.
+Léo: Pois é. Ele mandou um Pix e escreveu: me ensina a usar.
+Bia (pensativa): Então a gente tem um cliente. E nenhum manual.
+[cena: escritorio, noite]
+Narrador: Três da manhã. Café número quatro.
+Léo (confiante): Pronto! Gravei um vídeo explicando tudo.
+Bia (brava): Léo. Você esqueceu de ligar o microfone.
+[cena: escritorio, dia]
+Narrador: E foi aí que o cliente respondeu.
+Léo (nervoso): Ele quer cancelar?
+Bia (surpresa): Não. Ele quer indicar dez amigos.
+Narrador: Continua no próximo episódio.
+  </template>
+  <script src="kit/gsap.min.js"></script>
+  <script src="timing.js"></script>
+  <script src="kit/cutroom-kit.js"></script>
+  <script src="kit/cutroom-motion.js"></script>
+  <script src="kit/avatar/engine.js"></script>
+  <script src="kit/avatar/sample.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = Math.max(CR.timing.voiceEnd + 2.4, 10);
+    var S = window.CRM_SAMPLE_AVATARS || {};
+    var p = (window.BRAND && window.BRAND.palette) || {};
+    CRM.autoStory({
+      tl: tl, film: "#film", duration: D, engine: window.AvatarEngine,
+      script: document.getElementById("roteiro").content.textContent,
+      // Cast by name; anyone missing takes the next fallback (profile avatar first).
+      cast: { "Léo": window.FILM_AVATAR || S.strategist, "Bia": S.companion },
+      fallback: [window.FILM_AVATAR || S.strategist, S.companion, S.expert].filter(Boolean),
+      accent: p.accent || "#7C5CFF",
+      cta: "SEGUE PRA PARTE 2",
+    });
+    tl.set({}, {}, D);
+    window.__timelines["film"] = tl;
+  </script>
+</div>
+</body>
+</html>

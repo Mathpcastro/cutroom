@@ -1,10 +1,18 @@
+import { BrandProofStore } from "./core/brand-proofs";
+import { SeriesStore } from "./core/series";
+import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, STORY_PLACES, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
+import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
+import { readCreationPilot, writeCreationPilot } from "./core/creation-pilot";
+import { readProductPage } from "./core/product-page";
 import {
   app,
   BrowserWindow,
   dialog,
   ipcMain,
   nativeTheme,
+  Notification,
   protocol,
+  safeStorage,
   shell,
 } from "electron";
 import { randomUUID } from "node:crypto";
@@ -13,12 +21,13 @@ import {
   access,
   mkdir,
   readFile,
+  readdir,
   realpath,
   stat,
   writeFile,
   rename,
 } from "node:fs/promises";
-import { dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 import { z } from "zod";
@@ -58,6 +67,37 @@ import {
   applyNativeChatCommand,
 } from "./core/chat-commands";
 import { startWindowsAutoUpdate } from "./core/updater";
+import { SecretStore } from "./core/secrets";
+import { analyzeReference, blueprintSummary, fetchReference, referenceStyle } from "./core/reference";
+import {
+  BrandStore,
+  carrossellProfiles,
+  importCarrossellBrand,
+} from "./core/brand";
+import { Studio, probeAudio } from "./core/studio";
+import { Films } from "./core/film";
+import { FilmStudio } from "./core/film-studio";
+import { installSkill } from "./core/skill";
+import { Publisher } from "./core/publish";
+import { OsReelScheduler, SCHEDULE_FLAG } from "./core/reel-schedule";
+import { motionBrowser, motionPackageInfo } from "./core/motion-package";
+import { createRequire } from "node:module";
+import { localSpeech, localVoices } from "./core/local-voice";
+import type { MotionAssets } from "./core/motion-document";
+import { AvatarStore } from "./core/avatar-store";
+import { AvatarService, avatarRenderJobId } from "./core/avatar-service";
+import { renderAvatarRevision } from "./core/avatar-render";
+import { AvatarVision } from "./core/avatar-vision";
+import { createLocalAvatarStarters } from "./core/avatar-creator";
+import { createAvatarToolDispatcher } from "./core/avatar-mcp";
+import { isAvatarTool } from "./core/avatar-tool-defs";
+import { ProfileService } from "./core/profile-service";
+import { ProfileStore } from "./core/profile-store";
+import {
+  createProfileToolDispatcher,
+  DESKTOP_MCP_PROFILE_CALLER,
+  isProfileTool,
+} from "./core/profile-tool-defs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 if (process.env.CUTROOM_USER_DATA) {
@@ -91,9 +131,30 @@ let connectionGeneration = 0;
 let cacheDir: string;
 const motionDocuments = new Map<string, string>();
 let userDir: string;
+let studio: Studio;
+let filmStudio: FilmStudio;
+let publisher: Publisher;
+let secretStore: SecretStore;
+let brandStore: BrandStore;
+let profileService: ProfileService;
+let avatarStore: AvatarStore;
+let avatarService: AvatarService;
+let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
+let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
+/** Host images for scenes: the brand logo as data-asset="logo". */
+async function motionAssets(): Promise<MotionAssets> {
+  const brand = await brandStore?.get();
+  return brand?.logo ? { logo: brand.logo } : {};
+}
+const CANVAS_SIZES = {
+  "16:9": [1920, 1080],
+  "9:16": [1080, 1920],
+  "1:1": [1080, 1080],
+  "4:5": [1080, 1350],
+} as const;
 const appearanceSchema = z
   .object({
-    mode: z.enum(["light", "dark"]),
+    mode: z.enum(["light", "dark", "system"]),
     background: z.string().regex(/^#[0-9a-f]{6}$/i),
     foreground: z.string().regex(/^#[0-9a-f]{6}$/i),
   })
@@ -115,6 +176,95 @@ function applyWindowAppearance() {
       height: 40,
     });
 }
+/** Spec 3 E: system notifications for the autopilot (published, failed, queue empty). */
+function notifyReels(results: { status: string; error?: string }[]) {
+  if (!Notification.isSupported()) return;
+  void publisher?.settings().then((s) => {
+    if (s.pilot?.notify === false) return;
+    const show = (title: string, body: string) => new Notification({ title, body, silent: false }).show();
+    const published = results.filter((r) => r.status === "published").length;
+    const failed = results.filter((r) => r.status === "failed");
+    if (published) show("Videosell", published === 1 ? "Seu Reels foi publicado no Instagram." : `${published} Reels publicados no Instagram.`);
+    if (failed.length) show("Videosell: um Reels não saiu", (failed[0].error ?? "Abra o Piloto automático para ver o motivo.").slice(0, 180));
+    if (published && !(s.scheduled ?? []).some((e) => e.status === "scheduled"))
+      show("Videosell: a fila acabou", "Não há mais Reels agendados. Crie mais ou adicione vídeos ao piloto.");
+  }, () => undefined);
+}
+/** Spec 5: series store and the episode generator shared by the UI and the MCP tools. */
+let seriesStore: SeriesStore;
+const seriesRef = z.object({ profileId: z.string().max(64), seriesId: z.string().max(64) });
+
+function episodeBrief(series: Series, episodes: Episode[], number: number, idea: string) {
+  const previous = episodes.filter((e) => e.number < number && (e.summary || e.script)).slice(-4)
+    .map((e) => `Ep. ${e.number} (${e.title}): ${e.summary ?? e.script?.hook ?? e.idea}`).join("\n") || "Nenhum: este é o primeiro.";
+  const cast = series.characters.map((c) => `- ${c.name}${c.narrator ? " (narrador, sem avatar)" : ""}: ${c.role}. ${c.description} Jeito de falar: ${c.speech}.${c.quirk ? ` Mania: ${c.quirk}.` : ""}`).join("\n");
+  const product = { never: "Nunca mostre o produto.", sometimes: "O produto pode aparecer resolvendo a cena, sem propaganda.", end: "Feche com o produto em uma fala curta." }[series.product];
+  return `Escreva o roteiro do episódio ${number} da série "${series.title}" para um Reels vertical.
+Premissa: ${series.premise}
+Tom: ${series.tone}
+Cenário habitual: ${series.setting}
+O que nunca muda: ${series.rules}
+Elenco (use os nomes exatamente assim):
+${cast}
+Episódios anteriores (continue a história e retome ganchos):
+${previous}
+Ideia deste episódio: ${idea}
+Produto: ${product}
+Regras: 25 a 45 segundos; falas de até ${MAX_WORDS} palavras; abrir no meio da ação; um conflito; uma virada; terminar em gancho para o próximo episódio; no máximo ${MAX_ON_SCENE} personagens por cena além do narrador.
+Cenários permitidos: ${STORY_PLACES.join(", ")} (dia ou noite). Humores permitidos: ${STORY_MOODS.join(", ")}.
+Responda só com JSON: {"title":"...","scenes":[{"place":"quarto","time":"dia","lines":[{"who":"Nome","mood":"animado","text":"..."}]}],"hook":"gancho final em uma frase"}`;
+}
+
+async function generateEpisode(args: unknown) {
+  const a = seriesRef.extend({ number: z.number().int().min(1) }).parse(args);
+  const profile = await profileService.get(a.profileId);
+  const { series, episodes } = await seriesStore.get(a.profileId, a.seriesId);
+  const episode = episodes.find((e) => e.number === a.number);
+  if (!episode?.script) throw new Error("Escreva o roteiro do episódio antes de gerar.");
+  const characters = series.characters;
+  const issues = validateScript(episode.script, characters.filter((c) => !c.narrator).map((c) => c.name)).filter((i) => !/dura cerca/.test(i.message));
+  if (issues.length) throw new Error(`O roteiro precisa de ajuste: ${issues.map((i) => `${i.message} ${i.fix ?? ""}`).join(" ")}`);
+  const byName = new Map(characters.map((c) => [c.name.toLowerCase(), c]));
+  const avatarOf = (name: string): CastAvatar => {
+    const id = byName.get(name.toLowerCase())?.avatar?.avatarId;
+    if (id?.startsWith("base:")) return (BASE_AVATARS as readonly string[]).includes(id.slice(5)) ? (id.slice(5) as CastAvatar) : "companion";
+    return id ? "film" : "film";
+  };
+  const speaking = [...new Set(spokenLines(episode.script).map((l) => l.who).filter((w) => w.toLowerCase() !== NARRATOR.toLowerCase()))];
+  const usesFilmAvatar = speaking.some((n) => avatarOf(n) === "film") && !!profile.defaultAvatar;
+  const created = await filmStudio.create({
+    name: `${series.title} · Ep. ${episode.number}`.slice(0, 120),
+    format: "historia",
+    aspect: "9:16",
+    ...(usesFilmAvatar ? { avatar: profile.defaultAvatar } : {}),
+  });
+  await filmStudio.write({
+    film: created.film, path: "brand.js",
+    content: "window.BRAND = " + JSON.stringify({ name: profile.brand.name || profile.name, handle: profile.handle, palette: { accent: profile.brand.accent, ink: profile.brand.ink, paper: profile.brand.paper } }) + ";",
+  });
+  const defaultVoice = profile.voice.voiceId === "default" ? {} : { provider: profile.voice.provider, voice: profile.voice.voiceId };
+  const lines = spokenLines(episode.script).map((line) => {
+    const c = byName.get(line.who.toLowerCase()) ?? (line.who.toLowerCase() === NARRATOR.toLowerCase() ? characters.find((x) => x.narrator) : undefined);
+    return { text: line.text, ...(c?.voice ? { provider: c.voice.provider, voice: c.voice.voiceId } : defaultVoice) };
+  });
+  const voice = (await filmStudio.dialogue({ film: created.film, lines })) as { voiceEnd: number; duration: number; voices: number };
+  const duration = Math.max(6, +(voice.voiceEnd + 2.4).toFixed(2));
+  const cast = Object.fromEntries(speaking.map((n) => [n, usesFilmAvatar || avatarOf(n) !== "film" ? avatarOf(n) : "strategist"])) as Record<string, CastAvatar>;
+  await filmStudio.write({
+    film: created.film, path: "index.html",
+    content: storyFilmHtml({ script: toEngineText(episode.script, episode.number), duration, voiceDuration: voice.duration, cast, hasFilmAvatar: usesFilmAvatar, episode: { number: episode.number, series: series.title, cta: series.cta } }),
+  });
+  await profileService.linkProject(a.profileId, created.film).catch(() => undefined);
+  const frozen = Object.fromEntries(characters.map((c) => [c.name, { ...(c.avatar ? { avatarId: c.avatar.avatarId, revision: c.avatar.revision } : {}), ...(c.voice ? { provider: c.voice.provider, voiceId: c.voice.voiceId } : {}) }]));
+  await seriesStore.updateEpisode(a.profileId, a.seriesId, a.number, { filmId: created.film, cast: frozen });
+  const check = (await filmStudio.check({ film: created.film })) as { errors: string[]; warnings: string[] };
+  return {
+    film: created.film, duration, check,
+    warnings: voice.voices < 2 && speaking.length > 1 ? ["Só uma voz disponível: todos os personagens falam com a mesma voz. Instale outra voz em Ajustes › Vozes."] : [],
+    next: "render_film com este film; depois episode_update com output e state 'ready'.",
+  };
+}
+
 let chatBusy = false;
 const allowedFiles = new Set<string>();
 const controllers = new Map<string, AbortController>();
@@ -155,7 +305,21 @@ function activity(entry: AgentActivity) {
   ].slice(-200);
   emit();
 }
+/** Blank canvases carry silent audio: there is nothing to transcribe in them. */
+const isCanvas = (path: string) =>
+  dirname(resolve(path)) === resolve(cacheDir) &&
+  /^canvas-[\w-]+\.mp4$/i.test(path.split(/[\\/]/).pop() ?? "");
 async function requireTranscription(signal?: AbortSignal) {
+  // Narrated canvases caption the voice track, which already has word timings.
+  if (
+    (state.project.audio ?? []).some(
+      (t) => t.kind === "voice" && t.words?.length,
+    ) &&
+    state.project.media.every(
+      (media) => !media.hasAudio || isCanvas(media.path),
+    )
+  )
+    return;
   const missing = state.project.media.some(
     (media) =>
       media.hasAudio &&
@@ -213,7 +377,10 @@ function idle() {
 }
 async function allowProjectFiles() {
   const nextFiles = new Set<string>();
-  for (const media of state.project.media)
+  for (const media of [
+    ...state.project.media,
+    ...(state.project.audio ?? []).map((track) => ({ path: track.path })),
+  ] as { path: string; thumbnail?: string; proxy?: string }[])
     for (const path of [media.path, media.thumbnail, media.proxy])
       if (path) {
         try {
@@ -226,6 +393,35 @@ async function allowProjectFiles() {
   allowedFiles.clear();
   for (const path of nextFiles) allowedFiles.add(path);
 }
+/** Analyses a reference video (file or link) into a mold: cuts, rhythm, colours and speech, with keyframes. */
+async function referenceAnalysis(args: Record<string, unknown>) {
+  const a = z
+    .object({ path: z.string().max(2000).optional(), url: z.string().url().max(2000).optional() })
+    .strict()
+    .refine((v) => Boolean(v.path) !== Boolean(v.url), "Informe o arquivo (path) ou o link (url) do vídeo de referência.")
+    .parse(args);
+  const root = join(cacheDir, "references");
+  return job("inspection", "Analisando o vídeo de referência…", async (signal, progress) => {
+    const file = a.url ? (progress(2, "Baixando a referência…"), await fetchReference(a.url, root, signal)) : a.path!;
+    if (!isAbsolute(file)) throw new Error("Use o caminho absoluto do vídeo.");
+    const blueprint = await analyzeReference(
+      file,
+      {
+        root,
+        transcribe: (path, duration, s, p) =>
+          packages.transcribe({ id: `reference-${basename(path)}`, name: "Referência", path, duration, width: 1, height: 1, fps: 1, hasAudio: true }, cacheDir, (v) => p(v), s),
+      },
+      signal,
+      (v, label) => progress(Math.round(v * 100), label),
+    );
+    const images: string[] = [];
+    const step = Math.max(1, Math.ceil(blueprint.shots.length / 8));
+    for (let i = 0; i < blueprint.shots.length && images.length < 8; i += step)
+      images.push(`data:image/jpeg;base64,${(await readFile(blueprint.shots[i].frame)).toString("base64")}`);
+    return { ...blueprint, images };
+  });
+}
+
 async function job<T>(
   kind: string,
   label: string,
@@ -405,6 +601,8 @@ async function executeCommand(value: unknown) {
         "overlay",
         "motion",
         "delete_motion",
+        "audio",
+        "delete_audio",
         "remove_silence",
         "remove_fillers",
         "preset",
@@ -588,19 +786,61 @@ async function runChatCommand(value: unknown) {
     throw error;
   }
 }
-async function exportVideo() {
-  if (!state.project.clips.length) throw new Error("A timeline está vazia.");
-  const result = await dialog.showSaveDialog(window!, {
-    title: "Exportar vídeo",
-    defaultPath: `${state.project.name}-editado.mp4`,
-    filters: [{ name: "Vídeo MP4", extensions: ["mp4"] }],
+/** Scenes first (cached), then the FFmpeg export. Shared by the export dialog, agent exports and reviews. */
+async function renderAndExport(
+  snapshot: Project,
+  output: string,
+  signal: AbortSignal,
+  onProgress: (value: number, label?: string) => void,
+) {
+  const motions = await renderMotions(snapshot, {
+    cache: join(cacheDir, "motions"),
+    packages: packages.root,
+    resources,
+    worker: join(here, "render-motion.js"),
+    signal,
+    assets: await motionAssets(),
+    onProgress: (p, label) => onProgress(p * 0.35, label),
   });
-  if (result.canceled || !result.filePath) return emit();
-  const output = resolve(
-    result.filePath.endsWith(".mp4")
-      ? result.filePath
-      : `${result.filePath}.mp4`,
-  );
+  await exportProject(snapshot, output, {
+    signal,
+    onProgress: (p) => onProgress(motions.length ? 35 + p * 0.65 : p),
+    motions,
+    fontPath: join(resources, "fonts", "Barlow-Regular.ttf"),
+  });
+}
+async function exportVideo(destination: "dialog" | "videos" = "dialog") {
+  if (!state.project.clips.length) throw new Error("A timeline está vazia.");
+  let output: string;
+  if (destination === "videos") {
+    // Agents finish unattended: a fresh name in Videos/CutRoom, never an existing file.
+    const folder = join(app.getPath("videos"), "CutRoom");
+    await mkdir(folder, { recursive: true });
+    const safe =
+      state.project.name
+        .replace(/[^\p{L}\p{N} _-]+/gu, "")
+        .trim()
+        .slice(0, 80) || "video";
+    output = join(
+      folder,
+      `${safe}-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.mp4`,
+    );
+  } else {
+    const result = await dialog.showSaveDialog(window!, {
+      title: "Exportar vídeo",
+      defaultPath: `${state.project.name}-editado.mp4`,
+      filters: [{ name: "Vídeo MP4", extensions: ["mp4"] }],
+    });
+    if (result.canceled || !result.filePath) {
+      emit();
+      return undefined;
+    }
+    output = resolve(
+      result.filePath.endsWith(".mp4")
+        ? result.filePath
+        : `${result.filePath}.mp4`,
+    );
+  }
   if (
     state.project.media.some(
       (media) => resolve(media.path).toLowerCase() === output.toLowerCase(),
@@ -614,30 +854,20 @@ async function exportVideo() {
     "export",
     "Exportando no seu computador…",
     async (signal, onProgress) => {
-      const motions = await renderMotions(snapshot, {
-        cache: join(cacheDir, "motions"),
-        packages: packages.root,
-        resources,
-        worker: join(here, "render-motion.js"),
-        signal,
-        onProgress: (p, label) => onProgress(p * 0.35, label),
-      });
-      await exportProject(snapshot, output, {
-        signal,
-        onProgress: (p) => onProgress(motions.length ? 35 + p * 0.65 : p),
-        motions,
-        fontPath: join(resources, "fonts", "Barlow-Regular.ttf"),
-      });
+      await renderAndExport(snapshot, output, signal, onProgress);
       return output;
     },
   );
   message("system", `Exportação concluída: ${output}`);
-  return emit();
+  emit();
+  return output;
 }
 async function executeTool(
   name: string,
   args: Record<string, unknown>,
 ): Promise<unknown> {
+  if (isProfileTool(name)) return dispatchProfileTool(name, args);
+  if (isAvatarTool(name)) return dispatchAvatarTool(name, args);
   if (name === "get_project") return structuredClone(state.project);
   if (name === "edit_project") {
     await executeCommand(args);
@@ -647,12 +877,150 @@ async function executeTool(
     await transcribe();
     return { words: state.project.words };
   }
-  if (name === "export_video") {
-    await exportVideo();
+  if (name === "job_status")
     return {
+      jobs: state.jobs
+        .slice(-6)
+        .map(
+          ({ kind, label, progress, status, error, output, finishedAt }) => ({
+            kind,
+            label,
+            progress: Math.round(progress),
+            status,
+            ...(error ? { error } : {}),
+            ...(output ? { output } : {}),
+            ...(finishedAt ? { finishedAt } : {}),
+          }),
+        ),
+    };
+  if (name === "export_video" && args.destination === "videos") {
+    // MCP clients cut tool calls at ~60 s; a long export keeps running and job_status reports it.
+    const running = exportVideo("videos");
+    running.catch(() => undefined);
+    const output = await Promise.race([
+      running,
+      new Promise<null>((done) => setTimeout(() => done(null), 40_000)),
+    ]);
+    if (output === null)
+      return {
+        exported: false,
+        status: "exporting",
+        message:
+          "A exportação continua no computador do usuário. Chame job_status em 30–60 s; quando o job de export estiver completed, output é o caminho do MP4.",
+        jobs: state.jobs.filter((job) => job.kind === "export").slice(-1),
+      };
+    return { exported: !!output, path: output };
+  }
+  if (name === "export_video") {
+    const destination = args.destination === "videos" ? "videos" : "dialog";
+    const output = await exportVideo(destination);
+    return {
+      exported: !!output,
+      ...(output
+        ? { path: output }
+        : { message: "Exportação cancelada pelo usuário." }),
       jobs: state.jobs.filter((job) => job.kind === "export").slice(-1),
     };
   }
+  const studioTools: Record<
+    string,
+    (a: Record<string, unknown>) => Promise<unknown> | unknown
+  > = {
+    add_audio: (a) => studio.addAudio(a),
+    list_voices: (a) => studio.listVoices(a.provider as never),
+    add_voiceover: (a) => studio.addVoiceover(a),
+    search_music: (a) => studio.searchMusic(a),
+    add_music: (a) => studio.addMusic(a),
+    get_brand: () => studio.getBrand(),
+    list_formats: () => studio.listFormats(),
+    get_format_guide: (a) => studio.getFormatGuide(a),
+    render_frame: (a) => studio.renderFrame(a),
+    review_video: (a) => studio.reviewVideo(a),
+    create_film: (a) => filmStudio.create(a),
+    update_film_avatar: (a) => filmStudio.updateFilmAvatar(a),
+    list_films: () => filmStudio.list(),
+    film_voiceover: (a) => filmStudio.voiceover(a),
+    film_asset: (a) => filmStudio.asset(a),
+    write_film_file: (a) => filmStudio.write(a),
+    read_film_file: (a) => filmStudio.read(a),
+    film_check: (a) => filmStudio.check(a),
+    film_dialogue: (a) => filmStudio.dialogue(a),
+    series_list: (a) => seriesStore.list(z.object({ profileId: z.string().max(64) }).parse(a).profileId),
+    series_create: (a) => { const { profileId, ...rest } = a as { profileId: string }; return seriesStore.create(profileId, rest); },
+    series_get: (a) => { const r = seriesRef.parse(a); return seriesStore.get(r.profileId, r.seriesId); },
+    series_update: (a) => { const { profileId, seriesId, ...rest } = a as { profileId: string; seriesId: string }; return seriesStore.update(profileId, seriesId, rest); },
+    series_delete: (a) => { const r = seriesRef.extend({ confirm: z.literal(true) }).parse(a); return seriesStore.remove(r.profileId, r.seriesId, r.confirm); },
+    character_upsert: (a) => { const r = seriesRef.extend({ character: z.unknown() }).parse(a); return seriesStore.upsertCharacter(r.profileId, r.seriesId, r.character); },
+    episode_create: (a) => { const r = seriesRef.extend({ title: z.string(), idea: z.string().optional() }).parse(a); return seriesStore.createEpisode(r.profileId, r.seriesId, { title: r.title, idea: r.idea ?? "" }); },
+    episode_write_script: async (a) => {
+      const r = seriesRef.extend({ number: z.number().int().min(1) }).parse(a);
+      const { series, episodes } = await seriesStore.get(r.profileId, r.seriesId);
+      const ep = episodes.find((e) => e.number === r.number);
+      if (!ep) throw new Error("Episódio não encontrado.");
+      return { brief: episodeBrief(series, episodes, ep.number, ep.idea || ep.title), next: "Escreva o JSON pedido e salve com episode_update { script }. Depois episode_generate." };
+    },
+    episode_update: (a) => { const { profileId, seriesId, number, ...rest } = a as { profileId: string; seriesId: string; number: number }; return seriesStore.updateEpisode(profileId, seriesId, number, rest); },
+    episode_generate: (a) => generateEpisode(a),
+    film_capture_page: (a) => filmStudio.capture(a),
+    analyze_reference: async (a) => {
+      const r = await referenceAnalysis(a);
+      return { ...blueprintSummary(r), style: referenceStyle(r), images: r.images };
+    },
+    list_effects: (a) => filmStudio.listEffects(a),
+    film_add_effect: (a) => filmStudio.addEffect(a),
+    film_review: (a) => filmStudio.review(a),
+    // With a key but no accounts yet (key saved outside the Publish screen), look them up once.
+    instagram_accounts: async () => {
+      const s = await publisher.settings();
+      return s.hasKey && !s.accounts.length ? publisher.refresh() : s;
+    },
+    schedule_reel: (a) => publisher.schedule(a),
+    schedule_reels_daily: (a) => publisher.scheduleSeries(a),
+    cancel_scheduled_reel: (a) =>
+      publisher.cancelScheduled(
+        z
+          .object({ id: z.string().max(40) })
+          .strict()
+          .parse(a).id,
+      ),
+    open_studio: (a) => {
+      const { tab } = z
+        .object({
+          tab: z.enum(["start", "brand", "voices", "films", "publish"]),
+        })
+        .strict()
+        .parse(a);
+      if (!window || window.isDestroyed())
+        throw new Error("A janela do CutRoom está fechada.");
+      window.webContents.send("editor:event", { type: "studio", tab });
+      if (window.isMinimized()) window.restore();
+      window.focus();
+      return {
+        opened: tab,
+        message:
+          "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar.",
+      };
+    },
+    publish_reel: async (a) => {
+      // Publishing waits for Meta to process the video (can pass 60 s): answer within 40 s, keep going.
+      const task = publisher.publish(a);
+      task.catch(() => undefined);
+      const done = await Promise.race([
+        task.then((r) => ({ status: "published", ...r })),
+        new Promise<undefined>((r) => setTimeout(() => r(undefined), 40_000)),
+      ]);
+      return (
+        done ?? {
+          status: "publishing",
+          message:
+            "O Reels está sendo publicado. Consulte job_status (job publish) em 30–60 s; não publique de novo.",
+        }
+      );
+    },
+    film_stills: (a) => filmStudio.stills(a),
+    render_film: (a) => filmStudio.render(a),
+  };
+  if (studioTools[name]) return studioTools[name](args);
   if (name === "inspect_frame") {
     const { mediaId, time } = z
       .object({ mediaId: z.string(), time: z.number().finite().min(0) })
@@ -696,6 +1064,7 @@ async function executeTool(
       duration = 15,
       color = "#151515",
       name: canvasName = "Canvas Motion",
+      aspect,
     } = z
       .object({
         duration: z.number().min(1).max(600).default(15),
@@ -704,8 +1073,13 @@ async function executeTool(
           .regex(/^#[0-9a-f]{6}$/i)
           .default("#151515"),
         name: z.string().max(100).default("Canvas Motion"),
+        aspect: z.enum(["16:9", "9:16", "1:1", "4:5"]).optional(),
       })
       .parse(args);
+    // The first media sets the export size, so a vertical canvas makes a vertical project.
+    const [canvasW, canvasH] = state.project.media.length
+      ? [state.project.settings.width, state.project.settings.height]
+      : CANVAS_SIZES[aspect ?? "16:9"];
     const canvasColorHex = color.replace("#", "0x");
     const canvasFile = join(cacheDir, `canvas-${randomUUID()}.mp4`);
     await runProcess(
@@ -714,7 +1088,7 @@ async function executeTool(
         "-f",
         "lavfi",
         "-i",
-        `color=c=${canvasColorHex}:s=1920x1080:d=${duration}`,
+        `color=c=${canvasColorHex}:s=${canvasW}x${canvasH}:r=30:d=${duration}`,
         "-f",
         "lavfi",
         "-i",
@@ -743,6 +1117,7 @@ async function executeTool(
       success: true,
       duration,
       color,
+      size: `${state.project.settings.width}x${state.project.settings.height}`,
       project: state.project,
       message: `Canvas de ${duration}s criado com sucesso. Agora você pode adicionar motions, títulos e efeitos no intervalo de 0 a ${duration}s!`,
     };
@@ -763,6 +1138,15 @@ async function executeTool(
   throw new Error("Ferramenta não autorizada.");
 }
 
+async function executeDesktopMcpTool(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  if (isProfileTool(name))
+    return dispatchProfileTool(name, args, DESKTOP_MCP_PROFILE_CALLER);
+  return executeTool(name, args);
+}
+
 async function connectCodex(value: unknown = {}) {
   const config = z
     .object({
@@ -771,6 +1155,7 @@ async function connectCodex(value: unknown = {}) {
       baseUrl: z.string().trim().max(2000).optional(),
       model: z.string().trim().min(1).max(200).optional(),
       cliPath: z.string().trim().max(2000).optional(),
+      interactive: z.boolean().optional(),
     })
     .parse(value);
   if (chatBusy) throw new Error("Cancele a conversa antes de reconectar.");
@@ -791,6 +1176,10 @@ async function connectCodex(value: unknown = {}) {
   const options = {
     workspace: join(userDir, "agent-workspace"),
     instructions,
+    openUrl: (url: string) => {
+      if (config.interactive === false) return;
+      if (/^https:\/\/(auth\.openai\.com|chatgpt\.com|auth0\.openai\.com)\//.test(url)) void shell.openExternal(url);
+    },
     onActivity: (entry: AgentActivity) => {
       if (generation === connectionGeneration) activity(entry);
     },
@@ -858,7 +1247,152 @@ async function connectCodex(value: unknown = {}) {
 }
 
 async function request(method: string, params?: unknown): Promise<unknown> {
+  if (isAvatarTool(method)) {
+    return dispatchAvatarTool(
+      method,
+      z.record(z.string(), z.unknown()).parse(params ?? {}),
+    );
+  }
   switch (method) {
+    case "avatarCreatorCreateStarters": {
+      const input = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          description: z.string().trim().min(1).max(4096),
+        })
+        .parse(params);
+      return createLocalAvatarStarters({
+        service: avatarService,
+        examplesDir: join(resources, "avatar-engine", "examples"),
+        ...input,
+      });
+    }
+    case "avatarCreatorGetRevision": {
+      const { avatarId, revision } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          revision: z.number().int().positive(),
+        })
+        .parse(params);
+      const loaded = await avatarStore.loadRevision(avatarId, revision);
+      const metadata = z
+        .strictObject({
+          revisions: z.record(
+            z.string(),
+            z.strictObject({ candidateId: z.string() }).passthrough(),
+          ),
+        })
+        .passthrough()
+        .parse(await avatarStore.readMetadata(avatarId, "avatar-service"));
+      const revisionState = metadata.revisions[String(revision)];
+      if (!revisionState) throw new Error(`Revisão ${revision} não gerenciada.`);
+      const candidate = await avatarService.getCandidate(
+        avatarId,
+        revisionState.candidateId,
+      );
+      return { ...loaded, package: loaded.avatar, revision, candidate };
+    }
+    case "avatarCreatorGetCandidate": {
+      const { avatarId, candidateId } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          candidateId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+        })
+        .parse(params);
+      return avatarService.getCandidate(avatarId, candidateId);
+    }
+    case "avatarCreatorListRevisions": {
+      const { avatarId } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+        })
+        .parse(params);
+      const metadata = await avatarStore.readMetadata(avatarId, "avatar-service");
+      if (metadata === undefined) return [];
+      const state = z
+        .strictObject({
+          candidates: z.record(
+            z.string(),
+            z
+              .strictObject({
+                hash: z.string().regex(/^[a-f0-9]{64}$/),
+                manualApproved: z.boolean(),
+                quality: z
+                  .strictObject({ ok: z.boolean() })
+                  .passthrough(),
+              })
+              .passthrough(),
+          ),
+          revisions: z.record(
+            z.string(),
+            z.strictObject({ candidateId: z.string() }).passthrough(),
+          ),
+        })
+        .passthrough()
+        .parse(metadata);
+      return Object.entries(state.revisions)
+        .map(([key, revision]) => {
+          const candidate = state.candidates[revision.candidateId];
+          if (!candidate) throw new Error("Revisão sem candidato gerenciado.");
+          return {
+            revision: Number(key),
+            hash: candidate.hash,
+            approved: candidate.manualApproved || candidate.quality.ok,
+          };
+        })
+        .sort((left, right) => left.revision - right.revision);
+    }
+    case "avatarCreatorReadArtifact": {
+      const { avatarId, revision, path } = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          revision: z.number().int().positive(),
+          path: z.string().min(1).max(4096),
+        })
+        .parse(params);
+      const artifact = await avatarStore.readRevisionArtifact(
+        avatarId,
+        revision,
+        path,
+      );
+      if (
+        artifact.contents.length < 8 ||
+        artifact.contents.length > 25 * 1024 * 1024 ||
+        !artifact.contents
+          .subarray(0, 8)
+          .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+      ) {
+        throw new Error("O artefato de revisão deve ser um PNG válido.");
+      }
+      return {
+        path: artifact.path,
+        mimeType: "image/png" as const,
+        dataUrl: `data:image/png;base64,${artifact.contents.toString("base64")}`,
+      };
+    }
+    case "avatarCreatorRenderJobId": {
+      const input = z
+        .strictObject({
+          avatarId: z.string().regex(/^[A-Za-z][A-Za-z0-9._-]{0,63}$/),
+          revision: z.number().int().positive(),
+          sheets: z
+            .array(
+              z.enum([
+                "neutral",
+                "silhouette",
+                "grayscale",
+                "backgrounds",
+                "expressions",
+                "mouths",
+                "motion",
+              ]),
+            )
+            .min(1)
+            .max(7),
+        })
+        .parse(params);
+      return avatarRenderJobId(input);
+    }
     case "runChatCommand":
       return runChatCommand(params);
     case "setAppearance": {
@@ -880,6 +1414,351 @@ async function request(method: string, params?: unknown): Promise<unknown> {
     case "getState":
       state.packages = await packages.list();
       return emit();
+    case "getVoiceSettings":
+      return studio.voiceSettings();
+    case "setVoiceKey": {
+      const { provider, key } = z
+        .object({
+          provider: z.enum(["elevenlabs", "openai"]),
+          key: z.string().max(500).optional(),
+        })
+        .parse(params);
+      return studio.setVoiceKey(provider, key);
+    }
+    case "setVoicePreferences":
+      return studio.setVoicePreferences(params);
+    case "listVoices":
+      return studio.listVoices(
+        z
+          .object({
+            provider: z
+              .enum(["elevenlabs", "openai", "kokoro", "local"])
+              .optional(),
+          })
+          .parse(params ?? {}).provider,
+      );
+    case "listFormats":
+    case "list_formats":
+      return studio.listFormats();
+    case "create_film":
+      return filmStudio.create(params as Record<string, unknown>);
+    case "film_voiceover":
+      return filmStudio.voiceover(params as Record<string, unknown>);
+    case "write_film_file":
+      return filmStudio.write(params as Record<string, unknown>);
+    case "read_film_file":
+      return filmStudio.read(params as Record<string, unknown>);
+    case "film_stills":
+      return filmStudio.stills(params as Record<string, unknown>);
+    case "film_check":
+      return filmStudio.check(params as Record<string, unknown>);
+    case "film_review":
+      return filmStudio.review(params as Record<string, unknown>);
+    case "get_format_guide":
+      return studio.getFormatGuide(params as Record<string, unknown>);
+    case "render_film":
+      return filmStudio.render(params as Record<string, unknown>);
+    case "getInstagramAnalytics":
+      return publisher.analytics(params);
+    case "getPublishSettings":
+      return publisher.settings();
+    case "setComposioKey": {
+      const { key } = z
+        .object({ key: z.string().max(500).optional() })
+        .parse(params ?? {});
+      return publisher.setKey(key);
+    }
+    case "refreshInstagram":
+      return publisher.refresh();
+    case "connectInstagram": {
+      const link = await publisher.connectInstagram();
+      await shell.openExternal(link.url);
+      return link;
+    }
+    case "openHelpLink": {
+      const { url } = z
+        .object({ url: z.enum(["https://app.composio.dev", "https://platform.composio.dev", "https://help.instagram.com/502981923235522"]) })
+        .parse(params);
+      await shell.openExternal(url);
+      return { ok: true };
+    }
+    case "setDefaultInstagram":
+      return publisher.setDefault(
+        z.object({ id: z.string().max(100) }).parse(params).id,
+      );
+    case "listVideos":
+      return { videos: await publisher.videos() };
+    case "openInstagramPost": {
+      const { permalink } = z.object({ permalink: z.string().url().max(500) }).parse(params);
+      const url = new URL(permalink);
+      if (url.protocol !== "https:" || !["instagram.com", "www.instagram.com"].includes(url.hostname)
+        || !/^\/(reel|p)\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) || url.username || url.password)
+        throw new Error("Link da publicação inválido.");
+      await shell.openExternal(url.href);
+      return { opened: true };
+    }
+    case "mcpSetup": {
+      // Use Videosell from an external agent: the bridge runs on this app's own executable (no Node needed).
+      const bridge = app.isPackaged
+        ? join(process.resourcesPath, "tools", "cutroom-claude-desktop-bridge.cjs")
+        : join(app.getAppPath(), "tools", "cutroom-claude-desktop-bridge.cjs");
+      const env: Record<string, string> = { ELECTRON_RUN_AS_NODE: "1", ...(process.env.CUTROOM_USER_DATA ? { CUTROOM_USER_DATA: userDir } : {}) };
+      const server = { command: process.execPath, args: [bridge], env };
+      const toml = (v: string) => JSON.stringify(v);
+      return {
+        server,
+        claude: JSON.stringify({ mcpServers: { videosell: server } }, null, 2),
+        codex: `[mcp_servers.videosell]
+command = ${toml(server.command)}
+args = [${toml(bridge)}]
+env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
+`,
+        claudeCode: `claude mcp add videosell ${Object.entries(env).map(([k, v]) => `-e ${k}=${v}`).join(" ")} -- "${server.command}" "${bridge}"`,
+      };
+    }
+    case "previewVoiceLine": {
+      // Spec 5 C: "Ouvir" — a sample line in the character's voice.
+      const v = z.object({ text: z.string().trim().min(1).max(200), provider: z.enum(["elevenlabs", "openai", "kokoro", "local"]).optional(), voice: z.string().max(200).optional() }).strict().parse(params);
+      const voiced = await studio.synthesize(v);
+      if (!voiced) return { status: "generating" };
+      const resolved = await realpath(voiced.file);
+      allowedFiles.add(resolved);
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", resolved);
+      return { status: "done", url: url.href };
+    }
+    case "previewExportedVideo": {
+      const { path } = z.object({ path: z.string().min(1).max(2000) }).parse(params);
+      if (!(await publisher.videos()).some((video) => video.path === path))
+        throw new Error("Escolha um MP4 da biblioteca do Videosell.");
+      const resolved = await realpath(path);
+      const folder = await realpath(dirname(path));
+      if (dirname(resolved) !== folder || extname(resolved).toLowerCase() !== ".mp4")
+        throw new Error("O arquivo está fora da biblioteca de vídeos.");
+      allowedFiles.add(resolved);
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", resolved);
+      return { url: url.href };
+    }
+    case "publishReel":
+      return publisher.publish(params);
+    case "scheduleReel":
+      return publisher.schedule(params);
+    case "scheduleReelSeries":
+      return publisher.scheduleSeries(params);
+    case "cancelScheduledReel":
+      return publisher.cancelScheduled(
+        z.object({ id: z.string().max(40) }).parse(params).id,
+      );
+    case "seriesList":
+      return seriesStore.list(z.object({ profileId: z.string().max(64) }).parse(params).profileId);
+    case "seriesGet": {
+      const r = seriesRef.parse(params);
+      return seriesStore.get(r.profileId, r.seriesId);
+    }
+    case "seriesCreate": {
+      const { profileId, ...rest } = z.object({ profileId: z.string().max(64) }).passthrough().parse(params);
+      return seriesStore.create(profileId, rest);
+    }
+    case "seriesUpdate": {
+      const { profileId, seriesId, ...rest } = seriesRef.passthrough().parse(params);
+      return seriesStore.update(profileId, seriesId, rest);
+    }
+    case "seriesDelete": {
+      const r = seriesRef.extend({ confirm: z.literal(true) }).parse(params);
+      return seriesStore.remove(r.profileId, r.seriesId, r.confirm);
+    }
+    case "characterUpsert": {
+      const r = seriesRef.extend({ character: z.unknown() }).parse(params);
+      return seriesStore.upsertCharacter(r.profileId, r.seriesId, r.character);
+    }
+    case "episodeCreate": {
+      const r = seriesRef.extend({ title: z.string(), idea: z.string().optional() }).parse(params);
+      return seriesStore.createEpisode(r.profileId, r.seriesId, { title: r.title, idea: r.idea ?? "" });
+    }
+    case "episodeUpdate": {
+      const { profileId, seriesId, number, ...rest } = seriesRef.extend({ number: z.number().int().min(1) }).passthrough().parse(params);
+      return seriesStore.updateEpisode(profileId, seriesId, number, rest);
+    }
+    case "episodeBrief": {
+      const r = seriesRef.extend({ number: z.number().int().min(1), idea: z.string().max(300).optional() }).parse(params);
+      const { series, episodes } = await seriesStore.get(r.profileId, r.seriesId);
+      const ep = episodes.find((e) => e.number === r.number);
+      return { brief: episodeBrief(series, episodes, r.number, r.idea ?? ep?.idea ?? ep?.title ?? "") };
+    }
+    case "episodeGenerate":
+      return generateEpisode(params);
+    case "previewReelPilot":
+      return publisher.previewPilot(params);
+    case "setReelPilot":
+      return publisher.setPilot(params);
+    case "addToReelPilot":
+      return publisher.addToPilot(params);
+    case "updateScheduledReel":
+      return publisher.updateScheduled(params);
+    case "reorderScheduledReels":
+      return publisher.reorderScheduled(params);
+    case "skipReelDay":
+      return publisher.skipDay(params);
+    case "getCreationPilot":
+      return readCreationPilot(userDir, z.object({ profileId: z.string().max(64) }).parse(params).profileId);
+    case "saveCreationPilot": {
+      const a = z.object({ profileId: z.string().max(64), pilot: z.unknown() }).parse(params);
+      return writeCreationPilot(userDir, a.profileId, a.pilot);
+    }
+    case "publishLateReel":
+      return publisher.publishLate(
+        z.object({ id: z.string().max(40) }).parse(params).id,
+      );
+    case "listFilms":
+      return filmStudio.list();
+    case "openFilmFolder": {
+      const { id } = z
+        .object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) })
+        .parse(params);
+      await shell.openPath(
+        join(app.getPath("videos"), "CutRoom", "filmes", id),
+      );
+      return { ok: true };
+    }
+    case "latestFilmRender": {
+      // Newest MP4 rendered from this film (Videos/CutRoom/<slug>-<date>.mp4), playable in the Studio.
+      const { id } = z
+        .object({ id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/) })
+        .parse(params);
+      const folder = join(app.getPath("videos"), "CutRoom");
+      const films = (await filmStudio.list()).films;
+      const film = films.find((f) => f.id === id);
+      if (!film) throw new Error("Filme não encontrado.");
+      const prefix = film.name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60);
+      const names = (await readdir(folder).catch(() => [] as string[])).filter(
+        (n) =>
+          n.startsWith(`${prefix}-`) &&
+          n.endsWith(".mp4") &&
+          !n.includes(".partial"),
+      );
+      if (!names.length) return { path: null };
+      names.sort();
+      const path = await realpath(join(folder, names[names.length - 1]));
+      allowedFiles.add(path);
+      return { path };
+    }
+    case "renderFilm":
+      return filmStudio.render({
+        film: z.object({ id: z.string() }).parse(params).id,
+      });
+    case "revealVideo": {
+      const { path } = z.object({ path: z.string() }).parse(params);
+      const base = resolve(join(app.getPath("videos"), "CutRoom"));
+      if (!resolve(path).startsWith(base))
+        throw new Error("O vídeo precisa estar em Vídeos/CutRoom.");
+      shell.showItemInFolder(resolve(path));
+      return { ok: true };
+    }
+    case "installAgentSkill":
+      return {
+        files: await installSkill(app.getPath("home"), app.getVersion()),
+      };
+    case "profileList":
+      return dispatchProfileTool("profile_list", {});
+    case "profileGetActive":
+      return profileService.getActive();
+    case "profileListProjects":
+      return dispatchProfileTool(
+        "profile_list_projects",
+        params as Record<string, unknown>,
+      );
+    case "profileLinkProject": {
+      const input = z.object({ profileId: z.string(), projectId: z.string() }).strict().parse(params);
+      await profileService.linkProject(input.profileId, input.projectId);
+      return { ok: true };
+    }
+    case "profileGet":
+      return dispatchProfileTool("profile_get", params as Record<string, unknown>);
+    case "profileCreate":
+      return dispatchProfileTool("profile_create", params as Record<string, unknown>);
+    case "attachBrandProof": {
+      const { profileId, proofId, film } = z.object({
+        profileId: z.string(), proofId: z.string().uuid(), film: z.string().max(120),
+      }).strict().parse(params);
+      await profileService.get(profileId);
+      const asset = await new BrandProofStore(userDir).asset(profileId, proofId);
+      return { frames: await filmStudio.proofAsset(film, proofId, asset.path) };
+    }
+    case "pickReference": {
+      const selection = await dialog.showOpenDialog(window!, {
+        properties: ["openFile"],
+        filters: [{ name: "Vídeo de referência", extensions: ["mp4", "mov", "webm", "m4v"] }],
+      });
+      return selection.canceled ? null : { path: selection.filePaths[0] };
+    }
+    case "analyzeReference": {
+      const r = await referenceAnalysis(params as Record<string, unknown>);
+      return { summary: blueprintSummary(r), style: referenceStyle(r), images: r.images };
+    }
+    case "listBrandProofs": {
+      const { profileId } = z.object({ profileId: z.string() }).strict().parse(params);
+      await profileService.get(profileId);
+      return new BrandProofStore(userDir).list(profileId);
+    }
+    case "addBrandProof": {
+      const { profileId, attach, ...proof } = z.object({
+        profileId: z.string(), attach: z.boolean(), title: z.string().trim().min(1).max(120),
+        description: z.string().trim().min(1).max(500),
+        kind: z.enum(["screenshot", "recording", "testimonial", "result"]),
+        confirmed: z.literal(true),
+      }).strict().parse(params);
+      await profileService.get(profileId);
+      let source: string | undefined;
+      if (attach) {
+        const selection = await dialog.showOpenDialog(window!, {
+          properties: ["openFile"],
+          filters: [{ name: "Imagem ou vídeo", extensions: ["png", "jpg", "jpeg", "webp", "mp4"] }],
+        });
+        if (selection.canceled) return null;
+        source = selection.filePaths[0];
+      }
+      const { confirmed: _confirmed, ...metadata } = proof;
+      return new BrandProofStore(userDir).add(profileId, metadata, source);
+    }
+    case "readProductPage":
+      return readProductPage(z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(params).url);
+    case "profileUpdate":
+      return dispatchProfileTool("profile_update", params as Record<string, unknown>);
+    case "profileDuplicate":
+      return dispatchProfileTool("profile_duplicate", params as Record<string, unknown>);
+    case "profileSelect":
+      return dispatchProfileTool("profile_select", params as Record<string, unknown>);
+    case "profileDelete":
+      return dispatchProfileTool(
+        "profile_delete",
+        params as Record<string, unknown>,
+        { id: "ui", authorizeProfileDelete: true },
+      );
+    case "getBrand":
+      return { brand: (await brandStore.get()) ?? null };
+    case "saveBrand":
+      return { brand: await brandStore.set(params) };
+    case "carrossellProfiles":
+      return carrossellProfiles();
+    case "previewCarrossellBrand": {
+      const { profileId } = z.object({ profileId: z.string().min(1).max(100) }).strict().parse(params);
+      return { brand: await importCarrossellBrand(profileId) };
+    }
+    case "importCarrossellBrand": {
+      const { profileId } = z
+        .object({ profileId: z.string().max(100).optional() })
+        .parse(params ?? {});
+      return {
+        brand: await brandStore.set(await importCarrossellBrand(profileId)),
+      };
+    }
     case "dismissOnboarding":
       state.onboarding = {
         dismissed: true,
@@ -1053,7 +1932,8 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return transcribe(true);
     case "exportVideo":
       idle();
-      return exportVideo();
+      await exportVideo();
+      return emit();
     case "installPackage": {
       idle();
       const { id } = z.object({ id: z.string() }).parse(params);
@@ -1087,12 +1967,15 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       const { id } = z.object({ id: z.string() }).parse(params);
       const scene = state.project.motions?.find((s) => s.id === id);
       if (!scene) throw new Error("Animação não encontrada.");
-      const key = motionCacheKey(scene, state.project.settings);
+      const assets = await motionAssets();
+      const key = motionCacheKey(scene, state.project.settings, assets);
       if (!motionDocuments.has(key)) {
         const html = await motionDocument(
           scene,
           state.project.settings,
           resources,
+          true,
+          assets,
         );
         if (motionDocuments.size >= 100)
           motionDocuments.delete(motionDocuments.keys().next().value!);
@@ -1142,6 +2025,17 @@ async function request(method: string, params?: unknown): Promise<unknown> {
   }
 }
 
+// One CutRoom per profile: a scheduled launch while the app is open hands over to the open window
+// (which publishes), so a Reel can never be posted twice by two processes.
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on("second-instance", (_event, argv) => {
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore();
+    if (!argv.includes(SCHEDULE_FLAG)) window.focus();
+  }
+  if (argv.includes(SCHEDULE_FLAG))
+    void publisher?.runDue().then((r) => { notifyReels(r); emit(); }, () => undefined);
+});
 app.whenReady().then(async () => {
   userDir = process.env.CUTROOM_USER_DATA || app.getPath("userData");
   try {
@@ -1156,6 +2050,130 @@ app.whenReady().then(async () => {
   await mkdir(cacheDir, { recursive: true });
   await mkdir(join(userDir, "agent-workspace"), { recursive: true });
   packages = new PackageManager(join(userDir, "packages"), resources);
+  brandStore = new BrandStore(userDir);
+  profileService = new ProfileService({ store: new ProfileStore(userDir) });
+  dispatchProfileTool = createProfileToolDispatcher(profileService);
+  studio = new Studio({
+    project: () => state.project,
+    command: async (command) => {
+      await executeCommand(command);
+    },
+    job: (kind, label, run) => job(kind, label, run),
+    allowFile: async (path) => {
+      allowedFiles.add(await realpath(path));
+    },
+    cacheDir,
+    userDir,
+    secrets: (secretStore = new SecretStore(userDir, safeStorage)),
+    brand: brandStore,
+    transcribeFile: (media, signal, progress) =>
+      packages.transcribe(media, cacheDir, progress, signal),
+    exportTo: (project, output, signal, progress) =>
+      renderAndExport(project, output, signal, progress),
+    kokoroSpeech: (text, voice, signal) =>
+      packages.kokoroSpeak(text, voice, join(cacheDir, "voice"), signal),
+    kokoroReady: () => packages.kokoroInstalled(),
+    ...(["win32", "darwin"].includes(process.platform)
+      ? {
+          localSpeech: async (
+            text: string,
+            voice: string | undefined,
+            signal: AbortSignal,
+          ) => {
+            const dir = join(cacheDir, "voice");
+            await mkdir(dir, { recursive: true });
+            return localSpeech(text, voice, signal, dir, (path) =>
+              probeAudio(path, signal),
+            );
+          },
+          localVoices,
+        }
+      : {}),
+  });
+  publisher = new Publisher({
+    secrets: secretStore,
+    userDir,
+    videosDir: join(app.getPath("videos"), "CutRoom"),
+    job: (kind, label, run) => job(kind, label, run),
+    os: new OsReelScheduler(
+      process.execPath,
+      app.isPackaged ? [SCHEDULE_FLAG] : [app.getAppPath(), SCHEDULE_FLAG],
+    ),
+  });
+  // Reels autopilot: due posts go out every minute while CutRoom is open (and right away when the
+  // operating system opened it for a scheduled post).
+  setInterval(
+    () =>
+      void publisher.runDue().then(
+        (r) => r.length && (notifyReels(r), emit()),
+        () => undefined,
+      ),
+    60_000,
+  );
+  setTimeout(
+    () =>
+      void publisher.runDue().then(
+        (r) => r.length && (notifyReels(r), emit()),
+        () => undefined,
+      ),
+    process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000,
+  );
+  seriesStore = new SeriesStore(userDir);
+  avatarStore = new AvatarStore(join(userDir, "avatars"));
+  filmStudio = new FilmStudio(
+    {
+      films: new Films(
+        join(app.getPath("videos"), "CutRoom", "filmes"),
+        join(resources, "film-kit"),
+        createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"),
+      ),
+      avatarStore,
+      avatarEngineDir: join(resources, "avatar-engine"),
+      brand: brandStore,
+      videosDir: join(app.getPath("videos"), "CutRoom"),
+      runner: async () => {
+        if (!(await motionPackageInfo(packages.root)).installed)
+          throw new Error(
+            "Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.",
+          );
+        return {
+          worker: join(here, "render-motion.js"),
+          browser: process.env.CHROME_PATH || motionBrowser(packages.root),
+        };
+      },
+      job: (kind, label, run) => job(kind, label, run),
+    },
+    studio,
+  );
+  avatarService = new AvatarService({
+    store: avatarStore,
+    renderer: renderAvatarRevision,
+  });
+  const avatarVision = new AvatarVision({
+    store: avatarStore,
+    provider: (providerId) =>
+      codex instanceof ApiAgentClient
+        ? codex.avatarVisionProvider(providerId)
+        : undefined,
+  });
+  dispatchAvatarTool = createAvatarToolDispatcher({
+    service: avatarService,
+    store: avatarStore,
+    vision: avatarVision,
+    render: {
+      engineDir: join(resources, "avatar-engine"),
+      runner: async () => {
+        if (!(await motionPackageInfo(packages.root)).installed)
+          throw new Error(
+            "Instale Efeitos e animações na aba Pacotes do CutRoom: os avatares usam esse renderizador.",
+          );
+        return {
+          worker: join(here, "render-motion.js"),
+          browser: process.env.CHROME_PATH || motionBrowser(packages.root),
+        };
+      },
+    },
+  });
   state.packages = await packages.list();
   try {
     const preferences = JSON.parse(
@@ -1194,6 +2212,13 @@ app.whenReady().then(async () => {
             ".webm": "video/webm",
             ".jpg": "image/jpeg",
             ".png": "image/png",
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".m4a": "audio/mp4",
+            ".aac": "audio/aac",
+            ".ogg": "audio/ogg",
+            ".opus": "audio/ogg",
+            ".flac": "audio/flac",
           } as Record<string, string>
         )[extname(path).toLowerCase()] || "application/octet-stream";
       const headers: Record<string, string> = {
@@ -1270,7 +2295,7 @@ app.whenReady().then(async () => {
   else await window.loadFile(join(here, "../dist/index.html"));
   startWindowsAutoUpdate(window);
 
-  desktopMcp = new DesktopMcpServer(executeTool, userDir);
+  desktopMcp = new DesktopMcpServer(executeDesktopMcpTool, userDir);
   await desktopMcp.start().catch((err) => {
     console.error("Falha ao iniciar servidor Desktop MCP do CutRoom:", err);
   });

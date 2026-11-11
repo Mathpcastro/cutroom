@@ -305,6 +305,88 @@ describe("FFmpeg media engine", () => {
     expect(result.hasAudio).toBe(true);
     expect(result.duration).toBeCloseTo(0.5, 1);
   }, 30000);
+  it("mixes narration, looped ducked music and effects over clip audio and captions the narration", async () => {
+    const tone = async (name: string, freq: number, seconds: number) => {
+      const file = path.join(dir, name);
+      await exec(ffmpegPath, [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        `sine=frequency=${freq}:sample_rate=44100:duration=${seconds}`,
+        file,
+      ]);
+      return file;
+    };
+    const voice = await tone("voice.wav", 300, 1.5),
+      music = await tone("music.mp3", 880, 1),
+      sfx = await tone("pop.wav", 1500, 0.2);
+    let p = fixture(silent);
+    p.settings.captions = true;
+    p = applyCommand(p, {
+      name: "audio",
+      args: {
+        kind: "voice",
+        name: "Narração",
+        path: voice,
+        start: 0.5,
+        fileDuration: 1.5,
+        words: [
+          { text: "Olá", start: 0.1, end: 0.5 },
+          { text: "mundo", start: 0.6, end: 1.2 },
+        ],
+      },
+    });
+    p = applyCommand(p, {
+      name: "audio",
+      args: { kind: "music", name: "Trilha", path: music, start: 0, fileDuration: 1, loop: true, gain: -12, fadeOut: 0.5 },
+    });
+    p = applyCommand(p, {
+      name: "audio",
+      args: { kind: "sfx", name: "Pop", path: sfx, start: 3, fileDuration: 0.2 },
+    });
+    expect(p.audio!.map((t) => [t.kind, t.duration])).toEqual([
+      ["voice", 1.5],
+      ["music", 4],
+      ["sfx", 0.2],
+    ]);
+    expect(p.audio![1].duck).toBe(true);
+    const out = path.join(dir, "mixed.mp4");
+    // Diagnostics: the last progress step shows where FFmpeg stalls if this ever hangs again.
+    const steps: number[] = [];
+    const guard = AbortSignal.timeout(100_000);
+    await exportProject(p, out, { signal: guard, onProgress: (v) => { if (!steps.length || Math.floor(v) !== steps[steps.length - 1]) steps.push(Math.floor(v)); } }).catch((error) => {
+      throw new Error(`export parou em ${steps.slice(-6).join(" → ")}%: ${error instanceof Error ? error.message : error}`);
+    });
+    const result = await probeMedia(out, path.join(dir, "cache"));
+    expect(result.duration).toBeCloseTo(4, 1);
+    // Audible from the start: the looped music plays where neither clip nor narration does.
+    const level = await exec(ffmpegPath, [
+      "-hide_banner",
+      "-ss",
+      "2.5",
+      "-t",
+      "0.3",
+      "-i",
+      out,
+      "-af",
+      "volumedetect",
+      "-vn",
+      "-f",
+      "null",
+      "-",
+    ]);
+    expect(Number(level.stderr.match(/mean_volume: (-?[\d.]+)/)![1])).toBeGreaterThan(-50);
+    // A track starting past a shortened timeline is dropped; the rest is clamped.
+    const short = applyCommand(p, { name: "trim", args: { clipId: "a", start: 0, end: 1 } });
+    expect(short.audio!.map((t) => [t.kind, Number(t.duration.toFixed(3))])).toEqual([
+      ["voice", 0.5],
+      ["music", 1],
+    ]);
+  }, 120000);
   it("cancels before and during rendering without replacing existing output or leaving temporary files", async () => {
     const out = path.join(dir, "preserved.mp4");
     await fs.writeFile(out, "original");

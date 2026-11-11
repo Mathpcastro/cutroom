@@ -1,7 +1,7 @@
 {
   "name": "cutroom",
-  "version": "0.6.2",
-  "description": "A local-first, open-source video editor controlled by text.",
+  "version": "0.7.3",
+  "description": "Avatares de IA para apresentar e vender seu produto.",
   "type": "module",
   "main": "dist-electron/main.js",
   "author": "Matheus Castro",
@@ -26,7 +26,7 @@
       {
         "provider": "github",
         "owner": "Mathpcastro",
-        "repo": "cutroom",
+        "repo": "videosell-release",
         "releaseType": "release"
       }
     ],
@@ -88,6 +88,7 @@
     "jassub": "2.5.21",
     "linkedom": "0.18.12",
     "lucide-react": "1.59.0",
+    "puppeteer-core": "25.14.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "zod": "4.6.7"
