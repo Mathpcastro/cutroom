@@ -12,11 +12,17 @@ export const openAiConnect = () => window.dispatchEvent(new Event(OPEN_AI_CONNEC
 const HELP: Record<AgentProvider, string> = {
   codex: "Usa a sua conta do ChatGPT pelo Codex, que já vem no Videosell. Abre o login no navegador.",
   "claude-code": "Usa o Claude Code instalado neste computador, com a sua conta.",
-  anthropic: "Cole a sua chave da Anthropic.",
+  anthropic: "Cole a sua chave da API da Anthropic (console.anthropic.com › API Keys). É o jeito oficial de usar o Claude em outros apps; cobra por uso.",
   deepseek: "Cole a sua chave da DeepSeek.",
   openrouter: "Cole a sua chave da OpenRouter.",
   "openai-compatible": "Servidor compatível com OpenAI (ex.: Ollama): endereço e modelo.",
 };
+/**
+ * Providers offered in the studio. "Claude via terminal" is left out: it would use a Claude subscription
+ * inside a third-party app, which Anthropic's terms do not allow. Claude is offered through the API (own key).
+ */
+export const STUDIO_PROVIDERS = AGENT_PROVIDERS.filter((p) => p !== "claude-code");
+
 const needsKey = (p: AgentProvider) => p === "anthropic" || p === "deepseek" || p === "openrouter" || p === "openai-compatible";
 
 type Connection = AppSnapshot["connection"];
@@ -38,13 +44,12 @@ export function AiBadge({ connection }: { connection: Connection }) {
 
 export function AiConnectDialog({ connection, run }: { connection: Connection; run: (method: string, params?: unknown) => Promise<void> }) {
   const [open, setOpen] = useState(false);
-  const [provider, setProvider] = useState<AgentProvider>(connection.provider ?? "codex");
+  const [provider, setProvider] = useState<AgentProvider>(connection.provider && connection.provider !== "claude-code" ? connection.provider : "codex");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("http://localhost:11434/v1");
   const [model, setModel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [loginOpened, setLoginOpened] = useState(false);
   const connected = connection.status === "connected";
   useEffect(() => {
     const show = () => { setOpen(true); setError(""); };
@@ -72,7 +77,6 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
     };
     setApiKey("");
     setError("");
-    setLoginOpened(false);
     setBusy(true);
     try {
       // Called directly (not through `run`) so the failure comes back here instead of spinning forever.
@@ -82,15 +86,6 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
       const message = (reason instanceof Error ? reason.message : String(reason)).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
       setError(message || "Não deu para conectar. Confira os dados e tente de novo.");
       setBusy(false);
-    }
-  };
-  const needsClaudeLogin = provider === "claude-code" && /entrar na sua conta do Claude|auth login/i.test(error);
-  const openLogin = async () => {
-    try {
-      await window.cutroom?.request("openClaudeLogin");
-      setLoginOpened(true);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
     }
   };
 
@@ -104,7 +99,7 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
         <p className="ai-connect-lead">{t("A IA escreve os roteiros, as pautas e as histórias. Você usa a sua própria conta.")}</p>
         {connected && <p className="pilot-notice"><Check size={14} /> {t("Conectado:")} {PROVIDER_LABELS[connection.provider ?? "codex"]}{connection.account ? ` · ${connection.account}` : ""}</p>}
         <div className="ai-connect-options" role="radiogroup" aria-label={t("Qual IA")}>
-          {AGENT_PROVIDERS.map((p) => (
+          {STUDIO_PROVIDERS.map((p) => (
             <button key={p} type="button" role="radio" aria-checked={provider === p} onClick={() => { setProvider(p); setError(""); }}>
               <b>{PROVIDER_LABELS[p]}{p === "codex" && <small> · {t("recomendado")}</small>}</b>
             </button>
@@ -120,12 +115,6 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
           <input type="password" autoComplete="off" placeholder={t("Chave (opcional)")} aria-label={t("Chave")} value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </>}
         {error && <p className="reel-error" role="alert">{t(error)}</p>}
-        {needsClaudeLogin && (
-          <div className="ai-connect-login">
-            <button type="button" className="studio-secondary-button" onClick={() => void openLogin()}>{t("Entrar no Claude")}</button>
-            <small>{t(loginOpened ? "Uma janela do terminal abriu: entre na sua conta pelo navegador e depois clique em Conectar." : "Abre o login oficial do Claude no terminal. Só precisa fazer uma vez.")}</small>
-          </div>
-        )}
         <div className="reel-action-row">
           <button type="button" className="studio-primary-button" disabled={busy} onClick={() => void connect()}>
             {busy ? <><LoaderCircle size={14} className="spin" /> {t(provider === "codex" ? "Faça o login no navegador…" : "Conectando…")}</> : t(connected ? "Trocar de IA" : "Conectar")}
