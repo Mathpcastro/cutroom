@@ -1,4 +1,5 @@
 import { BrandProofStore } from "./core/brand-proofs";
+import { readCreationPilot, writeCreationPilot } from "./core/creation-pilot";
 import { readProductPage } from "./core/product-page";
 import {
   app,
@@ -6,6 +7,7 @@ import {
   dialog,
   ipcMain,
   nativeTheme,
+  Notification,
   protocol,
   safeStorage,
   shell,
@@ -170,6 +172,20 @@ function applyWindowAppearance() {
       symbolColor: appearance.foreground,
       height: 40,
     });
+}
+/** Spec 3 E: system notifications for the autopilot (published, failed, queue empty). */
+function notifyReels(results: { status: string; error?: string }[]) {
+  if (!Notification.isSupported()) return;
+  void publisher?.settings().then((s) => {
+    if (s.pilot?.notify === false) return;
+    const show = (title: string, body: string) => new Notification({ title, body, silent: false }).show();
+    const published = results.filter((r) => r.status === "published").length;
+    const failed = results.filter((r) => r.status === "failed");
+    if (published) show("Videosell", published === 1 ? "Seu Reels foi publicado no Instagram." : `${published} Reels publicados no Instagram.`);
+    if (failed.length) show("Videosell: um Reels não saiu", (failed[0].error ?? "Abra o Piloto automático para ver o motivo.").slice(0, 180));
+    if (published && !(s.scheduled ?? []).some((e) => e.status === "scheduled"))
+      show("Videosell: a fila acabou", "Não há mais Reels agendados. Crie mais ou adicione vídeos ao piloto.");
+  }, () => undefined);
 }
 let chatBusy = false;
 const allowedFiles = new Set<string>();
@@ -1404,6 +1420,24 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return publisher.cancelScheduled(
         z.object({ id: z.string().max(40) }).parse(params).id,
       );
+    case "previewReelPilot":
+      return publisher.previewPilot(params);
+    case "setReelPilot":
+      return publisher.setPilot(params);
+    case "addToReelPilot":
+      return publisher.addToPilot(params);
+    case "updateScheduledReel":
+      return publisher.updateScheduled(params);
+    case "reorderScheduledReels":
+      return publisher.reorderScheduled(params);
+    case "skipReelDay":
+      return publisher.skipDay(params);
+    case "getCreationPilot":
+      return readCreationPilot(userDir, z.object({ profileId: z.string().max(64) }).parse(params).profileId);
+    case "saveCreationPilot": {
+      const a = z.object({ profileId: z.string().max(64), pilot: z.unknown() }).parse(params);
+      return writeCreationPilot(userDir, a.profileId, a.pilot);
+    }
     case "publishLateReel":
       return publisher.publishLate(
         z.object({ id: z.string().max(40) }).parse(params).id,
@@ -1832,7 +1866,7 @@ app.on("second-instance", (_event, argv) => {
     if (!argv.includes(SCHEDULE_FLAG)) window.focus();
   }
   if (argv.includes(SCHEDULE_FLAG))
-    void publisher?.runDue().then(emit, () => undefined);
+    void publisher?.runDue().then((r) => { notifyReels(r); emit(); }, () => undefined);
 });
 app.whenReady().then(async () => {
   userDir = process.env.CUTROOM_USER_DATA || app.getPath("userData");
@@ -1903,7 +1937,7 @@ app.whenReady().then(async () => {
   setInterval(
     () =>
       void publisher.runDue().then(
-        (r) => r.length && emit(),
+        (r) => r.length && (notifyReels(r), emit()),
         () => undefined,
       ),
     60_000,
@@ -1911,7 +1945,7 @@ app.whenReady().then(async () => {
   setTimeout(
     () =>
       void publisher.runDue().then(
-        (r) => r.length && emit(),
+        (r) => r.length && (notifyReels(r), emit()),
         () => undefined,
       ),
     process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000,

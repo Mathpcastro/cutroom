@@ -5,7 +5,7 @@ import { z } from "zod";
 import { COMPOSIO_KEY, Composio, ComposioError, accountInfo, connectLink, keyFormatProblem, problemMessage, publishReel, type InstagramAccount, type UnusableAccount } from "./composio";
 import { fetchReelAnalytics } from "./instagram-analytics";
 import type { SecretStore } from "./secrets";
-import { dailySlots, dueReels, parseWhen, type OsReelScheduler, type ScheduledReel } from "./reel-schedule";
+import { DEFAULT_TIMES, dailySlots, dayKey, dueReels, parseWhen, planSlots, validateTimes, type OsReelScheduler, type PilotDays, type PilotRule, type ScheduledReel } from "./reel-schedule";
 
 type Progress = (value: number, label?: string) => void;
 interface PublishHost {
@@ -25,7 +25,12 @@ interface PublishState {
   defaultAccount?: string;
   history: { accountId?: string; mediaId: string; permalink: string; username: string; video: string; publishedAt: string }[];
   scheduled?: ScheduledReel[];
+  /** Autopilot rule and switch (Spec 3). */
+  pilot?: PilotRule & { enabled: boolean; account?: string; skipped?: string[]; notify?: boolean };
 }
+
+const daysSchema = z.union([z.enum(["daily", "alternate"]), z.array(z.number().int().min(0).max(6)).min(1).max(7)]);
+const timesSchema = z.array(z.string().regex(/^\d{2}:\d{2}$/)).min(1).max(5);
 
 /** Reels publishing settings (Composio key in the encrypted store, accounts and history in publish.json). */
 export class Publisher {
@@ -54,7 +59,8 @@ export class Publisher {
     const s = await this.state();
     const keys = await this.host.secrets.describe([COMPOSIO_KEY]);
     const scheduled = (s.scheduled ?? []).filter((e) => e.status !== "cancelled" && (e.status !== "published" || Date.now() - new Date(e.at).getTime() < 7 * 864e5));
-    return { hasKey: !!keys[COMPOSIO_KEY], keyHint: keys[COMPOSIO_KEY], unusable: s.unusable ?? [], checkedAt: s.checkedAt, accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), publicationLinks: s.history.slice(-200).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
+    const pilot = s.pilot ?? { enabled: false, times: DEFAULT_TIMES[1], days: "daily" as PilotDays };
+    return { pilot, hasKey: !!keys[COMPOSIO_KEY], keyHint: keys[COMPOSIO_KEY], unusable: s.unusable ?? [], checkedAt: s.checkedAt, accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), publicationLinks: s.history.slice(-200).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
   }
   async analytics(args: unknown) {
     const { account: id } = z.object({ account: z.string().min(1).max(100) }).strict().parse(args);
@@ -165,8 +171,12 @@ export class Publisher {
   static seriesArgs = z
     .object({
       posts: z.array(z.object({ video: z.string().min(1).max(2000), caption: z.string().max(2200).optional() }).strict()).min(1).max(60),
-      time: z.string().regex(/^\d{2}:\d{2}$/),
+      time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      /** 1 to 5 times a day, each at least 1 h apart. `time` is the one-a-day shortcut. */
+      times: timesSchema.optional(),
+      days: daysSchema.optional(),
       everyDays: z.number().int().min(1).max(14).optional(),
+      pilot: z.boolean().optional(),
       account: z.string().max(100).optional(),
       confirm: z.literal(true, { message: "Confirme a série com o usuário e passe confirm: true." }),
     })
@@ -180,10 +190,100 @@ export class Publisher {
   /** The autopilot: one Reel per day (or every N days) at the same time. */
   async scheduleSeries(args: unknown) {
     const a = Publisher.seriesArgs.parse(args);
-    const slots = dailySlots(a.posts.length, a.time, new Date(), a.everyDays);
-    return this.addScheduled(a.posts.map((p, i) => ({ video: p.video, caption: p.caption ?? "", at: slots[i] })), a.account);
+    if (!a.time && !a.times) throw new Error("Informe o horário (time) ou os horários do dia (times, de 1 a 5).");
+    const times = a.times ?? [a.time!];
+    const legacy = !a.times && !a.days && a.everyDays && a.everyDays > 2;
+    const s = await this.state();
+    const taken = (s.scheduled ?? []).filter((e) => e.status === "scheduled" || e.status === "publishing").map((e) => new Date(e.at).getTime());
+    const slots = legacy
+      ? dailySlots(a.posts.length, a.time!, new Date(), a.everyDays)
+      : planSlots(a.posts.length, { times, days: a.days ?? (a.everyDays === 2 ? "alternate" : "daily") }, new Date(), { taken, skip: s.pilot?.skipped });
+    return this.addScheduled(a.posts.map((p, i) => ({ video: p.video, caption: p.caption ?? "", at: slots[i], pilot: a.pilot })), a.account);
   }
-  private async addScheduled(items: { video: string; caption: string; at: Date }[], accountRef?: string) {
+
+  /** What the autopilot would do, without saving: shown on the calendar before the user confirms. */
+  async previewPilot(args: unknown) {
+    const a = z.object({ count: z.number().int().min(1).max(60), times: timesSchema, days: daysSchema }).strict().parse(args);
+    const s = await this.state();
+    const taken = (s.scheduled ?? []).filter((e) => e.status === "scheduled" || e.status === "publishing").map((e) => new Date(e.at).getTime());
+    return { slots: planSlots(a.count, { times: a.times, days: a.days }, new Date(), { taken, skip: s.pilot?.skipped }).map((d) => d.toISOString()) };
+  }
+
+  /** Turns the autopilot on (with the rule) or pauses it. Pausing keeps the queue; nothing is posted. */
+  async setPilot(args: unknown) {
+    const a = z.object({ enabled: z.boolean(), times: timesSchema.optional(), days: daysSchema.optional(), account: z.string().max(100).optional(), notify: z.boolean().optional() }).strict().parse(args);
+    const s = await this.state();
+    const current = s.pilot ?? { enabled: false, times: DEFAULT_TIMES[1], days: "daily" as PilotDays };
+    const times = a.times ? validateTimes(a.times) : current.times;
+    s.pilot = { ...current, enabled: a.enabled, times, days: a.days ?? current.days, account: a.account ?? current.account, notify: a.notify ?? current.notify };
+    await this.save(s);
+    return this.settings();
+  }
+
+  /** A new video joins the autopilot at the first free slot (the user confirms this one video). */
+  async addToPilot(args: unknown) {
+    const a = z.object({ video: z.string().min(1).max(2000), caption: z.string().max(2200).optional(), title: z.string().max(120).optional(), confirm: z.literal(true) }).strict().parse(args);
+    const s = await this.state();
+    const rule = s.pilot ?? { enabled: false, times: DEFAULT_TIMES[1], days: "daily" as PilotDays };
+    const taken = (s.scheduled ?? []).filter((e) => e.status === "scheduled" || e.status === "publishing").map((e) => new Date(e.at).getTime());
+    const last = Math.max(Date.now(), ...(s.scheduled ?? []).filter((e) => e.pilot && e.status === "scheduled").map((e) => new Date(e.at).getTime()));
+    const [at] = planSlots(1, rule, new Date(), { taken, skip: rule.skipped, from: new Date(last) });
+    return this.addScheduled([{ video: a.video, caption: a.caption ?? "", at, pilot: true, title: a.title }], rule.account);
+  }
+
+  /** Edits one queued item: its caption or its time. */
+  async updateScheduled(args: unknown) {
+    const a = z.object({ id: z.string().max(40), caption: z.string().max(2200).optional(), at: z.string().max(40).optional() }).strict().parse(args);
+    const s = await this.state();
+    const entry = (s.scheduled ?? []).find((e) => e.id === a.id && e.status === "scheduled");
+    if (!entry) throw new Error("Só itens agendados podem ser alterados.");
+    if (a.caption !== undefined) entry.caption = a.caption;
+    if (a.at) {
+      const when = parseWhen(a.at);
+      entry.at = when.toISOString();
+      await this.host.os?.remove(entry.id);
+      await this.host.os?.add(entry.id, when).catch(() => undefined);
+    }
+    await this.save(s);
+    return this.settings();
+  }
+
+  /** New order for queued items: they keep the same slots, in the order given. */
+  async reorderScheduled(args: unknown) {
+    const { ids } = z.object({ ids: z.array(z.string().max(40)).min(1).max(200) }).strict().parse(args);
+    const s = await this.state();
+    const entries = ids.map((id) => (s.scheduled ?? []).find((e) => e.id === id && e.status === "scheduled"));
+    if (entries.some((e) => !e)) throw new Error("A fila mudou. Atualize e tente de novo.");
+    const slots = entries.map((e) => e!.at).sort();
+    for (const [i, entry] of entries.entries()) {
+      if (entry!.at === slots[i]) continue;
+      entry!.at = slots[i];
+      await this.host.os?.remove(entry!.id);
+      await this.host.os?.add(entry!.id, new Date(slots[i])).catch(() => undefined);
+    }
+    await this.save(s);
+    return this.settings();
+  }
+
+  /** Skips a day: its autopilot items and the ones after it move to the next free slots. */
+  async skipDay(args: unknown) {
+    const { date } = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).strict().parse(args);
+    const s = await this.state();
+    const rule = s.pilot ?? { enabled: false, times: DEFAULT_TIMES[1], days: "daily" as PilotDays };
+    rule.skipped = [...new Set([...(rule.skipped ?? []), date])].filter((d) => d >= dayKey(new Date())).slice(-60);
+    s.pilot = rule;
+    const moving = (s.scheduled ?? []).filter((e) => e.pilot && e.status === "scheduled" && dayKey(new Date(e.at)) >= date).sort((a, b) => a.at.localeCompare(b.at));
+    const fixed = (s.scheduled ?? []).filter((e) => !moving.includes(e) && (e.status === "scheduled" || e.status === "publishing")).map((e) => new Date(e.at).getTime());
+    const slots = planSlots(moving.length, rule, new Date(), { taken: fixed, skip: rule.skipped });
+    for (const [i, entry] of moving.entries()) {
+      entry.at = slots[i].toISOString();
+      await this.host.os?.remove(entry.id);
+      await this.host.os?.add(entry.id, slots[i]).catch(() => undefined);
+    }
+    await this.save(s);
+    return this.settings();
+  }
+  private async addScheduled(items: { video: string; caption: string; at: Date; pilot?: boolean; title?: string }[], accountRef?: string) {
     const s = await this.state();
     const account = this.account(s, accountRef);
     await this.client(); // a key must exist before anything is promised
@@ -191,7 +291,7 @@ export class Publisher {
     const warnings: string[] = [];
     for (const item of items) {
       await this.checkVideo(item.video);
-      const entry: ScheduledReel = { id: randomUUID().slice(0, 12), video: item.video, caption: item.caption, account: account.id, at: item.at.toISOString(), status: "scheduled" };
+      const entry: ScheduledReel = { id: randomUUID().slice(0, 12), video: item.video, caption: item.caption, account: account.id, at: item.at.toISOString(), status: "scheduled", ...(item.pilot ? { pilot: true } : {}), ...(item.title ? { title: item.title } : {}) };
       try {
         await this.host.os?.add(entry.id, item.at);
       } catch (error) {
@@ -224,7 +324,10 @@ export class Publisher {
     this.running = true;
     const results: { id: string; status: string; permalink?: string; error?: string }[] = [];
     try {
-      for (const due of dueReels((await this.state()).scheduled ?? [], now)) {
+      const before = await this.state();
+      // A paused autopilot keeps its items; they wait (and become "late" only if paused past the limit).
+      const paused = before.pilot && !before.pilot.enabled;
+      for (const due of dueReels((before.scheduled ?? []).filter((e) => !(paused && e.pilot)), now)) {
         const s = await this.state();
         const entry = s.scheduled!.find((e) => e.id === due.id)!;
         if (due.late) {
@@ -257,8 +360,10 @@ export class Publisher {
   /** A late or failed entry, after the user confirmed it still makes sense to post. */
   async publishLate(id: string) {
     const s = await this.state();
-    const entry = (s.scheduled ?? []).find((e) => e.id === id && (e.status === "late" || e.status === "failed"));
-    if (!entry) throw new Error("Só Reels atrasados ou com erro podem ser publicados por aqui.");
+    // "Publicar agora" also works for a scheduled item (the user asked for it on the calendar).
+    const entry = (s.scheduled ?? []).find((e) => e.id === id && (e.status === "late" || e.status === "failed" || e.status === "scheduled"));
+    if (!entry) throw new Error("Só Reels agendados, atrasados ou com erro podem ser publicados por aqui.");
+    await this.host.os?.remove(entry.id);
     entry.status = "publishing";
     await this.save(s);
     try {

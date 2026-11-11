@@ -1,34 +1,53 @@
 import { t, getStudioLanguage } from "./studioLanguage";
 import { useEffect, useState } from "react";
-import { z } from "zod";
+import { blankCreationPilot, creationPilotSchema, type CreationPilot } from "../../shared/creation-pilot";
 import type { StudioProfile } from "../../shared/profile";
 import { generateSalesReel, initialReelDraft } from "./ReelCreator";
 import { rememberReel } from "./reelRecords";
 
-const pilotSchema = z.object({
-  queue: z.array(z.object({ title: z.string().max(100), brief: z.string().min(1).max(750) })).max(40),
-  enabled: z.boolean(), time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
-  everyDays: z.number().int().min(1).max(14),
-  nextAt: z.number().finite().optional(),
-  running: z.boolean().optional(),
-  error: z.string().optional(),
-});
-type Pilot = z.infer<typeof pilotSchema>;
-const blank: Pilot = { queue: [], enabled: false, time: "18:00", everyDays: 1 };
+const pilotSchema = creationPilotSchema;
+type Pilot = CreationPilot;
+const blank: Pilot = blankCreationPilot;
 const active = new Set<string>();
 const eventName = "videosell:pilot";
 const key = (id: string) => "videosell.pilot." + id;
+/** Spec 3 D: the state lives in <userData>/profiles/<id>/pilot.json; this cache keeps reads synchronous. */
+const cache = new Map<string, Pilot>();
 
-function readPilot(id: string): Pilot {
+function legacyPilot(id: string): Pilot | null {
   try {
-    return pilotSchema.parse(JSON.parse(localStorage.getItem(key(id)) ?? "null"));
+    const raw = localStorage.getItem(key(id));
+    return raw ? pilotSchema.parse(JSON.parse(raw)) : null;
   } catch {
-    return blank;
+    return null;
   }
 }
-function savePilot(id: string, pilot: Pilot) {
-  localStorage.setItem(key(id), JSON.stringify(pilot));
+
+function readPilot(id: string): Pilot {
+  return cache.get(id) ?? legacyPilot(id) ?? blank;
+}
+
+/** Loads the file once per profile; migrates the old localStorage state the first time. */
+export async function loadPilot(id: string) {
+  if (cache.has(id) || !window.cutroom) return readPilot(id);
+  let stored = await window.cutroom.request<Pilot | null>("getCreationPilot", { profileId: id }).catch(() => null);
+  if (!stored) {
+    const legacy = legacyPilot(id);
+    if (legacy) {
+      stored = await window.cutroom.request<Pilot>("saveCreationPilot", { profileId: id, pilot: legacy }).catch(() => legacy);
+      try { localStorage.removeItem(key(id)); } catch { /* ignore */ }
+    }
+  }
+  cache.set(id, stored ?? blank);
   window.dispatchEvent(new Event(eventName));
+  return cache.get(id)!;
+}
+
+function savePilot(id: string, pilot: Pilot) {
+  cache.set(id, pilot);
+  window.dispatchEvent(new Event(eventName));
+  if (window.cutroom) void window.cutroom.request("saveCreationPilot", { profileId: id, pilot }).catch(() => undefined);
+  else try { localStorage.setItem(key(id), JSON.stringify(pilot)); } catch { /* ignore */ }
 }
 
 function nextRun(time: string, interval: number, first = false) {
@@ -83,7 +102,7 @@ export function useReelPilot(profile: StudioProfile | null, canRun: boolean, onG
       }
     }
     const timer = setInterval(() => void tick().catch(() => undefined), 30_000);
-    void tick().catch(() => undefined);
+    void loadPilot(id).then(() => tick()).catch(() => undefined);
     return () => clearInterval(timer);
   }, [profile, canRun, onGenerated]);
 }
@@ -95,6 +114,7 @@ export function PilotDrafts({ profile }: { profile: StudioProfile }) {
   const [error, setError] = useState("");
   useEffect(() => {
     const update = () => setState(readPilot(profile.id));
+    void loadPilot(profile.id).then(update);
     window.addEventListener(eventName, update);
     return () => window.removeEventListener(eventName, update);
   }, [profile.id]);
@@ -103,8 +123,7 @@ export function PilotDrafts({ profile }: { profile: StudioProfile }) {
     catch { setError("Não foi possível salvar a configuração da rotina."); }
   }
   return <section className="reel-form-card">
-    <h2>{t("Piloto de criação")}</h2>
-    <p>{t("Adicione pautas pelo Radar. Com o app aberto, o perfil ativo e a IA conectada, o piloto gera um rascunho por vez e envia para revisão.")}</p>
+    <p>{t("Usa as pautas do Radar para gerar rascunhos com o app aberto e a IA conectada. Criar sozinho não publica: os rascunhos esperam sua revisão.")}</p>
     {(error || state.error) && <p role="alert">{error || state.error}</p>}
     {state.running && <p role="status">{t("Gerando o próximo Reel…")}</p>}
     {state.enabled && state.nextAt && <p role="status">Próxima geração a partir de {new Date(state.nextAt).toLocaleString(getStudioLanguage())}{state.queue.length ? "." : " · aguardando pautas."}</p>}

@@ -293,16 +293,19 @@ export const STUDIO_TOOLS = [
   {
     name: "schedule_reels_daily",
     description:
-      "Reels autopilot: schedule a series, one post per day (or every N days) at the same time, in the given order. Use it to keep a daily organic cadence (Reels for reach + Carrossell carousels for trust). ONLY after the user confirmed the list, captions, account and time — then confirm:true.",
+      "Reels autopilot: schedule a series in the given order, 1 to 5 posts per day (each at its own time, at least 1 h apart) on the chosen days. Each post keeps its own caption. Use it to keep a daily organic cadence (Reels for reach + Carrossell carousels for trust). ONLY after the user confirmed the list, captions, account and times — then confirm:true.",
     inputSchema: objectSchema(
       {
         posts: { type: "array", minItems: 1, maxItems: 60, items: objectSchema({ video: string("Absolute path of the MP4."), caption: string("Caption.", { maxLength: 2200 }) }, ["video"]) },
-        time: string("HH:MM local time, e.g. 18:00."),
+        time: string("HH:MM local time for one post a day, e.g. 18:00 (shortcut for times: [time])."),
+        times: { type: "array", minItems: 1, maxItems: 5, items: string("HH:MM"), description: "1 to 5 daily times, e.g. [\"12:00\",\"18:00\"]; at least 1 hour apart." },
+        days: { description: "\"daily\", \"alternate\" or weekdays [0-6] (0 = Sunday).", anyOf: [{ type: "string", enum: ["daily", "alternate"] }, { type: "array", minItems: 1, maxItems: 7, items: { type: "integer", minimum: 0, maximum: 6 } }] },
+        pilot: { type: "boolean", description: "Mark the posts as part of the autopilot (paused with it)." },
         everyDays: number("Days between posts (default 1).", { minimum: 1, maximum: 14 }),
         account: string("Account id or @username."),
         confirm: { type: "boolean", enum: [true] },
       },
-      ["posts", "time", "confirm"],
+      ["posts", "confirm"],
     ),
   },
   {

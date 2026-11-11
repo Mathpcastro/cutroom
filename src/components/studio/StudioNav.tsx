@@ -41,7 +41,7 @@ const items = [
   { id: "radar", label: "Radar de pautas", icon: Lightbulb },
   { id: "proofs", label: "Provas da marca", icon: Library },
   { id: "videos", label: "Vídeos exportados", icon: Film },
-  { id: "routine", label: "Rotina", icon: CalendarDays },
+  { id: "routine", label: "Piloto automático", icon: CalendarDays },
   { id: "avatars", label: "Meus avatares", icon: UserRound },
   { id: "projects", label: "Projetos", icon: FolderKanban },
 ] as const;

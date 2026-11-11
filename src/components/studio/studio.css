@@ -1882,3 +1882,80 @@
   min-height: 34px; padding: 0 13px; color: var(--studio-danger); background: var(--studio-danger-soft);
   border: 1px solid var(--studio-danger-line); border-radius: 7px; font-weight: 650; cursor: pointer;
 }
+
+/* Spec 3: autopilot */
+.pilot-page { position: relative; }
+.pilot-attention {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin-bottom: 14px; padding: 10px 14px;
+  color: var(--studio-danger); background: var(--studio-danger-soft); border: 1px solid var(--studio-danger-line);
+  border-radius: 9px; font-weight: 650; text-align: left; cursor: pointer;
+}
+.pilot-attention.global { width: auto; margin: 14px 42px 0; }
+.pilot-state {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px;
+  background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px;
+}
+.pilot-state > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pilot-state strong { font-size: calc(15px * var(--studio-font-scale)); }
+.pilot-state-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--studio-muted); }
+.pilot-state.on .pilot-state-dot { background: var(--studio-success); }
+.pilot-switch {
+  min-width: 120px; min-height: 46px; padding: 0 22px; color: var(--studio-text); background: var(--studio-surface-2);
+  border: 1px solid var(--studio-line); border-radius: 999px; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.pilot-switch:not(.on) { color: #fff; background: var(--studio-violet-deep); border-color: var(--studio-violet-deep); }
+.pilot-switch:disabled { opacity: 0.55; cursor: not-allowed; }
+.pilot-howto { margin: 10px 2px 16px; color: var(--studio-muted); font-size: 12px; line-height: 1.55; }
+.pilot-notice { display: flex; align-items: center; gap: 6px; color: var(--studio-success); }
+.pilot-rule-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.pilot-times { display: flex; flex-wrap: wrap; gap: 8px; }
+.pilot-times .reel-field { width: 128px; }
+.pilot-times input { min-width: 0; width: 100%; }
+.pilot-weekdays { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.pilot-weekdays label, .pilot-notify { display: inline-flex; align-items: center; gap: 5px; }
+.pilot-notify { margin-top: 12px; color: var(--studio-muted); font-size: 12px; }
+.pilot-problem { margin: 8px 0 0; color: var(--studio-danger); }
+.pilot-confirm, .pilot-warning {
+  margin: 14px 0; padding: 14px 16px; background: var(--studio-accent-soft); border: 1px solid var(--studio-accent-line); border-radius: 10px;
+}
+.pilot-confirm p { margin: 0 0 6px; }
+.pilot-warning { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pilot-calendar { display: flex; flex-direction: column; margin: 8px 0 0; padding: 0; list-style: none; }
+.pilot-calendar > li { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 9px 0; border-top: 1px solid var(--studio-line); }
+.pilot-calendar > li.inactive { opacity: 0.55; }
+.pilot-day { display: flex; flex-direction: column; gap: 4px; font-size: 12px; text-transform: capitalize; }
+.pilot-day .ig-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: none; }
+.pilot-slots { display: flex; flex-direction: column; gap: 6px; }
+.pilot-item { display: flex; align-items: center; gap: 6px; }
+.pilot-item.ghost { opacity: 0.7; }
+.pilot-item-main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 5px 8px; color: var(--studio-text);
+  background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 8px; text-align: left; cursor: pointer;
+}
+.pilot-item.ghost .pilot-item-main { border-style: dashed; cursor: default; }
+.pilot-item-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.pilot-item-actions { display: flex; gap: 2px; }
+.pilot-item-actions button, .pilot-empty button {
+  display: grid; place-items: center; width: 26px; height: 26px; color: var(--studio-muted); background: transparent;
+  border: 1px solid var(--studio-line); border-radius: 6px; cursor: pointer;
+}
+.pilot-thumb { flex: 0 0 auto; width: 30px; height: 44px; overflow: hidden; border-radius: 5px; background: var(--studio-line); }
+.pilot-thumb video { width: 100%; height: 100%; object-fit: cover; }
+.pilot-thumb.review { background: var(--studio-accent-soft); }
+.pilot-badge { flex: 0 0 auto; padding: 2px 8px; color: var(--studio-muted); background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 999px; font-size: 10px; font-weight: 700; }
+.pilot-badge.scheduled { color: var(--studio-accent-text); border-color: var(--studio-accent-line); }
+.pilot-badge.published { color: var(--studio-success); border-color: var(--studio-success-line); }
+.pilot-badge.failed, .pilot-badge.late { color: var(--studio-danger); border-color: var(--studio-danger-line); background: var(--studio-danger-soft); }
+.pilot-empty { display: flex; align-items: center; gap: 8px; color: var(--studio-muted); font-size: 12px; }
+.pilot-ready { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pilot-ready li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--studio-line); border-radius: 8px; }
+.pilot-collapse { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; color: var(--studio-text); background: none; border: 0; font-size: 14px; cursor: pointer; }
+.pilot-creation .reel-form-card { margin-top: 10px; border: 0; padding: 0; }
+.pilot-panel {
+  position: fixed; z-index: 40; top: 40px; right: 0; bottom: 0; width: min(380px, 92vw); display: flex; flex-direction: column; gap: 12px;
+  padding: 18px; overflow: auto; color: var(--studio-text); background: var(--studio-surface); border-left: 1px solid var(--studio-line);
+  box-shadow: -12px 0 30px var(--studio-shadow);
+}
+.pilot-panel header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pilot-panel header button { color: var(--studio-muted); background: none; border: 0; cursor: pointer; }
+.pilot-panel-video { width: 100%; aspect-ratio: 9 / 16; max-height: 46vh; object-fit: contain; border-radius: 8px; background: #000; }

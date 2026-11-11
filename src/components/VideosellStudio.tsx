@@ -21,9 +21,11 @@ import { StudioNav } from "./studio/StudioNav";
 import { ReelCreator, initialReelDraft, type ReelDraft, type ReelOrigin, type ReelSession } from "./studio/ReelCreator";
 import { ReelReview } from "./studio/ReelReview";
 import { InstagramAnalyticsPage, cachedInstagramAnalytics, topReelReferences } from "./studio/InstagramAnalyticsPage";
-import { Radar, ReelRoutine, VideoLibrary } from "./studio/ReelWorkspace";
+import { Radar, VideoLibrary } from "./studio/ReelWorkspace";
 import { rememberReel, reopenReel, pendingReviews } from "./studio/reelRecords";
 import { useReelPilot } from "./studio/ReelPilot";
+import { AutoPilot } from "./studio/AutoPilot";
+import { useInstagramConnection } from "./studio/InstagramConnect";
 import { useStudioTheme, type StudioThemePreference } from "./studio/studioTheme";
 import "./studio/studio.css";
 
@@ -52,7 +54,7 @@ interface VideosellStudioProps {
 
 const pageTitles: Partial<Record<StudioPage, string>> = {
   home: "Início", create: "Criar Reel", analytics: "Instagram Analytics", radar: "Radar de pautas",
-  proofs: "Provas da marca", videos: "Vídeos exportados", routine: "Rotina", avatars: "Meus avatares",
+  proofs: "Provas da marca", videos: "Vídeos exportados", routine: "Piloto automático", avatars: "Meus avatares",
   projects: "Projetos", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
   settings: "Ajustes avançados",
 };
@@ -119,6 +121,8 @@ function IntermediatePage({
 export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: VideosellStudioProps) {
   const language = useStudioLanguage();
   const appearance = useStudioTheme(visible);
+  const instagram = useInstagramConnection();
+  const needsAttention = (instagram.pub?.scheduled ?? []).filter((e) => e.status === "late" || e.status === "failed").length;
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [page, setPage] = useState<StudioPage>("home");
   const [avatarSetupRequest, setAvatarSetupRequest] = useState(0);
@@ -378,7 +382,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       <IntermediatePage title={t(t("Radar de pautas"))} eyebrow="ESTRATÉGIA" text="Selecione um perfil para sugerir pautas para seu SaaS." onPage={setPage} />
     );
   } else if (page === "routine") {
-    content = <ReelRoutine profile={profile} opening={opening} openingError={openingError} onReview={(id) => void openProject(id)} onConnect={() => setPage("publish")} />;
+    content = <AutoPilot profile={profile} onReview={(id) => void openProject(id)} onConnect={() => setPage("publish")}
+      onCreate={() => create("without-avatar")} onRadar={() => setPage("radar")} />;
   } else if (page === "videos") {
     content = <VideoLibrary onConnect={() => setPage("publish")} />;
   } else if (page === "projects") {
@@ -509,6 +514,11 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         onThemePreference={(next: StudioThemePreference) => appearance.setPreference(next)}
       />
       <main className="studio-main" id="studio-main-content">
+        {needsAttention > 0 && page !== "routine" && (
+          <button type="button" className="pilot-attention global" onClick={() => setPage("routine")}>
+            {needsAttention === 1 ? t("Um Reels do piloto precisa de atenção") : `${needsAttention} ${t("Reels do piloto precisam de atenção")}`} · {t("Ver agora")}
+          </button>
+        )}
         {content}
       </main>
     </div>

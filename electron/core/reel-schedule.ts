@@ -23,6 +23,85 @@ export interface ScheduledReel {
   status: "scheduled" | "publishing" | "published" | "late" | "failed" | "cancelled";
   error?: string;
   permalink?: string;
+  /** Added by the autopilot (paused with it). */
+  pilot?: boolean;
+  title?: string;
+}
+
+/** Autopilot rule (Spec 3): N Reels per day (1 to 5), each at its own time, on the chosen days. */
+export type PilotDays = "daily" | "alternate" | number[];
+export interface PilotRule {
+  times: string[];
+  days: PilotDays;
+}
+export const DEFAULT_TIMES: Record<number, string[]> = {
+  1: ["18:00"],
+  2: ["12:00", "18:00"],
+  3: ["09:00", "13:00", "18:00"],
+  4: ["08:00", "12:00", "16:00", "20:00"],
+  5: ["08:00", "11:00", "14:00", "17:00", "20:00"],
+};
+export const MIN_GAP_MINUTES = 60;
+
+const minutesOf = (time: string) => {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  if (!m) throw new Error(`Horário inválido: ${time}. Use HH:MM, por exemplo 18:00.`);
+  return +m[1] * 60 + +m[2];
+};
+
+/** 1 to 5 times, sorted, at least 1 hour apart (two Reels too close compete with each other). */
+export function validateTimes(times: string[]) {
+  if (!times.length || times.length > 5) throw new Error("Escolha de 1 a 5 Reels por dia.");
+  const sorted = [...new Set(times)].sort((a, b) => minutesOf(a) - minutesOf(b));
+  if (sorted.length !== times.length) throw new Error("Dois Reels no mesmo horário: escolha horários diferentes.");
+  for (let i = 1; i < sorted.length; i++)
+    if (minutesOf(sorted[i]) - minutesOf(sorted[i - 1]) < MIN_GAP_MINUTES)
+      throw new Error(`Deixe pelo menos 1 hora entre dois Reels do mesmo dia (${sorted[i - 1]} e ${sorted[i]} estão muito perto).`);
+  return sorted;
+}
+
+export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+function dayAllowed(day: Date, days: PilotDays, start: Date) {
+  if (days === "daily") return true;
+  if (days === "alternate") {
+    const a = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+    const b = Date.UTC(day.getFullYear(), day.getMonth(), day.getDate());
+    return Math.round((b - a) / 864e5) % 2 === 0;
+  }
+  return days.includes(day.getDay());
+}
+
+/**
+ * The next `count` free slots of the rule after `now`, skipping slots already taken (same minute) and
+ * days the user skipped. Order: day by day, time by time.
+ */
+export function planSlots(count: number, rule: PilotRule, now = new Date(), options: { taken?: number[]; skip?: string[]; from?: Date } = {}) {
+  const times = validateTimes(rule.times).map(minutesOf);
+  if (Array.isArray(rule.days) && !rule.days.length) throw new Error("Marque pelo menos um dia da semana.");
+  const taken = new Set((options.taken ?? []).map((t) => Math.floor(t / 60000)));
+  const skip = new Set(options.skip ?? []);
+  const start = options.from ?? now;
+  const first = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const out: Date[] = [];
+  for (let offset = 0; out.length < count && offset < 400; offset++) {
+    const day = new Date(first);
+    day.setDate(first.getDate() + offset);
+    if (!dayAllowed(day, rule.days, first) || skip.has(dayKey(day))) continue;
+    for (const minutes of times) {
+      const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(minutes / 60), minutes % 60);
+      if (at.getTime() < now.getTime() + MIN_AHEAD_MS || taken.has(Math.floor(at.getTime() / 60000))) continue;
+      out.push(at);
+      if (out.length === count) break;
+    }
+  }
+  return out;
+}
+
+/** How many days the queue lasts at the rule's pace (for "Sua fila acaba em X dias"). */
+export function queueEndsAt(entries: { at: string; status: string }[]) {
+  const left = entries.filter((e) => e.status === "scheduled").map((e) => new Date(e.at).getTime());
+  return left.length ? new Date(Math.max(...left)) : undefined;
 }
 
 /** ISO ("2026-11-08T18:00") or "2026-11-08 18:00" in local time. */
