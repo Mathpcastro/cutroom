@@ -1,19 +1,5 @@
 import { t, setStudioLanguage, useStudioLanguage, type StudioLanguage } from "./studioLanguage";
-import {
-  Clapperboard,
-  CalendarDays,
-  ChartNoAxesColumnIncreasing,
-  Lightbulb,
-  Film,
-  FolderKanban,
-  Home,
-  Mic2,
-  Palette,
-  Plug,
-  Library,
-  Settings2,
-  UserRound,
-} from "lucide-react";
+import { BookOpen, CalendarDays, Clapperboard, Film, Lightbulb, Settings2 } from "lucide-react";
 import type { StudioTab } from "../../shared/types";
 import type { StudioPage } from "../VideosellStudio";
 import { ProfileSwitcher } from "./ProfileSwitcher";
@@ -34,23 +20,15 @@ interface StudioNavProps {
   onThemePreference?: (preference: StudioThemePreference) => void;
 }
 
+/** Spec 4 E: 5 main places + Ajustes. Every older screen lives inside one of them. */
 const items = [
-  { id: "home", label: "Início", icon: Home },
-  { id: "create", label: "Criar Reel", icon: Clapperboard },
-  { id: "analytics", label: "Instagram Analytics", icon: ChartNoAxesColumnIncreasing },
-  { id: "radar", label: "Radar de pautas", icon: Lightbulb },
-  { id: "proofs", label: "Provas da marca", icon: Library },
-  { id: "videos", label: "Vídeos exportados", icon: Film },
-  { id: "routine", label: "Piloto automático", icon: CalendarDays },
-  { id: "avatars", label: "Meus avatares", icon: UserRound },
-  { id: "projects", label: "Projetos", icon: FolderKanban },
+  { id: "home", label: "Criar", icon: Clapperboard, owns: ["home", "create", "onboarding"] },
+  { id: "projects", label: "Meus Reels", icon: Film, owns: ["projects", "videos"] },
+  { id: "routine", label: "Piloto automático", icon: CalendarDays, owns: ["routine"] },
+  { id: "radar", label: "Ideias", icon: Lightbulb, owns: ["radar", "analytics"] },
+  { id: "stories", label: "Histórias", icon: BookOpen, owns: ["stories"] },
 ] as const;
-
-const advancedItems = [
-  { id: "voices", label: "Vozes", icon: Mic2, tab: "voices" },
-  { id: "brand", label: "Marca", icon: Palette, tab: "brand" },
-  { id: "publish", label: "Conexões", icon: Plug, tab: "publish" },
-] as const;
+const settingsPages = ["settings", "avatars", "voices", "brand", "proofs", "publish"];
 
 export function StudioNav({
   page,
@@ -68,32 +46,21 @@ export function StudioNav({
   return (
     <aside className="studio-sidebar">
       <nav className="studio-nav" aria-label={t("Navegação do estúdio")}>
-        <span className="studio-nav-label">{t("CRIAR")}</span>
-        {items.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            className={page === id ? "active" : ""}
-            aria-current={page === id ? "page" : undefined}
-            onClick={() => onPage(id)}
-          >
-            <Icon size={17} strokeWidth={1.7} />
-            <span>{t(label)}</span>
-          </button>
-        ))}
-        <span className="studio-nav-label studio-nav-label-secondary">{t("PRODUÇÃO")}</span>
-        {advancedItems.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            className={page === id ? "active" : ""}
-            aria-current={page === id ? "page" : undefined}
-            onClick={() => onPage(id)}
-          >
-            <Icon size={17} strokeWidth={1.7} />
-            <span>{t(label)}</span>
-          </button>
-        ))}
+        {items.map(({ id, label, icon: Icon, owns }) => {
+          const active = (owns as readonly string[]).includes(page);
+          return (
+            <button
+              key={id}
+              type="button"
+              className={active ? "active" : ""}
+              aria-current={active ? "page" : undefined}
+              onClick={() => onPage(id as StudioPage)}
+            >
+              <Icon size={17} strokeWidth={1.7} />
+              <span>{t(label)}</span>
+            </button>
+          );
+        })}
       </nav>
       <div className="studio-sidebar-bottom">
         <ConnectionBadge onOpen={() => onPage("publish")} />
@@ -124,12 +91,12 @@ export function StudioNav({
         </div>
         <button
           type="button"
-          className="studio-advanced-button"
-          onClick={() => onOpenAdvanced()}
+          className={`studio-advanced-button ${settingsPages.includes(page) ? "active" : ""}`}
+          aria-current={settingsPages.includes(page) ? "page" : undefined}
+          onClick={() => onPage("settings")}
         >
           <Settings2 size={15} />
-          <span>{t("Ajustes avançados")}</span>
-          <Clapperboard size={14} />
+          <span>{t("Ajustes")}</span>
         </button>
         <span className="studio-local-note">{t("Seus arquivos ficam neste computador.")}</span>
       </div>

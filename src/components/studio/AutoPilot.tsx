@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, CalendarDays, Check, ChevronDown, Plus, Send, SkipForward, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Check, Info, Plus, Send, SkipForward, Trash2, X } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import { t, getStudioLanguage } from "./studioLanguage";
 import { studioRequest } from "./salesReels";
@@ -108,7 +108,7 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
   const [captionDraft, setCaptionDraft] = useState("");
   const [timeDraft, setTimeDraft] = useState("");
   const [confirmAdd, setConfirmAdd] = useState<string>("");
-  const [creationOpen, setCreationOpen] = useState(false);
+  const [sideTab, setSideTab] = useState<"ready" | "create">("ready");
   const [dragging, setDragging] = useState("");
 
   const reload = useCallback(async () => {
@@ -127,6 +127,11 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
     }
   }, []);
   useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setSelected(null); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
 
   const run = async (work: () => Promise<unknown>, ok?: string) => {
     if (busy) return;
@@ -224,187 +229,177 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
 
   if (state && !state.accounts.length)
     return (
-      <div className="studio-workspace reel-workbench pilot-page">
+      <div className="pilot-v2">
         <header><h1>{t("Piloto automático")}</h1><p>{t("Na hora marcada, o Videosell abre sozinho e publica.")}</p></header>
         <ConnectInstagramCard onConnect={onConnect} text="O piloto publica no seu Instagram. Conecte a conta e volte aqui." />
       </div>
     );
 
+  const todayKey = dayKey(new Date());
   return (
-    <div className="studio-workspace reel-workbench pilot-page">
-      <header><h1>{t("Piloto automático")}</h1></header>
-
-      {attention.length > 0 && (
-        <button type="button" className="pilot-attention" onClick={() => open(attention[0])}>
-          <AlertTriangle size={15} /> {attention.length === 1 ? t("Um Reels precisa de atenção") : `${attention.length} ${t("Reels precisam de atenção")}`} · {t(statusLabel[attention[0].status])}: {title(attention[0])}
-        </button>
-      )}
-
-      <section className={`pilot-state ${enabled ? "on" : "off"}`}>
-        <div>
-          <span className="pilot-state-dot" aria-hidden="true" />
-          <strong role="status">{t(sentence.text)}</strong>
+    <div className="pilot-v2">
+      <header className="pilot-top">
+        <div className="pilot-top-state">
+          <span className={`pilot-state-dot ${enabled ? "on" : ""}`} aria-hidden="true" />
+          <div>
+            <h1>{t("Piloto automático")}</h1>
+            <strong role="status">{t(sentence.text)}</strong>
+          </div>
           {sentence.fix === "connect" && <button type="button" className="studio-secondary-button" onClick={onConnect}>{t("Conectar o Instagram")}</button>}
           {sentence.fix === "videos" && <button type="button" className="studio-secondary-button" onClick={onCreate}>{t("Criar Reels")}</button>}
         </div>
-        <button type="button" className={`pilot-switch ${enabled ? "on" : ""}`} aria-pressed={enabled} disabled={busy || !!problem || !state}
-          onClick={() => void (enabled ? run(() => studioRequest("setReelPilot", { enabled: false }), "Piloto pausado. A fila continua guardada.") : startPreview())}>
-          {enabled ? t("Pausar") : t("Ligar")}
-        </button>
-      </section>
-
-      <p className="pilot-howto">{t("Na hora marcada, o Videosell abre sozinho e publica. Se o computador estiver desligado, publica quando ligar (até 6 horas depois). Depois disso, o vídeo fica como Atrasado e espera você.")}</p>
-
-      {error && <div className="ig-error" role="alert"><p>{t(error.message)}</p>{error.details && error.details !== error.message && <details><summary>{t("Detalhes")}</summary><code>{error.details}</code></details>}</div>}
-      {notice && <p role="status" className="pilot-notice"><Check size={14} /> {notice}</p>}
-
-      <section className="reel-form-card pilot-rule">
-        <h2>{t("Regras")}</h2>
-        <div className="pilot-rule-row">
-          <label className="reel-field">{t("Reels por dia")}
+        <div className="pilot-rules" role="group" aria-label={t("Regras")}>
+          <label>{t("Reels por dia")}
             <select value={perDay} disabled={busy} onChange={(e) => setCount(Number(e.target.value))}>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
-          <div className="pilot-times" role="group" aria-label={t("Horários")}>
+          <span className="pilot-times" aria-label={t("Horários")}>
             {times.map((time, i) => (
-              <label key={i} className="reel-field">{`${i + 1}º`}
-                <input type="time" value={time} disabled={busy} onChange={(e) => { setTimes(times.map((x, j) => (j === i ? e.target.value : x))); setPreview(null); }} />
-              </label>
+              <input key={i} type="time" aria-label={`${t("Horário")} ${i + 1}`} value={time} disabled={busy}
+                onChange={(e) => { setTimes(times.map((x, j) => (j === i ? e.target.value : x))); setPreview(null); }} />
             ))}
-          </div>
-          <label className="reel-field">{t("Dias")}
+          </span>
+          <label>{t("Dias")}
             <select value={Array.isArray(days) ? "week" : days} disabled={busy} onChange={(e) => { setDays(e.target.value === "week" ? [1, 2, 3, 4, 5] : (e.target.value as PilotDays)); setPreview(null); }}>
               <option value="daily">{t("Todo dia")}</option>
               <option value="alternate">{t("Dia sim, dia não")}</option>
               <option value="week">{t("Dias da semana")}</option>
             </select>
           </label>
+          {Array.isArray(days) && (
+            <span className="pilot-weekdays">
+              {WEEKDAYS.map((label, d) => (
+                <button key={d} type="button" aria-pressed={days.includes(d)} onClick={() => { setDays(days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort()); setPreview(null); }}>{t(label)[0]}</button>
+              ))}
+            </span>
+          )}
+          {enabled && !problem && (JSON.stringify(times) !== JSON.stringify(state?.pilot?.times) || JSON.stringify(days) !== JSON.stringify(state?.pilot?.days)) && (
+            <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => void run(() => studioRequest("setReelPilot", { enabled: true, times, days }), "Regras salvas. Os próximos vídeos seguem os novos horários.")}>{t("Salvar")}</button>
+          )}
+          <span className="pilot-info" tabIndex={0} title={t("Na hora marcada, o Videosell abre sozinho e publica. Se o computador estiver desligado, publica quando ligar (até 6 horas depois). Depois disso, o vídeo fica como Atrasado e espera você.")}>
+            <Info size={15} />
+          </span>
         </div>
-        {Array.isArray(days) && (
-          <div className="pilot-weekdays">
-            {WEEKDAYS.map((label, d) => (
-              <label key={d}><input type="checkbox" checked={days.includes(d)} onChange={(e) => setDays(e.target.checked ? [...days, d].sort() : days.filter((x) => x !== d))} /> {t(label)}</label>
-            ))}
-          </div>
+        <button type="button" className={`pilot-switch ${enabled ? "on" : ""}`} aria-pressed={enabled} disabled={busy || !!problem || !state}
+          title={problem ? t(problem) : ""}
+          onClick={() => void (enabled ? run(() => studioRequest("setReelPilot", { enabled: false }), "Piloto pausado. A fila continua guardada.") : startPreview())}>
+          {enabled ? t("Pausar") : t("Ligar")}
+        </button>
+      </header>
+
+      <div className="pilot-banners">
+        {attention.length > 0 && (
+          <button type="button" className="pilot-attention" onClick={() => open(attention[0])}>
+            <AlertTriangle size={14} /> {attention.length === 1 ? t("Um Reels precisa de atenção") : `${attention.length} ${t("Reels precisam de atenção")}`} · {t(statusLabel[attention[0].status])}: {title(attention[0])}
+          </button>
         )}
         {problem && <p className="pilot-problem" role="alert">{t(problem)}</p>}
-        {enabled && !problem && (JSON.stringify(times) !== JSON.stringify(state?.pilot?.times) || JSON.stringify(days) !== JSON.stringify(state?.pilot?.days)) && (
-          <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => void run(() => studioRequest("setReelPilot", { enabled: true, times, days }), "Regras salvas. Os próximos vídeos seguem os novos horários.")}>{t("Salvar regras")}</button>
-        )}
-        <label className="pilot-notify">
-          <input type="checkbox" checked={state?.pilot?.notify !== false} onChange={(e) => void run(() => studioRequest("setReelPilot", { enabled, notify: e.target.checked }))} />
-          {t("Avisar no computador quando publicar, falhar ou a fila acabar")}
-        </label>
-      </section>
-
-      {preview && (
-        <section className="pilot-confirm" role="alertdialog" aria-label={t("Confirmar o piloto")}>
-          <p>
-            <strong>{preview.length} Reels</strong>, {t("de")} {new Date(preview[0].at).toLocaleDateString(getStudioLanguage())} {t("a")} {new Date(preview.at(-1)!.at).toLocaleDateString(getStudioLanguage())}, {t("às")} {times.join(", ")}{account ? ` ${t("em")} @${account.username}` : ""}.
-          </p>
-          <p className="pilot-howto">{t("Confira no calendário abaixo. Nada é publicado sem esta confirmação.")}</p>
-          <div className="reel-action-row">
+        {error && <div className="ig-error" role="alert"><p>{t(error.message)}</p>{error.details && error.details !== error.message && <details><summary>{t("Detalhes")}</summary><code>{error.details}</code></details>}</div>}
+        {notice && <p role="status" className="pilot-notice"><Check size={14} /> {notice}</p>}
+        {preview && (
+          <div className="pilot-confirm" role="alertdialog" aria-label={t("Confirmar o piloto")}>
+            <span>
+              <strong>{preview.length} Reels</strong>, {t("de")} {new Date(preview[0].at).toLocaleDateString(getStudioLanguage())} {t("a")} {new Date(preview.at(-1)!.at).toLocaleDateString(getStudioLanguage())}, {t("às")} {times.join(", ")}{account ? ` ${t("em")} @${account.username}` : ""}. {t("Confira no calendário. Nada é publicado sem esta confirmação.")}
+            </span>
             <button type="button" className="studio-primary-button" disabled={busy} onClick={() => void confirmPreview()}>{t("Confirmar e ligar")}</button>
             <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => setPreview(null)}>{t("Cancelar")}</button>
           </div>
-        </section>
-      )}
+        )}
+        {enabled && daysLeft > 0 && daysLeft < 3 && (
+          <div className="pilot-warning">
+            <AlertTriangle size={14} /> {t("Sua fila acaba")} {daysLeft === 1 ? t("hoje") : `${t("em")} ${daysLeft} ${t("dias")}`}.
+            <button type="button" className="ig-link" onClick={onCreate}>{t("Criar mais Reels")}</button>
+            <button type="button" className="ig-link" onClick={onRadar}>{t("Gerar pautas")}</button>
+          </div>
+        )}
+      </div>
 
-      {enabled && daysLeft > 0 && daysLeft < 3 && (
-        <section className="pilot-warning">
-          <AlertTriangle size={15} /> {t("Sua fila acaba")} {daysLeft === 1 ? t("hoje") : `${t("em")} ${daysLeft} ${t("dias")}`}.
-          <button type="button" className="studio-secondary-button" onClick={onCreate}>{t("Criar mais Reels")}</button>
-          <button type="button" className="studio-secondary-button" onClick={onRadar}>{t("Gerar pautas")}</button>
-        </section>
-      )}
-
-      <section className="reel-form-card">
-        <h2><CalendarDays size={16} /> {t("Próximas 2 semanas")}</h2>
-        <ol className="pilot-calendar">
-          {calendar.map(({ day, key, real, ghost, active }) => (
-            <li key={key} className={active ? "" : "inactive"}>
-              <div className="pilot-day">
-                <strong>{shortDate(day)}</strong>
-                {real.some((r) => r.pilot && r.status === "scheduled") && (
-                  <button type="button" className="ig-link" disabled={busy} onClick={() => void run(() => studioRequest("skipReelDay", { date: key }), "Dia pulado. Os vídeos seguintes andaram um espaço.")}>
-                    <SkipForward size={12} /> {t("Pular este dia")}
-                  </button>
-                )}
-              </div>
-              <div className="pilot-slots">
-                {real.map((item) => (
-                  <div key={item.id} className={`pilot-item ${item.status}`} draggable={item.status === "scheduled"}
-                    onDragStart={() => setDragging(item.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => void dropOn(item)}>
-                    <button type="button" className="pilot-item-main" onClick={() => open(item)}>
-                      <Thumb path={item.video} />
-                      <span className="pilot-item-text"><b>{hour(item.at)}</b> {title(item)}</span>
-                      <span className={`pilot-badge ${item.status}`}>{t(statusLabel[item.status] ?? item.status)}</span>
+      <div className="pilot-body">
+        <section className="pilot-cal" aria-label={t("Próximas 2 semanas")}>
+          <div className="pilot-grid">
+            {calendar.map(({ day, key, real, ghost, active }) => (
+              <div key={key} className={`pilot-cell ${active ? "" : "inactive"} ${key === todayKey ? "today" : ""}`}
+                onDragOver={(e) => e.preventDefault()}>
+                <div className="pilot-cell-head">
+                  <span>{day.toLocaleDateString(getStudioLanguage(), { weekday: "short" }).replace(".", "")}</span>
+                  <b>{day.getDate()}</b>
+                  {real.some((r) => r.pilot && r.status === "scheduled") && (
+                    <button type="button" className="pilot-skip" title={t("Pular este dia")} aria-label={t("Pular este dia")} disabled={busy}
+                      onClick={() => void run(() => studioRequest("skipReelDay", { date: key }), "Dia pulado. Os vídeos seguintes andaram um espaço.")}>
+                      <SkipForward size={12} />
                     </button>
-                    {item.status === "scheduled" && (
-                      <span className="pilot-item-actions">
-                        <button type="button" aria-label={t("Subir")} disabled={busy} onClick={() => void move(item, -1)}><ArrowUp size={13} /></button>
-                        <button type="button" aria-label={t("Descer")} disabled={busy} onClick={() => void move(item, 1)}><ArrowDown size={13} /></button>
-                      </span>
-                    )}
-                  </div>
-                ))}
-                {ghost.map((p) => (
-                  <div key={p.video + p.at} className="pilot-item ghost">
-                    <span className="pilot-item-main"><Thumb path={p.video} /><span className="pilot-item-text"><b>{hour(p.at)}</b> {p.title}</span><span className="pilot-badge">{t("Prévia")}</span></span>
-                  </div>
-                ))}
-                {!real.length && !ghost.length && (
-                  <span className="pilot-empty">{t(active ? "Sem vídeo" : "Sem postagem neste dia")}
-                    {active && <button type="button" aria-label={t("Adicionar vídeo")} onClick={() => document.getElementById("pilot-ready")?.scrollIntoView({ behavior: "smooth" })}><Plus size={13} /></button>}
-                  </span>
-                )}
+                  )}
+                </div>
+                <div className="pilot-cell-slots">
+                  {real.map((item) => (
+                    <button key={item.id} type="button" className={`pilot-chip ${item.status}`} draggable={item.status === "scheduled"}
+                      title={`${hour(item.at)} · ${title(item)} · ${t(statusLabel[item.status] ?? item.status)}`}
+                      onDragStart={() => setDragging(item.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => void dropOn(item)}
+                      onClick={() => open(item)}>
+                      <Thumb path={item.video} />
+                      <span><b>{hour(item.at)}</b><i>{title(item)}</i></span>
+                    </button>
+                  ))}
+                  {ghost.map((p) => (
+                    <span key={p.video + p.at} className="pilot-chip ghost" title={t("Prévia")}>
+                      <Thumb path={p.video} />
+                      <span><b>{hour(p.at)}</b><i>{p.title}</i></span>
+                    </span>
+                  ))}
+                  {!real.length && !ghost.length && active && (
+                    <button type="button" className="pilot-cell-add" aria-label={t("Adicionar vídeo")} title={t("Adicionar vídeo")} onClick={() => setSideTab("ready")}><Plus size={14} /></button>
+                  )}
+                </div>
               </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="reel-form-card" id="pilot-ready">
-        <h2>{t("Vídeos prontos")}</h2>
-        {!ready.length && !reviews.length && <p>{t("Nenhum vídeo pronto fora da fila.")} <button type="button" className="ig-link" onClick={onCreate}>{t("Criar um Reels")}</button></p>}
-        <ul className="pilot-ready">
-          {reviews.map((r) => (
-            <li key={r.filmId}>
-              <span className="pilot-thumb review" />
-              <span className="pilot-item-text">{r.draft.brief || r.plan?.title || t("Rascunho")}</span>
-              <span className="pilot-badge late">{t("Revisar antes")}</span>
-              <button type="button" className="studio-secondary-button" onClick={() => onReview(r.filmId)}>{t("Revisar")}</button>
-            </li>
-          ))}
-          {ready.map((v) => (
-            <li key={v.path}>
-              <Thumb path={v.path} />
-              <span className="pilot-item-text">{meta(v.path).title}</span>
-              {confirmAdd === v.path ? (
-                <span className="reel-action-row">
-                  <button type="button" className="studio-primary-button" disabled={busy} onClick={() => void run(async () => {
-                    await studioRequest("addToReelPilot", { video: v.path, caption: meta(v.path).caption, title: meta(v.path).title, confirm: true });
-                    setConfirmAdd("");
-                  }, "Agendado no primeiro horário livre.")}>{t("Agendar este")}</button>
-                  <button type="button" className="studio-secondary-button" onClick={() => setConfirmAdd("")}><X size={13} /></button>
-                </span>
-              ) : (
-                <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => setConfirmAdd(v.path)}><Plus size={13} /> {t("Adicionar ao piloto")}</button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {profile && (
-        <section className="reel-form-card pilot-creation">
-          <button type="button" className="pilot-collapse" aria-expanded={creationOpen} onClick={() => setCreationOpen(!creationOpen)}>
-            <strong>{t("Criar os próximos Reels sozinho")}</strong> <ChevronDown size={15} />
-          </button>
-          {creationOpen && <PilotDrafts key={profile.id} profile={profile} />}
+            ))}
+          </div>
+          <p className="pilot-legend">{t("Arraste para trocar a ordem. Clique num vídeo para ver, mudar a legenda ou o horário.")}</p>
         </section>
-      )}
+
+        <aside className="pilot-side">
+          <div className="pilot-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={sideTab === "ready"} onClick={() => setSideTab("ready")}>{t("Prontos")} <small>{ready.length + reviews.length}</small></button>
+            {profile && <button type="button" role="tab" aria-selected={sideTab === "create"} onClick={() => setSideTab("create")}>{t("Criar sozinho")}</button>}
+          </div>
+          <div className="pilot-side-list">
+            {sideTab === "ready" && <>
+              {!ready.length && !reviews.length && <p className="pilot-legend">{t("Nenhum vídeo pronto fora da fila.")} <button type="button" className="ig-link" onClick={onCreate}>{t("Criar um Reels")}</button></p>}
+              {reviews.map((r) => (
+                <div key={r.filmId} className="pilot-ready-item">
+                  <span className="pilot-thumb review" />
+                  <span className="pilot-ready-text"><i>{r.draft.brief || r.plan?.title || t("Rascunho")}</i><small className="warn">{t("Revisar antes")}</small></span>
+                  <button type="button" className="studio-secondary-button" onClick={() => onReview(r.filmId)}>{t("Revisar")}</button>
+                </div>
+              ))}
+              {ready.map((v) => (
+                <div key={v.path} className="pilot-ready-item">
+                  <Thumb path={v.path} />
+                  <span className="pilot-ready-text"><i title={meta(v.path).title}>{meta(v.path).title}</i>
+                    {confirmAdd === v.path && <small>{t("Entra no primeiro horário livre.")}</small>}
+                  </span>
+                  {confirmAdd === v.path ? (
+                    <span className="pilot-ready-confirm">
+                      <button type="button" className="studio-primary-button" disabled={busy} onClick={() => void run(async () => {
+                        await studioRequest("addToReelPilot", { video: v.path, caption: meta(v.path).caption, title: meta(v.path).title, confirm: true });
+                        setConfirmAdd("");
+                      }, "Agendado no primeiro horário livre.")}>{t("Agendar")}</button>
+                      <button type="button" className="pilot-icon" aria-label={t("Cancelar")} onClick={() => setConfirmAdd("")}><X size={13} /></button>
+                    </span>
+                  ) : (
+                    <button type="button" className="pilot-icon add" aria-label={t("Adicionar ao piloto")} title={t("Adicionar ao piloto")} disabled={busy} onClick={() => setConfirmAdd(v.path)}><Plus size={15} /></button>
+                  )}
+                </div>
+              ))}
+            </>}
+            {sideTab === "create" && profile && <PilotDrafts key={profile.id} profile={profile} />}
+          </div>
+          <label className="pilot-notify">
+            <input type="checkbox" checked={state?.pilot?.notify !== false} onChange={(e) => void run(() => studioRequest("setReelPilot", { enabled, notify: e.target.checked }))} />
+            {t("Avisar quando publicar, falhar ou a fila acabar")}
+          </label>
+        </aside>
+      </div>
 
       {selected && (
         <aside className="pilot-panel" role="dialog" aria-label={title(selected)}>
@@ -432,6 +427,10 @@ export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {
                 setSelected(null);
               }, "Alterações salvas.")}>{t("Salvar")}</button>
             )}
+            {selected.status === "scheduled" && <>
+              <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => void move(selected, -1).then(() => setSelected(null))}><ArrowUp size={13} /> {t("Antes")}</button>
+              <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => void move(selected, 1).then(() => setSelected(null))}><ArrowDown size={13} /> {t("Depois")}</button>
+            </>}
             {(selected.status === "scheduled" || selected.status === "late" || selected.status === "failed") && (
               <button type="button" className="studio-secondary-button" disabled={busy} onClick={() => void run(async () => {
                 await studioRequest("publishLateReel", { id: selected.id });

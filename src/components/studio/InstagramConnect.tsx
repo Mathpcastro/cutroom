@@ -47,7 +47,7 @@ export function explainError(error: unknown) {
 export type ConnectionLevel = "ready" | "warning" | "off";
 export function connectionStatus(pub: PublishState | null): { level: ConnectionLevel; label: string; step: 1 | 2 | 3 | 0 } {
   if (!pub || !pub.hasKey) return { level: "off", label: "Instagram não conectado", step: 2 };
-  const account = pub.accounts.find((a) => a.id === pub.defaultAccount) ?? pub.accounts[0];
+  const account = (pub.accounts ?? []).find((a) => a.id === pub.defaultAccount) ?? pub.accounts?.[0];
   if (account) return { level: "ready", label: `@${account.username ?? "conta"}`, step: 0 };
   if (pub.unusable?.length) return { level: "warning", label: pub.unusable[0].message, step: 3 };
   return { level: "warning", label: "Falta conectar o Instagram", step: 3 };

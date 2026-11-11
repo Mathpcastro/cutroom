@@ -19,7 +19,7 @@ describe("studio theme", () => {
   it("keeps literal colours out of the themed studio surfaces", () => {
     const css = readFileSync("src/components/studio/studio.css", "utf8").replace(/\r\n/g, "\n");
     // Dark chrome (sidebar/top bar), media, avatar canvas and token blocks may use literal colours.
-    const allowed = /reel-reference-frames img|videosell-studio(\[data-studio-theme="dark"\])?\s*$|studio-sidebar|profile-|studio-nav|studio-brand|studio-font-scale|studio-language|studio-return-button|studio-topbar|studio-appearance|studio-advanced-button|studio-connection|studio-local-note|avatar-|reel-review-still|modal-backdrop|video|primary-button|reel-pilot|-dark|::selection/;
+    const allowed = /reel-reference-frames img|mp4-player|videosell-studio(\[data-studio-theme="dark"\])?\s*$|studio-sidebar|profile-|studio-nav|studio-brand|studio-font-scale|studio-language|studio-return-button|studio-topbar|studio-appearance|studio-advanced-button|studio-connection|studio-local-note|avatar-|reel-review-still|modal-backdrop|video|primary-button|reel-pilot|-dark|::selection/;
     const offenders: string[] = [];
     for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       const selector = rule[1].trim();

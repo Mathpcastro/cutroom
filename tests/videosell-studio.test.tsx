@@ -163,9 +163,12 @@ describe("VideosellStudio project loading", () => {
       select.dispatchEvent(new window.Event("change", { bubbles: true }));
       await Promise.resolve();
     });
+    await act(async () => {
+      [...container.querySelectorAll(".studio-nav button")].find((b) => b.textContent?.includes("Meus Reels"))!.dispatchEvent(new window.Event("click", { bubbles: true }));
+    });
     await vi.waitFor(() => {
       expect(select.value).toBe(second.id);
-      expect(container.textContent).toContain("Nenhum projeto vinculado a este perfil ainda.");
+      expect(container.textContent).toContain("Você ainda não criou nenhum Reels");
     });
 
     await act(async () => {
@@ -175,7 +178,7 @@ describe("VideosellStudio project loading", () => {
     });
 
     expect(container.textContent).not.toContain("projeto-do-perfil-antigo");
-    expect(container.textContent).toContain("Nenhum projeto vinculado a este perfil ainda.");
+    expect(container.textContent).toContain("Você ainda não criou nenhum Reels");
   });
 
   it("distinguishes profile initialization and no-profile from an empty project library", async () => {
@@ -218,8 +221,8 @@ describe("VideosellStudio project loading", () => {
       await Promise.all([profiles.promise, active.promise]);
       await Promise.resolve();
     });
-    expect(container.textContent).toContain("Nenhum perfil selecionado");
-    expect(container.textContent).toContain("Crie ou selecione um perfil para ver os projetos vinculados.");
+    // With no profile, the home is the first-use guide (Spec 4 D).
+    expect(container.textContent).toContain("Sobre o que você vende?");
     expect(container.textContent).not.toContain("Nenhum projeto vinculado");
     expect(listProjects).not.toHaveBeenCalled();
     const studio = container.querySelector(".videosell-studio")!;

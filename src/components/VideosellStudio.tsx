@@ -21,10 +21,16 @@ import { StudioNav } from "./studio/StudioNav";
 import { ReelCreator, initialReelDraft, type ReelDraft, type ReelOrigin, type ReelSession } from "./studio/ReelCreator";
 import { ReelReview } from "./studio/ReelReview";
 import { InstagramAnalyticsPage, cachedInstagramAnalytics, topReelReferences } from "./studio/InstagramAnalyticsPage";
-import { Radar, VideoLibrary } from "./studio/ReelWorkspace";
+import { Radar } from "./studio/ReelWorkspace";
 import { rememberReel, reopenReel, pendingReviews } from "./studio/reelRecords";
 import { useReelPilot } from "./studio/ReelPilot";
 import { AutoPilot } from "./studio/AutoPilot";
+import { QuickCreate, type Pending, type QuickChoices } from "./studio/QuickCreate";
+import { ReelFlow, flowEstimate, rememberFlowTime, renderReel, stageOf, type FlowState } from "./studio/ReelFlow";
+import { MyReels } from "./studio/MyReels";
+import { SettingsHub } from "./studio/SettingsHub";
+import { FirstRun, firstRunDone } from "./studio/FirstRun";
+import { generateSalesReel } from "./studio/ReelCreator";
 import { useInstagramConnection } from "./studio/InstagramConnect";
 import { useStudioTheme, type StudioThemePreference } from "./studio/studioTheme";
 import "./studio/studio.css";
@@ -43,6 +49,7 @@ export type StudioPage =
   | "brand"
   | "onboarding"
   | "publish"
+  | "stories"
   | "settings";
 
 interface VideosellStudioProps {
@@ -53,10 +60,10 @@ interface VideosellStudioProps {
 }
 
 const pageTitles: Partial<Record<StudioPage, string>> = {
-  home: "Início", create: "Criar Reel", analytics: "Instagram Analytics", radar: "Radar de pautas",
-  proofs: "Provas da marca", videos: "Vídeos exportados", routine: "Piloto automático", avatars: "Meus avatares",
-  projects: "Projetos", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
-  settings: "Ajustes avançados",
+  home: "Criar", create: "Criar Reel", analytics: "Ideias", radar: "Ideias",
+  proofs: "Provas da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Meus avatares",
+  projects: "Meus Reels", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
+  settings: "Ajustes",
 };
 
 const FONT_SCALE_KEY = "videosell.studio.fontScale";
@@ -122,12 +129,29 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   const language = useStudioLanguage();
   const appearance = useStudioTheme(visible);
   const instagram = useInstagramConnection();
+  // Spec 4 F: Ctrl+N starts a new Reels from anywhere in the studio.
+  useEffect(() => {
+    if (!visible) return;
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "n") {
+        event.preventDefault();
+        setPage("home");
+        setTimeout(() => window.dispatchEvent(new Event("videosell:new-reel")), 50);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible]);
   const needsAttention = (instagram.pub?.scheduled ?? []).filter((e) => e.status === "late" || e.status === "failed").length;
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [page, setPage] = useState<StudioPage>("home");
   const [avatarSetupRequest, setAvatarSetupRequest] = useState(0);
   const [createMode, setCreateMode] = useState<CreateMode>("avatar");
   const [reelSession, setReelSession] = useState<ReelSession | null>(null);
+  /** Spec 4: the quick flow runs here, so leaving the screen never cancels it. */
+  const [flow, setFlow] = useState<FlowState | null>(null);
+  const [suggestion, setSuggestion] = useState("");
+  const [showFirstRun, setShowFirstRun] = useState(() => !firstRunDone());
   const [opening, setOpening] = useState(false);
   const [openingError, setOpeningError] = useState("");
   const openGeneration = useRef(0);
@@ -233,6 +257,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       return;
     }
     setCreateMode(mode);
+    setFlow(null);
     if (mode !== "avatar" && profile) {
       setReelSession({
         step: "brief",
@@ -245,10 +270,50 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     setPage("create");
   };
 
+  async function runFlow(base: ReelSession, revised?: ReelSession["plan"], previous?: ReelSession) {
+    if (!profile) return;
+    const started = Date.now();
+    let session: ReelSession = { ...base, step: "generating", error: undefined };
+    setReelSession(session);
+    setFlow({ stage: revised ? 1 : 0, message: "Escrevendo o roteiro…", startedAt: started, previous });
+    setPage("create");
+    try {
+      if (!session.filmId || !session.review || revised) {
+        session = await generateSalesReel(profile, session.draft, (message) =>
+          setFlow((current) => current && { ...current, stage: stageOf(message), message }), revised);
+        session = { ...session, draft: { ...session.draft, origin: base.draft.origin } };
+        updateSession(session);
+      }
+      setFlow((current) => current && { ...current, stage: 3, message: "Finalizando o vídeo…" });
+      const output = await renderReel(session.filmId!, () => undefined);
+      session = { ...session, step: "review", output };
+      updateSession(session);
+      rememberFlowTime((Date.now() - started) / 1000);
+      setFlow((current) => current && { ...current, stage: 4, message: "Pronto" });
+      void loadProjects();
+    } catch (reason) {
+      setReelSession({ ...session, step: session.review ? "review" : "brief" });
+      setFlow((current) => current && { ...current, error: reason instanceof Error ? reason.message : String(reason) });
+    }
+  }
+
+  function quickCreate(brief: string, choices: QuickChoices) {
+    if (!profile) return;
+    const draft = {
+      ...initialReelDraft(profile, choices.avatar),
+      brief,
+      narrative: choices.story,
+      motionStyle: choices.style || undefined,
+      language: choices.language,
+    };
+    void runFlow({ step: "brief", draft });
+  }
+
   const navigate = (target: StudioPage) => {
     openGeneration.current += 1;
     setOpening(false);
     setOpeningError("");
+    if (target === "home" && flow && !flow.error && reelSession?.step === "generating") { setPage("create"); return; }
     if (target === "create" && (!reelSession || reelSession.draft.profileId !== profile?.id)) {
       create("without-avatar");
       return;
@@ -270,6 +335,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         return;
       }
       setCreateMode("without-avatar");
+      setFlow(null);
       updateSession(session);
       setPage("create");
     } catch (reason) {
@@ -356,7 +422,27 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   };
 
   let content: React.ReactNode;
-  if (page === "home") {
+  const radarIdeas = (() => {
+    if (!profile) return [] as { title: string; brief: string }[];
+    try { return (JSON.parse(localStorage.getItem(`videosell.radar.${profile.id}`) ?? "[]") as { title: string; brief: string }[]).filter((i) => i?.brief); } catch { return []; }
+  })();
+  const pendingList: Pending[] = [
+    ...(state.connection.status !== "connected" ? [{ id: "ai", label: "Conecte a IA para criar", text: "O Videosell usa a IA para escrever o roteiro. Abra o editor avançado e conecte o Codex ou outra IA.", run: () => onOpenAdvanced(), blocking: true }] : []),
+    ...(!instagram.pub?.accounts?.length ? [{ id: "ig", label: "Conectar o Instagram", run: () => setPage("publish") }] : []),
+    ...(profile && !profile.defaultAvatar ? [{ id: "avatar", label: "Aprovar um avatar", run: () => create("avatar") }] : []),
+  ];
+  if (page === "home" && (showFirstRun || (!profileInitializing && !profile))) {
+    content = <FirstRun profile={profile} onProfile={(next) => onProfileChange(next, false)}
+      onAvatar={() => create("avatar")}
+      onDone={(text) => { setShowFirstRun(false); setSuggestion(text); }} />;
+  } else if (page === "home" && profile) {
+    content = <QuickCreate profile={profile} suggestion={suggestion} ideas={radarIdeas} pending={pendingList}
+      busyLabel={reelSession?.step === "generating" ? "gerando" : undefined} estimate={flowEstimate()}
+      onCreate={quickCreate}
+      onReference={() => create("without-avatar")}
+      onStory={() => setPage("stories")}
+      onRadar={() => setPage("radar")} />;
+  } else if (page === "home") {
     content = (
       <StudioHome
         profile={profile}
@@ -385,9 +471,13 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     content = <AutoPilot profile={profile} onReview={(id) => void openProject(id)} onConnect={() => setPage("publish")}
       onCreate={() => create("without-avatar")} onRadar={() => setPage("radar")} />;
   } else if (page === "videos") {
-    content = <VideoLibrary onConnect={() => setPage("publish")} />;
+    content = <MyReels key="library" initialTab="library" profile={profile} projects={visibleProjects} onOpen={(id) => void openProject(id)}
+      onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} onCreate={() => setPage("home")} />;
   } else if (page === "projects") {
-    content = projectsPage;
+    content = <MyReels profile={profile} projects={visibleProjects} onOpen={(id) => void openProject(id)}
+      onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} onCreate={() => setPage("home")} />;
+  } else if (page === "stories") {
+    content = <IntermediatePage title={t("Histórias")} eyebrow={t("SÉRIES")} text={t("Séries com personagens e roteiros escritos pela IA.")} onPage={setPage} />;
   } else if (page === "avatars") {
     content = profile?.defaultAvatar ? (
       <AvatarCreator
@@ -422,6 +512,24 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         text="Crie ou selecione um perfil antes de criar e salvar um avatar."
         onPage={setPage}
       />
+    );
+  } else if (page === "create" && profile && flow && reelSession?.draft.profileId === profile.id) {
+    const session = reelSession;
+    content = (
+      <div className="studio-workspace reel-workbench">
+        <header><h1>{t(session.plan?.title ?? "Criando seu Reels")}</h1></header>
+        <ReelFlow session={session} flow={flow}
+          onRetry={() => void runFlow(session, session.plan && !session.filmId ? session.plan : undefined)}
+          onAdjust={(request) => {
+            const previous = session;
+            void runFlow({ step: "brief", draft: { ...session.draft, brief: `${session.draft.brief ?? ""}\n\nAjuste pedido: ${request}`, origin: { ...(session.draft.origin ?? {}), parentFilmId: session.filmId } } }, undefined, previous);
+          }}
+          onRestore={() => { if (flow.previous) { setReelSession(flow.previous); setFlow({ ...flow, previous: undefined, stage: 4 }); } }}
+          onConnect={() => setPage("publish")}
+          onEdit={() => setFlow(null)}
+          onAdvanced={() => onOpenAdvanced("films")}
+          onPilot={() => setPage("routine")} />
+      </div>
     );
   } else if (page === "create" && profile && reelSession?.draft.profileId === profile.id) {
     content = (
@@ -480,6 +588,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         </div>
       </div>
     );
+  } else if (page === "settings") {
+    content = <SettingsHub onPage={setPage} onAdvanced={() => onOpenAdvanced()} theme={appearance.preference} onTheme={appearance.setPreference} />;
   } else {
     content = (
       <IntermediatePage
@@ -491,11 +601,26 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     );
   }
 
+  if ((page === "radar" || page === "analytics") && profile) {
+    content = (
+      <div className="ideas-wrap">
+        <div className="ideas-tabs reels-tabs" role="tablist" aria-label={t("Ideias")}>
+          <button type="button" role="tab" aria-selected={page === "radar"} onClick={() => setPage("radar")}>{t("Pautas")}</button>
+          <button type="button" role="tab" aria-selected={page === "analytics"} onClick={() => setPage("analytics")}>{t("Desempenho dos Reels")}</button>
+        </div>
+        {content}
+      </div>
+    );
+  }
   return (
     <div className="videosell-studio" data-font-scale={fontScale} data-studio-theme={appearance.theme} lang={language}>
       <header className="studio-topbar">
         <span className="studio-topbar-brand"><BrandMark size={20} /> Videosell</span>
-        <span className="studio-topbar-title">{t(pageTitles[page] ?? "")}</span>
+        <span className="studio-topbar-title">
+          {flow && !flow.error && reelSession?.step === "generating" && page !== "create" ? (
+            <button type="button" className="studio-topbar-job" onClick={() => setPage("create")}>{t("Criando seu Reels…")} {Math.min(flow.stage + 1, 4)}/4</button>
+          ) : t(pageTitles[page] ?? "")}
+        </span>
         <span className="studio-topbar-native" aria-hidden="true" />
       </header>
       <StudioNav
