@@ -20,7 +20,8 @@ import { avatarFixture } from "./fixtures/avatar-fixture";
 const roots: string[] = [];
 
 async function temporaryRoot() {
-  const root = await mkdtemp(join(tmpdir(), "avatar-store-"));
+  // Real path: on Windows runners tmpdir() may be an 8.3 short name (RUNNER~1) and the store resolves it.
+  const root = await realpath(await mkdtemp(join(tmpdir(), "avatar-store-")));
   roots.push(root);
   return root;
 }

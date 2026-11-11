@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   mkdtemp,
   mkdir,
+  realpath,
   readFile,
   rm,
   symlink,
@@ -36,7 +37,8 @@ afterEach(async () => {
 });
 
 async function tempRoot() {
-  const root = await mkdtemp(join(tmpdir(), "avatar-mcp-"));
+  // Real path: on Windows runners tmpdir() may be an 8.3 short name (RUNNER~1) and the store resolves it.
+  const root = await realpath(await mkdtemp(join(tmpdir(), "avatar-mcp-")));
   roots.push(root);
   return root;
 }

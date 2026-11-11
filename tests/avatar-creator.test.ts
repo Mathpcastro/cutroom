@@ -63,7 +63,7 @@ describe("AvatarCreator local starters", () => {
     expect((await service.getCandidate("avatar-local-test", created.candidates[0].candidateId)).description)
       .toBe("Apresentador técnico, direto e cordial");
     expect(await readFile(join(examplesDir, "strategist.json"), "utf8")).toBe(before);
-  }, 30_000);
+  }, 120_000); // Real renders of three avatars: ~20 s alone, ~35 s when the whole suite runs in parallel.
 
   it("rejects invalid IDs and empty descriptions before touching the service", async () => {
     const service = { createCandidates: vi.fn() };

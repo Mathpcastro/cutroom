@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import {
   mkdir,
   mkdtemp,
@@ -48,7 +48,8 @@ afterEach(() => {
 
 class FakeAvatarStore {
   private static readonly avatarQueues = new Map<string, Promise<void>>();
-  readonly root = mkdtempSync(join(tmpdir(), "avatar-service-"));
+  // Real path: on Windows runners tmpdir() may be an 8.3 short name (RUNNER~1) and the store resolves it.
+  readonly root = realpathSync.native(mkdtempSync(join(tmpdir(), "avatar-service-")));
   readonly candidates = new Map<string, StoredCandidate>();
   readonly revisions = new Map<string, StoredRevision>();
   readonly metadata = new Map<string, unknown>();
