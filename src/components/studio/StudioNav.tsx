@@ -6,6 +6,8 @@ import { ProfileSwitcher } from "./ProfileSwitcher";
 import type { StudioProfile } from "../../shared/profile";
 import type { StudioThemePreference } from "./studioTheme";
 import { ConnectionBadge } from "./InstagramConnect";
+import { AiBadge } from "./AiConnect";
+import type { AppSnapshot } from "../../shared/types";
 
 interface StudioNavProps {
   page: StudioPage;
@@ -17,6 +19,7 @@ interface StudioNavProps {
   fontScale: number;
   onFontScaleChange: (scale: number) => void;
   themePreference?: StudioThemePreference;
+  connection?: AppSnapshot["connection"];
   onThemePreference?: (preference: StudioThemePreference) => void;
 }
 
@@ -42,6 +45,7 @@ export function StudioNav({
   fontScale,
   onFontScaleChange,
   themePreference = "auto",
+  connection,
   onThemePreference,
 }: StudioNavProps) {
   const language = useStudioLanguage();
@@ -68,6 +72,7 @@ export function StudioNav({
         <div className="sidebar-account">
           <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
           <ConnectionBadge onOpen={() => onPage("publish")} />
+          {connection && <AiBadge connection={connection} />}
         </div>
         <div className="sidebar-footer">
           <button

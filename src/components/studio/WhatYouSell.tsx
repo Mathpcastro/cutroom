@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { t } from "./studioLanguage";
 import { structuredReply, studioRequest } from "./salesReels";
 import { brandPrompt, brandSuggestion } from "./BrandOnboarding";
+import { openAiConnect } from "./AiConnect";
 
 /**
  * Spec 4 D, step 1 — same pattern as the Carrossell onboarding: one field (link or a sentence) and three
@@ -154,10 +155,10 @@ export function WhatYouSell({ aiConnected, initial, onReady, onSkip }: {
           onChange={(e) => { setWhat(e.target.value); setPath(path === "prompt" ? "" : path); }} />
       </label>
       <div className="wys-paths" role="group" aria-label={t("Como montar a sua marca")}>
-        <button type="button" className="wys-path main" disabled={!source || busy || !aiConnected} onClick={() => void generate()}
-          title={!aiConnected ? t("Conecte a IA no editor avançado para usar este caminho.") : !source ? t("Cole um link ou escreva uma frase.") : ""}>
+        <button type="button" className="wys-path main" disabled={busy || (aiConnected && !source)} onClick={() => (aiConnected ? void generate() : openAiConnect())}
+          title={!aiConnected ? t("Conecte a IA para usar este caminho.") : !source ? t("Cole um link ou escreva uma frase.") : ""}>
           <b><Sparkles size={16} /> {t("Gerar com a minha IA")}</b>
-          <small>{t(aiConnected ? "Recomendado. Lê o link e monta tudo em 1 a 2 minutos." : "Conecte a IA no editor avançado para usar este caminho.")}</small>
+          <small>{t(aiConnected ? "Recomendado. Lê o link e monta tudo em 1 a 2 minutos." : "Recomendado. Clique para conectar a sua IA (1 minuto).")}</small>
         </button>
         <button type="button" className="wys-path" disabled={!source || busy} onClick={() => void copyPrompt()} title={!source ? t("Cole um link ou escreva uma frase.") : ""}>
           <b><ClipboardCopy size={16} /> {t("Copiar prompt para o meu ChatGPT ou Claude")}</b>

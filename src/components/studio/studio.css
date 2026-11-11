@@ -2339,3 +2339,15 @@
 .episode-preview .reel-mp4-player { width: 100%; aspect-ratio: 9 / 16; max-height: 56vh; object-fit: contain; background: #000; border-radius: 12px; }
 .episode-preview-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 9 / 16; max-height: 46vh; color: var(--studio-muted); text-align: center; background: var(--studio-surface); border: 1px dashed var(--studio-line); border-radius: 12px; font-size: 12px; padding: 16px; }
 @media (max-width: 1100px) { .stories-episodes, .episode-layout { grid-template-columns: 1fr; } .episode-preview { position: static; } }
+
+/* Connect the AI from the studio */
+.ai-connect { width: min(480px, 92vw); display: flex; flex-direction: column; gap: 12px; padding: 20px; color: var(--studio-text); background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 16px; box-shadow: 0 24px 60px var(--studio-shadow); }
+.ai-connect header { display: flex; align-items: center; justify-content: space-between; }
+.ai-connect header strong { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; }
+.ai-connect header button { color: var(--studio-muted); background: none; border: 0; cursor: pointer; }
+.ai-connect-lead, .ai-connect-help { margin: 0; color: var(--studio-muted); font-size: 12.5px; line-height: 1.5; }
+.ai-connect-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ai-connect-options button { padding: 10px 8px; color: var(--studio-text); text-align: left; background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 10px; font-size: 12px; cursor: pointer; }
+.ai-connect-options button[aria-checked="true"] { border-color: var(--studio-violet); background: var(--studio-accent-soft); }
+.ai-connect-options small { color: var(--studio-accent-text); font-weight: 600; }
+.ai-connect input { min-height: 38px; padding: 0 12px; color: var(--studio-text); background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 9px; }

@@ -89,7 +89,7 @@ export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, es
       {blocking && (
         <div className="studio-connect-card" role="alert">
           <div><strong>{t(blocking.label)}</strong>{blocking.text && <p>{t(blocking.text)}</p>}</div>
-          <button type="button" className="studio-primary-button" onClick={blocking.run}>{t("Resolver")}</button>
+          <button type="button" className="studio-primary-button" onClick={blocking.run}>{t(blocking.id === "ai" ? "Conectar a IA" : "Resolver")}</button>
         </div>
       )}
       <div className="quick-box">

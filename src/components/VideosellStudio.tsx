@@ -33,6 +33,7 @@ import { SettingsHub } from "./studio/SettingsHub";
 import { FirstRun, firstRunDone } from "./studio/FirstRun";
 import { generateSalesReel } from "./studio/ReelCreator";
 import { useInstagramConnection } from "./studio/InstagramConnect";
+import { AiConnectDialog, openAiConnect } from "./studio/AiConnect";
 import { useStudioTheme, type StudioThemePreference } from "./studio/studioTheme";
 import "./studio/studio.css";
 
@@ -428,7 +429,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     try { return (JSON.parse(localStorage.getItem(`videosell.radar.${profile.id}`) ?? "[]") as { title: string; brief: string }[]).filter((i) => i?.brief); } catch { return []; }
   })();
   const pendingList: Pending[] = [
-    ...(state.connection.status !== "connected" ? [{ id: "ai", label: "Conecte a IA para criar", text: "O Videosell usa a IA para escrever o roteiro. Abra o editor avançado e conecte o Codex ou outra IA.", run: () => onOpenAdvanced(), blocking: true }] : []),
+    ...(state.connection.status !== "connected" ? [{ id: "ai", label: "Conecte a IA para criar", text: "O Videosell usa a IA para escrever o roteiro. Conecte a sua conta do ChatGPT (Codex) ou outra IA; leva 1 minuto.", run: openAiConnect, blocking: true }] : []),
     ...(!instagram.pub?.accounts?.length ? [{ id: "ig", label: "Conectar o Instagram", run: () => setPage("publish") }] : []),
     ...(profile && !profile.defaultAvatar ? [{ id: "avatar", label: "Aprovar um avatar", run: () => create("avatar") }] : []),
   ];
@@ -638,8 +639,10 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         fontScale={fontScale}
         onFontScaleChange={changeFontScale}
         themePreference={appearance.preference}
+        connection={state.connection}
         onThemePreference={(next: StudioThemePreference) => appearance.setPreference(next)}
       />
+      <AiConnectDialog connection={state.connection} run={run} />
       <main className="studio-main" id="studio-main-content">
         {needsAttention > 0 && page !== "routine" && (
           <button type="button" className="pilot-attention global" onClick={() => setPage("routine")}>
