@@ -12,6 +12,8 @@ import { structuredReply, studioRequest } from "./salesReels";
 import { renderReel } from "./ReelFlow";
 import { ExportedVideoPlayer, InstagramActions } from "./InstagramActions";
 import { explainError } from "./InstagramConnect";
+import { ManualSeries, ReadySeries } from "./StoryWizard";
+import { useSeriesFactory } from "./seriesFactory";
 
 /** Spec 5: series → (episodes | characters | bible) → episode editor with the script in blocks. */
 
@@ -63,6 +65,9 @@ function SeriesList({ profile, list, error, onOpen, onCreated }: { profile: Stud
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const [creating, setCreating] = useState(false);
+  const [mode, setMode] = useState<"pronta" | "frase" | "manual">("pronta");
+  const factory = useSeriesFactory();
+  const factoryHere = !!factory && factory.profileId === profile.id;
 
   async function propose() {
     setBusy(true);
@@ -111,7 +116,16 @@ Responda só com JSON: {"title":"","premise":"","tone":"","setting":"","rules":"
         {!!list?.length && !creating && <button type="button" className="studio-primary-button" onClick={() => setCreating(true)}><Plus size={15} /> {t("Nova série")}</button>}
       </header>
       {error && <p className="reel-error" role="alert">{error}</p>}
-      {(creating || list?.length === 0) && (
+      {(creating || list?.length === 0 || factoryHere) && (
+        <div className="reels-tabs story-modes" role="tablist">
+          {([["pronta", "Série pronta com IA"], ["frase", "Com uma frase"], ["manual", "Manual"]] as const).map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={mode === id} onClick={() => setMode(id)}>{t(label)}</button>
+          ))}
+        </div>
+      )}
+      {(creating || list?.length === 0 || factoryHere) && mode === "pronta" && <section className="stories-new"><ReadySeries profile={profile} onOpen={onCreated} /></section>}
+      {(creating || list?.length === 0) && mode === "manual" && <section className="stories-new"><ManualSeries profile={profile} onCreated={onCreated} /></section>}
+      {(creating || list?.length === 0) && mode === "frase" && (
         <section className="stories-new">
           <h2>{t("Sobre o que é a sua série?")}</h2>
           <textarea rows={2} value={about} maxLength={600} placeholder={t("Ex.: dois sócios tentando conseguir o primeiro cliente do SaaS")} onChange={(e) => setAbout(e.target.value)} />
