@@ -6,6 +6,7 @@ import { studioRequest } from "./salesReels";
 import { ConnectInstagramCard, announceInstagram, explainError, type PublishState } from "./InstagramConnect";
 import { PilotDrafts } from "./ReelPilot";
 import { findReelByExport, pendingReviews } from "./reelRecords";
+import { useThumb } from "./useThumb";
 
 /** Spec 3: one place for the autopilot — state, a 2-week calendar and the ready queue. */
 
@@ -23,7 +24,7 @@ export const DEFAULT_TIMES: Record<number, string[]> = {
   5: ["08:00", "11:00", "14:00", "17:00", "20:00"],
 };
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const statusLabel: Record<string, string> = { scheduled: "Agendado", publishing: "Publicando", published: "Publicado ✓", late: "Atrasado", failed: "Falhou", cancelled: "Removido" };
+const statusLabel: Record<string, string> = { scheduled: "Agendado", publishing: "Publicando", published: "Publicado", late: "Atrasado", failed: "Falhou", cancelled: "Removido" };
 
 const minutes = (time: string) => { const [h, m] = time.split(":").map(Number); return h * 60 + m; };
 /** Same rule as the main process: 1 to 5 times, at least 1 hour apart. "" when fine. */
@@ -79,13 +80,8 @@ export function pilotSentence(state: { enabled: boolean; account?: string; next?
 }
 
 function Thumb({ path }: { path: string }) {
-  const [src, setSrc] = useState("");
-  useEffect(() => {
-    let alive = true;
-    studioRequest<{ url: string }>("previewExportedVideo", { path }).then(({ url }) => alive && setSrc(url), () => undefined);
-    return () => { alive = false; };
-  }, [path]);
-  return <span className="pilot-thumb">{src ? <video src={`${src}#t=1`} preload="metadata" muted playsInline /> : null}</span>;
+  const src = useThumb(path);
+  return <span className="pilot-thumb">{src ? <img src={src} alt="" loading="lazy" /> : null}</span>;
 }
 
 export function AutoPilot({ profile, onConnect, onReview, onCreate, onRadar }: {

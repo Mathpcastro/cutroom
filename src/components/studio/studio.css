@@ -2437,3 +2437,112 @@
 .story-pilot { display: flex; flex-direction: column; gap: 8px; padding: 14px; background: var(--studio-accent-soft); border: 1px solid var(--studio-accent-line); border-radius: 12px; }
 .story-pilot p { margin: 0; color: var(--studio-muted); font-size: 12.5px; }
 .story-pilot .reel-field { margin: 0; max-width: 120px; }
+
+/* ===================== Design system v3 (one look for every screen) ===================== */
+/* Buttons: one height, one type size, icon + text aligned. */
+.videosell-studio :is(.studio-primary-button, .studio-secondary-button, .studio-danger-button) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 36px; min-height: 36px; padding: 0 14px; border-radius: 9px;
+  font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.videosell-studio .reel-workbench :is(.studio-primary-button, .studio-secondary-button),
+.videosell-studio .instagram-actions button, .videosell-studio .reel-review .studio-primary-button { font-size: 13px; min-height: 36px; }
+.videosell-studio .studio-primary-button { color: #fff; background: var(--studio-violet-deep); border: 1px solid var(--studio-violet-deep); }
+.videosell-studio .studio-primary-button:hover:not(:disabled) { background: var(--studio-violet); border-color: var(--studio-violet); }
+.videosell-studio .studio-secondary-button { color: var(--studio-text); background: var(--studio-surface); border: 1px solid var(--studio-line); }
+.videosell-studio .studio-secondary-button:hover:not(:disabled) { color: var(--studio-accent-text); border-color: var(--studio-accent-line); }
+.videosell-studio .studio-main button:disabled { opacity: .5; cursor: not-allowed; }
+.btn-ghost { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; color: var(--studio-muted); background: none; border: 0; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.btn-ghost:hover { color: var(--studio-text); background: var(--studio-surface-2); }
+.videosell-studio .ig-link { color: var(--studio-accent-text); text-decoration: none; font-weight: 600; }
+.videosell-studio .ig-link:hover { text-decoration: underline; }
+
+/* Page shell: same width, padding and header on every screen. */
+.page, .videosell-studio .studio-workspace, .library, .stories, .settings-v2, .radar-v2 {
+  width: min(1120px, 100%); max-width: 1120px; margin: 0 auto; padding: 28px 32px 40px;
+}
+.radar-v3 { display: flex; flex-direction: column; gap: 14px; }
+.page { display: flex; flex-direction: column; gap: 18px; color: var(--studio-text); }
+.page > .radar-v2, .page > .studio-workspace { padding: 0; width: 100%; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--studio-line); }
+.page-head h1, .videosell-studio .studio-workspace > header h1, .library-head h1, .stories-head h1, .settings-v2 header h1, .reels-head h1 {
+  margin: 0; font-family: "Sora", sans-serif; font-size: 24px; font-weight: 650; letter-spacing: -.5px; line-height: 1.2;
+}
+.page-head p, .videosell-studio .studio-workspace > header p, .library-head p { margin: 4px 0 0; color: var(--studio-muted); font-size: 13px; line-height: 1.5; }
+.page-switch { width: auto; flex: 0 0 auto; }
+.page-switch button { padding: 7px 16px; }
+
+/* Toolbar: segmented control on the left, actions on the right, one line. */
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toolbar-spacer { flex: 1; }
+.toolbar-seg { width: auto; }
+.toolbar-seg button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; }
+
+/* Panels and fields */
+.panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px; }
+.panel-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.muted { color: var(--studio-muted); font-size: 12.5px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.field em { color: var(--studio-muted); font-style: normal; font-weight: 400; }
+.field :is(input, textarea, select) { min-height: 38px; padding: 8px 12px; color: var(--studio-text); background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 9px; font: inherit; font-size: 14px; font-weight: 400; }
+.field :is(input, textarea, select):focus { outline: none; border-color: var(--studio-accent-line); }
+.notice-line { display: flex; align-items: center; gap: 8px; color: var(--studio-accent-text); font-size: 13px; }
+.notice-line.ok { color: var(--studio-success); }
+.empty-panel { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 44px 24px; color: var(--studio-muted); text-align: center; background: var(--studio-surface); border: 1px dashed var(--studio-line); border-radius: 12px; }
+.empty-panel p { max-width: 460px; margin: 0; font-size: 13.5px; line-height: 1.5; }
+.empty-panel svg { color: var(--studio-accent-text); }
+
+/* Ideias: aligned rows (number · hook · tag · action) */
+.radar-analysis { margin: 0; padding: 12px 14px; color: var(--studio-muted); font-size: 12.5px; line-height: 1.55; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px; }
+.idea-rows { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; overflow: hidden; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px; }
+.idea-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) 56px 128px; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--studio-line); }
+.idea-row:first-child { border-top: 0; }
+.idea-row.open { background: var(--studio-surface-2); }
+.idea-n { color: var(--studio-muted); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.idea-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0; color: var(--studio-text); text-align: left; background: none; border: 0; cursor: pointer; }
+.idea-main strong { overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.idea-main small { color: var(--studio-muted); font-size: 12px; }
+.idea-tag { color: var(--studio-accent-text); font-size: 11px; font-weight: 700; text-align: center; }
+.idea-cta { width: 100%; }
+.idea-details { grid-column: 2 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 4px 0 4px; }
+.idea-details b { color: var(--studio-muted); font-size: 10.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
+.idea-details p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; }
+.idea-details-actions { grid-column: 1 / -1; }
+
+/* Headings inside older screens */
+.videosell-studio .reel-form-card h2 { font-family: "Sora", sans-serif; font-size: 15px; font-weight: 650; }
+.videosell-studio .reel-workbench .reel-field, .videosell-studio .reel-workbench .reel-field :is(input, select, textarea) { font-size: 14px; }
+.videosell-studio .reel-workbench .reel-field :is(input, select) { min-height: 38px; }
+
+/* v3 fixes after the screen review */
+.page-switch button, .toolbar-seg button { flex: 0 0 auto; overflow: visible; text-overflow: clip; }
+.page-switch small { margin-left: 6px; color: var(--studio-muted); font-weight: 600; }
+.crumb { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 4px; margin-bottom: -6px; color: var(--studio-muted); background: none; border: 0; border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.crumb:hover { color: var(--studio-text); background: var(--studio-surface-2); }
+.videosell-studio .reel-form-card { display: flex; flex-direction: column; gap: 14px; }
+.videosell-studio .reel-form-card > .reel-field, .videosell-studio .reel-form-card .reel-field { margin: 0; }
+.videosell-studio .studio-settings-card { max-width: none; margin: 0; }
+/* Old ".button" controls inside studio panels look like the rest of the studio */
+.videosell-studio .studio-main .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 14px; color: var(--studio-text); background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.videosell-studio .studio-main .button:hover:not(:disabled) { color: var(--studio-accent-text); border-color: var(--studio-accent-line); }
+.videosell-studio .studio-main .button.primary { color: #fff; background: var(--studio-violet-deep); border-color: var(--studio-violet-deep); }
+.videosell-studio .studio-main :is(.field, .reel-field) :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), textarea) { min-height: 38px; padding: 8px 12px; color: var(--studio-text); background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 9px; font-size: 14px; }
+/* Meus Reels: same page width and header as the others */
+.reels-v2 { width: min(1120px, 100%); margin: 0 auto; padding: 28px 32px 0; }
+.reels-v2 .toolbar { justify-content: flex-end; }
+.reels-v2 .reels-filters { margin: 0; }
+.video-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.video-library { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; padding-bottom: 30px; }
+.pilot-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.stories-head { padding-bottom: 16px; border-bottom: 1px solid var(--studio-line); }
+/* Video viewer: the Reel at its real 9:16 shape, actions in a narrow column */
+.video-viewer { inset: 40px 0 0 252px; display: flex; justify-content: center; align-items: stretch; gap: 22px; padding: 24px 32px; background: var(--studio-paper); }
+.video-viewer > video, .video-viewer > div:first-child { height: 100%; max-height: calc(100vh - 88px); width: auto; aspect-ratio: 9 / 16; background: #000; border-radius: 14px; }
+.video-viewer-side { width: 320px; flex: 0 0 320px; align-items: stretch; }
+.video-viewer-side .pilot-badge { align-self: flex-start; }
+.video-viewer-side .ig-link { align-self: flex-start; }
+/* Forms: buttons keep their own width */
+.videosell-studio .reel-form-card > button, .videosell-studio form.reel-form-card > .studio-primary-button { align-self: flex-start; }
+.videosell-studio .reel-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.brand-modes { align-self: flex-start; }

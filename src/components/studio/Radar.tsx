@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { ChevronDown, Radar as RadarIcon, RefreshCw, ScanSearch, Sparkles, Trophy, Wand2 } from "lucide-react";
+import { LoaderCircle, Radar as RadarIcon, RefreshCw, ScanSearch, Sparkles, Trophy, Wand2 } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import { t } from "./studioLanguage";
 import { structuredReply, studioRequest } from "./salesReels";
@@ -153,76 +153,86 @@ export function Radar({ profile, aiConnected, onCreate }: {
   const sources: [RadarSource, string, typeof RadarIcon][] = [["radar", "Radar", RadarIcon], ["modelador", "Modelador", ScanSearch], ["vencedores", "Seus melhores Reels", Trophy]];
 
   return (
-    <div className="radar-v2">
-      <div className="radar-head">
-        <div className="reels-tabs" role="tablist">
+    <div className="radar-v3">
+      <div className="toolbar">
+        <div className="segmented toolbar-seg" role="tablist" aria-label={t("Fonte das pautas")}>
           {sources.map(([id, label, Icon]) => (
-            <button key={id} type="button" role="tab" aria-selected={source === id} onClick={() => { setSource(id); setTool(null); }}><Icon size={13} /> {t(label)}</button>
+            <button key={id} type="button" role="tab" aria-checked={source === id} aria-selected={source === id} onClick={() => { setSource(id); setTool(null); }}><Icon size={13} /> {t(label)}</button>
           ))}
         </div>
-        <span className="spacer" />
-        {source === "radar" && batch && <button type="button" className="ig-link" onClick={() => setAll(!all)}>{all ? t("Só as 10 mais fortes") : `${t("Ver todas")} (${batch.ideas.length})`}</button>}
+        <span className="toolbar-spacer" />
+        {source === "radar" && batch && (
+          <button type="button" className="btn-ghost" onClick={() => setAll(!all)}>{all ? t("Mostrar só as 10 mais fortes") : `${t("Mostrar todas")} (${batch.ideas.length})`}</button>
+        )}
         <button type="button" className="studio-secondary-button" disabled={!!busy} onClick={() => (source === "vencedores" ? void generate("vencedores") : setTool(tool === source ? null : source))}>
-          {source === "radar" ? <><RefreshCw size={14} /> {t("Novas pautas")}</> : source === "modelador" ? <><ScanSearch size={14} /> {t("Modelar referência")}</> : <><Trophy size={14} /> {t("Variar os vencedores")}</>}
+          {source === "radar" ? <RefreshCw size={14} /> : source === "modelador" ? <ScanSearch size={14} /> : <Trophy size={14} />}
+          {t(source === "radar" ? "Novas pautas" : source === "modelador" ? "Modelar referência" : "Variar os vencedores")}
         </button>
       </div>
 
       {tool === "radar" && (
-        <form className="radar-form" onSubmit={(e) => { e.preventDefault(); void generate("radar", { focus: focus.trim() }); }}>
-          <label className="reel-field">{t("Tema desta rodada")} <small>{t("opcional")}</small>
+        <form className="panel radar-form" onSubmit={(e) => { e.preventDefault(); void generate("radar", { focus: focus.trim() }); }}>
+          <label className="field">
+            <span>{t("Tema desta rodada")} <em>{t("opcional")}</em></span>
             <input value={focus} maxLength={300} placeholder={t("Ex.: dúvidas de quem está começando")} onChange={(e) => setFocus(e.target.value)} />
           </label>
-          <div className="radar-form-row">
-            <span className="reel-hint">{t("30 pautas a partir da sua marca, com as 10 mais fortes marcadas. Sem tema, o Radar explora a marca toda.")}</span>
+          <div className="panel-foot">
+            <span className="muted">{t("30 pautas a partir da sua marca. Sem tema, o Radar explora a marca toda.")}</span>
             <button type="submit" className="studio-primary-button">{t("Gerar 30 pautas")}</button>
           </div>
         </form>
       )}
       {tool === "modelador" && (
-        <form className="radar-form" onSubmit={(e) => { e.preventDefault(); if (reference.trim()) void generate("modelador", { reference: reference.trim() }); }}>
-          <label className="reel-field">{t("Reels ou post que funcionou")}
+        <form className="panel radar-form" onSubmit={(e) => { e.preventDefault(); if (reference.trim()) void generate("modelador", { reference: reference.trim() }); }}>
+          <label className="field">
+            <span>{t("Reels ou post que funcionou")}</span>
             <textarea rows={3} value={reference} maxLength={4000} placeholder={t("Cole a legenda, a fala ou descreva o vídeo. O Videosell copia o motivo, não o conteúdo.")} onChange={(e) => setReference(e.target.value)} />
           </label>
-          <div className="radar-form-row"><span className="spacer" /><button type="submit" className="studio-primary-button" disabled={!reference.trim()}>{t("Modelar sem copiar")}</button></div>
+          <div className="panel-foot">
+            <span className="muted">{t("Gera 10 pautas no mesmo princípio, com a sua marca.")}</span>
+            <button type="submit" className="studio-primary-button" disabled={!reference.trim()}>{t("Modelar sem copiar")}</button>
+          </div>
         </form>
       )}
 
-      {busy && <p className="reel-busy" role="status"><Sparkles size={15} /> {t(busy === "radar" ? "Gerando pautas… leva um ou dois minutos." : busy === "modelador" ? "Analisando a referência…" : "Variando os vencedores…")}</p>}
+      {busy && <div className="notice-line"><LoaderCircle size={14} className="spin" /> {t(busy === "radar" ? "Gerando pautas… leva um ou dois minutos." : busy === "modelador" ? "Analisando a referência…" : "Variando os vencedores…")}</div>}
       {error && <p className="reel-error" role="alert">{t(error)}</p>}
-      {notice && <p className="pilot-notice" role="status">{t(notice)}</p>}
-      {batch?.analysis && <p className="radar-analysis">{batch.analysis}</p>}
+      {notice && <div className="notice-line ok">{t(notice)}</div>}
+      {batch?.analysis && !busy && <p className="radar-analysis">{batch.analysis}</p>}
 
       {ideas.length > 0 ? (
-        <ul className="radar-list">
-          {ideas.map((idea) => (
-            <li key={idea.id} className="radar-idea">
-              <div className="radar-idea-top">
-                <button type="button" className="radar-idea-title" aria-expanded={open === idea.id} onClick={() => setOpen(open === idea.id ? "" : idea.id)}>
-                  {idea.hook} <ChevronDown size={14} />
-                </button>
-                {idea.top && <span className="pilot-badge ready">{t("Top 10")}</span>}
-                {idea.format && <span className="pilot-badge">{idea.format}</span>}
-                <button type="button" className="studio-primary-button" onClick={() => onCreate(idea.brief, { ideaId: idea.id, ideaTitle: idea.hook })}><Wand2 size={14} /> {t("Criar vídeo")}</button>
-              </div>
+        <ol className="idea-rows">
+          {ideas.map((idea, index) => (
+            <li key={idea.id} className={`idea-row ${open === idea.id ? "open" : ""}`}>
+              <span className="idea-n">{index + 1}</span>
+              <button type="button" className="idea-main" aria-expanded={open === idea.id} onClick={() => setOpen(open === idea.id ? "" : idea.id)}>
+                <strong>{idea.hook}</strong>
+                <small>{[idea.format, idea.stage].filter(Boolean).join(" · ")}</small>
+              </button>
+              <span className="idea-tag">{idea.top ? t("Top 10") : ""}</span>
+              <button type="button" className="studio-secondary-button idea-cta" onClick={() => onCreate(idea.brief, { ideaId: idea.id, ideaTitle: idea.hook })}>
+                <Wand2 size={14} /> {t("Criar vídeo")}
+              </button>
               {open === idea.id && (
-                <div className="radar-idea-more">
-                  <div><b>{t("Por que para")}</b>{idea.why || idea.theme}</div>
-                  <div><b>{t("Entrega")}</b>{idea.deliverable || "—"}</div>
-                  {idea.reason && <div className="wide"><b>{t(idea.top ? "Por que testar primeiro" : "O que preserva")}</b>{idea.reason}</div>}
-                  <div className="wide radar-idea-actions">
-                    <button type="button" className="ig-link" onClick={() => setNotice(queuePilotIdea(profile.id, { title: idea.hook, brief: idea.brief }) ? "Pauta na fila de criação automática." : "Essa pauta já está na fila.")}>{t("Colocar na criação automática")}</button>
+                <div className="idea-details">
+                  <div><b>{t("Por que para")}</b><p>{idea.why || idea.theme}</p></div>
+                  <div><b>{t("Entrega")}</b><p>{idea.deliverable || "—"}</p></div>
+                  {idea.reason && <div><b>{t(idea.top ? "Por que testar primeiro" : "O que preserva")}</b><p>{idea.reason}</p></div>}
+                  <div className="idea-details-actions">
+                    <button type="button" className="btn-ghost" onClick={() => setNotice(queuePilotIdea(profile.id, { title: idea.hook, brief: idea.brief }) ? "Pauta na fila de criação automática." : "Essa pauta já está na fila.")}>{t("Colocar na criação automática")}</button>
                   </div>
                 </div>
               )}
             </li>
           ))}
-        </ul>
+        </ol>
       ) : !busy && (
-        <div className="radar-empty">
-          <p>{t(source === "radar" ? "O Radar lê a sua marca e sugere 30 pautas para Reels, sem você precisar escolher um tema." : source === "modelador" ? "Cole um Reels que funcionou e o Videosell cria 10 pautas no mesmo princípio, sem copiar." : winners.length ? "Gere variações dos seus Reels que mais performaram." : "Atualize os Insights do Instagram em Ideias › Desempenho para usar os seus melhores Reels.")}</p>
-          {source !== "vencedores" || winners.length ? (
+        <div className="empty-panel">
+          <Sparkles size={22} />
+          <p>{t(source === "radar" ? "O Radar lê a sua marca e sugere 30 pautas para Reels, sem você precisar escolher um tema." : source === "modelador" ? "Cole um Reels que funcionou e o Videosell cria 10 pautas no mesmo princípio, sem copiar." : winners.length ? "Gere variações dos seus Reels que mais performaram." : "Atualize os Insights do Instagram em Desempenho para usar os seus melhores Reels.")}</p>
+          {(source !== "vencedores" || winners.length > 0) && (
             <button type="button" className="studio-primary-button" onClick={() => (source === "modelador" ? setTool("modelador") : void generate(source))}>{t(source === "radar" ? "Gerar minhas pautas" : source === "modelador" ? "Modelar referência" : "Variar os vencedores")}</button>
-          ) : null}
+          )}
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, STORY_PLACES, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
@@ -1749,6 +1750,21 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       const { profileId, id } = z.object({ profileId: z.string(), id: z.string().uuid() }).strict().parse(params);
       await profileService.get(profileId);
       return new BrandProofStore(userDir).remove(profileId, id);
+    }
+    case "videoThumb": {
+      // A real cover image for exported videos (one JPG per file version, cached): fast and always shows.
+      const { path } = z.object({ path: z.string().min(1).max(2000) }).parse(params);
+      if (!(await publisher.videos()).some((video) => video.path === path)) throw new Error("Vídeo fora da biblioteca.");
+      const info = await stat(path);
+      const dir = join(userDir, "thumbs");
+      await mkdir(dir, { recursive: true });
+      const out = join(dir, createHash("sha1").update(`${path}|${info.mtimeMs}|${info.size}`).digest("hex") + ".jpg");
+      if (!(await stat(out).then(() => true, () => false)))
+        await runProcess(ffmpegPath, ["-v", "error", "-y", "-ss", "1.2", "-i", path, "-frames:v", "1", "-vf", "scale=360:-2", "-q:v", "4", out]);
+      allowedFiles.add(await realpath(out));
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", await realpath(out));
+      return { url: url.href };
     }
     case "brandItemPreview": {
       const { profileId, id } = z.object({ profileId: z.string(), id: z.string().uuid() }).strict().parse(params);

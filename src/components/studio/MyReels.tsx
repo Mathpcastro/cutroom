@@ -6,6 +6,7 @@ import { studioRequest } from "./salesReels";
 import { findReelByExport } from "./reelRecords";
 import { titleFromFile } from "./AutoPilot";
 import { InstagramActions } from "./InstagramActions";
+import { useThumb } from "./useThumb";
 import type { StudioProject } from "./StudioHome";
 
 /**
@@ -62,13 +63,11 @@ function useVideoUrl(path?: string) {
 }
 
 function VideoCard({ row, onOpen }: { row: ReelRow; onOpen: () => void }) {
-  const src = useVideoUrl(row.video);
+  const thumb = useThumb(row.video);
   return (
     <button type="button" className="video-card" onClick={onOpen} title={row.title}>
       <span className="video-card-media">
-        {src && <video src={`${src}#t=1`} preload="metadata" muted playsInline
-          onMouseEnter={(e) => void e.currentTarget.play().catch(() => undefined)}
-          onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 1; }} />}
+        {thumb && <img src={thumb} alt="" loading="lazy" />}
         <span className={`pilot-badge ${badge(row.state)}`}>{t(row.state)}</span>
         <span className="video-card-play" aria-hidden="true"><Play size={14} /></span>
       </span>
@@ -108,7 +107,7 @@ function VideoViewer({ row, onClose, onConnect, onPilot }: { row: ReelRow; onClo
   );
 }
 
-export function MyReels({ profile, projects, onOpen, onPilot, onCreate, onConnect, initialTab = "projects" }: {
+export function MyReels({ profile, projects, onOpen, onPilot, onCreate, onConnect, initialTab = "library" }: {
   profile: StudioProfile | null;
   projects: StudioProject[];
   onOpen: (filmId: string) => void;
@@ -139,12 +138,17 @@ export function MyReels({ profile, projects, onOpen, onPilot, onCreate, onConnec
   };
   return (
     <div className="reels-v2">
-      <div className="reels-head">
-        <h1>{t("Meus Reels")}</h1>
-        <div className="reels-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected={tab === "projects"} onClick={() => setTab("projects")}>{t("Projetos")} <small>{rows.length}</small></button>
-          <button type="button" role="tab" aria-selected={tab === "library"} onClick={() => setTab("library")}>{t("Biblioteca de vídeos")} <small>{library.length}</small></button>
+      <header className="page-head">
+        <div>
+          <h1>{t("Meus Reels")}</h1>
+          <p>{t("Todos os seus vídeos: prontos, agendados e publicados.")}</p>
         </div>
+        <div className="segmented page-switch" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === "library"} aria-checked={tab === "library"} onClick={() => setTab("library")}>{t("Biblioteca de vídeos")} <small>{library.length}</small></button>
+          <button type="button" role="tab" aria-selected={tab === "projects"} aria-checked={tab === "projects"} onClick={() => setTab("projects")}>{t("Projetos")} <small>{rows.length}</small></button>
+        </div>
+      </header>
+      <div className="toolbar">
         <div className="reels-filters" role="group" aria-label={t("Filtrar")}>
           {(["", "Rascunho", "Pronto", "Agendado", "Publicado"] as const).filter((s) => tab === "projects" || s !== "Rascunho").map((s) => (
             <button key={s || "all"} type="button" aria-pressed={filter === s} onClick={() => setFilter(s)}>{t(s || "Todos")}</button>

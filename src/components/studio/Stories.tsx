@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Code2, Plus, Sparkles, Trash2, Volume2, Wand2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Code2, Laugh, Plus, Scissors, Sparkles, Trash2, Volume2, Wand2 } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import {
   MAX_WORDS, NARRATOR, SAMPLE_SERIES, STORY_MOODS, STORY_PLACES, estimateSeconds, ideaSchema, scriptSchema, toEngineText, validateScript,
@@ -388,7 +388,7 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
     await studioRequest("episodeUpdate", { ...ref, output: path, state: "ready", summary: script.hook ?? script.scenes.at(-1)?.lines.at(-1)?.text });
     await onSaved();
   });
-  const caption = `Ep. ${episode.number} · ${script?.title ?? episode.title} | ${series.title}\n\n${t("E você, o que faria no lugar deles?")} 👇`;
+  const caption = `Ep. ${episode.number} · ${script?.title ?? episode.title} | ${series.title}\n\n${t("E você, o que faria no lugar deles?")}`;
 
   return (
     <div className="stories episode-editor">
@@ -435,8 +435,8 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
                       <input value={line.text} maxLength={300} aria-label={t("Fala")} onChange={(e) => setLine(s, l, { text: e.target.value })} />
                       <span className="episode-line-tools">
                         <button type="button" title={t("Reescrever esta fala")} disabled={!!busy} onClick={() => void lineAction(s, l, "Reescreva esta fala")}><Wand2 size={12} /></button>
-                        <button type="button" title={t("Deixar mais engraçado")} disabled={!!busy} onClick={() => void lineAction(s, l, "Deixe a fala mais engraçada")}>😄</button>
-                        <button type="button" title={t("Encurtar")} disabled={!!busy} onClick={() => void lineAction(s, l, "Encurte a fala")}>✂</button>
+                        <button type="button" title={t("Deixar mais engraçado")} disabled={!!busy} onClick={() => void lineAction(s, l, "Deixe a fala mais engraçada")}><Laugh size={12} /></button>
+                        <button type="button" title={t("Encurtar")} disabled={!!busy} onClick={() => void lineAction(s, l, "Encurte a fala")}><Scissors size={12} /></button>
                         <button type="button" title={t("Subir")} onClick={() => moveLine(s, l, -1)}><ArrowUp size={12} /></button>
                         <button type="button" title={t("Descer")} onClick={() => moveLine(s, l, 1)}><ArrowDown size={12} /></button>
                         <button type="button" title={t("Remover fala")} onClick={() => update({ ...script, scenes: script.scenes.map((x, i) => (i === s ? { ...x, lines: x.lines.filter((_, j) => j !== l) } : x)).filter((x) => x.lines.length) })}><Trash2 size={12} /></button>

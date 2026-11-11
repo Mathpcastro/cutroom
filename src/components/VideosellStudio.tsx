@@ -592,7 +592,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     content = profile ? <BrandOnboarding key={profile.id + page}
       profile={profile} onboarding={page === "onboarding"}
       onSaved={(next) => { onProfileChange(next, false); setPage("home"); }}
-      onAvatar={() => create("avatar")} onSkip={() => setPage("home")}
+      onAvatar={() => create("avatar")} onSkip={() => setPage(page === "onboarding" ? "home" : "settings")}
     /> : <IntermediatePage title={t("Marca")} eyebrow={t("PERFIL NECESSÁRIO")}
       text={t("Crie ou selecione um perfil para preencher a marca.")} onPage={setPage} />;
   } else if (page === "voices" || page === "publish") {
@@ -601,14 +601,15 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       publish: { title: t(t("Conexões")), eyebrow: t("PUBLICAÇÃO"), description: t("Conecte seu Instagram e publique somente quando confirmar.") },
     }[page];
     content = (
-      <div className="studio-settings-page">
-        <BackHome onPage={setPage} />
-        <header className="studio-settings-heading">
-          <span className="studio-eyebrow">{settingsPage.eyebrow}</span>
-          <PageTitle>{settingsPage.title}</PageTitle>
-          <p>{settingsPage.description}</p>
+      <div className="page">
+        <button type="button" className="crumb" onClick={() => setPage("settings")}><ArrowLeft size={14} /> {t("Ajustes")}</button>
+        <header className="page-head">
+          <div>
+            <h1>{settingsPage.title}</h1>
+            <p>{settingsPage.description}</p>
+          </div>
         </header>
-        <div className="studio-settings-card">
+        <div className="panel studio-settings-card">
           {page === "voices" && <VoiceSettings packages={state.packages} jobs={state.jobs} run={run} />}
           {page === "publish" && <PublishSettings jobs={state.jobs} connectionOnly />}
         </div>
@@ -629,11 +630,17 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
 
   if ((page === "radar" || page === "analytics") && profile) {
     content = (
-      <div className="ideas-wrap">
-        <div className="ideas-tabs reels-tabs" role="tablist" aria-label={t("Ideias")}>
-          <button type="button" role="tab" aria-selected={page === "radar"} onClick={() => setPage("radar")}>{t("Pautas")}</button>
-          <button type="button" role="tab" aria-selected={page === "analytics"} onClick={() => setPage("analytics")}>{t("Desempenho dos Reels")}</button>
-        </div>
+      <div className="page">
+        <header className="page-head">
+          <div>
+            <h1>{t("Ideias")}</h1>
+            <p>{t(page === "radar" ? "Pautas para os seus próximos Reels, a partir da sua marca." : "O que funcionou nos seus Reels, para repetir o que dá certo.")}</p>
+          </div>
+          <div className="segmented page-switch" role="tablist" aria-label={t("Ideias")}>
+            <button type="button" role="tab" aria-checked={page === "radar"} aria-selected={page === "radar"} onClick={() => setPage("radar")}>{t("Pautas")}</button>
+            <button type="button" role="tab" aria-checked={page === "analytics"} aria-selected={page === "analytics"} onClick={() => setPage("analytics")}>{t("Desempenho")}</button>
+          </div>
+        </header>
         {content}
       </div>
     );

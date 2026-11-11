@@ -177,7 +177,7 @@ export async function createReadySeries(profile: StudioProfile, c: SeriesChoices
 export async function scheduleSeriesDaily(seriesTitle: string, outputs: { number: number; title: string; path: string }[], time = "18:00") {
   const posts = outputs.sort((a, b) => a.number - b.number).map((o) => ({
     video: o.path,
-    caption: `Ep. ${o.number} · ${o.title} | ${seriesTitle}\n\nE você, o que faria no lugar deles? 👇`,
+    caption: `Ep. ${o.number} · ${o.title} | ${seriesTitle}\n\nE você, o que faria no lugar deles?`,
   }));
   await studioRequest("setReelPilot", { enabled: true });
   return studioRequest<{ scheduled: { at: string }[] }>("scheduleReelSeries", { posts, times: [time], days: "daily", pilot: true, confirm: true });
