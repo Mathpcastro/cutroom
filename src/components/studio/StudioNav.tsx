@@ -19,6 +19,7 @@ import type { StudioPage } from "../VideosellStudio";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import type { StudioProfile } from "../../shared/profile";
 import type { StudioThemePreference } from "./studioTheme";
+import { ConnectionBadge } from "./InstagramConnect";
 
 interface StudioNavProps {
   page: StudioPage;
@@ -95,6 +96,7 @@ export function StudioNav({
         ))}
       </nav>
       <div className="studio-sidebar-bottom">
+        <ConnectionBadge onOpen={() => onPage("publish")} />
         <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
         <div className="studio-prefs" role="group" aria-label={t("Preferências")}>
           <label>

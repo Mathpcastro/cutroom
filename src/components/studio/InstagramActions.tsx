@@ -1,6 +1,7 @@
 import { t } from "./studioLanguage";
 import { useEffect, useState } from "react";
 import { studioRequest } from "./salesReels";
+import { ConnectInstagramCard } from "./InstagramConnect";
 
 export interface InstagramState {
   accounts: { id: string; username: string }[];
@@ -65,7 +66,7 @@ export function InstagramActions({ video, initialCaption, onConnect }: {
       {error && <p role="alert" className="reel-error">{error}</p>}
       {status && <p role="status">{status} {permalink && <button className="studio-secondary-button" onClick={() => void studioRequest("openInstagramPost", { permalink }).catch((reason) => setError(String(reason)))}>{t("Ver publicação")}</button>}</p>}
       {!settings && !error && <p>{t("Carregando contas…")}</p>}
-      {settings && !settings.accounts.length && <button type="button" className="studio-secondary-button" onClick={onConnect}>{t("Conectar Instagram")}</button>}
+      {settings && !settings.accounts.length && <ConnectInstagramCard onConnect={onConnect} />}
       {settings && settings.accounts.length > 0 && !done && <>
         {!intent ? <div className="reel-action-row">
           <button className="studio-primary-button" onClick={() => setIntent("publish")}>{t("Publicar agora")}</button>

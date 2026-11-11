@@ -1,4 +1,5 @@
 import type { ReelOrigin } from "./ReelCreator";
+import { ConnectInstagramCard } from "./InstagramConnect";
 import { t, getStudioLanguage } from "./studioLanguage";
 import { useEffect, useState } from "react";
 import type { StudioProfile } from "../../shared/profile";
@@ -173,7 +174,7 @@ export function ReelRoutine({ onConnect, profile, onReview, opening, openingErro
     <section className="reel-form-card">
       <h2>{t("Piloto automático")}</h2>
       <p>{t("Selecione os MP4s na ordem em que quer publicar. A fila publica na frequência e no horário escolhidos.")}</p>
-      {queue.data?.accounts.length === 0 && <button className="studio-secondary-button" onClick={onConnect}>{t("Conectar Instagram")}</button>}
+      {queue.data?.accounts.length === 0 && <ConnectInstagramCard onConnect={onConnect} />}
       {!!queue.data?.accounts.length && <label className="reel-field">{t("Conta")}<select value={destination} disabled={busy} onChange={(e) => setAccount(e.target.value)}>
         {queue.data.accounts.map((entry) => <option key={entry.id} value={entry.id}>@{entry.username}</option>)}
       </select></label>}

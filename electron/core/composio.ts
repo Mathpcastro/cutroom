@@ -24,9 +24,9 @@ export class ComposioError extends Error {
 export function friendly(raw: unknown, status = 0) {
   const text = String(raw ?? "").toLowerCase();
   if (status === 401 || /invalid api key/.test(text))
-    return new ComposioError("O Composio não aceitou a chave. Use a chave do PROJETO (composio.dev › Settings › Project Settings › API Keys); a chave de AI Clients/MCP e a de usuário (uak_) não servem.", "key", status);
-  if (status === 403) return new ComposioError(`O Composio recusou o pedido (403): ${String(raw).slice(0, 240)}. Crie uma chave do projeto com acesso completo.`, "forbidden", status);
-  if (status === 429 || /rate limit|too many/.test(text)) return new ComposioError("O Composio pediu uma pausa. Tente de novo em alguns minutos.", "rate", status);
+    return new ComposioError("A chave do Composio deixou de funcionar. Confira se você copiou a chave do projeto (não a chave pessoal).", "key", status);
+  if (status === 403) return new ComposioError("A chave do Composio deixou de funcionar. Crie uma chave do projeto com acesso completo.", "forbidden", status);
+  if (status === 429 || /rate limit|too many/.test(text)) return new ComposioError("O Instagram limitou as publicações por agora. Tente mais tarde.", "rate", status);
   if (/personal account|not a business|professional account|business or creator/.test(text))
     return new ComposioError("O Instagram só permite postar por aplicativo em contas Profissionais (Empresa ou Criador de conteúdo).", "account", status);
   if (/expired|invalid oauth|access token|reauth|not active|inactive|revoked/.test(text))
@@ -65,6 +65,7 @@ export interface InstagramAccount {
   igUserId?: string;
   username?: string;
   status?: string;
+  accountType?: string;
 }
 
 export class Composio {
@@ -130,11 +131,77 @@ export class Composio {
   }
 }
 
+export const COMPOSIO_DASHBOARD = "https://platform.composio.dev";
+
+/** Starts the Instagram authorization (Composio-managed OAuth, POST /connected_accounts/link) and returns the page to open. */
+export async function connectLink(composio: Composio, userId: string, signal?: AbortSignal): Promise<{ url: string; mode: "link" | "dashboard" }> {
+  try {
+    const configs = await composio.call("GET", "/auth_configs?toolkit_slug=instagram&limit=20", undefined, signal);
+    let authConfig = String((configs.items ?? []).find((c: any) => String(c.status ?? "ENABLED").toUpperCase() !== "DISABLED")?.id ?? "");
+    if (!authConfig) {
+      const created = await composio.call("POST", "/auth_configs", { toolkit: { slug: "instagram" }, auth_config: { type: "use_composio_managed_auth" } }, signal);
+      authConfig = String(created.auth_config?.id ?? created.id ?? "");
+    }
+    if (!authConfig) throw new Error("no auth config");
+    const link = await composio.call("POST", "/connected_accounts/link", { auth_config_id: authConfig, user_id: userId }, signal);
+    const url = String(link.redirect_url ?? link.redirectUrl ?? "");
+    if (/^https:\/\//.test(url)) return { url, mode: "link" };
+  } catch (error) {
+    if (error instanceof ComposioError && (error.code === "key" || error.code === "network")) throw error;
+  }
+  return { url: COMPOSIO_DASHBOARD, mode: "dashboard" };
+}
+
+/** Checks the shape of a project key before any network call. Returns the problem, or "" when it looks right. */
+export function keyFormatProblem(key: string) {
+  const k = key.trim();
+  if (!k) return "Cole a chave do projeto.";
+  if (/\s/.test(k)) return "A chave não pode ter espaços. Copie de novo, só a chave.";
+  if (/^uak_/i.test(k)) return "Essa é a chave pessoal. Use a chave do projeto (Settings › Project Settings › API Keys).";
+  if (k.length < 12 || k.length > 200) return "Essa chave não parece completa. Copie de novo a chave do projeto.";
+  return "";
+}
+
+export type AccountProblem = "expired" | "personal" | "inactive";
+export interface UnusableAccount { id: string; username?: string; problem: AccountProblem; message: string }
+
+export function problemMessage(problem: AccountProblem, username?: string) {
+  const who = username ? `@${username}` : "Esta conta";
+  if (problem === "personal") return `${who} é uma conta pessoal. O Instagram só permite postar por aplicativos em contas profissionais.`;
+  if (problem === "expired") return `A conexão com ${who} expirou.`;
+  return `${who} está desativada no Composio.`;
+}
+
+/** Turns a failure into the message and the action the screen offers. The raw text stays in `details`, never with the key. */
+export function explainPublishError(error: unknown): { code: string; message: string; action?: string; details: string } {
+  const raw = (error instanceof Error ? error.message : String(error ?? "")).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+  const details = raw.replace(/\b(ak|uak|sk)_[A-Za-z0-9_-]+/g, "••••");
+  const code = error instanceof ComposioError ? error.code
+    : /sem conexão|network|fetch failed|timeout|ENOTFOUND/i.test(raw) ? "network"
+    : /chave/i.test(raw) && /aceita|deixou de funcionar/i.test(raw) ? "key"
+    : /expirou/i.test(raw) ? "reconnect"
+    : /conta pessoal|profissiona/i.test(raw) ? "account"
+    : /limitou|limite/i.test(raw) ? "rate"
+    : "other";
+  const table: Record<string, { message: string; action?: string }> = {
+    key: { message: /aceita/.test(raw) ? "Essa chave não foi aceita. Confira se você copiou a chave do projeto (não a chave pessoal)." : "A chave do Composio deixou de funcionar.", action: "Colar nova chave" },
+    forbidden: { message: "A chave do Composio deixou de funcionar.", action: "Colar nova chave" },
+    "no-accounts": { message: "Seu projeto do Composio ainda não tem um Instagram conectado.", action: "Conectar conta" },
+    reconnect: { message: "A conexão com o Instagram expirou.", action: "Reconectar" },
+    account: { message: "Essa é uma conta pessoal. O Instagram só permite postar por aplicativos em contas profissionais.", action: "Ver como mudar" },
+    network: { message: "Sem conexão com o Composio. Tente de novo.", action: "Tentar de novo" },
+    rate: { message: "O Instagram limitou as publicações por agora. Tente mais tarde." },
+    quota: { message: "O Instagram limitou as publicações por agora. Tente mais tarde." },
+  };
+  const known = table[code];
+  return { code, message: known?.message ?? (details || "Algo deu errado."), action: known?.action, details };
+}
+
 export async function accountInfo(composio: Composio, account: InstagramAccount, signal?: AbortSignal): Promise<InstagramAccount> {
   const v = await composio.execute(account, "INSTAGRAM_GET_USER_INFO", { ig_user_id: "me", fields: "id,user_id,username,account_type" }, signal);
   const igUserId = pickId(v, ["user_id", "id"]);
   if (!igUserId) throw new ComposioError("O Composio não devolveu o id da conta do Instagram.");
-  return { ...account, igUserId, username: String(v?.username ?? "") };
+  return { ...account, igUserId, username: String(v?.username ?? ""), accountType: String(v?.account_type ?? "").toUpperCase() || undefined };
 }
 
 export const REEL_LIMITS = { caption: 2200, maxBytes: 300_000_000, minSeconds: 3, maxSeconds: 900 };

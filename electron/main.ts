@@ -1354,6 +1354,18 @@ async function request(method: string, params?: unknown): Promise<unknown> {
     }
     case "refreshInstagram":
       return publisher.refresh();
+    case "connectInstagram": {
+      const link = await publisher.connectInstagram();
+      await shell.openExternal(link.url);
+      return link;
+    }
+    case "openHelpLink": {
+      const { url } = z
+        .object({ url: z.enum(["https://app.composio.dev", "https://platform.composio.dev", "https://help.instagram.com/502981923235522"]) })
+        .parse(params);
+      await shell.openExternal(url);
+      return { ok: true };
+    }
     case "setDefaultInstagram":
       return publisher.setDefault(
         z.object({ id: z.string().max(100) }).parse(params).id,

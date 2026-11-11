@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Rocket } from "lucide-react";
 import type { AppSnapshot } from "../../shared/types";
 import { useStudioGuard } from "./useStudioGuard";
+import { InstagramConnect } from "./InstagramConnect";
 
 interface Account { id: string; username?: string; igUserId?: string }
 interface VideoFile { path: string; name: string; size: number; modifiedAt: string }
@@ -36,6 +37,7 @@ export function PublishSettings({ jobs, connectionOnly = false }: { jobs: AppSna
   }, [connectionOnly]);
   const account = pub?.accounts.find((a) => a.id === pub.defaultAccount);
   const busy = jobs.some((j) => j.status === "running");
+  if (connectionOnly) return <InstagramConnect />;
 
   return (
     <section className="studio-section">

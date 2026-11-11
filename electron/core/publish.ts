@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { COMPOSIO_KEY, Composio, accountInfo, publishReel, type InstagramAccount } from "./composio";
+import { COMPOSIO_KEY, Composio, ComposioError, accountInfo, connectLink, keyFormatProblem, problemMessage, publishReel, type InstagramAccount, type UnusableAccount } from "./composio";
 import { fetchReelAnalytics } from "./instagram-analytics";
 import type { SecretStore } from "./secrets";
 import { dailySlots, dueReels, parseWhen, type OsReelScheduler, type ScheduledReel } from "./reel-schedule";
@@ -19,6 +19,9 @@ interface PublishHost {
 }
 interface PublishState {
   accounts: InstagramAccount[];
+  /** Accounts found in the project that cannot post, with the reason (Spec 2). */
+  unusable?: UnusableAccount[];
+  checkedAt?: string;
   defaultAccount?: string;
   history: { accountId?: string; mediaId: string; permalink: string; username: string; video: string; publishedAt: string }[];
   scheduled?: ScheduledReel[];
@@ -51,7 +54,7 @@ export class Publisher {
     const s = await this.state();
     const keys = await this.host.secrets.describe([COMPOSIO_KEY]);
     const scheduled = (s.scheduled ?? []).filter((e) => e.status !== "cancelled" && (e.status !== "published" || Date.now() - new Date(e.at).getTime() < 7 * 864e5));
-    return { hasKey: !!keys[COMPOSIO_KEY], accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), publicationLinks: s.history.slice(-200).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
+    return { hasKey: !!keys[COMPOSIO_KEY], keyHint: keys[COMPOSIO_KEY], unusable: s.unusable ?? [], checkedAt: s.checkedAt, accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), publicationLinks: s.history.slice(-200).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
   }
   async analytics(args: unknown) {
     const { account: id } = z.object({ account: z.string().min(1).max(100) }).strict().parse(args);
@@ -63,26 +66,51 @@ export class Publisher {
   }
 
   async setKey(key: string | undefined) {
-    await this.host.secrets.set(COMPOSIO_KEY, key?.trim() || undefined);
     if (!key?.trim()) {
-      await this.save({ ...(await this.state()), accounts: [], defaultAccount: undefined });
+      await this.host.secrets.set(COMPOSIO_KEY, undefined);
+      await this.save({ ...(await this.state()), accounts: [], unusable: [], defaultAccount: undefined });
       return this.settings();
     }
+    // Validate before saving: a wrong key is never stored.
+    const problem = keyFormatProblem(key);
+    if (problem) throw new ComposioError(problem, "key");
+    try {
+      await new Composio(key.trim(), this.host.fetcher).accounts();
+    } catch (error) {
+      if (error instanceof ComposioError && (error.code === "key" || error.code === "forbidden"))
+        throw new ComposioError("Essa chave não foi aceita. Confira se você copiou a chave do projeto (não a chave pessoal).", "key", error.status);
+      throw error;
+    }
+    await this.host.secrets.set(COMPOSIO_KEY, key.trim());
     return this.refresh();
+  }
+  /** Starts the Instagram authorization for this computer's Composio user. */
+  async connectInstagram() {
+    return connectLink(await this.client(), "videosell");
   }
   /** Reads the Instagram accounts connected in the Composio project (Carrossell's included). */
   async refresh() {
     const composio = await this.client();
     const found: InstagramAccount[] = [];
-    for (const account of (await composio.accounts()).filter((a) => a.status === "ACTIVE"))
-      try {
-        found.push(await accountInfo(composio, account));
-      } catch {
-        /* Expired or personal accounts are skipped; they cannot post Reels. */
+    const unusable: UnusableAccount[] = [];
+    const flag = (account: InstagramAccount, problem: UnusableAccount["problem"]) =>
+      unusable.push({ id: account.id, username: account.username, problem, message: problemMessage(problem, account.username) });
+    for (const account of await composio.accounts()) {
+      if (account.status !== "ACTIVE") {
+        flag(account, /EXPIRED|FAILED/.test(account.status ?? "") ? "expired" : "inactive");
+        continue;
       }
+      try {
+        const info = await accountInfo(composio, account);
+        if (info.accountType === "PERSONAL") flag(info, "personal");
+        else found.push(info);
+      } catch (error) {
+        flag(account, error instanceof ComposioError && error.code === "account" ? "personal" : "expired");
+      }
+    }
     const s = await this.state();
     const unique = [...new Map(found.map((a) => [a.igUserId, a])).values()];
-    await this.save({ ...s, accounts: unique, defaultAccount: unique.some((a) => a.id === s.defaultAccount) ? s.defaultAccount : unique[0]?.id });
+    await this.save({ ...s, accounts: unique, unusable, checkedAt: new Date().toISOString(), defaultAccount: unique.some((a) => a.id === s.defaultAccount) ? s.defaultAccount : unique[0]?.id });
     return this.settings();
   }
   async setDefault(id: string) {
