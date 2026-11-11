@@ -42,7 +42,7 @@ export function SettingsHub({ onPage, onAdvanced, theme, onTheme, fontScale, onF
     { page: "brand", title: "Perfil e marca", text: "Nome, site, cores e o jeito de falar da marca.", icon: Palette },
     { page: "avatars", title: "Avatares", text: "Seu apresentador e as versões aprovadas.", icon: UserRound },
     { page: "voices", title: "Vozes", text: "Voz local, ElevenLabs ou OpenAI.", icon: Mic2 },
-    { page: "proofs", title: "Provas da marca", text: "Prints e resultados que entram nos vídeos.", icon: Library },
+    { page: "proofs", title: "Biblioteca da marca", text: "Fotos, prints, provas, estilo e regras que a IA segue.", icon: Library },
   ];
   const tools: Card[] = [
     { page: "publish", title: "Instagram", text: "Conexão com o Composio e a conta que posta os Reels.", icon: Camera },

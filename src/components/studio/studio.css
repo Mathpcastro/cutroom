@@ -2388,3 +2388,24 @@
 .radar-idea-more .wide { grid-column: 1 / -1; }
 .radar-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px; color: var(--studio-muted); background: var(--studio-surface); border: 1px dashed var(--studio-line); border-radius: 12px; }
 .radar-empty p { margin: 0; }
+
+/* Biblioteca da marca */
+.library { width: min(1100px, 100%); margin: 0 auto; padding: 24px 24px 40px; display: flex; flex-direction: column; gap: 12px; color: var(--studio-text); }
+.library-head h1 { margin: 0; font-family: "Sora", sans-serif; font-size: calc(24px * var(--studio-font-scale)); letter-spacing: -0.6px; }
+.library-head p, .library-hint { margin: 0; color: var(--studio-muted); font-size: 13px; }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.lib-card { display: flex; flex-direction: column; gap: 6px; padding: 6px; color: var(--studio-text); text-align: left; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px; cursor: pointer; }
+.lib-card:hover { border-color: var(--studio-accent-line); }
+.lib-thumb { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; color: var(--studio-muted); background: var(--studio-surface-2); border-radius: 8px; font-size: 12px; }
+.lib-thumb img, .lib-thumb video { width: 100%; height: 100%; object-fit: cover; }
+.lib-thumb-badge { position: absolute; right: 6px; bottom: 6px; color: #fff; }
+.lib-card-text { display: flex; flex-direction: column; gap: 2px; padding: 0 4px 4px; min-width: 0; }
+.lib-card-text strong { overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.lib-card-text small { overflow: hidden; color: var(--studio-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.lib-rules ol { display: flex; flex-direction: column; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; counter-reset: rule; }
+.lib-rules li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 10px; counter-increment: rule; }
+.lib-rules li::before { content: counter(rule); display: grid; place-items: center; width: 22px; height: 22px; color: var(--studio-accent-text); background: var(--studio-accent-soft); border-radius: 6px; font-size: 11px; font-weight: 700; }
+.lib-rules li span { flex: 1; }
+.lib-rules li button { color: var(--studio-muted); background: none; border: 0; cursor: pointer; }
+.lib-rule-add { display: flex; gap: 8px; }
+.lib-rule-add input { flex: 1; min-height: 38px; padding: 0 12px; color: var(--studio-text); background: var(--studio-surface-2); border: 1px solid var(--studio-line); border-radius: 9px; }

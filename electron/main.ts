@@ -1,4 +1,4 @@
-import { BrandProofStore } from "./core/brand-proofs";
+import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, STORY_PLACES, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
 import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
@@ -1708,24 +1708,65 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       return new BrandProofStore(userDir).list(profileId);
     }
     case "addBrandProof": {
+      // Kept for older callers: one item, optional file picked in a dialog.
       const { profileId, attach, ...proof } = z.object({
         profileId: z.string(), attach: z.boolean(), title: z.string().trim().min(1).max(120),
-        description: z.string().trim().min(1).max(500),
-        kind: z.enum(["screenshot", "recording", "testimonial", "result"]),
-        confirmed: z.literal(true),
+        description: z.string().trim().max(500).default(""),
+        kind: z.enum(BRAND_KINDS),
+        confirmed: z.literal(true).optional(),
       }).strict().parse(params);
       await profileService.get(profileId);
       let source: string | undefined;
       if (attach) {
-        const selection = await dialog.showOpenDialog(window!, {
-          properties: ["openFile"],
-          filters: [{ name: "Imagem ou vídeo", extensions: ["png", "jpg", "jpeg", "webp", "mp4"] }],
-        });
+        const selection = await dialog.showOpenDialog(window!, { properties: ["openFile"], filters: [{ name: "Imagem ou vídeo", extensions: ["png", "jpg", "jpeg", "webp", "mp4"] }] });
         if (selection.canceled) return null;
         source = selection.filePaths[0];
       }
       const { confirmed: _confirmed, ...metadata } = proof;
       return new BrandProofStore(userDir).add(profileId, metadata, source);
+    }
+    case "addBrandFiles": {
+      // Brand library: pick several files at once; titles come from the file names.
+      const { profileId, kind } = z.object({ profileId: z.string(), kind: z.enum(BRAND_KINDS) }).strict().parse(params);
+      await profileService.get(profileId);
+      const images = ["png", "jpg", "jpeg", "webp"];
+      const selection = await dialog.showOpenDialog(window!, {
+        properties: ["openFile", "multiSelections"],
+        filters: [{ name: kind === "recording" ? "Vídeo MP4" : kind === "result" || kind === "testimonial" ? "Imagem ou vídeo" : "Imagem", extensions: kind === "recording" ? ["mp4"] : kind === "result" || kind === "testimonial" ? [...images, "mp4"] : images }],
+      });
+      if (selection.canceled) return [];
+      const store = new BrandProofStore(userDir);
+      const added = [];
+      for (const file of selection.filePaths.slice(0, 40)) added.push(await store.add(profileId, { kind }, file));
+      return added;
+    }
+    case "updateBrandItem": {
+      const { profileId, id, ...patch } = z.object({ profileId: z.string(), id: z.string().uuid(), title: z.string().trim().min(1).max(120).optional(), description: z.string().max(500).optional(), kind: z.enum(BRAND_KINDS).optional() }).strict().parse(params);
+      await profileService.get(profileId);
+      return new BrandProofStore(userDir).update(profileId, id, patch);
+    }
+    case "removeBrandItem": {
+      const { profileId, id } = z.object({ profileId: z.string(), id: z.string().uuid() }).strict().parse(params);
+      await profileService.get(profileId);
+      return new BrandProofStore(userDir).remove(profileId, id);
+    }
+    case "brandItemPreview": {
+      const { profileId, id } = z.object({ profileId: z.string(), id: z.string().uuid() }).strict().parse(params);
+      const { path } = await new BrandProofStore(userDir).asset(profileId, id);
+      const resolved = await realpath(path);
+      allowedFiles.add(resolved);
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", resolved);
+      return { url: url.href };
+    }
+    case "brandRules": {
+      const { profileId } = z.object({ profileId: z.string() }).strict().parse(params);
+      return { rules: await new BrandProofStore(userDir).rules(profileId) };
+    }
+    case "setBrandRules": {
+      const { profileId, rules } = z.object({ profileId: z.string(), rules: z.array(z.string().max(300)).max(30) }).strict().parse(params);
+      await profileService.get(profileId);
+      return { rules: await new BrandProofStore(userDir).setRules(profileId, rules) };
     }
     case "readProductPage":
       return readProductPage(z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(params).url);

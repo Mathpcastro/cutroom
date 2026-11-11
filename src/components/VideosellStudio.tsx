@@ -63,7 +63,7 @@ interface VideosellStudioProps {
 
 const pageTitles: Partial<Record<StudioPage, string>> = {
   home: "Criar", create: "Criar Reel", analytics: "Ideias", radar: "Ideias",
-  proofs: "Provas da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Meus avatares",
+  proofs: "Biblioteca da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Meus avatares",
   projects: "Meus Reels", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
   settings: "Ajustes",
 };
