@@ -34,15 +34,13 @@ export function storyFilmHtml(o: {
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1080px; height: 1920px; overflow: hidden; background: #141318; }
   #film { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #141318; font-family: "Instrument Sans", sans-serif; }
-  #continua { position: absolute; left: 0; right: 0; bottom: 230px; text-align: center; color: #fff; font: 64px Anton, sans-serif; letter-spacing: 1px; opacity: 0; text-shadow: 0 6px 30px #000a; }
-  #continua small { display: block; margin-top: 16px; font: 600 36px "Instrument Sans", sans-serif; color: #c8ff5a; }
+  #continua { position: absolute; z-index: 999; left: 50%; bottom: 150px; transform: translateX(-50%); padding: 22px 44px; border-radius: 999px; background: #c8ff5a; color: #141318; font: 700 44px "Instrument Sans", sans-serif; white-space: nowrap; opacity: 0; box-shadow: 0 18px 50px #0008; }
 </style>
 </head>
 <body>
 <div id="film" data-composition-id="film" data-start="0" data-duration="${o.duration}" data-width="1080" data-height="1920">
   <audio id="voz" data-start="0" data-duration="${o.voiceDuration}" data-track-index="20" data-volume="1" src="assets/voice.wav"></audio>
   <template id="roteiro">${esc(o.script)}</template>
-  <div id="continua">CONTINUA NO PRÓXIMO EPISÓDIO<small>${esc(o.episode?.cta ?? "Segue pra parte 2")}</small></div>
   <script src="kit/gsap.min.js"></script>
   <script src="brand.js"></script>
   <script src="timing.js"></script>
@@ -64,7 +62,12 @@ export function storyFilmHtml(o: {
       accent: palette.accent || "#7C5CFF",
       ${o.episode ? `episode: ${JSON.stringify({ number: o.episode.number, series: o.episode.series })},` : ""}
     });
-    tl.fromTo("#continua", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, Math.max(0, D - 2.2));
+    // The series CTA pill goes on top of everything the engine drew (the narrator says the "continua").
+    var cta = document.createElement("div");
+    cta.id = "continua";
+    cta.textContent = ${JSON.stringify(o.episode?.cta ?? "Segue pra parte 2")};
+    document.getElementById("film").appendChild(cta);
+    tl.fromTo(cta, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, Math.max(0, D - 2.4));
     tl.set({}, {}, D);
     window.__timelines["film"] = tl;
   </script>
