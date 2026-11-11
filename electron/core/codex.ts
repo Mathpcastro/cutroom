@@ -28,6 +28,8 @@ export type AgentClientOptions = {
   onStatus?: (info: CodexStatus) => void;
   onActivity?: (activity: AgentActivity) => void;
   onTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  /** Opens the ChatGPT sign-in page in the browser when Codex has no session yet. */
+  openUrl?: (url: string) => void;
 };
 type Options = AgentClientOptions;
 type Rpc = {
@@ -319,10 +321,21 @@ export class CodexClient {
   private async initialize(): Promise<CodexStatus> {
     await mkdir(resolve(this.options.workspace), { recursive: true });
     await this.launch([]);
-    const account = await this.request("account/read", { refreshToken: false });
+    let account = await this.request("account/read", { refreshToken: false });
+    if (!this.apiKey && !account.account && this.options.openUrl) {
+      // No session yet: start the ChatGPT sign-in through the app-server and wait for it (up to 3 min).
+      const login = await this.request("account/login/start", { type: "chatgpt" });
+      const url = String(login?.authUrl ?? login?.auth_url ?? "");
+      if (/^https:\/\//.test(url)) this.options.openUrl(url);
+      const started = Date.now();
+      while (!account.account && Date.now() - started < 180_000) {
+        await new Promise((done) => setTimeout(done, 2000));
+        account = await this.request("account/read", { refreshToken: false });
+      }
+    }
     if (!this.apiKey && !account.account)
       throw new Error(
-        "O Codex local não está conectado. Abra um terminal e execute codex login; depois clique em Conectar novamente.",
+        "O login no ChatGPT não terminou. Clique em Conectar de novo e entre na sua conta na página que abrir no navegador.",
       );
     const models: any[] = [];
     let cursor: string | undefined;

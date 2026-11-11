@@ -1155,6 +1155,7 @@ async function connectCodex(value: unknown = {}) {
       baseUrl: z.string().trim().max(2000).optional(),
       model: z.string().trim().min(1).max(200).optional(),
       cliPath: z.string().trim().max(2000).optional(),
+      interactive: z.boolean().optional(),
     })
     .parse(value);
   if (chatBusy) throw new Error("Cancele a conversa antes de reconectar.");
@@ -1175,6 +1176,10 @@ async function connectCodex(value: unknown = {}) {
   const options = {
     workspace: join(userDir, "agent-workspace"),
     instructions,
+    openUrl: (url: string) => {
+      if (config.interactive === false) return;
+      if (/^https:\/\/(auth\.openai\.com|chatgpt\.com|auth0\.openai\.com)\//.test(url)) void shell.openExternal(url);
+    },
     onActivity: (entry: AgentActivity) => {
       if (generation === connectionGeneration) activity(entry);
     },
@@ -1491,6 +1496,25 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         throw new Error("Link da publicação inválido.");
       await shell.openExternal(url.href);
       return { opened: true };
+    }
+    case "mcpSetup": {
+      // Use Videosell from an external agent: the bridge runs on this app's own executable (no Node needed).
+      const bridge = app.isPackaged
+        ? join(process.resourcesPath, "tools", "cutroom-claude-desktop-bridge.cjs")
+        : join(app.getAppPath(), "tools", "cutroom-claude-desktop-bridge.cjs");
+      const env: Record<string, string> = { ELECTRON_RUN_AS_NODE: "1", ...(process.env.CUTROOM_USER_DATA ? { CUTROOM_USER_DATA: userDir } : {}) };
+      const server = { command: process.execPath, args: [bridge], env };
+      const toml = (v: string) => JSON.stringify(v);
+      return {
+        server,
+        claude: JSON.stringify({ mcpServers: { videosell: server } }, null, 2),
+        codex: `[mcp_servers.videosell]
+command = ${toml(server.command)}
+args = [${toml(bridge)}]
+env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
+`,
+        claudeCode: `claude mcp add videosell ${Object.entries(env).map(([k, v]) => `-e ${k}=${v}`).join(" ")} -- "${server.command}" "${bridge}"`,
+      };
     }
     case "previewVoiceLine": {
       // Spec 5 C: "Ouvir" — a sample line in the character's voice.

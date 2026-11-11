@@ -1,11 +1,12 @@
-import { ArrowRight, Camera, Clapperboard, Library, Mic2, Palette, UserRound } from "lucide-react";
+import { ArrowRight, Bot, Camera, Clapperboard, Library, Mic2, Palette, Plug, UserRound } from "lucide-react";
+import { openAiConnect } from "./AiConnect";
 import { t, setStudioLanguage, useStudioLanguage, type StudioLanguage } from "./studioLanguage";
 import type { StudioPage } from "../VideosellStudio";
 import type { StudioThemePreference } from "./studioTheme";
 
 /**
  * Spec 4 E: everything that is not "make a Reel" lives here, nothing removed.
- * Layout: two groups of equal cards (4 + 2 wide) and one full-width Preferências panel.
+ * Layout: two groups of equal cards (4 + 2×2) and one full-width Preferências panel.
  */
 
 type Card = { title: string; text: string; icon: typeof Palette; page?: StudioPage; run?: () => void };
@@ -45,6 +46,8 @@ export function SettingsHub({ onPage, onAdvanced, theme, onTheme, fontScale, onF
   ];
   const tools: Card[] = [
     { page: "publish", title: "Instagram", text: "Conexão com o Composio e a conta que posta os Reels.", icon: Camera },
+    { title: "Inteligência artificial", text: "Conta do ChatGPT (Codex), modelo e raciocínio.", icon: Bot, run: () => openAiConnect("app") },
+    { title: "Usar pelo meu agente (MCP)", text: "Peça os vídeos no Claude ou no Codex, sem IA dentro do app.", icon: Plug, run: () => openAiConnect("mcp") },
     { title: "Editor avançado", text: "Linha do tempo, mídia, transcrição e estilos.", icon: Clapperboard, run: onAdvanced },
   ];
   const card = ({ page, title, text, icon: Icon, run }: Card) => (

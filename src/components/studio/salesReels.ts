@@ -1,4 +1,5 @@
 import type { BrandProof } from "../../../electron/core/brand-proofs";
+import { aiPreferences } from "./AiConnect";
 import { getStudioLanguage, studioLanguageName, t, type StudioLanguage } from "./studioLanguage";
 import { z } from "zod";
 import { formatGuide } from "../../../electron/core/formats";
@@ -74,7 +75,8 @@ function marketingContext(profile: StudioProfile) {
 }
 
 export async function structuredReply<T>(text: string, displayText: string, schema: z.ZodType<T>) {
-  const result = await studioRequest<AppSnapshot>("sendChat", { text, displayText });
+  const { model, effort } = aiPreferences();
+  const result = await studioRequest<AppSnapshot>("sendChat", { text, displayText, ...(model ? { model } : {}), ...(effort ? { reasoningEffort: effort } : {}) });
   const reply = result.messages.filter((message) => message.role === "assistant").at(-1)?.text.trim() ?? "";
   const json = reply.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   try {

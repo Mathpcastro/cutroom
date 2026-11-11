@@ -33,7 +33,7 @@ import { SettingsHub } from "./studio/SettingsHub";
 import { FirstRun, firstRunDone } from "./studio/FirstRun";
 import { generateSalesReel } from "./studio/ReelCreator";
 import { useInstagramConnection } from "./studio/InstagramConnect";
-import { AiConnectDialog, openAiConnect } from "./studio/AiConnect";
+import { AiConnectDialog, aiPreferences, openAiConnect, useAiPreferences } from "./studio/AiConnect";
 import { useStudioTheme, type StudioThemePreference } from "./studio/studioTheme";
 import "./studio/studio.css";
 
@@ -131,6 +131,17 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   const language = useStudioLanguage();
   const appearance = useStudioTheme(visible);
   const instagram = useInstagramConnection();
+  const ai = useAiPreferences();
+  // Codex is the default AI: connect it silently on start when a ChatGPT session already exists
+  // (never opens a sign-in page by itself). Skipped when the user works through an external agent (MCP).
+  const triedAutoConnect = useRef(false);
+  useEffect(() => {
+    if (triedAutoConnect.current || !window.cutroom) return;
+    const prefs = aiPreferences();
+    if (state.connection.status !== "disconnected" || prefs.mode === "mcp" || prefs.auto === false) return;
+    triedAutoConnect.current = true;
+    void window.cutroom.request("connectAgent", { provider: "codex", interactive: false }).catch(() => undefined);
+  }, [state.connection.status]);
   // Spec 4 F: Ctrl+N starts a new Reels from anywhere in the studio.
   useEffect(() => {
     if (!visible) return;
@@ -429,7 +440,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     try { return (JSON.parse(localStorage.getItem(`videosell.radar.${profile.id}`) ?? "[]") as { title: string; brief: string }[]).filter((i) => i?.brief); } catch { return []; }
   })();
   const pendingList: Pending[] = [
-    ...(state.connection.status !== "connected" ? [{ id: "ai", label: "Conecte a IA para criar", text: "O Videosell usa a IA para escrever o roteiro. Conecte a sua conta do ChatGPT (Codex) ou outra IA; leva 1 minuto.", run: openAiConnect, blocking: true }] : []),
+    ...(state.connection.status !== "connected" && ai.mode !== "mcp" ? [{ id: "ai", label: "Conecte a IA para criar", text: "O Videosell usa a IA para escrever o roteiro. Conecte a sua conta do ChatGPT (Codex) ou outra IA; leva 1 minuto.", run: () => openAiConnect(), blocking: true }] : []),
+    ...(state.connection.status !== "connected" && ai.mode === "mcp" ? [{ id: "mcp", label: "Você está usando o Videosell pelo seu agente", text: "Peça os vídeos no Claude ou no Codex. Para criar por aqui, conecte a IA.", run: () => openAiConnect("mcp"), blocking: true }] : []),
     ...(!instagram.pub?.accounts?.length ? [{ id: "ig", label: "Conectar o Instagram", run: () => setPage("publish") }] : []),
     ...(profile && !profile.defaultAvatar ? [{ id: "avatar", label: "Aprovar um avatar", run: () => create("avatar") }] : []),
   ];
