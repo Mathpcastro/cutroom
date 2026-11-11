@@ -13,7 +13,6 @@ import type { StudioProfile } from "../shared/profile";
 import type { AppSnapshot, StudioTab } from "../shared/types";
 import { BrandMark } from "./BrandMark";
 import { StudioHome, type CreateMode, type StudioProject } from "./studio/StudioHome";
-import { AvatarCreator } from "./studio/AvatarCreator";
 import { BrandOnboarding } from "./studio/BrandOnboarding";
 import { VoiceSettings } from "./studio/VoiceSettings";
 import { PublishSettings } from "./studio/PublishSettings";
@@ -21,11 +20,12 @@ import { StudioNav } from "./studio/StudioNav";
 import { ReelCreator, initialReelDraft, type ReelDraft, type ReelOrigin, type ReelSession } from "./studio/ReelCreator";
 import { ReelReview } from "./studio/ReelReview";
 import { InstagramAnalyticsPage, cachedInstagramAnalytics, topReelReferences } from "./studio/InstagramAnalyticsPage";
-import { Radar } from "./studio/ReelWorkspace";
+import { Radar } from "./studio/Radar";
 import { rememberReel, reopenReel, pendingReviews } from "./studio/reelRecords";
 import { useReelPilot } from "./studio/ReelPilot";
 import { AutoPilot } from "./studio/AutoPilot";
-import { QuickCreate, type Pending, type QuickChoices } from "./studio/QuickCreate";
+import { AvatarStudio } from "./studio/AvatarStudio";
+import { QuickCreate, lastChoices, type Pending, type QuickChoices } from "./studio/QuickCreate";
 import { ReelFlow, flowEstimate, rememberFlowTime, renderReel, stageOf, type FlowState } from "./studio/ReelFlow";
 import { MyReels } from "./studio/MyReels";
 import { Stories } from "./studio/Stories";
@@ -63,7 +63,7 @@ interface VideosellStudioProps {
 
 const pageTitles: Partial<Record<StudioPage, string>> = {
   home: "Criar", create: "Criar Reel", analytics: "Ideias", radar: "Ideias",
-  proofs: "Provas da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Meus avatares",
+  proofs: "Biblioteca da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Seu avatar",
   projects: "Meus Reels", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
   settings: "Ajustes",
 };
@@ -159,7 +159,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [page, setPage] = useState<StudioPage>("home");
   const [avatarSetupRequest, setAvatarSetupRequest] = useState(0);
-  const [createMode, setCreateMode] = useState<CreateMode>("avatar");
+  const [createMode, setCreateMode] = useState<CreateMode>("without-avatar");
   const [reelSession, setReelSession] = useState<ReelSession | null>(null);
   /** Spec 4: the quick flow runs here, so leaving the screen never cancels it. */
   const [flow, setFlow] = useState<FlowState | null>(null);
@@ -289,6 +289,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     let session: ReelSession = { ...base, step: "generating", error: undefined };
     setReelSession(session);
     setFlow({ stage: revised ? 1 : 0, message: "Escrevendo o roteiro…", startedAt: started, previous });
+    // The studio starts in "avatar" mode; a video flow must never fall into the avatar screen.
+    setCreateMode("without-avatar");
     setPage("create");
     try {
       if (!session.filmId || !session.review || revised) {
@@ -310,17 +312,26 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     }
   }
 
-  function quickCreate(brief: string, choices: QuickChoices) {
+  function quickCreate(brief: string, choices: QuickChoices, origin?: ReelOrigin) {
     if (!profile) return;
+    // Never detour to the avatar screen: without an approved avatar the Reel is made without one.
+    const withAvatar = choices.avatar && Boolean(profile.defaultAvatar);
     const draft = {
-      ...initialReelDraft(profile, choices.avatar),
+      ...initialReelDraft(profile, withAvatar),
       brief,
+      origin,
       narrative: choices.story,
       motionStyle: choices.style || undefined,
       language: choices.language,
     };
     void runFlow({ step: "brief", draft });
   }
+  /** Ideas (Radar, Analytics, pilot) go straight to the 4-step flow with the profile's last choices. */
+  const createFromIdea = (brief: string, origin?: ReelOrigin) => {
+    if (!profile) return;
+    if (state.connection.status !== "connected") { setPage("home"); openAiConnect(); return; }
+    quickCreate(brief, lastChoices(profile), origin);
+  };
 
   const navigate = (target: StudioPage) => {
     openGeneration.current += 1;
@@ -478,7 +489,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       <IntermediatePage title={t(t("Instagram Analytics"))} eyebrow="DESEMPENHO" text="Selecione um perfil para analisar seus Reels." onPage={setPage} />
     );
   } else if (page === "radar") {
-    content = profile ? <Radar key={profile.id} profile={profile} onCreate={(brief, origin) => create("without-avatar", brief, origin)} onAnalytics={() => setPage("analytics")} /> : (
+    content = profile ? <Radar key={profile.id} profile={profile} aiConnected={state.connection.status === "connected"} onCreate={(brief, origin) => createFromIdea(brief, origin)} /> : (
       <IntermediatePage title={t(t("Radar de pautas"))} eyebrow="ESTRATÉGIA" text="Selecione um perfil para sugerir pautas para seu SaaS." onPage={setPage} />
     );
   } else if (page === "routine") {
@@ -493,40 +504,11 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   } else if (page === "stories") {
     content = profile ? <Stories key={profile.id} profile={profile} onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} />
       : <IntermediatePage title={t("Histórias")} eyebrow={t("PERFIL NECESSÁRIO")} text={t("Crie um perfil para criar séries.")} onPage={setPage} />;
-  } else if (page === "avatars") {
-    content = profile?.defaultAvatar ? (
-      <AvatarCreator
-        profile={profile}
-        onProfileChange={(next) => onProfileChange(next, false)}
-        onBack={() => setPage("home")}
-      />
-    ) : (
-      <IntermediatePage
-        title={t(t("Meus avatares"))}
-        eyebrow="SUA APRESENTAÇÃO"
-        text="Nenhum avatar está vinculado a este perfil. Nenhum avatar de exemplo será exibido."
-        onPage={setPage}
-        action={
-          <button type="button" className="studio-primary-button" onClick={() => create("avatar")}>
-            {t(t("Criar meu avatar"))} <ArrowRight size={14} />
-          </button>
-        }
-      />
-    );
-  } else if (page === "create" && createMode === "avatar") {
+  } else if (page === "avatars" || (page === "create" && createMode === "avatar")) {
     content = profile ? (
-      <AvatarCreator
-        profile={profile}
-        onProfileChange={(next) => onProfileChange(next, false)}
-        onBack={() => setPage("home")}
-      />
+      <AvatarStudio key={profile.id} profile={profile} aiConnected={state.connection.status === "connected"} onSaved={(next) => onProfileChange(next, false)} />
     ) : (
-      <IntermediatePage
-        title={t(t("Criar meu avatar"))}
-        eyebrow={t("PERFIL NECESSÁRIO")}
-        text="Crie ou selecione um perfil antes de criar e salvar um avatar."
-        onPage={setPage}
-      />
+      <IntermediatePage title={t("Seu avatar")} eyebrow={t("PERFIL NECESSÁRIO")} text={t("Crie um perfil para criar o seu avatar.")} onPage={setPage} />
     );
   } else if (page === "create" && profile && flow && reelSession?.draft.profileId === profile.id) {
     const session = reelSession;
@@ -581,7 +563,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     content = profile ? <BrandOnboarding key={profile.id + page}
       profile={profile} onboarding={page === "onboarding"}
       onSaved={(next) => { onProfileChange(next, false); setPage("home"); }}
-      onAvatar={() => create("avatar")} onSkip={() => setPage("home")}
+      onAvatar={() => create("avatar")} onSkip={() => setPage(page === "onboarding" ? "home" : "settings")}
     /> : <IntermediatePage title={t("Marca")} eyebrow={t("PERFIL NECESSÁRIO")}
       text={t("Crie ou selecione um perfil para preencher a marca.")} onPage={setPage} />;
   } else if (page === "voices" || page === "publish") {
@@ -590,14 +572,15 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       publish: { title: t(t("Conexões")), eyebrow: t("PUBLICAÇÃO"), description: t("Conecte seu Instagram e publique somente quando confirmar.") },
     }[page];
     content = (
-      <div className="studio-settings-page">
-        <BackHome onPage={setPage} />
-        <header className="studio-settings-heading">
-          <span className="studio-eyebrow">{settingsPage.eyebrow}</span>
-          <PageTitle>{settingsPage.title}</PageTitle>
-          <p>{settingsPage.description}</p>
+      <div className="page">
+        <button type="button" className="crumb" onClick={() => setPage("settings")}><ArrowLeft size={14} /> {t("Ajustes")}</button>
+        <header className="page-head">
+          <div>
+            <h1>{settingsPage.title}</h1>
+            <p>{settingsPage.description}</p>
+          </div>
         </header>
-        <div className="studio-settings-card">
+        <div className="panel studio-settings-card">
           {page === "voices" && <VoiceSettings packages={state.packages} jobs={state.jobs} run={run} />}
           {page === "publish" && <PublishSettings jobs={state.jobs} connectionOnly />}
         </div>
@@ -618,11 +601,17 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
 
   if ((page === "radar" || page === "analytics") && profile) {
     content = (
-      <div className="ideas-wrap">
-        <div className="ideas-tabs reels-tabs" role="tablist" aria-label={t("Ideias")}>
-          <button type="button" role="tab" aria-selected={page === "radar"} onClick={() => setPage("radar")}>{t("Pautas")}</button>
-          <button type="button" role="tab" aria-selected={page === "analytics"} onClick={() => setPage("analytics")}>{t("Desempenho dos Reels")}</button>
-        </div>
+      <div className="page">
+        <header className="page-head">
+          <div>
+            <h1>{t("Ideias")}</h1>
+            <p>{t(page === "radar" ? "Pautas para os seus próximos Reels, a partir da sua marca." : "O que funcionou nos seus Reels, para repetir o que dá certo.")}</p>
+          </div>
+          <div className="segmented page-switch" role="tablist" aria-label={t("Ideias")}>
+            <button type="button" role="tab" aria-checked={page === "radar"} aria-selected={page === "radar"} onClick={() => setPage("radar")}>{t("Pautas")}</button>
+            <button type="button" role="tab" aria-checked={page === "analytics"} aria-selected={page === "analytics"} onClick={() => setPage("analytics")}>{t("Desempenho")}</button>
+          </div>
+        </header>
         {content}
       </div>
     );

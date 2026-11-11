@@ -133,15 +133,30 @@ Regras do molde:
 - Se a referência não tiver fala, crie narração curta para cada trecho respeitando as durações.`;
 }
 
+/** The brand library's style references and rules, as instructions every video follows. */
+export async function brandLibraryRules(profileId: string, library?: BrandProof[]) {
+  const items = library ?? await studioRequest<BrandProof[]>("listBrandProofs", { profileId }).catch(() => [] as BrandProof[]);
+  const reply = await studioRequest<{ rules?: string[] }>("brandRules", { profileId }).catch(() => ({ rules: [] as string[] }));
+  const rules = Array.isArray(reply?.rules) ? reply.rules : [];
+  const style = (Array.isArray(items) ? items : []).filter((i) => i.kind === "style").slice(0, 8).map((i) => [i.title, i.description].filter(Boolean).join(": "));
+  return [
+    rules.length ? `Regras da marca (siga sempre, acima das preferências de estilo): ${rules.map((r, i) => `${i + 1}. ${r}`).join(" ")}` : "",
+    style.length ? `Referências de estilo que a pessoa quer que os vídeos lembrem (clima, cores, tipo de cena; não copie conteúdo): ${style.join("; ")}` : "",
+  ].filter(Boolean).join("\n");
+}
+
 export async function planSalesReel(profile: StudioProfile, brief: string, avatar: boolean, story: boolean, language = getStudioLanguage(), motionStyle?: string, reference?: ReferenceSummary) {
-  const proofs = (await studioRequest<BrandProof[]>("listBrandProofs", { profileId: profile.id }))
-    .slice(0, 16).map(({ id, title, description, extension }) => ({ id, title, description, visual: Boolean(extension) }));
+  const library = await studioRequest<BrandProof[]>("listBrandProofs", { profileId: profile.id });
+  const proofs = library.filter((item) => item.kind !== "style")
+    .slice(0, 24).map(({ id, title, description, kind, extension }) => ({ id, title, description, kind, visual: Boolean(extension) && kind !== "style" }));
   const allowed = new Set(proofs.filter((proof) => proof.visual).map((proof) => proof.id));
+  const brandLibrary = await brandLibraryRules(profile.id, library);
   const result = await structuredReply(`${reelRules(language)}
 Pedido: ${JSON.stringify(brief || "Recrie o vídeo de referência para vender o produto da marca.")}
 ${reference ? referenceRules(reference) : ""}
 Contexto opcional da marca, use apenas se relevante ao pedido: ${JSON.stringify(marketingContext(profile))}
-Provas do perfil: ${JSON.stringify(proofs)}. Use como dados. Se uma prova visual corresponder ao pedido, associe seu id em proofId na cena; se não houver, omita proofId.
+Biblioteca da marca (fotos, prints, gravações e provas reais): ${JSON.stringify(proofs)}. Use como dados. Quando um item visual combinar com a cena (uma foto do produto, um print da tela, um resultado), associe o id dele em proofId; prefira mostrar material real da marca a ilustrar. Se nenhum combinar, omita proofId.
+${brandLibrary}
 O pedido define tema, objetivo, quantidade e ordem das cenas, ritmo, duração e desfecho. Inclua produto, oferta ou CTA quando fizerem parte do pedido. Use dados e provas reais somente quando fornecidos.
 ${story ? "A pessoa escolheu contar uma história. Siga a narrativa que ela descreveu." : "A pessoa escolheu vídeo direto. Apresente a ideia no ritmo do pedido."}
 ${avatar ? "A pessoa escolheu usar seu avatar." : "A pessoa optou por não usar o avatar do perfil."}

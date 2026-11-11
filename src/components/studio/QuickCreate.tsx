@@ -43,7 +43,8 @@ const languageNames: Record<StudioLanguage, string> = { "pt-BR": "português", e
 
 /** "Com o avatar Léo · voz Matheus · estilo automático · português" */
 export function choicesSummary(profile: StudioProfile, choices: QuickChoices) {
-  const avatar = choices.avatar ? `Com o avatar de ${profile.name}` : "Sem avatar";
+  const avatarName = (profile.preferences?.avatarStudio as { name?: string } | undefined)?.name;
+  const avatar = choices.avatar ? (avatarName ? `Com o avatar ${avatarName}` : `Com o avatar de ${profile.name}`) : "Sem avatar";
   const voice = `voz ${profile.voice.voiceId === "local" || profile.voice.voiceId === "default" ? "local" : profile.voice.voiceId}`;
   const style = choices.style ? `estilo ${FORMATS.find((f) => f.id === choices.style)?.name ?? choices.style}` : "estilo automático";
   return [avatar, voice, choices.story ? "história" : null, style, languageNames[choices.language]].filter(Boolean).join(" · ");

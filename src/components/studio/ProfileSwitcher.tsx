@@ -196,7 +196,6 @@ export function ProfileSwitcher({ onProfileChange, onProfileCreated, avatarSetup
             >
               <X size={18} />
             </button>
-            <span className="studio-eyebrow">NOVO ESPAÇO DE CRIAÇÃO</span>
             <h2 id="profile-create-title">{t("Criar perfil")}</h2>
             <p>{t("Separe marca, voz e projetos de cada produto ou cliente.")}</p>
             <label>

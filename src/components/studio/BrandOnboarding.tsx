@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
 import type { StudioProfile } from "../../shared/profile";
 import { structuredReply, studioRequest } from "./salesReels";
@@ -123,11 +124,11 @@ export function BrandOnboarding({ profile, onboarding, onSaved, onAvatar, onSkip
   }
 
   return <div className="studio-workspace reel-workbench">
-    {!onboarding && <button type="button" className="studio-back-button" onClick={onSkip}>{t("Voltar ao início")}</button>}
-    <header><h1>{t(onboarding ? "O que você vende?" : "Marca")}</h1><p>{t("Configure a marca deste perfil para orientar os roteiros e as pautas.")}</p></header>
-    <div className="reel-action-row">
-      {(["link", "prompt", "manual"] as const).map((option) => <button key={option} type="button" className="studio-secondary-button"
-        disabled={!!busy} aria-pressed={mode === option} onClick={() => { setMode(option); setError(""); }}>
+    {!onboarding && <button type="button" className="crumb" onClick={onSkip}><ArrowLeft size={14} /> {t("Ajustes")}</button>}
+    <header className="page-head"><div><h1>{t(onboarding ? "O que você vende?" : "Perfil e marca")}</h1><p>{t("O que a IA sabe da sua marca para escrever roteiros, pautas e histórias.")}</p></div></header>
+    <div className="segmented page-switch brand-modes" role="radiogroup">
+      {(["link", "prompt", "manual"] as const).map((option) => <button key={option} type="button" role="radio" aria-checked={mode === option}
+        disabled={!!busy} onClick={() => { setMode(option); setError(""); }}>
         {t({ link: "Pelo link do produto", prompt: "Com um prompt", manual: "Preencher manualmente" }[option])}
       </button>)}
     </div>

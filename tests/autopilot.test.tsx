@@ -53,7 +53,8 @@ describe("Piloto automático (Spec 3)", () => {
     const on = await render({ ...base, pilot: { enabled: true, times: ["12:00", "18:00"], days: "daily" }, scheduled: [{ id: "1", video: "C:/v/um.mp4", at: soon(30), status: "scheduled", title: "Reels um" }] });
     expect(on).toContain("Ligado · próximo Reels");
     expect(on).toContain("Reels um");
-    expect(on).toContain("Arraste para trocar a ordem");
+    expect(on).toContain("Arraste os vídeos entre os dias");
+    expect(on).toContain("0/2"); // per-day counter (limit = Reels per day); today has no Reel
     const late = await render({ ...base, pilot: { enabled: true, times: ["18:00"], days: "daily" }, scheduled: [{ id: "2", video: "C:/v/dois.mp4", at: soon(-8), status: "late", title: "Atrasado um" }] });
     expect(late).toContain("Um Reels precisa de atenção");
     const failed = await render({ ...base, pilot: { enabled: true, times: ["18:00"], days: "daily" }, scheduled: [{ id: "3", video: "C:/v/tres.mp4", at: soon(-1), status: "failed", error: "rate limit", title: "Falhou um" }] });
