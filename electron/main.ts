@@ -1,4 +1,7 @@
 import { BrandProofStore } from "./core/brand-proofs";
+import { SeriesStore } from "./core/series";
+import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, STORY_PLACES, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
+import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
 import { readCreationPilot, writeCreationPilot } from "./core/creation-pilot";
 import { readProductPage } from "./core/product-page";
 import {
@@ -187,6 +190,81 @@ function notifyReels(results: { status: string; error?: string }[]) {
       show("Videosell: a fila acabou", "Não há mais Reels agendados. Crie mais ou adicione vídeos ao piloto.");
   }, () => undefined);
 }
+/** Spec 5: series store and the episode generator shared by the UI and the MCP tools. */
+let seriesStore: SeriesStore;
+const seriesRef = z.object({ profileId: z.string().max(64), seriesId: z.string().max(64) });
+
+function episodeBrief(series: Series, episodes: Episode[], number: number, idea: string) {
+  const previous = episodes.filter((e) => e.number < number && (e.summary || e.script)).slice(-4)
+    .map((e) => `Ep. ${e.number} (${e.title}): ${e.summary ?? e.script?.hook ?? e.idea}`).join("\n") || "Nenhum: este é o primeiro.";
+  const cast = series.characters.map((c) => `- ${c.name}${c.narrator ? " (narrador, sem avatar)" : ""}: ${c.role}. ${c.description} Jeito de falar: ${c.speech}.${c.quirk ? ` Mania: ${c.quirk}.` : ""}`).join("\n");
+  const product = { never: "Nunca mostre o produto.", sometimes: "O produto pode aparecer resolvendo a cena, sem propaganda.", end: "Feche com o produto em uma fala curta." }[series.product];
+  return `Escreva o roteiro do episódio ${number} da série "${series.title}" para um Reels vertical.
+Premissa: ${series.premise}
+Tom: ${series.tone}
+Cenário habitual: ${series.setting}
+O que nunca muda: ${series.rules}
+Elenco (use os nomes exatamente assim):
+${cast}
+Episódios anteriores (continue a história e retome ganchos):
+${previous}
+Ideia deste episódio: ${idea}
+Produto: ${product}
+Regras: 25 a 45 segundos; falas de até ${MAX_WORDS} palavras; abrir no meio da ação; um conflito; uma virada; terminar em gancho para o próximo episódio; no máximo ${MAX_ON_SCENE} personagens por cena além do narrador.
+Cenários permitidos: ${STORY_PLACES.join(", ")} (dia ou noite). Humores permitidos: ${STORY_MOODS.join(", ")}.
+Responda só com JSON: {"title":"...","scenes":[{"place":"quarto","time":"dia","lines":[{"who":"Nome","mood":"animado","text":"..."}]}],"hook":"gancho final em uma frase"}`;
+}
+
+async function generateEpisode(args: unknown) {
+  const a = seriesRef.extend({ number: z.number().int().min(1) }).parse(args);
+  const profile = await profileService.get(a.profileId);
+  const { series, episodes } = await seriesStore.get(a.profileId, a.seriesId);
+  const episode = episodes.find((e) => e.number === a.number);
+  if (!episode?.script) throw new Error("Escreva o roteiro do episódio antes de gerar.");
+  const characters = series.characters;
+  const issues = validateScript(episode.script, characters.filter((c) => !c.narrator).map((c) => c.name)).filter((i) => !/dura cerca/.test(i.message));
+  if (issues.length) throw new Error(`O roteiro precisa de ajuste: ${issues.map((i) => `${i.message} ${i.fix ?? ""}`).join(" ")}`);
+  const byName = new Map(characters.map((c) => [c.name.toLowerCase(), c]));
+  const avatarOf = (name: string): CastAvatar => {
+    const id = byName.get(name.toLowerCase())?.avatar?.avatarId;
+    if (id?.startsWith("base:")) return (BASE_AVATARS as readonly string[]).includes(id.slice(5)) ? (id.slice(5) as CastAvatar) : "companion";
+    return id ? "film" : "film";
+  };
+  const speaking = [...new Set(spokenLines(episode.script).map((l) => l.who).filter((w) => w.toLowerCase() !== NARRATOR.toLowerCase()))];
+  const usesFilmAvatar = speaking.some((n) => avatarOf(n) === "film") && !!profile.defaultAvatar;
+  const created = await filmStudio.create({
+    name: `${series.title} · Ep. ${episode.number}`.slice(0, 120),
+    format: "historia",
+    aspect: "9:16",
+    ...(usesFilmAvatar ? { avatar: profile.defaultAvatar } : {}),
+  });
+  await filmStudio.write({
+    film: created.film, path: "brand.js",
+    content: "window.BRAND = " + JSON.stringify({ name: profile.brand.name || profile.name, handle: profile.handle, palette: { accent: profile.brand.accent, ink: profile.brand.ink, paper: profile.brand.paper } }) + ";",
+  });
+  const defaultVoice = profile.voice.voiceId === "default" ? {} : { provider: profile.voice.provider, voice: profile.voice.voiceId };
+  const lines = spokenLines(episode.script).map((line) => {
+    const c = byName.get(line.who.toLowerCase()) ?? (line.who.toLowerCase() === NARRATOR.toLowerCase() ? characters.find((x) => x.narrator) : undefined);
+    return { text: line.text, ...(c?.voice ? { provider: c.voice.provider, voice: c.voice.voiceId } : defaultVoice) };
+  });
+  const voice = (await filmStudio.dialogue({ film: created.film, lines })) as { voiceEnd: number; duration: number; voices: number };
+  const duration = Math.max(6, +(voice.voiceEnd + 2.4).toFixed(2));
+  const cast = Object.fromEntries(speaking.map((n) => [n, usesFilmAvatar || avatarOf(n) !== "film" ? avatarOf(n) : "strategist"])) as Record<string, CastAvatar>;
+  await filmStudio.write({
+    film: created.film, path: "index.html",
+    content: storyFilmHtml({ script: toEngineText(episode.script, episode.number), duration, voiceDuration: voice.duration, cast, hasFilmAvatar: usesFilmAvatar, episode: { number: episode.number, series: series.title, cta: series.cta } }),
+  });
+  await profileService.linkProject(a.profileId, created.film).catch(() => undefined);
+  const frozen = Object.fromEntries(characters.map((c) => [c.name, { ...(c.avatar ? { avatarId: c.avatar.avatarId, revision: c.avatar.revision } : {}), ...(c.voice ? { provider: c.voice.provider, voiceId: c.voice.voiceId } : {}) }]));
+  await seriesStore.updateEpisode(a.profileId, a.seriesId, a.number, { filmId: created.film, cast: frozen });
+  const check = (await filmStudio.check({ film: created.film })) as { errors: string[]; warnings: string[] };
+  return {
+    film: created.film, duration, check,
+    warnings: voice.voices < 2 && speaking.length > 1 ? ["Só uma voz disponível: todos os personagens falam com a mesma voz. Instale outra voz em Ajustes › Vozes."] : [],
+    next: "render_film com este film; depois episode_update com output e state 'ready'.",
+  };
+}
+
 let chatBusy = false;
 const allowedFiles = new Set<string>();
 const controllers = new Map<string, AbortController>();
@@ -866,6 +944,23 @@ async function executeTool(
     write_film_file: (a) => filmStudio.write(a),
     read_film_file: (a) => filmStudio.read(a),
     film_check: (a) => filmStudio.check(a),
+    film_dialogue: (a) => filmStudio.dialogue(a),
+    series_list: (a) => seriesStore.list(z.object({ profileId: z.string().max(64) }).parse(a).profileId),
+    series_create: (a) => { const { profileId, ...rest } = a as { profileId: string }; return seriesStore.create(profileId, rest); },
+    series_get: (a) => { const r = seriesRef.parse(a); return seriesStore.get(r.profileId, r.seriesId); },
+    series_update: (a) => { const { profileId, seriesId, ...rest } = a as { profileId: string; seriesId: string }; return seriesStore.update(profileId, seriesId, rest); },
+    series_delete: (a) => { const r = seriesRef.extend({ confirm: z.literal(true) }).parse(a); return seriesStore.remove(r.profileId, r.seriesId, r.confirm); },
+    character_upsert: (a) => { const r = seriesRef.extend({ character: z.unknown() }).parse(a); return seriesStore.upsertCharacter(r.profileId, r.seriesId, r.character); },
+    episode_create: (a) => { const r = seriesRef.extend({ title: z.string(), idea: z.string().optional() }).parse(a); return seriesStore.createEpisode(r.profileId, r.seriesId, { title: r.title, idea: r.idea ?? "" }); },
+    episode_write_script: async (a) => {
+      const r = seriesRef.extend({ number: z.number().int().min(1) }).parse(a);
+      const { series, episodes } = await seriesStore.get(r.profileId, r.seriesId);
+      const ep = episodes.find((e) => e.number === r.number);
+      if (!ep) throw new Error("Episódio não encontrado.");
+      return { brief: episodeBrief(series, episodes, ep.number, ep.idea || ep.title), next: "Escreva o JSON pedido e salve com episode_update { script }. Depois episode_generate." };
+    },
+    episode_update: (a) => { const { profileId, seriesId, number, ...rest } = a as { profileId: string; seriesId: string; number: number }; return seriesStore.updateEpisode(profileId, seriesId, number, rest); },
+    episode_generate: (a) => generateEpisode(a),
     film_capture_page: (a) => filmStudio.capture(a),
     analyze_reference: async (a) => {
       const r = await referenceAnalysis(a);
@@ -1397,6 +1492,17 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       await shell.openExternal(url.href);
       return { opened: true };
     }
+    case "previewVoiceLine": {
+      // Spec 5 C: "Ouvir" — a sample line in the character's voice.
+      const v = z.object({ text: z.string().trim().min(1).max(200), provider: z.enum(["elevenlabs", "openai", "kokoro", "local"]).optional(), voice: z.string().max(200).optional() }).strict().parse(params);
+      const voiced = await studio.synthesize(v);
+      if (!voiced) return { status: "generating" };
+      const resolved = await realpath(voiced.file);
+      allowedFiles.add(resolved);
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", resolved);
+      return { status: "done", url: url.href };
+    }
     case "previewExportedVideo": {
       const { path } = z.object({ path: z.string().min(1).max(2000) }).parse(params);
       if (!(await publisher.videos()).some((video) => video.path === path))
@@ -1420,6 +1526,44 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return publisher.cancelScheduled(
         z.object({ id: z.string().max(40) }).parse(params).id,
       );
+    case "seriesList":
+      return seriesStore.list(z.object({ profileId: z.string().max(64) }).parse(params).profileId);
+    case "seriesGet": {
+      const r = seriesRef.parse(params);
+      return seriesStore.get(r.profileId, r.seriesId);
+    }
+    case "seriesCreate": {
+      const { profileId, ...rest } = z.object({ profileId: z.string().max(64) }).passthrough().parse(params);
+      return seriesStore.create(profileId, rest);
+    }
+    case "seriesUpdate": {
+      const { profileId, seriesId, ...rest } = seriesRef.passthrough().parse(params);
+      return seriesStore.update(profileId, seriesId, rest);
+    }
+    case "seriesDelete": {
+      const r = seriesRef.extend({ confirm: z.literal(true) }).parse(params);
+      return seriesStore.remove(r.profileId, r.seriesId, r.confirm);
+    }
+    case "characterUpsert": {
+      const r = seriesRef.extend({ character: z.unknown() }).parse(params);
+      return seriesStore.upsertCharacter(r.profileId, r.seriesId, r.character);
+    }
+    case "episodeCreate": {
+      const r = seriesRef.extend({ title: z.string(), idea: z.string().optional() }).parse(params);
+      return seriesStore.createEpisode(r.profileId, r.seriesId, { title: r.title, idea: r.idea ?? "" });
+    }
+    case "episodeUpdate": {
+      const { profileId, seriesId, number, ...rest } = seriesRef.extend({ number: z.number().int().min(1) }).passthrough().parse(params);
+      return seriesStore.updateEpisode(profileId, seriesId, number, rest);
+    }
+    case "episodeBrief": {
+      const r = seriesRef.extend({ number: z.number().int().min(1), idea: z.string().max(300).optional() }).parse(params);
+      const { series, episodes } = await seriesStore.get(r.profileId, r.seriesId);
+      const ep = episodes.find((e) => e.number === r.number);
+      return { brief: episodeBrief(series, episodes, r.number, r.idea ?? ep?.idea ?? ep?.title ?? "") };
+    }
+    case "episodeGenerate":
+      return generateEpisode(params);
     case "previewReelPilot":
       return publisher.previewPilot(params);
     case "setReelPilot":
@@ -1950,6 +2094,7 @@ app.whenReady().then(async () => {
       ),
     process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000,
   );
+  seriesStore = new SeriesStore(userDir);
   avatarStore = new AvatarStore(join(userDir, "avatars"));
   filmStudio = new FilmStudio(
     {

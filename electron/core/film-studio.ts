@@ -1,4 +1,6 @@
 import { tmpdir } from "node:os";
+import { buildDialogue, concatArgs } from "./dialogue";
+import { VOICE_PROVIDERS } from "./voice";
 import { mkdir, mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { extname, isAbsolute, join } from "node:path";
 import { z } from "zod";
@@ -123,6 +125,46 @@ export class FilmStudio {
         audioTag: `<audio id="voz" data-start="0" data-duration="${set.duration}" data-track-index="20" data-volume="1" src="${set.file}"></audio>`,
         note: "timing.js já tem window.TIMING (words, envelope, voiceEnd). Use CR.word(\"palavra\", n) para o segundo de cada palavra.",
       };
+    });
+  }
+
+  /**
+   * Spec 5: a dialogue with one voice per line (film_dialogue). Each line is synthesized with its own
+   * provider/voice, joined with short pauses, and saved as the film voice with continuous word timings.
+   */
+  async dialogue(args: Record<string, unknown>) {
+    const a = z
+      .object({
+        film,
+        lines: z.array(z.object({ text: z.string().trim().min(1).max(600), provider: z.enum(VOICE_PROVIDERS).optional(), voice: z.string().max(200).optional() }).strict()).min(1).max(80),
+        pause: z.number().min(0).max(1.5).optional(),
+      })
+      .strict()
+      .parse(args);
+    await this.host.films.meta(a.film);
+    return this.host.job("voice", "Gravando as falas de cada personagem…", async (signal, progress) => {
+      const scratch = await mkdtemp(join(tmpdir(), "videosell-dialogue-"));
+      try {
+        let done = 0;
+        const result = await buildDialogue(a.lines, {
+          synthesize: async (line) => {
+            const voiced = await this.studio.synthesize({ text: line.text, provider: line.provider, voice: line.voice });
+            if (voiced) progress(Math.round((++done / a.lines.length) * 80), `Fala ${done} de ${a.lines.length}…`);
+            return voiced;
+          },
+          probe: (file) => probeAudio(file, signal),
+          concat: (files, pause, out) => runProcess(ffmpegPath, concatArgs(files, pause, out), { signal }).then(() => undefined),
+        }, join(scratch, "dialogo.wav"), a.pause ?? 0.35);
+        const set = await this.host.films.setVoice(a.film, { file: result.file, words: result.words, duration: result.duration, provider: "dialogo" }, signal);
+        return {
+          ...set,
+          lines: result.lines,
+          voices: [...new Set(a.lines.map((l) => `${l.provider ?? "padrão"}:${l.voice ?? "padrão"}`))].length,
+          suggestedDuration: +(set.voiceEnd + 2.4).toFixed(1),
+        };
+      } finally {
+        await rm(scratch, { recursive: true, force: true });
+      }
     });
   }
 

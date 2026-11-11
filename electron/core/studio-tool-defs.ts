@@ -334,4 +334,30 @@ export const STUDIO_TOOLS = [
       "Render the film to MP4 (1080p, 30 fps, audio normalized to -14 LUFS / 48 kHz for Reels) into Videos/CutRoom. Runs in the background: answers status 'rendering' within 40 s; call render_film again (same film, without editing it) every ~60 s until status 'done' with the output path. Refuses films that fail film_check.",
     inputSchema: objectSchema({ film: string("Film id.") }, ["film"]),
   },
+  {
+    name: "film_dialogue",
+    description: "Record a dialogue with one voice per line (story episodes): each line is synthesized with its own provider/voice, joined with short pauses, and saved as the film voice with continuous word timings. Use instead of film_voiceover when characters talk.",
+    inputSchema: objectSchema(
+      {
+        film: string("Film id."),
+        lines: { type: "array", minItems: 1, maxItems: 80, items: objectSchema({ text: string("What is said."), provider: { type: "string", enum: ["elevenlabs", "openai", "kokoro", "local"] }, voice: string("Voice id from list_voices.") }, ["text"]) },
+        pause: number("Silence between lines in seconds (default 0.35).", { minimum: 0, maximum: 1.5 }),
+      },
+      ["film", "lines"],
+    ),
+  },
+  { name: "series_list", description: "Story series of a profile (title, episode count, next episode).", inputSchema: objectSchema({ profileId: string("Profile id.") }, ["profileId"]) },
+  {
+    name: "series_create",
+    description: "Create a story series: title, premise, tone, setting, rules (series bible), product presence (never|sometimes|end), CTA, 2–4 characters {name, role, description, speech, quirk?, avatar?{avatarId: 'base:companion' or the profile avatar id}, voice?{provider, voiceId}} and up to 30 episode ideas {title, line}. A narrator is added automatically.",
+    inputSchema: objectSchema({ profileId: string("Profile id."), title: string("Series title."), premise: string("2 sentences."), tone: string("Tone."), setting: string("Usual setting."), rules: string("What never changes."), product: { type: "string", enum: ["never", "sometimes", "end"] }, cta: string("End card CTA."), characters: { type: "array", items: { type: "object" } }, ideas: { type: "array", items: { type: "object" } } }, ["profileId", "title"]),
+  },
+  { name: "series_get", description: "A series with its characters, ideas and episodes.", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id.") }, ["profileId", "seriesId"]) },
+  { name: "series_update", description: "Update the series bible, CTA, ideas or characters.", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id."), title: string("Title."), premise: string("Premise."), tone: string("Tone."), setting: string("Setting."), rules: string("Rules."), cta: string("CTA."), ideas: { type: "array", items: { type: "object" } } }, ["profileId", "seriesId"]) },
+  { name: "series_delete", description: "Delete a series and all its episodes. ONLY after the user confirmed — then confirm:true.", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id."), confirm: { type: "boolean", enum: [true] } }, ["profileId", "seriesId", "confirm"]) },
+  { name: "character_upsert", description: "Add or change a character (by id or name). Episodes already generated keep their frozen cast.", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id."), character: { type: "object", description: "{id?, name, role, description, speech, quirk?, avatar?, voice?}" } }, ["profileId", "seriesId", "character"]) },
+  { name: "episode_create", description: "Create the next episode from an idea (state 'idea').", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id."), title: string("Episode title."), idea: string("One line.") }, ["profileId", "seriesId", "title"]) },
+  { name: "episode_write_script", description: "Returns the writing brief for an episode (bible, cast with speech style, summaries of previous episodes, engine rules and the JSON format). Write the script yourself and save it with episode_update {script}.", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id."), number: number("Episode number.") }, ["profileId", "seriesId", "number"]) },
+  { name: "episode_update", description: "Save the structured script {title, scenes:[{place, time, lines:[{who, mood?, text}]}], hook}, the summary (1–2 sentences, for continuity), state or output.", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id."), number: number("Episode number."), script: { type: "object" }, summary: string("1–2 sentences."), state: { type: "string", enum: ["idea", "script", "ready", "scheduled", "published"] }, output: string("Rendered MP4 path.") }, ["profileId", "seriesId", "number"]) },
+  { name: "episode_generate", description: "Turn the saved script into a film: one voice per character (film_dialogue), the real cast, episode number and end card. Then call render_film with the returned film id.", inputSchema: objectSchema({ profileId: string("Profile id."), seriesId: string("Series id."), number: number("Episode number.") }, ["profileId", "seriesId", "number"]) },
 ];

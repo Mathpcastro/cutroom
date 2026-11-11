@@ -28,6 +28,7 @@ import { AutoPilot } from "./studio/AutoPilot";
 import { QuickCreate, type Pending, type QuickChoices } from "./studio/QuickCreate";
 import { ReelFlow, flowEstimate, rememberFlowTime, renderReel, stageOf, type FlowState } from "./studio/ReelFlow";
 import { MyReels } from "./studio/MyReels";
+import { Stories } from "./studio/Stories";
 import { SettingsHub } from "./studio/SettingsHub";
 import { FirstRun, firstRunDone } from "./studio/FirstRun";
 import { generateSalesReel } from "./studio/ReelCreator";
@@ -477,7 +478,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
     content = <MyReels profile={profile} projects={visibleProjects} onOpen={(id) => void openProject(id)}
       onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} onCreate={() => setPage("home")} />;
   } else if (page === "stories") {
-    content = <IntermediatePage title={t("Histórias")} eyebrow={t("SÉRIES")} text={t("Séries com personagens e roteiros escritos pela IA.")} onPage={setPage} />;
+    content = profile ? <Stories key={profile.id} profile={profile} onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} />
+      : <IntermediatePage title={t("Histórias")} eyebrow={t("PERFIL NECESSÁRIO")} text={t("Crie um perfil para criar séries.")} onPage={setPage} />;
   } else if (page === "avatars") {
     content = profile?.defaultAvatar ? (
       <AvatarCreator
