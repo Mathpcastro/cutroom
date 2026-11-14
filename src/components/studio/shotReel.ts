@@ -74,7 +74,8 @@ export const SHOT_CHECKLIST = [
  */
 export async function generateShotReel(profile: StudioProfile, draft: ReelDraft, setProgress: (value: string) => void): Promise<ReelSession> {
   const language = draft.language ?? getStudioLanguage();
-  const withAvatar = Boolean(draft.avatar);
+  const noCast = draft.characters === "nenhum";
+  const withAvatar = Boolean(draft.avatar) && !noCast;
   const presenter = withAvatar ? avatarName(profile) : undefined;
   const story = Boolean(draft.narrative);
   setProgress(t("Escrevendo o roteiro e desenhando as cenas…"));
@@ -86,7 +87,7 @@ export async function generateShotReel(profile: StudioProfile, draft: ReelDraft,
     lookText: draft.lookText,
     presenter,
     // Supporting characters are always available (base avatars, or stick figures when chosen): scenes with people acting hold attention.
-    extras: Object.keys(EXTRA_CAST),
+    extras: noCast ? [] : Object.keys(EXTRA_CAST),
     aspect: draft.aspect,
     characters: draft.characters,
   });

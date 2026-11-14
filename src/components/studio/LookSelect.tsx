@@ -40,7 +40,7 @@ export function LookSelect({ look, lookText, characters, classicLabel, disabled,
       {characters !== undefined && look !== "classic" && (
         <label className="reel-field">{t("Personagens")}
           <select value={characters} disabled={disabled} onChange={(event) => onChange({ look, lookText: text, characters: event.target.value })}>
-            <option value="">{t("Automático")}</option><option value="pixel">{t("Pixel art (avatares)")}</option><option value="palito">{t("Palito desenhado")}</option>
+            <option value="">{t("Automático")}</option><option value="pixel">{t("Pixel art (avatares)")}</option><option value="palito">{t("Palito desenhado")}</option><option value="nenhum">{t("Sem personagens")}</option>
           </select>
         </label>
       )}

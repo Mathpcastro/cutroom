@@ -231,8 +231,8 @@ export interface ShotFilmRequest {
   context?: string;
   /** Frame format (default vertical). */
   aspect?: Aspect;
-  /** "pixel" avatars or "palito" stick figures; unset lets the AI choose. */
-  characters?: "pixel" | "palito";
+  /** "pixel" avatars, "palito" stick figures or "nenhum" (product only); unset lets the AI choose. */
+  characters?: "pixel" | "palito" | "nenhum";
 }
 
 /**

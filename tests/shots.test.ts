@@ -206,3 +206,19 @@ describe("Motion UI components", () => {
     expect(html.indexOf("kit/fluid-motion.js")).toBeLessThan(html.indexOf("kit/cutroom-shots.js"));
   });
 });
+
+describe("product-only sales films", () => {
+  const base = { title: "x", look: { preset: "interface", palette: ["#7C5CFF", "#22D3EE"] }, sets: [{ id: "fundo", svg: set('<rect width="9" height="9"/>') }] };
+  it("keeps 'nenhum' as the character style and the device chosen for a proof", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    const { plan: p } = cleanShotPlan({ ...base, characters: "nenhum", shots: [{ say: "Oi", set: "fundo", proof: id, proofStyle: "phone" }, { say: "Tchau", set: "fundo", proof: id, proofStyle: "tablet" }] });
+    expect(p.characters).toBe("nenhum");
+    expect(p.shots[0]).toMatchObject({ proof: id, proofStyle: "phone" });
+    expect(p.shots[1].proofStyle).toBeUndefined();
+  });
+  it("tells the AI to make the product the protagonist when there are no characters", () => {
+    const rules = shotPlanRules({ width: 1080, height: 1920, story: false, cast: [], characters: "nenhum" });
+    expect(rules).toContain("O produto é o protagonista");
+    expect(rules).toContain('"phone"');
+  });
+});

@@ -46,7 +46,7 @@ export interface ReelDraft {
   lookText?: string;
   /** Drawn films: frame format and character style. */
   aspect?: "9:16" | "1:1" | "16:9";
-  characters?: "pixel" | "palito";
+  characters?: "pixel" | "palito" | "nenhum";
   effect: ReelEffect;
   avatar?: FilmAvatarRef;
   /** A reference video to recreate (its mold: rhythm, beats, colours, hook). */
@@ -526,7 +526,7 @@ export function ReelCreator({
           {!draft.motionStyle && <div className="reel-field-row">
             <label className="reel-field">{t("Personagens")}
               <select value={draft.characters ?? ""} disabled={busy} onChange={(event) => update({ characters: (event.target.value || undefined) as ReelDraft["characters"] })}>
-                <option value="">{t("Automático")}</option><option value="pixel">{t("Pixel art (avatares)")}</option><option value="palito">{t("Palito desenhado")}</option>
+                <option value="">{t("Automático")}</option><option value="pixel">{t("Pixel art (avatares)")}</option><option value="palito">{t("Palito desenhado")}</option><option value="nenhum">{t("Sem personagens (só o produto)")}</option>
               </select>
             </label>
             <label className="reel-field">{t("Formato")}

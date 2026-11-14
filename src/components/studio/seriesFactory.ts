@@ -35,7 +35,7 @@ const lookKey = (seriesId: string) => `videosell.seriesLook.${seriesId}`;
 export function seriesLook(seriesId: string): SeriesLook {
   try {
     const saved = JSON.parse(localStorage.getItem(lookKey(seriesId)) ?? "null") as SeriesLook | null;
-    if (saved && typeof saved.look === "string") return { look: saved.look, lookText: typeof saved.lookText === "string" ? saved.lookText : "", characters: saved.characters === "pixel" || saved.characters === "palito" ? saved.characters : "" };
+    if (saved && typeof saved.look === "string") return { look: saved.look, lookText: typeof saved.lookText === "string" ? saved.lookText : "", characters: saved.characters === "pixel" || saved.characters === "palito" || saved.characters === "nenhum" ? saved.characters : "" };
   } catch { /* fall through */ }
   return { look: "auto", lookText: "" };
 }
@@ -49,7 +49,7 @@ export async function directEpisode(profile: StudioProfile, series: Series, scri
   const lines = spokenLines(script).map((l) => ({ who: l.who, text: l.text }));
   const { plan } = await planShotFilm(profile, {
     brief: "", story: true, lines, look: look.look, lookText: look.lookText,
-    characters: look.characters === "pixel" || look.characters === "palito" ? look.characters : undefined,
+    characters: look.characters === "pixel" || look.characters === "palito" || look.characters === "nenhum" ? look.characters : undefined,
     extras: series.characters.filter((c) => !c.narrator).map((c) => c.name),
     context: JSON.stringify({ serie: series.title, premissa: series.premise, tom: series.tone, cenario: series.setting, episodio: script.title, cenas: script.scenes.map((s) => ({ lugar: s.place, hora: s.time, falas: s.lines.length })) }),
   });
