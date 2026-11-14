@@ -216,12 +216,12 @@
     var castX = 0, castY = 0, n = 0, tall = 0;
     (shot.cast || []).forEach(function (a) { castX += a.x * k; castY += a.y * k; tall = Math.max(tall, (SIZE[a.size] || SIZE.m) * BODY * H / 1920); n++; });
     var fx = c.focus ? c.focus[0] * k : n ? castX / n : sw / 2;
-    var fy = c.focus ? c.focus[1] * k : n ? castY / n - tall * (move === "close" ? 0.72 : 0.42) : sh * 0.55;
+    var fy = c.focus ? c.focus[1] * k : n ? castY / n - tall * (move === "close" ? 0.8 : 0.42) : sh * 0.55;
     var e = inOut(clamp(p, 0, 1)), z = 1, x = fx, y = fy, rot = 0;
     var zIn = c.zoom || 0;
     switch (move) {
       case "medium": z = lerp(1.32, 1.4, e); break;
-      case "close": z = lerp(1.9, 2.02, e); break;
+      case "close": z = lerp(1.62, 1.72, e) / Math.max(1, tall / (H * 0.36)); z = Math.max(1.15, z); break;
       case "push-in": z = lerp(1, 1.55, e); break;
       case "pull-out": z = lerp(1.6, 1, e); break;
       case "pan-left": z = sw > W * 1.15 ? 1 : 1.3; x = lerp(sw, 0, e); break;
