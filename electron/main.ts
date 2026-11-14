@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { AVATAR_BASES, composeAvatar } from "../src/shared/avatar-compose";
 import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
-import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, STORY_PLACES, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
+import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
 import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
+import { cleanShotPlan, shotFilmHtml, type ShotPlan } from "../src/shared/shots";
 import { readCreationPilot, writeCreationPilot } from "./core/creation-pilot";
 import { readProductPage } from "./core/product-page";
 import {
@@ -213,12 +214,12 @@ ${previous}
 Ideia deste episódio: ${idea}
 Produto: ${product}
 Regras: 25 a 45 segundos; falas de até ${MAX_WORDS} palavras; abrir no meio da ação; um conflito; uma virada; terminar em gancho para o próximo episódio; no máximo ${MAX_ON_SCENE} personagens por cena além do narrador.
-Cenários permitidos: ${STORY_PLACES.join(", ")} (dia ou noite). Humores permitidos: ${STORY_MOODS.join(", ")}.
+Lugar de cada cena: qualquer lugar que a história pedir, em até 4 palavras (ex.: farol à beira-mar, feira livre, cozinha da loja); a cena é desenhada para ele. Hora: dia ou noite. Humores sugeridos: ${STORY_MOODS.join(", ")}.
 Responda só com JSON: {"title":"...","scenes":[{"place":"quarto","time":"dia","lines":[{"who":"Nome","mood":"animado","text":"..."}]}],"hook":"gancho final em uma frase"}`;
 }
 
 async function generateEpisode(args: unknown) {
-  const a = seriesRef.extend({ number: z.number().int().min(1) }).parse(args);
+  const a = seriesRef.extend({ number: z.number().int().min(1), direction: z.unknown().optional() }).parse(args);
   const profile = await profileService.get(a.profileId);
   const { series, episodes } = await seriesStore.get(a.profileId, a.seriesId);
   const episode = episodes.find((e) => e.number === a.number);
@@ -252,6 +253,25 @@ async function generateEpisode(args: unknown) {
   const voice = (await filmStudio.dialogue({ film: created.film, lines })) as { voiceEnd: number; duration: number; voices: number };
   const duration = Math.max(6, +(voice.voiceEnd + 2.4).toFixed(2));
   const cast = Object.fromEntries(speaking.map((n) => [n, usesFilmAvatar || avatarOf(n) !== "film" ? avatarOf(n) : "strategist"])) as Record<string, CastAvatar>;
+  // Drawn episode (shot engine): the AI's sets and one shot per line, when the direction matches the script.
+  let direction: ShotPlan | undefined;
+  if (a.direction) {
+    try {
+      const { plan } = cleanShotPlan(a.direction);
+      if (plan.shots.length === lines.length) direction = plan;
+    } catch {
+      direction = undefined;
+    }
+  }
+  if (direction) {
+    const everyone = Object.fromEntries(characters.filter((c) => !c.narrator).map((c) => [c.name, avatarOf(c.name) === "film" ? (usesFilmAvatar ? "film" : "strategist") : avatarOf(c.name)]));
+    await filmStudio.write({ film: created.film, path: "plano.json", content: JSON.stringify(direction, null, 1) });
+    const music = direction.music ? await filmStudio.composeMusic({ film: created.film, mood: direction.music.mood, seconds: duration }).catch(() => undefined) : undefined;
+    await filmStudio.write({
+      film: created.film, path: "index.html",
+      content: shotFilmHtml({ plan: direction, duration, voiceDuration: voice.duration, cast: everyone, hasFilmAvatar: usesFilmAvatar, captions: true, endCard: { text: series.cta || "Segue pra parte 2" }, ...(music ? { music: { file: music.file } } : {}) }),
+    });
+  } else
   await filmStudio.write({
     film: created.film, path: "index.html",
     content: storyFilmHtml({ script: toEngineText(episode.script, episode.number), duration, voiceDuration: voice.duration, cast, hasFilmAvatar: usesFilmAvatar, episode: { number: episode.number, series: series.title, cta: series.cta } }),
@@ -943,6 +963,7 @@ async function executeTool(
     list_films: () => filmStudio.list(),
     film_voiceover: (a) => filmStudio.voiceover(a),
     film_asset: (a) => filmStudio.asset(a),
+    compose_music: (a) => filmStudio.composeMusic(a),
     write_film_file: (a) => filmStudio.write(a),
     read_film_file: (a) => filmStudio.read(a),
     film_check: (a) => filmStudio.check(a),
@@ -1479,6 +1500,8 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return filmStudio.create(params as Record<string, unknown>);
     case "film_voiceover":
       return filmStudio.voiceover(params as Record<string, unknown>);
+    case "compose_music":
+      return filmStudio.composeMusic(params as Record<string, unknown>);
     case "write_film_file":
       return filmStudio.write(params as Record<string, unknown>);
     case "read_film_file":

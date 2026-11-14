@@ -185,6 +185,20 @@ export const STUDIO_TOOLS = [
     ),
   },
   {
+    name: "compose_music",
+    description:
+      "Compose a soundtrack for the film on this computer (no download, no license to credit): chords, bass, arpeggio and light drums from a mood, as long as the film. Writes assets/musica.wav and returns the <audio> tag (volume 0.16, under the voice).",
+    inputSchema: objectSchema(
+      {
+        film: string("Film id."),
+        mood: { type: "string", enum: ["alegre", "calmo", "lofi", "tenso", "epico", "misterio"] },
+        seconds: number("Length in seconds (the film duration).", { minimum: 3, maximum: 180 }),
+        seed: number("Optional: another variation of the same mood.", { minimum: 0 }),
+      },
+      ["film", "mood", "seconds"],
+    ),
+  },
+  {
     name: "film_asset",
     description:
       "Put media into the film's assets/ folder: music or a sound effect from search_music (music: id; license re-checked, CC BY credit recorded and returned), or a local file the user gave you (path: absolute; images, video or audio, e.g. product screenshots). Returns the relative path to use in index.html (src=\"assets/...\").",

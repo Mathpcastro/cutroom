@@ -321,7 +321,10 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       brief,
       origin,
       narrative: choices.story,
-      motionStyle: choices.style || undefined,
+      // "" and "look:<preset>" are drawn by the AI; any other value is a classic template.
+      ...(choices.style && !choices.style.startsWith("look:")
+        ? { motionStyle: choices.style }
+        : { look: choices.style ? choices.style.slice(5) : "auto", lookText: choices.lookText?.trim() || undefined }),
       language: choices.language,
     };
     void runFlow({ step: "brief", draft });

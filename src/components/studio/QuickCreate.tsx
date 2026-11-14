@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, BookOpen, ChevronDown, Lightbulb, RefreshCcw, WandSparkles } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import { FORMATS } from "../../../electron/core/formats";
+import { LOOKS, LOOK_PRESETS, type LookPreset } from "../../shared/shots";
 import { t, getStudioLanguage, type StudioLanguage } from "./studioLanguage";
 
 /** Spec 4 A: the home is one box. Every choice has a default; "Ajustar" holds the rest. */
@@ -9,9 +10,17 @@ import { t, getStudioLanguage, type StudioLanguage } from "./studioLanguage";
 export interface QuickChoices {
   avatar: boolean;
   story: boolean;
+  /** "" = drawn by the AI, look chosen by it; "look:<preset>" = drawn in that look; "<format id>" = classic template. */
   style: string;
+  /** The look in the person's own words (drawn Reels). */
+  lookText?: string;
   language: StudioLanguage;
 }
+
+const validStyle = (style: unknown) =>
+  typeof style === "string" && (!style || (style.startsWith("look:") && (LOOK_PRESETS as readonly string[]).includes(style.slice(5))) || FORMATS.some((f) => f.id === style && f.id !== "desenhado"));
+export const styleLabel = (style: string) =>
+  !style ? "estilo automático" : style.startsWith("look:") ? `estilo ${LOOKS[style.slice(5) as LookPreset]?.label ?? style.slice(5)}` : `modelo ${FORMATS.find((f) => f.id === style)?.name ?? style}`;
 
 const choicesKey = (profileId: string) => `videosell.lastChoices.${profileId}`;
 
@@ -23,7 +32,8 @@ export function lastChoices(profile: StudioProfile): QuickChoices {
     return {
       avatar: Boolean(saved.avatar && profile.defaultAvatar),
       story: Boolean(saved.story),
-      style: typeof saved.style === "string" && (!saved.style || FORMATS.some((f) => f.id === saved.style)) ? saved.style : "",
+      style: validStyle(saved.style) ? (saved.style as string) : "",
+      lookText: typeof saved.lookText === "string" ? saved.lookText.slice(0, 240) : "",
       language: (["pt-BR", "en", "es"] as const).includes(saved.language as StudioLanguage) ? (saved.language as StudioLanguage) : fallback.language,
     };
   } catch {
@@ -46,7 +56,7 @@ export function choicesSummary(profile: StudioProfile, choices: QuickChoices) {
   const avatarName = (profile.preferences?.avatarStudio as { name?: string } | undefined)?.name;
   const avatar = choices.avatar ? (avatarName ? `Com o avatar ${avatarName}` : `Com o avatar de ${profile.name}`) : "Sem avatar";
   const voice = `voz ${profile.voice.voiceId === "local" || profile.voice.voiceId === "default" ? "local" : profile.voice.voiceId}`;
-  const style = choices.style ? `estilo ${FORMATS.find((f) => f.id === choices.style)?.name ?? choices.style}` : "estilo automático";
+  const style = choices.lookText?.trim() && !FORMATS.some((f) => f.id === choices.style) ? `visual: ${choices.lookText.trim().slice(0, 40)}` : styleLabel(choices.style);
   return [avatar, voice, choices.story ? "história" : null, style, languageNames[choices.language]].filter(Boolean).join(" · ");
 }
 
@@ -126,10 +136,18 @@ export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, es
             </fieldset>
             <label className="reel-field">{t("Estilo visual")}
               <select value={choices.style} onChange={(event) => set({ style: event.target.value })}>
-                <option value="">{t("Automático")}</option>
-                {FORMATS.map((format) => <option key={format.id} value={format.id}>{t(format.name)}</option>)}
+                <option value="">{t("Automático (a IA escolhe)")}</option>
+                <optgroup label={t("Desenhado pela IA")}>
+                  {LOOK_PRESETS.map((id) => <option key={id} value={"look:" + id}>{t(LOOKS[id].label)}</option>)}
+                </optgroup>
+                <optgroup label={t("Modelos clássicos")}>
+                  {FORMATS.filter((format) => format.id !== "desenhado").map((format) => <option key={format.id} value={format.id}>{t(format.name)}</option>)}
+                </optgroup>
               </select>
             </label>
+            {!FORMATS.some((f) => f.id === choices.style) && <label className="reel-field quick-look-text">{t("Descreva o visual (opcional)")}
+              <input value={choices.lookText ?? ""} maxLength={240} placeholder={t("Ex.: aquarela sonhadora em tons pastel")} onChange={(event) => set({ lookText: event.target.value })} />
+            </label>}
             <label className="reel-field">{t("Idioma do Reel")}
               <select value={choices.language} onChange={(event) => set({ language: event.target.value as StudioLanguage })}>
                 <option value="pt-BR">Português</option><option value="en">English</option><option value="es">Español</option>

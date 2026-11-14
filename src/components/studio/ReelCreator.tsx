@@ -6,6 +6,9 @@ import { FORMATS } from "../../../electron/core/formats";
 import type { FilmAvatarRef } from "../../../electron/core/film";
 import type { StudioProfile } from "../../shared/profile";
 import { planSalesReel, reviseSalesScene, type ReferenceSummary, type SalesPlan, type SalesScene } from "./salesReels";
+import { generateShotReel } from "./shotReel";
+import { LOOKS, LOOK_PRESETS, type LookPreset, type ShotPlan } from "../../shared/shots";
+import { lookPreview } from "./LookSelect";
 import directPoster from "./previews/ui-motion.jpg";
 import avatarPoster from "../../../site/upsell/videos/avatar.jpg";
 import storyPoster from "../../../site/upsell/videos/historia.jpg";
@@ -35,7 +38,12 @@ export interface ReelDraft {
   script: string;
   voice: { provider: StudioProfile["voice"]["provider"]; voiceId: string };
   formatId: string;
+  /** Classic template (FORMATS id). When unset the Reel is drawn by the shot engine. */
   motionStyle?: string;
+  /** Shot engine look: a preset or "auto". */
+  look?: string;
+  /** The look in the person's own words. */
+  lookText?: string;
   effect: ReelEffect;
   avatar?: FilmAvatarRef;
   /** A reference video to recreate (its mold: rhythm, beats, colours, hook). */
@@ -69,6 +77,8 @@ export interface ReelSession {
   output?: string;
   caption?: string;
   plan?: SalesPlan;
+  /** The drawn film's plan (shot engine). */
+  shotPlan?: ShotPlan;
   variationBase?: SalesPlan;
   error?: string;
 }
@@ -254,6 +264,16 @@ export async function generateSalesReel(
   if (generating) throw new Error("O Videosell já está gerando um Reel. Aguarde para iniciar outro.");
   const brief = draft.brief?.trim();
   if (!brief && !revised && !draft.reference) throw new Error("Descreva a ideia do Reel.");
+  // Drawn by the AI (shot engine) unless the person picked a classic template, a reference to
+  // recreate or is editing the scenes of a classic plan.
+  if (!revised && !draft.reference && !draft.motionStyle) {
+    generating = true;
+    try {
+      return await generateShotReel(profile, draft, setProgress);
+    } finally {
+      generating = false;
+    }
+  }
   const withAvatar = Boolean(draft.avatar);
   const story = Boolean(draft.narrative);
   generating = true;
@@ -484,12 +504,27 @@ export function ReelCreator({
             <button type="button" aria-pressed={story} disabled={busy} onClick={() => update({ narrative: true })}>{t("História")}</button>
           </fieldset>
           <label className="reel-field">{t("Estilo visual")}
-            <select value={draft.motionStyle ?? ""} disabled={busy || Boolean(session.variationBase)}
-              onChange={(event) => { setSceneEdit(undefined); update({ motionStyle: event.target.value || undefined }); }}>
-              <option value="">{t("Automático")}</option>
-              {FORMATS.map((format) => <option key={format.id} value={format.id}>{t(format.name)}</option>)}
+            <select value={draft.motionStyle ? "classic:" + draft.motionStyle : draft.look && draft.look !== "auto" ? "look:" + draft.look : ""} disabled={busy || Boolean(session.variationBase)}
+              onChange={(event) => {
+                setSceneEdit(undefined);
+                const value = event.target.value;
+                if (value.startsWith("classic:")) update({ motionStyle: value.slice(8), look: undefined });
+                else update({ motionStyle: undefined, look: value.startsWith("look:") ? value.slice(5) : "auto" });
+              }}>
+              <option value="">{t("Automático (a IA escolhe)")}</option>
+              <optgroup label={t("Desenhado pela IA")}>
+                {LOOK_PRESETS.map((id) => <option key={id} value={"look:" + id}>{t(LOOKS[id].label)}</option>)}
+              </optgroup>
+              <optgroup label={t("Modelos clássicos")}>
+                {FORMATS.filter((format) => format.id !== "desenhado").map((format) => <option key={format.id} value={"classic:" + format.id}>{t(format.name)}</option>)}
+              </optgroup>
             </select>
           </label>
+          {!draft.motionStyle && <label className="reel-field">{t("Descreva o visual (opcional)")}
+            <input value={draft.lookText ?? ""} maxLength={240} disabled={busy}
+              placeholder={t("Ex.: aquarela sonhadora em tons pastel, ou HQ noir em preto e vermelho")}
+              onChange={(event) => update({ lookText: event.target.value })} />
+          </label>}
           <label className="reel-field reel-language-field">{t("Idioma do Reel")}
             <select value={draft.language ?? getStudioLanguage()} disabled={busy} onChange={(event) => update({ language: event.target.value as StudioLanguage })}>
               <option value="pt-BR" lang="pt-BR">Português</option>
@@ -526,11 +561,13 @@ export function ReelCreator({
           </button>
         </section>
         <figure className="reel-style-preview">
-          {(!selectedStyle || illustrated || stylePreview) && <video key={stylePreview?.[1] ?? clip}
+          {!selectedStyle && lookPreview(draft.look) ? <img src={lookPreview(draft.look)} alt="" className="look-preview-large" /> :
+          !selectedStyle ? <div className="look-grid">{LOOK_PRESETS.map((id) => <button type="button" key={id} disabled={busy} onClick={() => update({ motionStyle: undefined, look: id })}><img src={lookPreview(id)} alt="" /><span>{t(LOOKS[id].label)}</span></button>)}</div> :
+          (illustrated || stylePreview) && <video key={stylePreview?.[1] ?? clip}
             src={stylePreview?.[1] ?? clip} poster={stylePreview?.[0] ?? poster} controls muted loop playsInline preload="metadata"
             aria-label={t("Prévia do estilo selecionado")} />}
-          <figcaption><strong>{selectedStyle ? t(selectedStyle.name) : story ? t("História") : t("Vídeo direto")} · {withAvatar ? t("Com avatar") : t("Sem avatar")}</strong>
-            <span>{selectedStyle ? t(selectedStyle.goodFor) : t("Exemplo de linguagem visual. As cenas são compostas a partir do seu pedido.")}</span>
+          <figcaption><strong>{selectedStyle ? t(selectedStyle.name) : draft.look && draft.look !== "auto" ? t(LOOKS[draft.look as LookPreset]?.label ?? "") : t("Desenhado pela IA")} · {story ? t("História") : t("Vídeo direto")} · {withAvatar ? t("Com avatar") : t("Sem avatar")}</strong>
+            <span>{selectedStyle ? t(selectedStyle.goodFor) : t("A IA desenha os cenários e objetos do seu pedido e dirige cada tomada. Os exemplos mostram o mesmo filme em cada estilo.")}</span>
           </figcaption>
         </figure>
       </div>

@@ -28,8 +28,11 @@ describe("Histórias (Spec 5)", () => {
     };
     const issues = validateScript(script, ["Léo", "Bia", "Ana", "Rui"]).map((i) => i.message);
     expect(issues).toEqual(expect.arrayContaining([
-      'Cenário "praia" não existe.', "5 personagens nesta cena.", 'Humor "feliz" não existe.', "Fala com 13 palavras.", '"Zé" não está no elenco.',
+      "5 personagens nesta cena.", "Fala com 13 palavras.", '"Zé" não está no elenco.',
     ]));
+    // Any place and any mood are accepted (the drawn engine paints the place); an empty place is not.
+    expect(issues.join(" ")).not.toMatch(/praia|feliz/);
+    expect(validateScript({ title: "x", scenes: [{ place: " ", time: "dia", lines: [{ who: "Léo", text: "Oi" }] }] }, ["Léo"]).map((i) => i.message)).toEqual(["Cena sem lugar."]);
     expect(validateScript(SAMPLE_SERIES.script, ["Léo", "Bia"])).toEqual([]);
     expect(estimateSeconds(SAMPLE_SERIES.script)).toBeLessThan(45);
   });

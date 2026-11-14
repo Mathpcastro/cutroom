@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, CircleAlert, LoaderCircle, Sparkles, Wand2 } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
-import { STORY_PLACES } from "../../shared/story";
+import { LookSelect } from "./LookSelect";
 import { t } from "./studioLanguage";
 import { DEFAULT_CHOICES, clearSeriesFactory, createReadySeries, scheduleSeriesDaily, useSeriesFactory, type SeriesChoices } from "./seriesFactory";
 import { studioRequest } from "./salesReels";
@@ -76,7 +76,10 @@ export function ReadySeries({ profile, onOpen }: { profile: StudioProfile; onOpe
       <Chips label="Episódios" value={c.episodes} onChange={(episodes) => set({ episodes })} options={[[3, "3"], [5, "5"], [7, "7"]] as const} />
       <Chips label="Personagens" value={c.cast} onChange={(cast) => set({ cast })} options={[[2, "2"], [3, "3"]] as const} />
       <Chips label="O produto aparece?" value={c.product} onChange={(product) => set({ product })} options={[["never", "Nunca"], ["sometimes", "Às vezes"], ["end", "Sempre no final"]] as const} />
-      <Chips label="Onde se passa" value={c.place} onChange={(place) => set({ place })} options={[["variado", "Variado"], ...STORY_PLACES.map((p) => [p, { quarto: "Quarto", escritorio: "Escritório", rua: "Rua", cafe: "Café" }[p]] as const)] as const} />
+      <label className="reel-field">{t("Onde se passa (opcional)")}
+        <input value={c.place === "variado" ? "" : c.place} maxLength={80} placeholder={t("Variado. Ou diga um lugar: um farol, uma feira, uma nave, a cozinha de uma padaria…")} onChange={(e) => set({ place: e.target.value.trim() ? e.target.value : "variado" })} />
+      </label>
+      <LookSelect look={c.look ?? "auto"} lookText={c.lookText} classicLabel="Quadrinho clássico (modelo antigo)" onChange={(next) => set(next)} />
       <label className="reel-field">{t("Ideia da série (opcional)")}
         <input value={c.idea} maxLength={300} placeholder={t("Deixe em branco para a IA decidir pela sua marca")} onChange={(e) => set({ idea: e.target.value })} />
       </label>
