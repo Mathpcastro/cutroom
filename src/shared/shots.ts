@@ -29,6 +29,8 @@ export const LOOKS: Record<LookPreset, { label: string; hint: string; palette: s
 export const CAMERA_MOVES = ["wide", "medium", "close", "push-in", "pull-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "dutch", "shake", "orbit", "follow"] as const;
 /** Life inside a set: an element marked with data-motion is cut out and animated on its own. */
 export const ELEMENT_MOTIONS = ["float", "sway", "spin", "pulse", "blink", "drift", "bounce", "orbit", "shake", "pop", "rise", "slide-left", "slide-right", "drop"] as const;
+/** Tempo of the soundtrack composed for each mood (compose-music.ts): the engine cuts on its beats. */
+export const MUSIC_BPM: Record<string, number> = { alegre: 112, calmo: 76, lofi: 82, tenso: 96, epico: 88, misterio: 70 };
 export const TRANSITIONS = ["cut", "fade", "wipe", "iris", "whip", "flash", "dissolve", "blinds", "clock", "pixelate", "push", "zoom", "glide"] as const;
 export const PROP_MOTIONS = ["none", "bob", "sway", "drift", "drift-left", "spin", "pulse", "fly-left", "fly-right", "rise", "fall", "shake", "grow", "blink"] as const;
 export const FX = ["rain", "snow", "dust", "fireflies", "stars", "confetti", "sparks", "leaves", "smoke", "light-rays", "speed-lines", "bokeh", "matrix", "film-burn", "grain", "sound-wave"] as const;
@@ -205,6 +207,8 @@ export type ShotGraphic = z.infer<typeof graphicSchema>;
 /** Motion UI component over the shot, animated on springs (Fluid). */
 export const uiSchema = z.object({
   kind: z.enum(UI_KINDS),
+  /** Inside a drawn element (data-el), e.g. the chat in the phone. */
+  on: idSchema.optional().catch(undefined),
   text: text(90).optional(),
   button: text(30).optional(),
   icon: text(2).optional(),
@@ -374,6 +378,8 @@ TOMADAS (shots)
   {"kind":"countdown","text":"A oferta acaba em","items":[{"value":3},{"label":"Agora!"}]} contagem regressiva num anel (lançamento, oferta, 3-2-1);
   {"kind":"follow","text":"@perfil","button":"Seguir"} lembrete de seguir: o botão vira "Seguindo ✓" e o sino toca (fechamento).
   Use ui para mostrar o produto funcionando e para os momentos de virada; em Motion UI use em quase toda tomada.
+  ui.on: "nome" de um data-el coloca chat, click, loader, splash, toggle, tabs ou island DENTRO daquele elemento desenhado (a conversa dentro do celular, o botão dentro do navegador), acompanhando a câmera: assim o texto mora na interface em vez de flutuar por cima. Use sempre que houver um celular ou navegador na cena.
+  HIERARQUIA: em cada tomada, um herói (o elemento das cues ou do camera.target) se move por inteiro; o resto da cena fica quase parado.
   VARIEDADE (o que mais prende): nunca o mesmo tipo de ui, graphic ou effect em duas tomadas seguidas; ui "reveal" em no máximo 3 tomadas do filme; use pelo menos 5 tipos diferentes entre ui, graphic, effect e proof ao longo do vídeo. Antes de responder, confira a sequência e troque o que repetir.
 - effect opcional (EFEITOS DE MOTION prontos e caprichados, montados por cima da cena com as cores do look; no máximo um por tomada): {"name":"...","vars":{...},"area":"center|top|lower|full"}. area: center (cartão no meio, padrão), top (faixa de cima), lower (faixa acima das legendas), full (toma a tela). Preencha vars com as palavras da própria fala, no idioma da narração e curtas. Em center ou full o efeito substitui ui, graphic, proof e title daquela tomada.
 ${effectsPrompt(landscape)}
@@ -497,7 +503,8 @@ export function shotFilmHtml(o: ShotFilmOptions) {
     var S = window.CRM_SAMPLE_AVATARS || {};
     CRS.film({
       tl: tl, film: "#film", duration: D, engine: window.AvatarEngine,
-      plan: JSON.parse(document.getElementById("plano").content.textContent),
+      plan: JSON.parse(document.getElementById("plano").content.textContent),${o.plan.music ? `
+      beat: { bpm: ${MUSIC_BPM[o.plan.music.mood]} },` : ""}
       cast: { ${castJs} },
       fallback: [window.FILM_AVATAR || S.strategist, S.companion, S.expert].filter(Boolean),
       captions: ${o.captions !== false},

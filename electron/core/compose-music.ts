@@ -35,6 +35,9 @@ function rng(seed: number) {
 const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
 /** Stereo interleaved samples in [-1, 1]. */
+/** Tempo of each mood (the shot engine cuts on these beats: MUSIC_BPM in src/shared/shots.ts). */
+export const MUSIC_TEMPO = Object.fromEntries(Object.entries(STYLES).map(([mood, st]) => [mood, st.bpm])) as Record<MusicMood, number>;
+
 export function composeMusic(mood: MusicMood, seconds: number, seed = 1, rate = 44100): Float32Array {
   const st = STYLES[mood] ?? STYLES.calmo;
   const r = rng(seed * 97 + 13);

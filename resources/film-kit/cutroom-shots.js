@@ -284,7 +284,7 @@
    * How a living element moves at time gt (film) and et (since its set appeared). Continuous motions
    * loop forever; entrance motions land on a spring and then breathe a little.
    */
-  function elementMotion(sp2, gt, et, W, cues) {
+  function elementMotion(sp2, gt, et, W, cues, calm) {
     var i = sp2.i, ph = i * 1.7, h = sp2.h, m = { dx: 0, dy: 0, rot: 0, s: 1, a: 1, ox: sp2.cx, oy: sp2.cy };
     var entrance = /^(pop|rise|drop|slide-left|slide-right)$/.test(sp2.motion);
     // An entrance with a word cue waits for that word; without one it plays when the set appears.
@@ -307,6 +307,8 @@
       case "slide-right": m.dx = -(1 - k2) * W * 0.7; m.a = clamp(k * 1.6, 0, 1); break;
     }
     // Entrances do not freeze after landing: they ease into a gentle float and tilt of their own.
+    // Hierarchy: in a shot that names its heroes, everyone else keeps only a hint of their idle motion.
+    if (calm != null && calm < 1 && !entrance) { m.dx *= calm; m.dy *= calm; m.rot *= calm; m.s = 1 + (m.s - 1) * calm; m.a = 1 - (1 - m.a) * calm; }
     // Every other cue of the element is a highlight: a quick spring bump when its word is said.
     (cues || []).forEach(function (c, ci) {
       if (entrance && ci === 0) return;
@@ -683,6 +685,14 @@
     if (!shots.length) throw new Error("CRS.film: o plano não tem tomadas com cenário.");
     var timing = CRS.timeShots(shots, T.words || [], D);
     shots.forEach(function (s, i) { s.start = timing[i].start; s.end = timing[i].end; s.words = timing[i].words; });
+    // On the beat: when the film has composed music, a cut close to a beat moves onto it (a little earlier
+    // rather than later, so the picture never lags the voice).
+    var BEAT = o.beat && o.beat.bpm ? 60 / o.beat.bpm : 0;
+    if (BEAT) shots.forEach(function (s, i) {
+      if (i === 0) return;
+      var b = Math.round(s.start / BEAT) * BEAT, prev = shots[i - 1];
+      if (b >= s.start - 0.2 && b <= s.start + 0.08 && b > prev.start + 0.4 && b < s.end - 0.4) { s.start = b; prev.end = b; }
+    });
     // Word cues: {el, at} → the moment that word is spoken in the shot. Runs are consecutive shots on one set.
     function nw(x) { return String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); }
     var runN = 0, RUNCUES = {};
@@ -976,6 +986,7 @@
       ".crs-ui .fol .av{flex:none;width:" + Math.round(88 * uu) + "px;height:" + Math.round(88 * uu) + "px;border-radius:50%;background:" + accent + ";color:" + ink + ";display:grid;place-items:center;font:400 " + Math.round(56 * uu) + "px " + gNum + "}" +
       ".crs-ui .fol .who{font-size:" + Math.round(36 * uu) + "px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-right:" + Math.round(8 * uu) + "px}.crs-ui .fol .go{flex:none;border-radius:999px;padding:" + Math.round(18 * uu) + "px " + Math.round(30 * uu) + "px;font:400 " + Math.round(38 * uu) + "px " + gNum + ";white-space:nowrap}" +
       ".crs-ui .fol .bell{flex:none;font-size:" + Math.round(50 * uu) + "px;transform-origin:50% 10%}" +
+      ".crs-ui.on .phone{border:0;box-shadow:none;border-radius:" + Math.round(24 * uu) + "px}.crs-ui.on .isl{box-shadow:none}" +
       ".crs-ui .loader{position:absolute;left:50%;top:" + Math.round(H * (W > H ? 0.2 : 0.22)) + "px;transform:translateX(-50%);text-align:center}.crs-ui .loader .lab{margin-top:" + Math.round(26 * uu) + "px;font-size:" + Math.round(50 * uu) + "px;white-space:nowrap}";
     document.head.appendChild(ucss);
     var SVGNS = "http://www.w3.org/2000/svg";
@@ -1001,8 +1012,11 @@
     var BRAND_NAME = (window.BRAND && window.BRAND.name) || "";
     shots.forEach(function (s) {
       var u = s.ui; if (!u) return;
-      var box = document.createElement("div"); box.className = "crs-ui"; root.appendChild(box);
+      var box = document.createElement("div"); box.className = "crs-ui"; root.appendChild(box); s._uiBox = box;
       var items = (u.items || []).slice(0, 5), times = uiTimes(items.length || 1, s), dur = Math.max(0.6, s.end - s.start);
+      // ui.on: the component lives inside a drawn element (the chat in the phone, the button in the browser).
+      var onEl = u.on && SETS[s.set] && SETS[s.set].els && SETS[s.set].els[u.on] ? u.on : null;
+      if (onEl) box.classList.add("on");
       if (u.kind === "island") {
         var isl = document.createElement("div"); isl.className = "isl"; box.appendChild(isl);
         var list = items.length ? items : [{ label: u.text || "Novo pedido", note: "" }];
@@ -1020,6 +1034,7 @@
           if (ic) { ic.style.opacity = String(fade); ic.style.transform = "scale(" + (0.5 + 0.5 * fade) + ")"; }
           if (tx) { tx.style.opacity = String(fade); tx.style.transform = "translateY(" + ((1 - fade) * 10) + "px)"; }
         });
+        box._R = function () { var top = Math.round(H * 0.045); return { x0: W / 2 - maxW / 2, y0: top, x1: W / 2 + maxW / 2, y1: top + h1 }; };
       } else if (u.kind === "chat") {
         var ph = document.createElement("div"); ph.className = "phone";
         ph.innerHTML = '<div class="hd"><i></i><b>' + esc(u.text || BRAND_NAME || "Cliente") + '</b></div><div class="msgs"></div>';
@@ -1037,6 +1052,7 @@
           });
           msgs.innerHTML = html;
         });
+        box._R = function () { var pw = Math.round(Math.min(W * 0.68, H * 0.48)), top = Math.round(H * (W > H ? 0.08 : 0.1)); return { x0: W / 2 - pw / 2, y0: top, x1: W / 2 + pw / 2, y1: top + Math.round(H * (W > H ? 0.76 : 0.5)) }; };
       } else if (u.kind === "click") {
         var btn = document.createElement("div"); btn.className = "btn"; btn.textContent = u.button || u.text || "Começar";
         var rip = document.createElement("div"); rip.className = "ripple";
@@ -1064,6 +1080,7 @@
           rip.style.left = (W / 2 - rr) + "px"; rip.style.top = (by + bh / 2 - rr) + "px"; rip.style.width = rip.style.height = rr * 2 + "px"; rip.style.opacity = String(t >= press ? 0.8 * (1 - rp) : 0);
           var okp = sp(t - done - 0.15, SPR.bouncy); ok.style.opacity = String(clamp(okp, 0, 1)); ok.style.transform = "translate(-50%," + ((1 - okp) * 40 * uu) + "px)";
         });
+        box._R = function () { return { x0: W / 2 - maxBw / 2 - 20 * uu, y0: by - 30 * uu, x1: W / 2 + maxBw / 2 + 20 * uu, y1: by + 190 * uu + 150 * uu }; };
       } else if (u.kind === "toggle" || u.kind === "tabs") {
         var card = document.createElement("div"); card.className = "card"; box.appendChild(card);
         var list3 = items.length ? items : [{ label: "Postar todo dia" }, { label: "Responder rápido" }];
@@ -1089,6 +1106,7 @@
             note.innerHTML = it && it.note ? '<span style="display:inline-block;opacity:' + np + ';transform:translateY(' + ((1 - np) * 30 * uu) + 'px)">' + esc(it.note) + "</span>" : "";
           });
         }
+        box._R = function () { var top = Math.round(H * 0.12); return { x0: W / 2 - GW / 2, y0: top, x1: W / 2 + GW / 2, y1: top + (card.offsetHeight || 300 * uu) }; };
       } else if (u.kind === "wordcycle") {
         var big = document.createElement("div"); big.className = "big"; box.appendChild(big);
         var words = items.length ? items.map(function (i) { return i.label; }) : ["lojas.", "apps.", "marcas."];
@@ -1159,6 +1177,7 @@
         });
       } else if (u.kind === "splash" || u.kind === "loader") {
         var size = Math.min(W, H) * 0.42, wrap = document.createElement("div"); wrap.className = u.kind; box.appendChild(wrap);
+        box._R = function () { var top = H * (u.kind === "splash" ? (W > H ? 0.14 : 0.2) : (W > H ? 0.2 : 0.22)); return { x0: W / 2 - size / 2 - 40 * uu, y0: top - 20 * uu, x1: W / 2 + size / 2 + 40 * uu, y1: top + size + 120 * uu }; };
         var shp = shapeSvg(size, accent); wrap.appendChild(shp.svg);
         if (u.kind === "splash") {
           var nm = document.createElement("div"); nm.className = "name"; nm.style.top = size * 0.38 + "px"; nm.textContent = (u.text || BRAND_NAME || "").slice(0, 14); wrap.appendChild(nm);
@@ -1187,6 +1206,19 @@
           });
         }
       }
+    });
+    // Components placed inside a drawn element follow it: scaled into its screen and moving with the camera.
+    shots.forEach(function (s) {
+      var u = s.ui, box = s._uiBox;
+      if (!u || !u.on || !box || !box._R || !SETS[s.set] || !SETS[s.set].els || !SETS[s.set].els[u.on]) return;
+      UIS.push(function (t) {
+        if (t < s.start || t >= s.end) return;
+        var Rr = box._R(), E = elScreen(s, SETS[s.set], u.on, t, true);
+        var k = Math.min(E.w * 0.8 / (Rr.x1 - Rr.x0), E.h * 0.76 / (Rr.y1 - Rr.y0));
+        var tx = E.x - k * (Rr.x0 + Rr.x1) / 2, ty = E.y - k * (Rr.y0 + Rr.y1) / 2;
+        box.style.transformOrigin = "0 0";
+        box.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + k + ")";
+      });
     });
     var flash = document.createElement("div"); flash.className = "crs-flash"; root.appendChild(flash);
     shots.forEach(function (s) { if (s.transition === "flash") { tl.fromTo(flash, { autoAlpha: 0.95 }, { autoAlpha: 0, duration: 0.3, immediateRender: false }, s.start); } });
@@ -1244,7 +1276,12 @@
       if (!s._cuts) {
         s._cuts = [];
         var lastCut = s.start;
-        if (s.end - s.start > 2.8) (s.words || []).forEach(function (w) { if (w.start - lastCut >= 1.9 && s.end - w.start >= 0.9) { s._cuts.push(w.start - 0.03); lastCut = w.start; } });
+        if (s.end - s.start > 2.8) (s.words || []).forEach(function (w) {
+          if (w.start - lastCut >= 1.9 && s.end - w.start >= 0.9) {
+            var at = w.start - 0.03, nb = BEAT ? Math.round(at / BEAT) * BEAT : at;
+            s._cuts.push(Math.abs(nb - at) < 0.14 ? nb : at); lastCut = w.start;
+          }
+        });
       }
       var ck = 0; for (var ci = 0; ci < s._cuts.length; ci++) if (tq >= s._cuts[ci]) ck = ci + 1;
       if (ck) {
@@ -1271,6 +1308,7 @@
         cam.x += (hash(j) - 0.5) * amp * 2; cam.y += (hash(j + 99) - 0.5) * amp * 2;
       }
       // Glide: on the same set, the camera travels from where the last shot ended instead of cutting.
+      if (BEAT) { var ph2 = (tq % (BEAT * 2)) / (BEAT * 2); cam.z *= 1 + 0.01 * Math.exp(-ph2 * 7); }
       if (!noGlide && si > 0 && s.transition === "glide" && shots[si - 1].set === s.set) {
         var pc = shotCam(shots[si - 1], set, s.start - 0.001, true), gl = clamp(sp(tq - s.start, SPR.soft), 0, 1);
         cam.x = pc.x + (cam.x - pc.x) * gl; cam.y = pc.y + (cam.y - pc.y) * gl; cam.z = pc.z + (cam.z - pc.z) * gl; cam.rot = pc.rot + (cam.rot - pc.rot) * gl;
@@ -1278,11 +1316,13 @@
       return cam;
     }
     /** Where a named element sits on screen in a shot at time t (centre and size of its drawing). */
-    function elScreen(shot, set, name, t) {
+    function elScreen(shot, set, name, t, withMotion) {
       var e = set.els[name], cam = shotCam(shot, set, t), ks = cam.sw / set.w, d = e.depth;
       var csx = cam.sw / 2, csy = cam.sh / 2, f = 0.35 + 0.65 * d, lx = csx + (cam.x - csx) * f, ly = csy + (cam.y - csy) * f, lz = 1 + (cam.z - 1) * (0.5 + 0.5 * d);
-      var vx = ((e.sp.x + e.sp.w / 2) * ks - lx) * lz, vy = ((e.sp.y + e.sp.h / 2) * ks - ly) * lz, r = cam.rot * Math.PI / 180;
-      return { x: W / 2 + vx * Math.cos(r) - vy * Math.sin(r), y: H / 2 + vx * Math.sin(r) + vy * Math.cos(r), w: e.sp.w * ks * lz, h: e.sp.h * ks * lz, rot: cam.rot, sp: e.sp };
+      var mdx = 0, mdy = 0, ms = 1;
+      if (withMotion && shot._runStart != null) { var tq3 = stepped(t), mm = elementMotion(e.sp, tq3, tq3 - shot._runStart, set.w, (RUNCUES[shot._run] || {})[name]); mdx = mm.dx; mdy = mm.dy; ms = mm.s; }
+      var vx = ((e.sp.x + e.sp.w / 2 + mdx) * ks - lx) * lz, vy = ((e.sp.y + e.sp.h / 2 + mdy) * ks - ly) * lz, r = cam.rot * Math.PI / 180;
+      return { x: W / 2 + vx * Math.cos(r) - vy * Math.sin(r), y: H / 2 + vx * Math.sin(r) + vy * Math.cos(r), w: e.sp.w * ks * lz * ms, h: e.sp.h * ks * lz * ms, rot: cam.rot, sp: e.sp };
     }
     /** The shared element travelling from its place in the last shot to its place in this one. */
     function drawFlight(ctx, s, set, name, t, tq) {
@@ -1321,7 +1361,9 @@
           if (flying && sp2.name && s._fly.indexOf(sp2.name) >= 0) return;
           // An element that flew in has already arrived: no second entrance.
           var cuesOf = sp2.name && s._fly.indexOf(sp2.name) >= 0 ? [s.start - 5].concat(runCues[sp2.name] || []) : sp2.name ? runCues[sp2.name] : null;
-          var m = elementMotion(sp2, tq, et, set.w, cuesOf);
+          if (s._heroes == null) { s._heroes = (s._cueT || []).map(function (q) { return q.el; }); if (s.camera && s.camera.target) s._heroes.push(s.camera.target); }
+          var calm = s._heroes.length && !(sp2.name && s._heroes.indexOf(sp2.name) >= 0) ? 0.3 : 1;
+          var m = elementMotion(sp2, tq, et, set.w, cuesOf, calm);
           ctx.save(); ctx.globalAlpha = (li > 0 ? clamp(build * 1.4, 0, 1) : 1) * clamp(m.a, 0, 1);
           ctx.translate((m.ox + m.dx) * ks, (m.oy + m.dy) * ks); ctx.rotate(m.rot * Math.PI / 180); ctx.scale(m.s, m.s); ctx.translate(-m.ox * ks, -m.oy * ks);
           drawImg(ctx, sp2.imgs[variant(tq + sp2.i * 0.13, sp2.imgs.length)], sp2.x * ks, sp2.y * ks, sp2.w * ks, sp2.h * ks);

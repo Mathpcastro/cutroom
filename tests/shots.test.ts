@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cleanShotPlan, cueTime, sanitizeSvg, shotFilmHtml, shotNarration, shotPlanRules } from "../src/shared/shots";
+import { MUSIC_TEMPO } from "../electron/core/compose-music";
+import { MUSIC_BPM, cleanShotPlan, cueTime, sanitizeSvg, shotFilmHtml, shotNarration, shotPlanRules } from "../src/shared/shots";
 
 const set = (inner: string, box = "0 0 1080 1920") => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}">${inner}</svg>`;
 
@@ -254,5 +255,19 @@ describe("word choreography", () => {
     expect(shot.cues).toEqual([{ el: "cartao", at: "Pix" }]);
     const words = [{ text: "Você", start: 0.2, end: 0.4 }, { text: "paga", start: 0.5, end: 0.7 }, { text: "por", start: 0.8, end: 0.9 }, { text: "Pix", start: 1, end: 1.3 }];
     expect(soundCues(plan, words, 3).cues).toContainEqual({ t: 1, kind: "pop", gain: 0.5 });
+  });
+});
+
+describe("music, hierarchy and interface inside elements", () => {
+  const svg = '<svg viewBox="0 0 1080 1920"><g data-depth="0"><rect width="1080" height="1920" fill="#123"/></g><g data-depth="1"><g data-el="celular" data-motion="float"><rect x="300" y="400" width="480" height="960"/></g></g></svg>';
+  it("knows the tempo the composer uses for each mood", () => {
+    expect(MUSIC_BPM).toEqual(MUSIC_TEMPO);
+  });
+  it("passes the beat to the engine when the film has music, and keeps ui.on", () => {
+    const { plan } = cleanShotPlan({ title: "t", music: { mood: "alegre" }, look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }], shots: [{ say: "oi", set: "a", ui: { kind: "chat", on: "celular", items: [{ label: "Oi" }] } }] });
+    expect(plan.shots[0].ui?.on).toBe("celular");
+    expect(shotFilmHtml({ plan, duration: 4, voiceDuration: 3 })).toContain("beat: { bpm: 112 }");
+    const { plan: quiet } = cleanShotPlan({ title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }], shots: [{ say: "oi", set: "a" }] });
+    expect(shotFilmHtml({ plan: quiet, duration: 4, voiceDuration: 3 })).not.toContain("beat:");
   });
 });
