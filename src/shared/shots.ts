@@ -266,12 +266,35 @@ export function cleanShotPlan(raw: unknown): { plan: ShotPlan; dropped: string[]
     .map((s) => {
       // An effect owns its part of the frame: the engine's own overlays there step aside.
       if (!s.effect) return s;
+      const def = EFFECTS[s.effect.name], fx = s.effect.vars;
+      // A line too long for the effect reads better as the engine's kinetic text.
+      if (def.fit && String(fx.text ?? "").length > def.fit) return { ...s, effect: undefined, ui: { kind: "reveal" as const, text: String(fx.text).slice(0, 90), items: [] } };
+      // The counter only lands on whole numbers: 4,9 goes to the engine's counter, which keeps the decimals.
+      if (s.effect.name === "count-up" && (!Number.isInteger(Number(fx.end ?? 0)) || !Number.isInteger(Number(fx.start ?? 0)))) {
+        return { ...s, effect: undefined, graphic: { kind: "stat" as const, value: Number(fx.end) || 0, from: Number(fx.start) || 0, prefix: typeof fx.prefix === "string" ? fx.prefix.slice(0, 6) : undefined, suffix: typeof fx.suffix === "string" ? fx.suffix.slice(0, 10) : undefined, items: [] } };
+      }
       const area = s.effect.area ?? EFFECTS[s.effect.name].area ?? "center";
       if (area === "full" || area === "center") return { ...s, ui: undefined, graphic: undefined, proof: undefined, proofStyle: undefined, text: s.text?.kind === "sign" ? s.text : undefined };
       if (area === "top") return { ...s, graphic: undefined, text: undefined, ui: s.ui?.kind === "island" ? undefined : s.ui };
       return s;
     });
   return { plan: { ...plan, sets, props, shots }, dropped };
+}
+
+/**
+ * Effects made for landscape do not read in a vertical film: there they become the engine's kinetic
+ * text with the effect's own words (or are dropped when they carry no text).
+ */
+export function adaptEffects(plan: ShotPlan, width: number, height: number): ShotPlan {
+  if (width >= height) return plan;
+  return {
+    ...plan,
+    shots: plan.shots.map((s) => {
+      if (!s.effect || !EFFECTS[s.effect.name].wide) return s;
+      const words = Object.values(s.effect.vars).find((v): v is string => typeof v === "string" && /[a-zA-ZÀ-ÿ]/.test(v));
+      return { ...s, effect: undefined, ...(words && !s.ui ? { ui: { kind: "reveal" as const, text: words.slice(0, 90), items: [] } } : {}) };
+    }),
+  };
 }
 
 /** The narration the voice reads: every shot's line, in order. */
@@ -392,8 +415,11 @@ const rgba = (hex: string, a: number) => {
   const n = m ? parseInt(m[1], 16) : 0xffffff;
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 };
-/** Paper colour of the panel behind an effect, slightly see-through so the scene still shows. */
-export const effectPanel = (plan: ShotPlan) => rgba(plan.look.paper ?? LOOKS[plan.look.preset].paper, 0.9);
+/** Card behind an effect: white on light looks, the paper colour on dark ones, slightly see-through. */
+export const effectPanel = (plan: ShotPlan) => {
+  const paper = plan.look.paper ?? LOOKS[plan.look.preset].paper;
+  return hexLum(paper) > 0.6 ? "rgba(255,255,255,0.95)" : rgba(paper, 0.92);
+};
 /** The HyperFrames design tokens the registry effects read, from the look. */
 function effectTokens(plan: ShotPlan) {
   const look = plan.look, base = LOOKS[look.preset];

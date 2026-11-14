@@ -16,6 +16,8 @@ export interface EffectDef {
   /** Timing variable that takes one cue per item of `list` (seconds from mount start). */
   cues?: string;
   list?: string;
+  /** Longest `text` that still reads well; a longer line falls back to the engine's kinetic text. */
+  fit?: number;
   /** Small in a vertical frame: offered and mounted only in landscape films. */
   wide?: boolean;
   /** Group shown in the prompt. */
@@ -28,24 +30,24 @@ export type EffectArea = (typeof EFFECT_AREAS)[number];
 const T = "frase curta (até 7 palavras)";
 export const EFFECTS: Record<string, EffectDef> = {
   /* ---------------------------------------------------------------- kinetic text */
-  "headline-slam": { group: "texto", use: "manchete pesada que bate na tela e assenta", vars: { text: "até 6 palavras", accent_word_index: "índice (0, 1, 2…) da palavra colorida" } },
-  "char-slam-explode": { group: "texto", use: "letras espalhadas que se juntam com impacto", vars: { text: "1 a 3 palavras" } },
+  "headline-slam": { group: "texto", wide: true, fit: 24, use: "manchete pesada que bate na tela e assenta", vars: { text: "até 6 palavras", accent_word_index: "índice (0, 1, 2…) da palavra colorida" } },
+  "char-slam-explode": { group: "texto", fit: 12, use: "letras espalhadas que se juntam com impacto", vars: { text: "1 a 3 palavras" } },
   "kinetic-type-swap": { group: "texto", use: "frase fixa com uma palavra que vai trocando", vars: { prefix: "texto fixo antes", options: "palavras que giram, separadas por vírgula", suffix: "texto fixo depois (opcional)" }, cues: "cues", list: "options" },
   "line-swap": { group: "texto", use: "uma frase sai e outra entra, com sublinhado na palavra-chave (quebra de crença)", vars: { line_a: "frase que sai", line_b: "frase que entra", underline_word: "palavra de line_b sublinhada" } },
   "marker-highlight": { group: "texto", use: "frase com marca-texto desenhado à mão na palavra-chave", vars: { text: T, emphasis_word: "palavra marcada", style: "highlight | circle | underline | scribble" } },
   "vox-annotate": { group: "texto", use: "frase com a palavra-chave circulada e uma anotação ao lado (estilo explicativo)", vars: { text: T, keyword: "palavra marcada", note: "anotação curta" } },
-  "per-word-rise": { group: "texto", use: "palavras sobem do desfoque para o nítido, elegante", vars: { text: T } },
-  "particle-text-dissolve": { group: "texto", use: "texto que se forma a partir de partículas", vars: { text: "1 a 4 palavras" } },
-  "scramble-reveal": { group: "texto", use: "texto que se decifra letra a letra, estilo hacker", vars: { text: "1 a 4 palavras" } },
-  "text-shimmer": { group: "texto", use: "título com um brilho que atravessa", vars: { text: "1 a 5 palavras" } },
-  "shutter-slam": { group: "texto", use: "uma palavra arremessada com borrão de movimento", vars: { text: "uma palavra" } },
-  "push-in": { group: "texto", use: "manchete com a câmera aproximando devagar (momento sério)", vars: { text: T } },
-  "gloss-sweep": { group: "texto", use: "cartão que assenta com um brilho de vitrine", vars: { text: "1 a 4 palavras" } },
-  "beat-accent": { group: "texto", use: "batida de impacto com flash, para a virada", vars: { text: "1 a 3 palavras" } },
+  "per-word-rise": { group: "texto", fit: 18, use: "palavras sobem do desfoque para o nítido, elegante", vars: { text: T } },
+  "particle-text-dissolve": { group: "texto", fit: 14, use: "texto que se forma a partir de partículas", vars: { text: "1 a 4 palavras" } },
+  "scramble-reveal": { group: "texto", fit: 16, use: "texto que se decifra letra a letra, estilo hacker", vars: { text: "1 a 4 palavras" } },
+  "text-shimmer": { group: "texto", fit: 18, use: "título com um brilho que atravessa", vars: { text: "1 a 5 palavras" } },
+  "shutter-slam": { group: "texto", fit: 10, use: "uma palavra arremessada com borrão de movimento", vars: { text: "uma palavra" } },
+  "push-in": { group: "texto", fit: 22, use: "manchete com a câmera aproximando devagar (momento sério)", vars: { text: T } },
+  "gloss-sweep": { group: "texto", fit: 14, use: "cartão que assenta com um brilho de vitrine", vars: { text: "1 a 4 palavras" } },
+  "beat-accent": { group: "texto", fit: 12, use: "batida de impacto com flash, para a virada", vars: { text: "1 a 3 palavras" } },
   "titlecard-calm": { group: "texto", use: "cartão de título calmo com sobretítulo (capítulo)", vars: { headline: "título", kicker: "sobretítulo curto" } },
   "pull-back-reveal": { group: "texto", wide: true, use: "um número em close e a câmera recua revelando a manchete", vars: { detail_text: "número ou dado curto", headline: "manchete" } },
   /* ---------------------------------------------------------------- data and proof */
-  "count-up": { group: "dados", use: "contador grande que sobe até o número", vars: { start: "número inicial", end: "número final", prefix: "antes (ex.: R$ )", suffix: "depois (ex.: %, k, vendas)" } },
+  "count-up": { group: "dados", use: "contador grande que sobe até o número", vars: { start: "número inicial (inteiro)", end: "número final (inteiro; com vírgula use graphic stat)", prefix: "antes (ex.: R$ )", suffix: "depois (ex.: %, k, vendas)" } },
   "chart-story": { group: "dados", use: "gráfico que se constrói com os dados", vars: { type: "bars | line | donut | progress", data: "números separados por vírgula", labels: "rótulos separados por vírgula", emphasize: "índice do dado em destaque", unit: "sufixo dos valores" } },
   "decline-chart": { group: "dados", use: "linha descendo (custo, tempo ou trabalho caindo)", vars: { label: "o que cai", start_value: "número inicial", end_value: "número final" } },
   "conic-progress-ring": { group: "dados", use: "anel de progresso enchendo até a porcentagem", vars: { progress: "0 a 100", label: "texto do centro (ex.: 87%)" } },
@@ -145,7 +147,7 @@ export function effectMounts(
     }
     const box = effectBox(fx.area ?? def.area ?? "center", o.width, o.height);
     const round = fx.area === "full" || (!fx.area && def.area === "full") ? 0 : 36;
-    const style = `position:absolute;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;z-index:36;--bg:${o.panel};border-radius:${round}px;overflow:hidden`;
+    const style = `position:absolute;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;z-index:36;--bg:${o.panel};border-radius:${round}px;overflow:hidden${round ? `;background:${o.panel};box-shadow:0 24px 70px rgba(0,0,0,.18)` : ""}`;
     out.push(
       `<div id="fx-${i + 1}-${fx.name}" class="clip" data-composition-id="${fx.name}" data-composition-src="compositions/components/${fx.name}.html" data-start="${start.toFixed(2)}" data-duration="${dur.toFixed(2)}" data-track-index="${8 + (i % 4)}" data-variable-values='${attr(JSON.stringify(vars))}' style="${style}"></div>`,
     );

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { EFFECTS, effectBox, effectMounts, effectsPrompt, shotEffectSchema } from "../src/shared/effects";
-import { cleanShotPlan, shotFilmHtml, shotPlanRules } from "../src/shared/shots";
+import { adaptEffects, cleanShotPlan, shotFilmHtml, shotPlanRules } from "../src/shared/shots";
 
 const REG = join(__dirname, "..", "resources", "film-kit", "hf-registry", "components");
 const declared = (name: string) => {
@@ -24,7 +24,7 @@ describe("effect catalogue", () => {
 
   it("goes into the shot rules", () => {
     const rules = shotPlanRules({ width: 1080, height: 1920, story: false, cast: [] });
-    expect(rules).toContain("headline-slam");
+    expect(rules).toContain("marker-highlight");
     expect(rules).toContain(effectsPrompt().split("\n")[1].trim());
   });
 });
@@ -52,6 +52,33 @@ describe("shot effects", () => {
     expect(plan.shots[1].effect).toBeUndefined();
     expect(plan.shots[1].ui?.kind).toBe("reveal");
     expect(plan.shots[2].ui?.kind).toBe("reveal");
+  });
+
+  it("falls back to the engine when a line is too long or a number has decimals", () => {
+    const svg = '<svg viewBox="0 0 1080 1920"><g data-depth="0"><rect width="1080" height="1920" fill="#123"/></g></svg>';
+    const { plan } = cleanShotPlan({
+      title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }],
+      shots: [
+        { say: "a", set: "a", effect: { name: "per-word-rise", vars: { text: "Chega de procurar e não achar" } } },
+        { say: "b", set: "a", effect: { name: "per-word-rise", vars: { text: "Sem gravar" } } },
+        { say: "c", set: "a", effect: { name: "count-up", vars: { start: 0, end: 4.9 } } },
+        { say: "d", set: "a", effect: { name: "count-up", vars: { start: 0, end: 1200, suffix: " pedidos" } } },
+      ],
+    });
+    expect(plan.shots[0].effect).toBeUndefined();
+    expect(plan.shots[0].ui).toMatchObject({ kind: "reveal", text: "Chega de procurar e não achar" });
+    expect(plan.shots[1].effect?.name).toBe("per-word-rise");
+    expect(plan.shots[2].graphic).toMatchObject({ kind: "stat", value: 4.9 });
+    expect(plan.shots[3].effect?.name).toBe("count-up");
+  });
+
+  it("a landscape-only effect becomes kinetic text in a vertical film", () => {
+    const svg = '<svg viewBox="0 0 1080 1920"><g data-depth="0"><rect width="1080" height="1920" fill="#123"/></g></svg>';
+    const { plan } = cleanShotPlan({ title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }], shots: [{ say: "a", set: "a", effect: { name: "headline-slam", vars: { text: "Bonita ou barata?" } } }] });
+    expect(adaptEffects(plan, 1920, 1080).shots[0].effect?.name).toBe("headline-slam");
+    const tall = adaptEffects(plan, 1080, 1920).shots[0];
+    expect(tall.effect).toBeUndefined();
+    expect(tall.ui).toMatchObject({ kind: "reveal", text: "Bonita ou barata?" });
   });
 
   it("mounts each effect for its shot, with cues spread across it", () => {

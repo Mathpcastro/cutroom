@@ -4,7 +4,7 @@ import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
 import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
-import { cleanShotPlan, shotFilmHtml, type ShotPlan } from "../src/shared/shots";
+import { adaptEffects, cleanShotPlan, shotFilmHtml, type ShotPlan } from "../src/shared/shots";
 import { readCreationPilot, writeCreationPilot } from "./core/creation-pilot";
 import { readProductPage } from "./core/product-page";
 import {
@@ -259,7 +259,7 @@ async function generateEpisode(args: unknown) {
   if (a.direction) {
     try {
       const { plan } = cleanShotPlan(a.direction);
-      if (plan.shots.length === lines.length) direction = plan;
+      if (plan.shots.length === lines.length) direction = adaptEffects(plan, 1080, 1920);
     } catch {
       direction = undefined;
     }

@@ -1,5 +1,5 @@
 import type { StudioProfile } from "../../shared/profile";
-import { ASPECTS, shotFilmHtml, shotNarration, type ShotPlan } from "../../shared/shots";
+import { ASPECTS, adaptEffects, shotFilmHtml, shotNarration, type ShotPlan } from "../../shared/shots";
 import { planShotFilm } from "./salesReels";
 import { getStudioLanguage, t } from "./studioLanguage";
 import type { ReelDraft, ReelReviewData, ReelSession } from "./ReelCreator";
@@ -79,7 +79,7 @@ export async function generateShotReel(profile: StudioProfile, draft: ReelDraft,
   const presenter = withAvatar ? avatarName(profile) : undefined;
   const story = Boolean(draft.narrative);
   setProgress(t("Escrevendo o roteiro e desenhando as cenas…"));
-  const { plan } = await planShotFilm(profile, {
+  const { plan: planned } = await planShotFilm(profile, {
     brief: draft.brief ?? "",
     story,
     language,
@@ -91,6 +91,8 @@ export async function generateShotReel(profile: StudioProfile, draft: ReelDraft,
     aspect: draft.aspect,
     characters: draft.characters,
   });
+  const [frameW, frameH] = ASPECTS[draft.aspect ?? "9:16"];
+  const plan = adaptEffects(planned, frameW, frameH);
   const spoken = shotNarration(plan);
   if (!spoken.trim()) throw new Error(t("A IA não escreveu a narração. Tente gerar novamente."));
   const created = await api<CreatedFilm>("create_film", { name: plan.title, format: "desenhado", aspect: draft.aspect ?? "9:16", ...(draft.avatar ? { avatar: draft.avatar } : {}) });

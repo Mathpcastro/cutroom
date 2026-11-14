@@ -13,7 +13,7 @@ import { Studio, probeAudio } from "./studio";
 import { MUSIC_MOODS, writeComposedMusic } from "./compose-music";
 import { readFilmWords, writeFilmSoundtrack } from "./compose-sfx";
 import { effectMounts } from "../../src/shared/effects";
-import { cleanShotPlan, effectPanel, timeShots } from "../../src/shared/shots";
+import { adaptEffects, cleanShotPlan, effectPanel, timeShots } from "../../src/shared/shots";
 import type { AvatarStore } from "./avatar-store";
 import type { BrandStore } from "./brand";
 
@@ -188,7 +188,7 @@ export class FilmStudio {
     const a = z.object({ film, seconds: z.number().min(1).max(600), width: z.number().int().min(240).max(4096), height: z.number().int().min(240).max(4096) }).strict().parse(args);
     await this.host.films.meta(a.film);
     const dir = this.host.films.dir(a.film);
-    const { plan } = cleanShotPlan(JSON.parse(await readFile(join(dir, "plano.json"), "utf8")));
+    const plan = adaptEffects(cleanShotPlan(JSON.parse(await readFile(join(dir, "plano.json"), "utf8"))).plan, a.width, a.height);
     const used = [...new Set(plan.shots.flatMap((s) => (s.effect ? [s.effect.name] : [])))];
     const ok = new Set<string>();
     for (const name of used) {
