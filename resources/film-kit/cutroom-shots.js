@@ -28,6 +28,7 @@
   function hash(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
   function nrm(s) { return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, ""); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function lum(h) { var c = hexRgb(h); return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255; }
   function hexRgb(h) { var n = parseInt(String(h || "#000").replace("#", "").replace(/^(.)(.)(.)$/, "$1$1$2$2$3$3"), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 
   /* ------------------------------------------------------------------ looks */
@@ -40,11 +41,13 @@
     guache: { fps: 12, boil: 4, boilFreq: 0.015, soften: 1.8, paper: "paper", paperAlpha: 0.5, filter: "saturate(1.04)", font: "Fredoka", text: "paper", outline: "ink", glow: false, vignette: 0.12, avatar: "soft" },
     retro: { fps: 12, boil: 2, boilFreq: 0.02, soften: 1.5, grain: 0.18, filter: "sepia(.38) saturate(.78) contrast(1.06)", font: "InstrumentSerif", text: "serif", outline: "ink", glow: false, vignette: 0.55, weave: 2.2, scratches: true, avatar: "soft" },
     vetor: { fps: 30, boil: 0, filter: "none", font: "Fredoka", text: "clean", outline: "accent", glow: false, vignette: 0.14, avatar: "crisp" },
+    rabisco: { fps: 12, boil: 2.5, boilFreq: 0.03, paper: "grid", paperAlpha: 1, filter: "none", font: "Caveat", text: "hand", outline: "ink", glow: false, vignette: 0, avatar: "crisp", paperDefault: "#FDFDFC", stick: true },
+    tv: { fps: 15, boil: 0, crt: true, filter: "saturate(1.15) contrast(1.12)", grain: 0.1, font: "JetBrains", text: "mono", outline: "ink", glow: false, vignette: 0.62, avatar: "crisp" },
     neon: { fps: 30, boil: 0, filter: "saturate(1.25)", glow: 0.38, font: "Montserrat", text: "neon", outline: "accent", vignette: 0.4, avatar: "crisp" },
   };
   var FONTS = {
     Silkscreen: "'Silkscreen', monospace", Fredoka: "'Fredoka', sans-serif", InstrumentSerif: "'Instrument Serif', serif",
-    Caveat: "'Caveat', cursive", Anton: "'Anton', sans-serif", Montserrat: "'Montserrat', sans-serif", Instrument: "'Instrument Sans', sans-serif",
+    Caveat: "'Caveat', cursive", JetBrains: "'JetBrains Mono', monospace", Anton: "'Anton', sans-serif", Montserrat: "'Montserrat', sans-serif", Instrument: "'Instrument Sans', sans-serif",
   };
 
   /* ------------------------------------------------------------------ kit (recolourable SVG symbols) */
@@ -117,6 +120,18 @@
       c = document.createElement("canvas"); c.width = w; c.height = h;
       var hx = c.getContext("2d"); hx.fillStyle = "#FFFFFF"; hx.fillRect(0, 0, w, h); hx.fillStyle = "#000";
       for (var yy = 0; yy < h; yy += 9) for (var xx = (yy / 9) % 2 ? 4.5 : 0; xx < w; xx += 9) { var rr = 1.1 + 1.3 * (0.5 + 0.5 * Math.sin(xx * 0.004 + yy * 0.003)); hx.beginPath(); hx.arc(xx, yy, rr, 0, Math.PI * 2); hx.fill(); }
+    } else if (kind === "grid") {
+      // Warm near-white paper with an extremely faint square grid (hand-drawn notebook).
+      c = document.createElement("canvas"); c.width = W; c.height = H;
+      var gx = c.getContext("2d"); gx.fillStyle = "#FFFFFF"; gx.fillRect(0, 0, W, H);
+      gx.strokeStyle = "rgba(76,90,105,.07)"; gx.lineWidth = 1.2;
+      var step = Math.round(Math.min(W, H) / 17);
+      for (var gxx = step; gxx < W; gxx += step) { gx.beginPath(); gx.moveTo(gxx + 0.5, 0); gx.lineTo(gxx + 0.5, H); gx.stroke(); }
+      for (var gyy = step; gyy < H; gyy += step) { gx.beginPath(); gx.moveTo(0, gyy + 0.5); gx.lineTo(W, gyy + 0.5); gx.stroke(); }
+    } else if (kind === "scan") {
+      c = document.createElement("canvas"); c.width = W; c.height = H;
+      var sxx = c.getContext("2d"); sxx.fillStyle = "#FFFFFF"; sxx.fillRect(0, 0, W, H); sxx.fillStyle = "rgba(0,0,0,.28)";
+      for (var sy = 0; sy < H; sy += 4) sxx.fillRect(0, sy, W, 2);
     } else if (/^grain/.test(kind)) {
       var seed = +kind.slice(5) || 1;
       c = noiseCanvas(Math.round(w / 2), Math.round(h / 2), 97 + seed * 13, function (r) { var v = r() * 255; return [v, v, v, 255]; });
@@ -199,7 +214,7 @@
     var sw = set.w * (H / set.h), sh = H, k = H / set.h;
     var c = shot.camera || {}, move = c.move || "wide";
     var castX = 0, castY = 0, n = 0, tall = 0;
-    (shot.cast || []).forEach(function (a) { castX += a.x * k; castY += a.y * k; tall = Math.max(tall, (SIZE[a.size] || SIZE.m) * BODY * k); n++; });
+    (shot.cast || []).forEach(function (a) { castX += a.x * k; castY += a.y * k; tall = Math.max(tall, (SIZE[a.size] || SIZE.m) * BODY * H / 1920); n++; });
     var fx = c.focus ? c.focus[0] * k : n ? castX / n : sw / 2;
     var fy = c.focus ? c.focus[1] * k : n ? castY / n - tall * (move === "close" ? 0.72 : 0.42) : sh * 0.55;
     var e = inOut(clamp(p, 0, 1)), z = 1, x = fx, y = fy, rot = 0;
@@ -288,6 +303,112 @@
     ctx.restore();
   }
 
+
+  /* ------------------------------------------------------------------ stick figures (drawn in code) */
+  // Angles in degrees from straight down; positive = outward from the body. Forearms/shins are absolute.
+  var STICK_POSES = {
+    neutral: { aL: [10, 4], aR: [10, 4], lL: [6, 0], lR: [6, 0], lean: 0 },
+    explaining: { aL: [12, 6], aR: [48, 120], lL: [7, 0], lR: [7, 0], lean: -2 },
+    pointing: { aL: [10, 4], aR: [92, 92], lL: [8, 0], lR: [5, 0], lean: -4 },
+    surprised: { aL: [140, 172], aR: [140, 172], lL: [12, 4], lR: [12, 4], lean: 3 },
+    celebrating: { aL: [150, 128], aR: [150, 128], lL: [16, -8], lR: [16, -8], lean: 0 },
+    thinking: { aL: [12, 6], aR: [30, 200], lL: [6, 0], lR: [6, 0], lean: 2 },
+  };
+  var STICK_HAIR = ["none", "spiky", "ponytail", "cap", "bun", "long"];
+  function stickActor(opts) {
+    var A = { shots: [], acts: [], talks: [], enters: [], hops: [], ink: opts.ink || "#1B1A22", fill: opts.fill || "#FFFFFF", accent: opts.accent || "#E63946", hair: opts.hair || "none", speaks: opts.speaks, jitter: opts.jitter || 0 };
+    A.act = function (t, pose, expression) { A.acts.push({ t: t, pose: pose, expression: expression }); A.acts.sort(function (a, b) { return a.t - b.t; }); return A; };
+    A.talk = function (from, to, poses) { A.talks.push({ from: from, to: to, poses: poses || ["explaining", "neutral"] }); return A; };
+    A.enter = function (t, kind) { A.enters.push({ t: t, kind: kind || "pop" }); return A; };
+    A.hop = function (t, h) { A.hops.push({ t: t, h: h || 18 }); return A; };
+    A.shot = function () { return A; };
+    function latestAct(t, key) { var v = null, at = 0; A.acts.forEach(function (a) { if (a.t <= t && a[key]) { v = a[key]; at = a.t; } }); return { v: v, t: at }; }
+    function poseAt(t) {
+      var base = latestAct(t, "pose"), pose = base.v || "neutral", since = base.t;
+      for (var i = 0; i < A.talks.length; i++) {
+        var k = A.talks[i]; if (t < k.from || t > k.to) continue;
+        var n = 0; (T.words || []).forEach(function (w) { if (w.start >= k.from && w.start <= t) n++; });
+        if (n) { var g = Math.floor((n - 1) / 3); pose = k.poses[g % k.poses.length]; since = Math.max(since, k.from + g * 0.6); }
+      }
+      return { pose: STICK_POSES[pose] ? pose : "neutral", since: since };
+    }
+    function mix(a, b, p) { return a + (b - a) * p; }
+    function joints(t) {
+      var cur = poseAt(t), prev = poseAt(Math.max(0, cur.since - 0.01)), p = clamp((t - cur.since) / 0.22, 0, 1), e = p * p * (3 - 2 * p);
+      var A0 = STICK_POSES[prev.pose], B0 = STICK_POSES[cur.pose], out = {};
+      ["aL", "aR", "lL", "lR"].forEach(function (k) { out[k] = [mix(A0[k][0], B0[k][0], e), mix(A0[k][1], B0[k][1], e)]; });
+      out.lean = mix(A0.lean, B0.lean, e);
+      return out;
+    }
+    function blink(t) { var r = rng(11), at = 0.6; while (at < t + 1) { if (t >= at && t < at + 0.1) return true; at += 2.4 + r() * 2.2; } return false; }
+    A.draw = function (ctx, t) {
+      var sh = A.shots[0] || { x: 540, y: 1500, scale: 5.5 }, h = sh.scale * BODY * 0.82, x = sh.x, y = sh.y, alpha = 1, dx = 0, sy = 1;
+      var firstEnter = A.enters.length ? Math.min.apply(null, A.enters.map(function (e) { return e.t; })) : -1;
+      if (firstEnter >= 0 && t < firstEnter) return;
+      A.enters.forEach(function (en) { var q = (t - en.t) / 0.45; if (q < 0 || q >= 1) return; if (en.kind === "left" || en.kind === "right") dx += (en.kind === "left" ? -1 : 1) * (1 - q * q * (3 - 2 * q)) * h * 1.6; else if (en.kind === "drop") y -= (1 - q) * (1 - q) * h * 1.8; else sy *= 0.3 + 0.7 * q + Math.sin(q * Math.PI) * 0.12; });
+      A.hops.forEach(function (hp) { var q = (t - hp.t) / 0.42; if (q >= 0 && q < 1) y -= Math.sin(q * Math.PI) * hp.h * h / 120; });
+      var speaking = !A.speaks || A.speaks(t), lv = speaking ? CRM.level(t) : 0;
+      y -= lv * h * 0.012 + Math.sin(t * 2.1) * h * 0.004;
+      var J = joints(t), f = Math.floor(t * 12);
+      function jit(n) { return A.jitter ? (hash(f * 7.3 + n) - 0.5) * h * A.jitter : 0; }
+      function dir(a, side) { var r = a * Math.PI / 180; return [side * Math.sin(r), Math.cos(r)]; }
+      ctx.save();
+      ctx.globalAlpha *= alpha;
+      ctx.translate(x + dx, y); ctx.scale(1, sy);
+      // Shadow.
+      ctx.fillStyle = "rgba(0,0,0,.16)"; ctx.beginPath(); ctx.ellipse(0, 0, h * 0.2, h * 0.025, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = A.ink; ctx.lineWidth = Math.max(2, h * 0.03);
+      var hip = [0, -0.42 * h], lean = J.lean * Math.PI / 180;
+      var sho = [hip[0] + Math.sin(lean) * 0.26 * h, hip[1] - Math.cos(lean) * 0.26 * h];
+      var neck = [sho[0] + Math.sin(lean) * 0.06 * h, sho[1] - Math.cos(lean) * 0.06 * h];
+      var hc = [neck[0] + Math.sin(lean) * 0.12 * h, neck[1] - Math.cos(lean) * 0.12 * h], hr = 0.12 * h;
+      function limb(start, a, side, l1, l2, n) {
+        var d1 = dir(a[0], side), d2 = dir(a[1], side);
+        var mid = [start[0] + d1[0] * l1 + jit(n), start[1] + d1[1] * l1 + jit(n + 1)], end = [mid[0] + d2[0] * l2 + jit(n + 2), mid[1] + d2[1] * l2 + jit(n + 3)];
+        ctx.beginPath(); ctx.moveTo(start[0], start[1]); ctx.lineTo(mid[0], mid[1]); ctx.lineTo(end[0], end[1]); ctx.stroke();
+        return end;
+      }
+      // Legs, torso, arms.
+      var fL = limb(hip, J.lL, -1, 0.22 * h, 0.2 * h, 1), fR = limb(hip, J.lR, 1, 0.22 * h, 0.2 * h, 5);
+      ctx.fillStyle = A.ink;
+      [fL, fR].forEach(function (ft, i) { ctx.beginPath(); ctx.ellipse(ft[0] + (i ? 1 : -1) * h * 0.02, ft[1], h * 0.035, h * 0.016, 0, 0, Math.PI * 2); ctx.fill(); });
+      ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(neck[0] + jit(9), neck[1]); ctx.stroke();
+      var hL = limb(sho, J.aL, -1, 0.19 * h, 0.17 * h, 11), hR = limb(sho, J.aR, 1, 0.19 * h, 0.17 * h, 15);
+      [hL, hR].forEach(function (hd) { ctx.beginPath(); ctx.arc(hd[0], hd[1], h * 0.022, 0, Math.PI * 2); ctx.fill(); });
+      // Scarf in the character colour.
+      ctx.strokeStyle = A.accent; ctx.lineWidth = Math.max(3, h * 0.04);
+      ctx.beginPath(); ctx.moveTo(neck[0] - h * 0.05, neck[1] + h * 0.01); ctx.lineTo(neck[0] + h * 0.05, neck[1] + h * 0.01); ctx.lineTo(neck[0] + h * 0.07, neck[1] + h * 0.08); ctx.stroke();
+      ctx.strokeStyle = A.ink; ctx.lineWidth = Math.max(2, h * 0.03);
+      // Hair behind the head.
+      ctx.fillStyle = A.ink;
+      if (A.hair === "long") { ctx.beginPath(); ctx.moveTo(hc[0] - hr * 1.05, hc[1]); ctx.quadraticCurveTo(hc[0] - hr * 1.2, hc[1] + hr * 1.6, hc[0] - hr * 0.6, hc[1] + hr * 1.7); ctx.lineTo(hc[0] + hr * 0.6, hc[1] + hr * 1.7); ctx.quadraticCurveTo(hc[0] + hr * 1.2, hc[1] + hr * 1.6, hc[0] + hr * 1.05, hc[1]); ctx.fill(); }
+      if (A.hair === "ponytail") { ctx.beginPath(); ctx.ellipse(hc[0] + hr * 1.15, hc[1] - hr * 0.2, hr * 0.32, hr * 0.62, -0.5, 0, Math.PI * 2); ctx.fill(); }
+      if (A.hair === "bun") { ctx.beginPath(); ctx.arc(hc[0], hc[1] - hr * 1.15, hr * 0.38, 0, Math.PI * 2); ctx.fill(); }
+      // Head.
+      ctx.fillStyle = A.fill; ctx.beginPath(); ctx.arc(hc[0], hc[1], hr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      if (A.hair === "spiky") { ctx.beginPath(); for (var k2 = -2; k2 <= 2; k2++) { var a2 = -Math.PI / 2 + k2 * 0.32; ctx.moveTo(hc[0] + Math.cos(a2) * hr, hc[1] + Math.sin(a2) * hr); ctx.lineTo(hc[0] + Math.cos(a2) * hr * 1.35, hc[1] + Math.sin(a2) * hr * 1.35); } ctx.stroke(); }
+      if (A.hair === "cap") { ctx.fillStyle = A.accent; ctx.beginPath(); ctx.arc(hc[0], hc[1] - hr * 0.1, hr * 1.02, Math.PI, 0); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(hc[0], hc[1] - hr * 0.12); ctx.lineTo(hc[0] + hr * 1.55, hc[1] - hr * 0.05); ctx.stroke(); }
+      if (A.hair === "long" || A.hair === "ponytail" || A.hair === "bun") { ctx.fillStyle = A.ink; ctx.beginPath(); ctx.arc(hc[0], hc[1] - hr * 0.05, hr * 1.02, Math.PI * 1.05, Math.PI * 1.95); ctx.quadraticCurveTo(hc[0], hc[1] - hr * 0.35, hc[0] - hr * 0.98, hc[1] - hr * 0.25); ctx.fill(); }
+      // Face: eyes, brows, mouth.
+      var expr = latestAct(t, "expression").v || "neutral", closed = blink(t);
+      ctx.fillStyle = A.ink; ctx.strokeStyle = A.ink; ctx.lineWidth = Math.max(1.5, h * 0.016);
+      [-1, 1].forEach(function (sd) {
+        var ex = hc[0] + sd * hr * 0.38, ey = hc[1] - hr * 0.08;
+        if (closed) { ctx.beginPath(); ctx.moveTo(ex - hr * 0.1, ey); ctx.lineTo(ex + hr * 0.1, ey); ctx.stroke(); }
+        else { ctx.beginPath(); ctx.ellipse(ex, ey, hr * 0.085, hr * (expr === "surprised" ? 0.15 : 0.12), 0, 0, Math.PI * 2); ctx.fill(); }
+        var by = ey - hr * (expr === "surprised" ? 0.36 : 0.27), tilt = expr === "serious" ? sd * 0.1 : expr === "thinking" && sd > 0 ? -0.12 : expr === "happy" ? -0.04 : 0;
+        ctx.beginPath(); ctx.moveTo(ex - hr * 0.14, by + tilt * hr * -sd); ctx.lineTo(ex + hr * 0.14, by + tilt * hr * sd); ctx.stroke();
+      });
+      var my = hc[1] + hr * 0.45, mouth = speaking ? CRM.mouthAt(t) : "X", open = { X: 0, A: 0.05, B: 0.14, C: 0.22, D: 0.3, E: 0.18, F: 0.1 }[mouth] || 0;
+      if (open > 0) { ctx.beginPath(); ctx.ellipse(hc[0], my, hr * (0.18 + open * 0.3), hr * open, 0, 0, Math.PI * 2); ctx.fill(); }
+      else if (expr === "surprised") { ctx.beginPath(); ctx.ellipse(hc[0], my, hr * 0.1, hr * 0.13, 0, 0, Math.PI * 2); ctx.stroke(); }
+      else if (expr === "serious" || expr === "thinking") { ctx.beginPath(); ctx.moveTo(hc[0] - hr * 0.18, my); ctx.lineTo(hc[0] + hr * (expr === "thinking" ? 0.08 : 0.18), my + (expr === "thinking" ? hr * 0.04 : 0)); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.arc(hc[0], my - hr * 0.14, hr * (expr === "happy" || expr === "confident" ? 0.26 : 0.18), Math.PI * 0.18, Math.PI * 0.82); ctx.stroke(); }
+      ctx.restore();
+    };
+    return A;
+  }
+
   /* ------------------------------------------------------------------ the film */
   var CRS = { looks: LOOKS, kit: KIT };
 
@@ -297,7 +418,7 @@
     for (var key in base) look[key] = base[key];
     look.preset = LOOKS[spec.preset] ? spec.preset : "vetor";
     look.palette = (spec.palette || []).filter(function (c) { return /^#[0-9a-f]{3,6}$/i.test(c); });
-    look.paperColor = /^#[0-9a-f]{6}$/i.test(spec.paper || "") ? spec.paper : null;
+    look.paperColor = /^#[0-9a-f]{6}$/i.test(spec.paper || "") ? spec.paper : base.paperDefault || null;
     look.inkColor = /^#[0-9a-f]{6}$/i.test(spec.ink || "") ? spec.ink : "#1B1A22";
     look.accent = /^#[0-9a-f]{6}$/i.test(spec.accent || "") ? spec.accent : look.palette[2] || "#FFD23F";
     if (typeof spec.boil === "number") look.boil = clamp(spec.boil, 0, 16);
@@ -353,6 +474,7 @@
     });
 
     var ink = look.inkColor, accent = look.accent, font = FONTS[look.font] || FONTS.Fredoka;
+    var lightPaper = !!look.paperColor && lum(look.paperColor) > 0.62;
     root.style.background = look.paperColor || "#141318";
 
     // DOM: display canvas, text layer, flash.
@@ -370,8 +492,8 @@
       ".crs-bub b{display:block;margin-bottom:8px;font-size:.55em;letter-spacing:2px;text-transform:uppercase;color:" + (look.palette[0] || accent) + "}" +
       ".crs-bub .w{display:inline-block}.crs-bub .w.on{color:" + ink + "}.crs-bub .w{color:" + ink + "99}" +
       ".crs-bub::after{content:'';position:absolute;bottom:-38px;left:var(--tail,90px);border:20px solid transparent;border-top:26px solid " + ink + "}" +
-      ".crs-title{left:60px;right:60px;top:" + Math.round(H * 0.2) + "px;text-align:center;color:#fff;font:" + (look.text === "pixel" ? "400 92px/1.15" : look.text === "hand" ? "700 150px/.95" : look.text === "serif" ? "400 150px/.95" : "400 140px/.98") + " " + (look.text === "clean" || look.text === "neon" || look.text === "comic" ? FONTS.Anton : font) + ";text-transform:" + (look.text === "serif" || look.text === "hand" ? "none" : "uppercase") + ";" +
-        (look.text === "pixel" ? "text-shadow:6px 6px 0 " + ink + ";" : look.text === "neon" ? "text-shadow:0 0 20px " + accent + ",0 0 60px " + accent + ";" : "text-shadow:0 10px 0 rgba(0,0,0,.35);") + "}" +
+      ".crs-title{left:60px;right:60px;top:" + Math.round(H * 0.2) + "px;text-align:center;color:" + (lightPaper ? ink : "#fff") + ";font:" + (look.text === "pixel" ? "400 92px/1.15" : look.text === "hand" ? "700 150px/.95" : look.text === "serif" ? "400 150px/.95" : "400 140px/.98") + " " + (look.text === "clean" || look.text === "neon" || look.text === "comic" ? FONTS.Anton : font) + ";text-transform:" + (look.text === "serif" || look.text === "hand" ? "none" : "uppercase") + ";" +
+        (look.text === "pixel" ? "text-shadow:6px 6px 0 " + ink + ";" : look.text === "neon" ? "text-shadow:0 0 20px " + accent + ",0 0 60px " + accent + ";" : lightPaper ? "text-shadow:0 4px 0 rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.9);" : "text-shadow:0 10px 0 rgba(0,0,0,.35);") + "}" +
       ".crs-title small{display:block;font-size:.36em;letter-spacing:4px;margin-bottom:22px;color:" + accent + "}" +
       ".crs-sign{left:80px;right:80px;top:" + Math.round(H * 0.1) + "px;text-align:center;padding:22px 30px;background:" + accent + ";color:" + ink + ";font:" + (look.text === "pixel" ? "400 50px/1.25" : "400 70px/1.05") + " " + (look.text === "pixel" ? font : FONTS.Anton) + ";text-transform:uppercase;transform:rotate(-1.5deg);border:6px solid " + ink + "}" +
       ".crs-flash{position:absolute;inset:0;background:#fff;z-index:40;visibility:hidden;opacity:0}";
@@ -398,9 +520,15 @@
         return false;
       };
     }
+    var stickAll = plan.characters === "palito" || (look.stick && plan.characters !== "pixel");
     names.forEach(function (name, i) {
       var pkg = (o.cast && o.cast[name]) || (o.fallback && o.fallback[i % o.fallback.length]);
-      if (!pkg || !o.engine || !window.CRM || !CRM.avatar) return;
+      if (stickAll || pkg === "stick") {
+        var pal = look.palette.length ? look.palette : ["#E63946", "#2A9D8F", "#F4A261", "#457B9D"];
+        CAST[name] = stickActor({ ink: ink, fill: look.paperColor && lum(look.paperColor) < 0.35 ? "#F4F1EA" : "#FFFFFF", accent: pal[i % pal.length], hair: STICK_HAIR[i % STICK_HAIR.length], speaks: talking(name), jitter: look.boil ? 0.004 : 0 });
+        return;
+      }
+      if (!pkg || typeof pkg !== "object" || !o.engine || !window.CRM || !CRM.avatar) return;
       var A = CRM.avatar({ engine: o.engine, avatar: pkg, outline: look.outline === "accent" ? accent : ink, speaks: talking(name) });
       A.glow = false; A.shadow = true;
       CAST[name] = A;
@@ -423,6 +551,8 @@
       if (s.text && s.text.content) {
         var el = document.createElement("div");
         el.className = "crs-t " + (s.text.kind === "sign" ? "crs-sign" : "crs-title");
+        // A title sharing the shot with a graphic goes to the very top, smaller, above the card.
+        if (s.graphic && s.text.kind !== "sign") { el.style.top = Math.round(H * 0.035) + "px"; el.style.fontSize = Math.round((look.text === "pixel" ? 92 : look.text === "hand" || look.text === "serif" ? 150 : 140) * 0.62) + "px"; }
         el.innerHTML = s.text.kind === "title" && s.text.kicker ? "<small>" + esc(s.text.kicker) + "</small>" + esc(s.text.content) : esc(s.text.content);
         root.appendChild(el);
         if (window.CRM && CRM.popIn && s.text.kind !== "sign") CRM.popIn(tl, el, t0 + 0.05, { rot: -3 });
@@ -438,7 +568,7 @@
         var set = SETS[s.set], k = H / set.h;
         var cam = camAt(s, set, 0.5, W, H);
         var screenX = c ? (c.x * k - cam.x) * cam.z + W / 2 : W / 2;
-        var headY = c ? ((c.y - (SIZE[c.size] || SIZE.m) * BODY) * k - cam.y) * cam.z + H / 2 : H * 0.4;
+        var headY = c ? ((c.y * k - (SIZE[c.size] || SIZE.m) * BODY * H / 1920) - cam.y) * cam.z + H / 2 : H * 0.4;
         var top = Math.round(clamp(headY - 330, H * 0.05, H * 0.42));
         var left = clamp(screenX - 300, 50, W - 50 - Math.min(W - 160, 820));
         b.style.left = left + "px"; b.style.top = top + "px"; b.style.setProperty("--tail", clamp(screenX - left - 20, 60, 700) + "px");
@@ -468,6 +598,81 @@
         tl.set(el, { autoAlpha: 0 }, next);
       });
     }
+
+    /* ------------------------------ data graphics (crisp, over the scene) */
+    var dark = lum(look.paperColor || "#141318") < 0.4;
+    var gcss = document.createElement("style");
+    var cardBg = look.text === "pixel" ? ink : look.text === "neon" ? "rgba(12,8,30,.82)" : look.text === "mono" ? "rgba(6,10,8,.84)" : dark ? "rgba(18,18,28,.86)" : "#FFFFFF";
+    var cardFg = look.text === "pixel" || look.text === "neon" || look.text === "mono" || dark ? "#F7F5EF" : ink;
+    var gFont = look.text === "hand" ? FONTS.Caveat : look.text === "pixel" ? FONTS.Silkscreen : look.text === "mono" ? FONTS.JetBrains : look.text === "serif" ? FONTS.InstrumentSerif : FONTS.Fredoka;
+    var gNum = look.text === "pixel" ? FONTS.Silkscreen : look.text === "hand" ? FONTS.Caveat : look.text === "mono" ? FONTS.JetBrains : FONTS.Anton;
+    var GW = Math.min(W * 0.84, 900), unit = Math.min(W, H) / 1080;
+    gcss.textContent =
+      ".crs-g{position:absolute;z-index:32;left:50%;top:" + Math.round(H * (W > H ? 0.1 : 0.12)) + "px;width:" + Math.round(GW) + "px;margin-left:" + Math.round(-GW / 2) + "px;visibility:hidden;opacity:0;font-family:" + gFont + ";color:" + cardFg + "}" +
+      ".crs-g .card{background:" + cardBg + ";padding:" + Math.round(34 * unit) + "px " + Math.round(40 * unit) + "px;" + (look.text === "pixel" ? "border:6px solid " + accent + ";box-shadow:10px 10px 0 " + accent + ";" : look.text === "hand" ? "border:4px solid " + ink + ";border-radius:28px 34px 26px 38px;box-shadow:6px 8px 0 " + ink + "22;" : look.text === "neon" ? "border:3px solid " + accent + ";border-radius:26px;box-shadow:0 0 30px " + accent + "88;" : "border-radius:30px;box-shadow:0 24px 60px rgba(0,0,0,.28);") + "}" +
+      ".crs-g h3{margin:0 0 " + Math.round(18 * unit) + "px;font:400 " + Math.round(44 * unit) + "px/1.1 " + gFont + ";opacity:.8;text-transform:" + (look.text === "hand" || look.text === "serif" ? "none" : "uppercase") + ";letter-spacing:1px}" +
+      ".crs-g .num{font:400 " + Math.round(170 * unit) + "px/1 " + gNum + ";color:" + accent + ";letter-spacing:-1px}" +
+      ".crs-g .lab{font-size:" + Math.round(46 * unit) + "px;line-height:1.15;margin-top:" + Math.round(10 * unit) + "px}" +
+      ".crs-g .row{display:flex;align-items:center;gap:" + Math.round(18 * unit) + "px;margin:" + Math.round(16 * unit) + "px 0;font-size:" + Math.round(46 * unit) + "px;line-height:1.1;visibility:hidden;opacity:0}" +
+      ".crs-g .bar{flex:1;height:" + Math.round(34 * unit) + "px;border-radius:99px;background:" + (dark || cardBg !== "#FFFFFF" ? "rgba(255,255,255,.14)" : "rgba(0,0,0,.08)") + ";overflow:hidden}.crs-g .bar i{display:block;height:100%;width:0;background:" + accent + ";border-radius:99px}" +
+      ".crs-g .val{min-width:" + Math.round(120 * unit) + "px;text-align:right;font-family:" + gNum + "}" +
+      ".crs-g .box{flex:none;width:" + Math.round(52 * unit) + "px;height:" + Math.round(52 * unit) + "px;border-radius:12px;border:4px solid currentColor;display:grid;place-items:center;font-size:" + Math.round(40 * unit) + "px;color:" + accent + "}.crs-g .row span{color:" + cardFg + "}" +
+      ".crs-g .cols{display:flex;gap:" + Math.round(26 * unit) + "px;align-items:flex-end}.crs-g .col{flex:1;text-align:center}.crs-g .col .pillar{margin:" + Math.round(14 * unit) + "px auto 0;width:70%;height:0;border-radius:18px 18px 6px 6px}" +
+      ".crs-g .col .v{font:400 " + Math.round(96 * unit) + "px/1 " + gNum + "}.crs-g .col .l{font-size:" + Math.round(40 * unit) + "px;margin-top:8px;opacity:.85}" +
+      ".crs-g .toast{display:flex;gap:" + Math.round(20 * unit) + "px;align-items:center;background:" + cardBg + ";color:" + cardFg + ";padding:" + Math.round(22 * unit) + "px " + Math.round(28 * unit) + "px;border-radius:26px;margin-bottom:" + Math.round(16 * unit) + "px;box-shadow:0 14px 40px rgba(0,0,0,.25);visibility:hidden;opacity:0}" +
+      ".crs-g .toast .ic{flex:none;width:" + Math.round(70 * unit) + "px;height:" + Math.round(70 * unit) + "px;border-radius:18px;background:" + accent + ";display:grid;place-items:center;color:" + ink + ";font:400 " + Math.round(40 * unit) + "px " + gNum + "}" +
+      ".crs-g .toast b{display:block;font-size:" + Math.round(40 * unit) + "px}.crs-g .toast small{display:block;font-size:" + Math.round(34 * unit) + "px;opacity:.75}" +
+      ".crs-g .steps{display:flex;flex-direction:column;gap:" + Math.round(14 * unit) + "px}.crs-g .steps .row{margin:0}.crs-g .steps .n{flex:none;width:" + Math.round(70 * unit) + "px;height:" + Math.round(70 * unit) + "px;border-radius:50%;background:" + accent + ";color:" + ink + ";display:grid;place-items:center;font:400 " + Math.round(40 * unit) + "px " + gNum + "}" +
+      ".crs-g .q{font:400 " + Math.round(66 * unit) + "px/1.15 " + (look.text === "hand" ? FONTS.Caveat : FONTS.InstrumentSerif) + ";font-style:italic}.crs-g .q:before{content:'\\201C';display:block;font-size:2em;line-height:.6;color:" + accent + "}.crs-g .who{margin-top:" + Math.round(18 * unit) + "px;font-size:" + Math.round(38 * unit) + "px;opacity:.8}";
+    document.head.appendChild(gcss);
+    function fmt(v, decimals) { return Number(v).toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }); }
+    function decimalsOf(v) { var m = String(v).split(".")[1]; return m ? Math.min(2, m.length) : 0; }
+    function counter(el, from, to, at, dur, pre, suf) {
+      var d = decimalsOf(to), o2 = { v: from };
+      el.textContent = (pre || "") + fmt(from, d) + (suf || "");
+      tl.to(o2, { v: to, duration: dur, ease: "power2.out", onUpdate: function () { el.textContent = (pre || "") + fmt(o2.v, d) + (suf || ""); } }, at);
+    }
+    /** When each item of a graphic appears: spread over the shot, like the sound cues. */
+    CRS.graphicTimes = function (n, start, end) { var span = Math.max(0.6, end - start - 0.6), out = []; for (var i = 0; i < n; i++) out.push(start + 0.25 + (n > 1 ? i * span / n : 0)); return out; };
+    shots.forEach(function (s) {
+      var g = s.graphic; if (!g) return;
+      var el = document.createElement("div"); el.className = "crs-g";
+      if (s.text && s.text.kind === "title") el.style.top = Math.round(H * (W > H ? 0.3 : 0.2)) + "px";
+      var items = (g.items || []).slice(0, 5), times = CRS.graphicTimes(Math.max(1, items.length), s.start, s.end), t0 = s.start + 0.08;
+      var html = "";
+      if (g.kind === "stat") html = '<div class="card">' + (g.title ? "<h3>" + esc(g.title) + "</h3>" : "") + '<div class="num">0</div>' + (g.label ? '<div class="lab">' + esc(g.label) + "</div>" : "") + "</div>";
+      else if (g.kind === "compare") html = '<div class="card">' + (g.title ? "<h3>" + esc(g.title) + "</h3>" : "") + '<div class="cols">' + [g.before, g.after].map(function (c, i) { return '<div class="col"><div class="v" style="color:' + (i ? accent : cardFg) + '">' + (c && c.value != null ? "0" : "") + '</div><div class="pillar" style="background:' + (i ? accent : (dark ? "rgba(255,255,255,.25)" : "rgba(0,0,0,.18)")) + '"></div><div class="l">' + esc((c && c.label) || (i ? "Depois" : "Antes")) + "</div></div>"; }).join("") + "</div></div>";
+      else if (g.kind === "bars") html = '<div class="card">' + (g.title ? "<h3>" + esc(g.title) + "</h3>" : "") + items.map(function (it) { return '<div class="row"><span style="min-width:34%">' + esc(it.label) + '</span><div class="bar"><i></i></div><span class="val">' + (it.value != null ? "0" : "") + "</span></div>"; }).join("") + "</div>";
+      else if (g.kind === "checklist") html = '<div class="card">' + (g.title ? "<h3>" + esc(g.title) + "</h3>" : "") + items.map(function (it) { return '<div class="row"><div class="box"><b style="opacity:0">✓</b></div><span>' + esc(it.label) + "</span></div>"; }).join("") + "</div>";
+      else if (g.kind === "notifications") html = items.map(function (it) { return '<div class="toast"><div class="ic">' + esc((g.icon || "★").slice(0, 2)) + '</div><div><b>' + esc(it.label) + "</b>" + (it.note ? "<small>" + esc(it.note) + "</small>" : "") + "</div></div>"; }).join("");
+      else if (g.kind === "steps") html = '<div class="card">' + (g.title ? "<h3>" + esc(g.title) + "</h3>" : "") + '<div class="steps">' + items.map(function (it, i) { return '<div class="row"><div class="n">' + (i + 1) + "</div><span>" + esc(it.label) + "</span></div>"; }).join("") + "</div></div>";
+      else if (g.kind === "quote") html = '<div class="card"><div class="q">' + esc(g.quote || (items[0] && items[0].label) || "") + "</div>" + (g.author ? '<div class="who">— ' + esc(g.author) + "</div>" : "") + "</div>";
+      if (!html) return;
+      el.innerHTML = html; root.appendChild(el);
+      tl.fromTo(el, { autoAlpha: 0, y: 40, scale: 0.92 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.32, ease: "back.out(1.8)" }, t0);
+      tl.to(el, { autoAlpha: 0, y: -20, duration: 0.18 }, Math.max(t0 + 0.5, s.end - 0.18));
+      var dur = Math.max(0.6, s.end - s.start);
+      if (g.kind === "stat") counter(el.querySelector(".num"), g.from || 0, g.value != null ? g.value : 0, t0 + 0.15, Math.min(1.6, dur * 0.6), g.prefix, g.suffix);
+      if (g.kind === "compare") {
+        var vs = el.querySelectorAll(".col .v"), ps = el.querySelectorAll(".pillar"), b = g.before || {}, a = g.after || {}, mx = Math.max(Math.abs(b.value || 0), Math.abs(a.value || 0), 1);
+        [b, a].forEach(function (c, i) {
+          var at = t0 + 0.2 + i * Math.min(1.2, dur * 0.35);
+          if (c.value != null) counter(vs[i], 0, c.value, at, 0.8, g.prefix, g.suffix);
+          tl.fromTo(ps[i], { height: 0 }, { height: Math.round((40 + 260 * Math.abs(c.value || 0) / mx) * unit), duration: 0.7, ease: "power3.out" }, at);
+        });
+      }
+      if (g.kind === "bars") el.querySelectorAll(".row").forEach(function (row, i) {
+        var it = items[i]; tl.fromTo(row, { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.25 }, times[i]);
+        tl.fromTo(row.querySelector(".bar i"), { width: "0%" }, { width: clamp(it.value != null ? it.value : 60, 0, 100) + "%", duration: 0.8, ease: "power3.out" }, times[i] + 0.1);
+        if (it.value != null) counter(row.querySelector(".val"), 0, it.value, times[i] + 0.1, 0.8, "", g.suffix != null ? g.suffix : "%");
+      });
+      if (g.kind === "checklist") el.querySelectorAll(".row").forEach(function (row, i) {
+        tl.fromTo(row, { autoAlpha: 0, x: -24 }, { autoAlpha: 1, x: 0, duration: 0.22 }, times[i]);
+        tl.fromTo(row.querySelector(".box b"), { opacity: 0, scale: 2 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(3)" }, times[i] + 0.18);
+      });
+      if (g.kind === "notifications") el.querySelectorAll(".toast").forEach(function (row, i) { tl.fromTo(row, { autoAlpha: 0, y: -60, scale: 0.9 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.3, ease: "back.out(2)" }, times[i]); });
+      if (g.kind === "steps") el.querySelectorAll(".row").forEach(function (row, i) { tl.fromTo(row, { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.28, ease: "back.out(2)" }, times[i]); });
+    });
     var flash = document.createElement("div"); flash.className = "crs-flash"; root.appendChild(flash);
     shots.forEach(function (s) { if (s.transition === "flash") { tl.fromTo(flash, { autoAlpha: 0.95 }, { autoAlpha: 0, duration: 0.3 }, s.start); } });
 
@@ -508,7 +713,7 @@
           ctx.restore();
         } else {
           var A = CAST[it.v.who]; if (!A) return;
-          var scale = (SIZE[it.v.size] || SIZE.m) * cam.k, fx = it.v.x * cam.k, fy = it.v.y * cam.k;
+          var scale = (SIZE[it.v.size] || SIZE.m) * H / 1920, fx = it.v.x * cam.k, fy = it.v.y * cam.k;
           A.shots = [{ t: 0, x: fx, y: fy, scale: scale, d: 0 }];
           ctx.save();
           if (it.v.facing === "left") { ctx.translate(fx, 0); ctx.scale(-1, 1); ctx.translate(-fx, 0); }
@@ -604,6 +809,17 @@
           if (sr() > 0.55) { vx.strokeStyle = "rgba(255,250,235,.35)"; vx.lineWidth = 2; var lx2 = sr() * W; vx.beginPath(); vx.moveTo(lx2, 0); vx.lineTo(lx2 + sr() * 20 - 10, H); vx.stroke(); }
           if (sr() > 0.8) { vx.fillStyle = "rgba(20,15,10,.5)"; vx.beginPath(); vx.arc(sr() * W, sr() * H, 3 + sr() * 6, 0, 6.29); vx.fill(); }
         }
+      }
+      if (look.crt) {
+        // Tube TV: colour fringe, scanlines, a slow roll bar, flicker and rounded glass corners.
+        vx.globalAlpha = 0.22; vx.globalCompositeOperation = "screen"; vx.filter = "sepia(1) hue-rotate(-50deg) saturate(4)"; vx.drawImage(work, 3, 0, W, H); vx.filter = "none";
+        vx.globalCompositeOperation = "multiply"; vx.globalAlpha = 0.85; vx.drawImage(texture("scan", W, H), 0, 0, W, H);
+        vx.globalCompositeOperation = "source-over";
+        var roll = ((tq * 0.18) % 1.2) * H; vx.globalAlpha = 0.06; vx.fillStyle = "#FFFFFF"; vx.fillRect(0, roll - H * 0.1, W, H * 0.08);
+        vx.globalAlpha = 0.04 + 0.04 * hash(Math.floor(tq * 15)); vx.fillStyle = "#FFFFFF"; vx.fillRect(0, 0, W, H);
+        vx.globalAlpha = 1; vx.fillStyle = "#050507"; vx.beginPath(); vx.rect(0, 0, W, H); var rr = Math.min(W, H) * 0.07;
+        vx.moveTo(rr, 0); vx.arcTo(0, 0, 0, rr, rr); vx.lineTo(0, H - rr); vx.arcTo(0, H, rr, H, rr); vx.lineTo(W - rr, H); vx.arcTo(W, H, W, H - rr, rr); vx.lineTo(W, rr); vx.arcTo(W, 0, W - rr, 0, rr); vx.closePath();
+        vx.fill("evenodd");
       }
       if (look.vignette) {
         var g = vx.createRadialGradient(W / 2, H * 0.52, H * 0.25, W / 2, H * 0.52, H * 0.78);

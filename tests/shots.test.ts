@@ -111,3 +111,68 @@ describe("lenient AI plans", () => {
     expect(p.shots[0].fx).toEqual(["rain", "snow"]);
   });
 });
+
+import { readFileSync } from "node:fs";
+import { graphicTimes, soundCues, timeShots } from "../src/shared/shots";
+
+describe("graphics, characters and sound cues", () => {
+  const base = { title: "x", look: { preset: "rabisco", palette: ["#112233", "#445566"] }, sets: [{ id: "loja", ambience: "cafe", svg: set('<rect width="9" height="9"/>') }, { id: "rua", ambience: "barulho", svg: set('<rect width="9" height="9"/>') }] };
+
+  it("keeps graphics, ambience and the character style; trims bad values instead of failing", () => {
+    const { plan: p } = cleanShotPlan({
+      ...base, characters: "palito",
+      shots: [
+        { say: "Um dois três", set: "loja", graphic: { kind: "checklist", title: "Passos", items: [{ label: "A" }, { label: "B" }, null, { label: "C" }, { label: "D" }, { label: "E" }, { label: "F" }] } },
+        { say: "Quatro cinco", set: "rua", graphic: { kind: "grafico-maluco" } },
+        { say: "Seis", set: "loja", graphic: { kind: "stat", value: 97, prefix: "R$ ", label: "por mês" } },
+      ],
+    });
+    expect(p.characters).toBe("palito");
+    expect(p.sets.map((x) => (x as { ambience?: string }).ambience)).toEqual(["cafe", undefined]);
+    expect(p.shots[0].graphic?.items.map((i) => i.label)).toEqual(["A", "B", "C", "D"]);
+    expect(p.shots[1].graphic).toBeUndefined();
+    expect(p.shots[2].graphic).toMatchObject({ kind: "stat", value: 97, prefix: "R$ " });
+  });
+
+  it("times shots exactly like the engine (CRS.timeShots)", () => {
+    const w = globalThis as unknown as { window?: Record<string, unknown>; document?: unknown };
+    w.window = {}; w.document = {};
+    // eslint-disable-next-line no-new-func
+    new Function(readFileSync("resources/film-kit/cutroom-shots.js", "utf8"))();
+    const engine = (w.window as { CRS: { timeShots: typeof timeShots } }).CRS;
+    const shots = [{ say: "Olá, tudo bem?" }, { say: "" }, { say: "Hoje vamos falar de vendas." }, { say: "Fim." }];
+    const words = ["Olá,", "tudo", "bem?", "Hoje", "vamos", "falar", "de", "vendas.", "Fim."].map((text, i) => ({ text, start: 0.3 + i * 0.4, end: 0.6 + i * 0.4 }));
+    for (const ws of [words, words.slice(0, 7), []]) expect(timeShots(shots, ws, 5)).toEqual(engine.timeShots(shots, ws, 5));
+    expect(graphicTimes(3, 1, 4)).toEqual([1.25, 2.05, 2.8499999999999996]);
+  });
+
+  it("spots sound only where something happens, and lays the place's ambience under it", () => {
+    const { plan: p } = cleanShotPlan({
+      ...base,
+      shots: [
+        { say: "Um dois", set: "loja", text: { kind: "title", content: "Oi" } },
+        { say: "três quatro", set: "loja", transition: "whip", graphic: { kind: "notifications", items: [{ label: "Pedido" }, { label: "Pedido" }] } },
+        { say: "cinco seis", set: "rua", cast: [{ who: "Ana", x: 500, y: 1600, enter: "drop" }], fx: ["rain"] },
+        { say: "sete", set: "rua" },
+      ],
+    });
+    const words = "Um dois três quatro cinco seis sete".split(" ").map((text, i) => ({ text, start: i * 0.5, end: i * 0.5 + 0.4 }));
+    const { cues, ambience } = soundCues(p, words, 5);
+    const kinds = cues.map((c) => c.kind);
+    expect(kinds).toContain("impact");
+    expect(kinds).toContain("whoosh");
+    expect(kinds.filter((k) => k === "ding")).toHaveLength(2);
+    expect(kinds).toContain("thud");
+    expect(cues.every((c, i) => i === 0 || c.t >= cues[i - 1].t)).toBe(true);
+    expect(ambience.map((a) => a.kind)).toEqual(["cafe", "chuva"]);
+    expect(ambience[0]).toMatchObject({ from: 0 });
+  });
+
+  it("builds landscape films and the sound track tag", () => {
+    const { plan: p } = cleanShotPlan({ ...base, shots: [{ say: "Oi", set: "loja" }] });
+    const html = shotFilmHtml({ plan: p, duration: 4, voiceDuration: 3, width: 1920, height: 1080, sfx: { file: "assets/sfx.wav" } });
+    expect(html).toContain('data-width="1920" data-height="1080"');
+    expect(html).toContain('src="assets/sfx.wav"');
+    expect(shotPlanRules({ width: 1920, height: 1080, story: false, cast: [] })).toContain("paisagem 16:9");
+  });
+});

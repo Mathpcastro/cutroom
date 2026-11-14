@@ -1,5 +1,5 @@
 import type { StudioProfile } from "../../shared/profile";
-import { shotFilmHtml, shotNarration, type ShotPlan } from "../../shared/shots";
+import { ASPECTS, shotFilmHtml, shotNarration, type ShotPlan } from "../../shared/shots";
 import { planShotFilm } from "./salesReels";
 import { getStudioLanguage, t } from "./studioLanguage";
 import type { ReelDraft, ReelReviewData, ReelSession } from "./ReelCreator";
@@ -86,10 +86,12 @@ export async function generateShotReel(profile: StudioProfile, draft: ReelDraft,
     lookText: draft.lookText,
     presenter,
     extras: story ? Object.keys(EXTRA_CAST) : [],
+    aspect: draft.aspect,
+    characters: draft.characters,
   });
   const spoken = shotNarration(plan);
   if (!spoken.trim()) throw new Error(t("A IA não escreveu a narração. Tente gerar novamente."));
-  const created = await api<CreatedFilm>("create_film", { name: plan.title, format: "desenhado", aspect: "9:16", ...(draft.avatar ? { avatar: draft.avatar } : {}) });
+  const created = await api<CreatedFilm>("create_film", { name: plan.title, format: "desenhado", aspect: draft.aspect ?? "9:16", ...(draft.avatar ? { avatar: draft.avatar } : {}) });
   await api("write_film_file", {
     film: created.film, path: "brand.js",
     content: "window.BRAND = " + JSON.stringify({ name: profile.brand.name || profile.name, handle: profile.handle, palette: { accent: profile.brand.accent, ink: profile.brand.ink, paper: profile.brand.paper } }) + ";",
@@ -100,13 +102,14 @@ export async function generateShotReel(profile: StudioProfile, draft: ReelDraft,
   setProgress(t("Animando e conferindo as cenas…"));
   const proofs = await attachProofs(profile.id, created.film, plan);
   const music = plan.music ? await api<{ file: string }>("compose_music", { film: created.film, mood: plan.music.mood, seconds: duration }).catch(() => undefined) : undefined;
+  await api("write_film_file", { film: created.film, path: "plano.json", content: JSON.stringify(plan, null, 1) });
+  const sfx = await api<{ file: string }>("film_sfx", { film: created.film, seconds: duration }).catch(() => undefined);
   const cast: Record<string, string> = { ...EXTRA_CAST };
   if (presenter) cast[presenter] = "film";
   await api("write_film_file", {
     film: created.film, path: "index.html",
-    content: shotFilmHtml({ plan, duration, voiceDuration: voice.duration, language, cast, hasFilmAvatar: withAvatar, captions: true, proofs, ...(music ? { music: { file: music.file } } : {}) }),
+    content: shotFilmHtml({ plan, duration, voiceDuration: voice.duration, language, width: ASPECTS[draft.aspect ?? "9:16"][0], height: ASPECTS[draft.aspect ?? "9:16"][1], cast, hasFilmAvatar: withAvatar, captions: true, proofs, ...(music ? { music: { file: music.file } } : {}), ...(sfx ? { sfx: { file: sfx.file } } : {}) }),
   });
-  await api("write_film_file", { film: created.film, path: "plano.json", content: JSON.stringify(plan, null, 1) });
   const review = await reviewShots(created.film, duration, SHOT_CHECKLIST);
   await api("profileLinkProject", { profileId: profile.id, projectId: created.film });
   return { step: "review", draft: { ...draft, language, script: spoken, formatId: "desenhado" }, filmId: created.film, review, caption: plan.caption, shotPlan: plan };

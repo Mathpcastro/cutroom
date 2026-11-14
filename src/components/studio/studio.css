@@ -2608,3 +2608,5 @@
 .avatar-studio .avatar-controls .avatar-row .segmented { align-self: flex-start; }
 .avatar-studio .avatar-controls .avatar-row .mcp-mode { margin: 0; }
 .avatar-studio .avatar-controls textarea { min-height: 0; }
+
+.reel-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

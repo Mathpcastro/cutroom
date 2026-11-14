@@ -79,7 +79,7 @@ export function ReadySeries({ profile, onOpen }: { profile: StudioProfile; onOpe
       <label className="reel-field">{t("Onde se passa (opcional)")}
         <input value={c.place === "variado" ? "" : c.place} maxLength={80} placeholder={t("Variado. Ou diga um lugar: um farol, uma feira, uma nave, a cozinha de uma padaria…")} onChange={(e) => set({ place: e.target.value.trim() ? e.target.value : "variado" })} />
       </label>
-      <LookSelect look={c.look ?? "auto"} lookText={c.lookText} classicLabel="Quadrinho clássico (modelo antigo)" onChange={(next) => set(next)} />
+      <LookSelect look={c.look ?? "auto"} lookText={c.lookText} characters={c.characters ?? ""} classicLabel="Quadrinho clássico (modelo antigo)" onChange={(next) => set(next)} />
       <label className="reel-field">{t("Ideia da série (opcional)")}
         <input value={c.idea} maxLength={300} placeholder={t("Deixe em branco para a IA decidir pela sua marca")} onChange={(e) => set({ idea: e.target.value })} />
       </label>

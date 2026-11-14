@@ -7,7 +7,7 @@ import type { FilmAvatarRef } from "../../../electron/core/film";
 import type { StudioProfile } from "../../shared/profile";
 import { planSalesReel, reviseSalesScene, type ReferenceSummary, type SalesPlan, type SalesScene } from "./salesReels";
 import { generateShotReel } from "./shotReel";
-import { LOOKS, LOOK_PRESETS, type LookPreset, type ShotPlan } from "../../shared/shots";
+import { ASPECT_LABEL, LOOKS, LOOK_PRESETS, type LookPreset, type ShotPlan } from "../../shared/shots";
 import { lookPreview } from "./LookSelect";
 import directPoster from "./previews/ui-motion.jpg";
 import avatarPoster from "../../../site/upsell/videos/avatar.jpg";
@@ -44,6 +44,9 @@ export interface ReelDraft {
   look?: string;
   /** The look in the person's own words. */
   lookText?: string;
+  /** Drawn films: frame format and character style. */
+  aspect?: "9:16" | "1:1" | "16:9";
+  characters?: "pixel" | "palito";
   effect: ReelEffect;
   avatar?: FilmAvatarRef;
   /** A reference video to recreate (its mold: rhythm, beats, colours, hook). */
@@ -520,6 +523,18 @@ export function ReelCreator({
               </optgroup>
             </select>
           </label>
+          {!draft.motionStyle && <div className="reel-field-row">
+            <label className="reel-field">{t("Personagens")}
+              <select value={draft.characters ?? ""} disabled={busy} onChange={(event) => update({ characters: (event.target.value || undefined) as ReelDraft["characters"] })}>
+                <option value="">{t("Automático")}</option><option value="pixel">{t("Pixel art (avatares)")}</option><option value="palito">{t("Palito desenhado")}</option>
+              </select>
+            </label>
+            <label className="reel-field">{t("Formato")}
+              <select value={draft.aspect ?? "9:16"} disabled={busy} onChange={(event) => update({ aspect: event.target.value as ReelDraft["aspect"] })}>
+                {(Object.keys(ASPECT_LABEL) as (keyof typeof ASPECT_LABEL)[]).map((id) => <option key={id} value={id}>{t(ASPECT_LABEL[id])}</option>)}
+              </select>
+            </label>
+          </div>}
           {!draft.motionStyle && <label className="reel-field">{t("Descreva o visual (opcional)")}
             <input value={draft.lookText ?? ""} maxLength={240} disabled={busy}
               placeholder={t("Ex.: aquarela sonhadora em tons pastel, ou HQ noir em preto e vermelho")}

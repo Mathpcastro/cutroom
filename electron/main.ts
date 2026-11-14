@@ -268,9 +268,10 @@ async function generateEpisode(args: unknown) {
     const everyone = Object.fromEntries(characters.filter((c) => !c.narrator).map((c) => [c.name, avatarOf(c.name) === "film" ? (usesFilmAvatar ? "film" : "strategist") : avatarOf(c.name)]));
     await filmStudio.write({ film: created.film, path: "plano.json", content: JSON.stringify(direction, null, 1) });
     const music = direction.music ? await filmStudio.composeMusic({ film: created.film, mood: direction.music.mood, seconds: duration }).catch(() => undefined) : undefined;
+    const sfx = await filmStudio.soundEffects({ film: created.film, seconds: duration }).catch(() => undefined);
     await filmStudio.write({
       film: created.film, path: "index.html",
-      content: shotFilmHtml({ plan: direction, duration, voiceDuration: voice.duration, cast: everyone, hasFilmAvatar: usesFilmAvatar, captions: true, endCard: { text: series.cta || "Segue pra parte 2" }, ...(music ? { music: { file: music.file } } : {}) }),
+      content: shotFilmHtml({ plan: direction, duration, voiceDuration: voice.duration, cast: everyone, hasFilmAvatar: usesFilmAvatar, captions: true, endCard: { text: series.cta || "Segue pra parte 2" }, ...(music ? { music: { file: music.file } } : {}), ...(sfx ? { sfx: { file: sfx.file } } : {}) }),
     });
   } else
   await filmStudio.write({
@@ -965,6 +966,7 @@ async function executeTool(
     film_voiceover: (a) => filmStudio.voiceover(a),
     film_asset: (a) => filmStudio.asset(a),
     compose_music: (a) => filmStudio.composeMusic(a),
+    film_sfx: (a) => filmStudio.soundEffects(a),
     write_film_file: (a) => filmStudio.write(a),
     read_film_file: (a) => filmStudio.read(a),
     film_check: (a) => filmStudio.check(a),
@@ -1526,6 +1528,8 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       return filmStudio.voiceover(params as Record<string, unknown>);
     case "compose_music":
       return filmStudio.composeMusic(params as Record<string, unknown>);
+    case "film_sfx":
+      return filmStudio.soundEffects(params as Record<string, unknown>);
     case "write_film_file":
       return filmStudio.write(params as Record<string, unknown>);
     case "read_film_file":

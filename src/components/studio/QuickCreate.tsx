@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, BookOpen, ChevronDown, Lightbulb, RefreshCcw, WandSparkles } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import { FORMATS } from "../../../electron/core/formats";
-import { LOOKS, LOOK_PRESETS, type LookPreset } from "../../shared/shots";
+import { ASPECT_LABEL, LOOKS, LOOK_PRESETS, type LookPreset } from "../../shared/shots";
 import { t, getStudioLanguage, type StudioLanguage } from "./studioLanguage";
 
 /** Spec 4 A: the home is one box. Every choice has a default; "Ajustar" holds the rest. */
@@ -14,6 +14,9 @@ export interface QuickChoices {
   style: string;
   /** The look in the person's own words (drawn Reels). */
   lookText?: string;
+  /** Drawn Reels: character style and frame format. */
+  characters?: "" | "pixel" | "palito";
+  aspect?: "9:16" | "1:1" | "16:9";
   language: StudioLanguage;
 }
 
@@ -34,6 +37,8 @@ export function lastChoices(profile: StudioProfile): QuickChoices {
       story: Boolean(saved.story),
       style: validStyle(saved.style) ? (saved.style as string) : "",
       lookText: typeof saved.lookText === "string" ? saved.lookText.slice(0, 240) : "",
+      characters: saved.characters === "pixel" || saved.characters === "palito" ? saved.characters : "",
+      aspect: saved.aspect === "1:1" || saved.aspect === "16:9" ? saved.aspect : "9:16",
       language: (["pt-BR", "en", "es"] as const).includes(saved.language as StudioLanguage) ? (saved.language as StudioLanguage) : fallback.language,
     };
   } catch {
@@ -57,7 +62,7 @@ export function choicesSummary(profile: StudioProfile, choices: QuickChoices) {
   const avatar = choices.avatar ? (avatarName ? `Com o avatar ${avatarName}` : `Com o avatar de ${profile.name}`) : "Sem avatar";
   const voice = `voz ${profile.voice.voiceId === "local" || profile.voice.voiceId === "default" ? "local" : profile.voice.voiceId}`;
   const style = choices.lookText?.trim() && !FORMATS.some((f) => f.id === choices.style) ? `visual: ${choices.lookText.trim().slice(0, 40)}` : styleLabel(choices.style);
-  return [avatar, voice, choices.story ? "história" : null, style, languageNames[choices.language]].filter(Boolean).join(" · ");
+  return [avatar, voice, choices.story ? "história" : null, style, choices.characters === "palito" ? "personagens palito" : null, choices.aspect && choices.aspect !== "9:16" ? choices.aspect : null, languageNames[choices.language]].filter(Boolean).join(" · ");
 }
 
 export interface Pending { id: string; label: string; run: () => void; blocking?: boolean; text?: string }
@@ -145,6 +150,18 @@ export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, es
                 </optgroup>
               </select>
             </label>
+            {!FORMATS.some((f) => f.id === choices.style) && <>
+              <label className="reel-field">{t("Personagens")}
+                <select value={choices.characters ?? ""} onChange={(event) => set({ characters: event.target.value as QuickChoices["characters"] })}>
+                  <option value="">{t("Automático")}</option><option value="pixel">{t("Pixel art (avatares)")}</option><option value="palito">{t("Palito desenhado")}</option>
+                </select>
+              </label>
+              <label className="reel-field">{t("Formato")}
+                <select value={choices.aspect ?? "9:16"} onChange={(event) => set({ aspect: event.target.value as QuickChoices["aspect"] })}>
+                  {(Object.keys(ASPECT_LABEL) as (keyof typeof ASPECT_LABEL)[]).map((id) => <option key={id} value={id}>{t(ASPECT_LABEL[id])}</option>)}
+                </select>
+              </label>
+            </>}
             {!FORMATS.some((f) => f.id === choices.style) && <label className="reel-field quick-look-text">{t("Descreva o visual (opcional)")}
               <input value={choices.lookText ?? ""} maxLength={240} placeholder={t("Ex.: aquarela sonhadora em tons pastel")} onChange={(event) => set({ lookText: event.target.value })} />
             </label>}

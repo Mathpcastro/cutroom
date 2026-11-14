@@ -185,6 +185,12 @@ export const STUDIO_TOOLS = [
     ),
   },
   {
+    name: "film_sfx",
+    description:
+      "For a drawn film (format desenhado, with plano.json and timing.js): synthesises sound effects where something happens on screen (transitions, entrances, graphic items, titles) and a quiet ambience for each set (set.ambience), mixed into assets/sfx.wav. No downloads, nothing to credit. Returns the <audio> tag.",
+    inputSchema: objectSchema({ film: string("Film id."), seconds: number("Film duration in seconds.", { minimum: 1, maximum: 600 }) }, ["film", "seconds"]),
+  },
+  {
     name: "compose_music",
     description:
       "Compose a soundtrack for the film on this computer (no download, no license to credit): chords, bass, arpeggio and light drums from a mood, as long as the film. Writes assets/musica.wav and returns the <audio> tag (volume 0.16, under the voice).",

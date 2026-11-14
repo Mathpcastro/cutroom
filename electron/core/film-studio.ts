@@ -11,6 +11,7 @@ import { filmAvatarCacheKey, snapshotFilmAvatar } from "./film-avatar";
 import { FORMATS, formatGuide } from "./formats";
 import { Studio, probeAudio } from "./studio";
 import { MUSIC_MOODS, writeComposedMusic } from "./compose-music";
+import { writeFilmSoundtrack } from "./compose-sfx";
 import type { AvatarStore } from "./avatar-store";
 import type { BrandStore } from "./brand";
 
@@ -167,6 +168,14 @@ export class FilmStudio {
         await rm(scratch, { recursive: true, force: true });
       }
     });
+  }
+
+  /** Sound effects and ambience for a drawn film (plano.json + timing.js → assets/sfx.wav). */
+  async soundEffects(args: Record<string, unknown>) {
+    const a = z.object({ film, seconds: z.number().min(1).max(600) }).strict().parse(args);
+    await this.host.films.meta(a.film);
+    const result = await writeFilmSoundtrack(this.host.films.dir(a.film), a.seconds);
+    return { ...result, audio: `<audio id="efeitos" data-start="0" data-duration="${a.seconds}" data-track-index="22" data-volume="0.9" src="${result.file}"></audio>` };
   }
 
   /** A soundtrack composed for this film (assets/musica.wav), from a mood and a length. */

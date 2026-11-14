@@ -464,7 +464,7 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
           </section>
           <aside className="episode-preview">
             {output ? <ExportedVideoPlayer key={output} path={output} /> : <div className="episode-preview-empty"><BookOpen size={28} /><span>{t("A prévia aparece aqui depois de gerar.")}</span></div>}
-            <LookSelect look={look.look} lookText={look.lookText} classicLabel="Quadrinho clássico (modelo antigo)" disabled={!!busy} onChange={(next) => { setLook(next); saveSeriesLook(series.id, next); }} />
+            <LookSelect look={look.look} lookText={look.lookText} characters={look.characters ?? ""} classicLabel="Quadrinho clássico (modelo antigo)" disabled={!!busy} onChange={(next) => { setLook(next); saveSeriesLook(series.id, next); }} />
             <button type="button" className="studio-primary-button" disabled={!!busy || issues.some((i) => i.line !== undefined || !/dura/.test(i.message))}
               title={issues.length ? t("Corrija os pontos marcados no roteiro.") : ""} onClick={() => void generate()}>
               <Sparkles size={15} /> {t(busy === "draw" ? "Desenhando as cenas…" : busy === "generate" ? "Gravando as vozes…" : busy === "render" ? "Finalizando o vídeo…" : output ? "Gerar de novo" : "Gerar episódio")}

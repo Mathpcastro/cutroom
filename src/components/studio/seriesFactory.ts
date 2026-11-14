@@ -25,16 +25,17 @@ export interface SeriesChoices {
   /** Drawn look: a preset, "auto" or "classic" (the old comic engine). */
   look?: string;
   lookText?: string;
+  characters?: string;
 }
 export const DEFAULT_CHOICES: SeriesChoices = { genre: "comedia", episodes: 5, cast: 2, product: "sometimes", place: "variado", idea: "", render: true, look: "auto", lookText: "" };
 
 /** The look every episode of a series follows (kept on this computer). */
-export interface SeriesLook { look: string; lookText?: string }
+export interface SeriesLook { look: string; lookText?: string; characters?: string }
 const lookKey = (seriesId: string) => `videosell.seriesLook.${seriesId}`;
 export function seriesLook(seriesId: string): SeriesLook {
   try {
     const saved = JSON.parse(localStorage.getItem(lookKey(seriesId)) ?? "null") as SeriesLook | null;
-    if (saved && typeof saved.look === "string") return { look: saved.look, lookText: typeof saved.lookText === "string" ? saved.lookText : "" };
+    if (saved && typeof saved.look === "string") return { look: saved.look, lookText: typeof saved.lookText === "string" ? saved.lookText : "", characters: saved.characters === "pixel" || saved.characters === "palito" ? saved.characters : "" };
   } catch { /* fall through */ }
   return { look: "auto", lookText: "" };
 }
@@ -48,6 +49,7 @@ export async function directEpisode(profile: StudioProfile, series: Series, scri
   const lines = spokenLines(script).map((l) => ({ who: l.who, text: l.text }));
   const { plan } = await planShotFilm(profile, {
     brief: "", story: true, lines, look: look.look, lookText: look.lookText,
+    characters: look.characters === "pixel" || look.characters === "palito" ? look.characters : undefined,
     extras: series.characters.filter((c) => !c.narrator).map((c) => c.name),
     context: JSON.stringify({ serie: series.title, premissa: series.premise, tom: series.tone, cenario: series.setting, episodio: script.title, cenas: script.scenes.map((s) => ({ lugar: s.place, hora: s.time, falas: s.lines.length })) }),
   });
@@ -161,7 +163,7 @@ export async function createReadySeries(profile: StudioProfile, c: SeriesChoices
       rules: proposal.rules, cta: proposal.cta || "Segue pra parte 2", product: c.product, characters, ideas: proposal.ideas,
     });
     job = { ...job!, seriesId: series.id, title: series.title };
-    const look: SeriesLook = { look: c.look ?? "auto", lookText: c.lookText ?? "" };
+    const look: SeriesLook = { look: c.look ?? "auto", lookText: c.lookText ?? "", characters: c.characters ?? "" };
     saveSeriesLook(series.id, look);
     const scripts: StoryScript[] = [];
     step(0, { state: "done", detail: series.title });
