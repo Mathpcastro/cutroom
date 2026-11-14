@@ -342,7 +342,7 @@
     }
     function blink(t) { var r = rng(11), at = 0.6; while (at < t + 1) { if (t >= at && t < at + 0.1) return true; at += 2.4 + r() * 2.2; } return false; }
     A.draw = function (ctx, t) {
-      var sh = A.shots[0] || { x: 540, y: 1500, scale: 5.5 }, h = sh.scale * BODY * 0.82, x = sh.x, y = sh.y, alpha = 1, dx = 0, sy = 1;
+      var sh = A.shots[0] || { x: 540, y: 1500, scale: 5.5 }, h = sh.scale * BODY * (opts.landscape ? 1 : 0.82), x = sh.x, y = sh.y, alpha = 1, dx = 0, sy = 1;
       var firstEnter = A.enters.length ? Math.min.apply(null, A.enters.map(function (e) { return e.t; })) : -1;
       if (firstEnter >= 0 && t < firstEnter) return;
       A.enters.forEach(function (en) { var q = (t - en.t) / 0.45; if (q < 0 || q >= 1) return; if (en.kind === "left" || en.kind === "right") dx += (en.kind === "left" ? -1 : 1) * (1 - q * q * (3 - 2 * q)) * h * 1.6; else if (en.kind === "drop") y -= (1 - q) * (1 - q) * h * 1.8; else sy *= 0.3 + 0.7 * q + Math.sin(q * Math.PI) * 0.12; });
@@ -525,7 +525,7 @@
       var pkg = (o.cast && o.cast[name]) || (o.fallback && o.fallback[i % o.fallback.length]);
       if (stickAll || pkg === "stick") {
         var pal = look.palette.length ? look.palette : ["#E63946", "#2A9D8F", "#F4A261", "#457B9D"];
-        CAST[name] = stickActor({ ink: ink, fill: look.paperColor && lum(look.paperColor) < 0.35 ? "#F4F1EA" : "#FFFFFF", accent: pal[i % pal.length], hair: STICK_HAIR[i % STICK_HAIR.length], speaks: talking(name), jitter: look.boil ? 0.004 : 0 });
+        CAST[name] = stickActor({ ink: ink, fill: look.paperColor && lum(look.paperColor) < 0.35 ? "#F4F1EA" : "#FFFFFF", accent: pal[i % pal.length], hair: STICK_HAIR[i % STICK_HAIR.length], speaks: talking(name), jitter: look.boil ? 0.004 : 0, landscape: W > H });
         return;
       }
       if (!pkg || typeof pkg !== "object" || !o.engine || !window.CRM || !CRM.avatar) return;
