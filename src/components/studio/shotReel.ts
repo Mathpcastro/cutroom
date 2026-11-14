@@ -85,7 +85,8 @@ export async function generateShotReel(profile: StudioProfile, draft: ReelDraft,
     look: draft.look,
     lookText: draft.lookText,
     presenter,
-    extras: story ? Object.keys(EXTRA_CAST) : [],
+    // Supporting characters are always available (base avatars, or stick figures when chosen): scenes with people acting hold attention.
+    extras: Object.keys(EXTRA_CAST),
     aspect: draft.aspect,
     characters: draft.characters,
   });
