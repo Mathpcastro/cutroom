@@ -942,6 +942,22 @@
       if (si > 0 && (!s.transition || s.transition === "cut" || s.transition === "flash")) cam.z *= 1 + 0.075 * (1 - sp(tq - s.start, SPR.bouncy));
       else if (si === 0) cam.z *= 1 + 0.12 * (1 - sp(tq, SPR.soft));
       // Long shots get a punch-in halfway (an editor's jump zoom): a new framing without a new shot.
+      // Coverage cuts: a shot longer than 2.8 s is cut every ~2 s on a word boundary into another framing
+      // (tighter, then wider and to the other side), so the picture never holds one framing too long.
+      if (!s._cuts) {
+        s._cuts = [];
+        var lastCut = s.start;
+        if (s.end - s.start > 2.8) (s.words || []).forEach(function (w) { if (w.start - lastCut >= 1.9 && s.end - w.start >= 0.9) { s._cuts.push(w.start - 0.03); lastCut = w.start; } });
+      }
+      var ck = 0; for (var ci = 0; ci < s._cuts.length; ci++) if (tq >= s._cuts[ci]) ck = ci + 1;
+      if (ck) {
+        var framing = [[1.24, 0.045], [0.86, -0.05], [1.12, -0.03]][(ck - 1) % 3];
+        cam.z *= framing[0] * (1 + 0.06 * (1 - sp(tq - s._cuts[ck - 1], SPR.bouncy)));
+        cam.x += framing[1] * W / cam.z;
+        var vwc = W / cam.z, vhc = H / cam.z;
+        cam.x = cam.sw <= vwc ? cam.sw / 2 : clamp(cam.x, vwc / 2, cam.sw - vwc / 2);
+        cam.y = cam.sh <= vhc ? cam.sh / 2 : clamp(cam.y, vhc / 2, cam.sh - vhc / 2);
+      }
       // Punches on the rhythm of the voice: at each pause inside the shot (comma, full stop, question)
       // the framing jumps, alternating closer and wider, like an editor cutting on the narration.
       var sdur = s.end - s.start;
