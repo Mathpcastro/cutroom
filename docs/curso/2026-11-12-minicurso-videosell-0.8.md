@@ -157,9 +157,11 @@ Para cada aula: **objetivo**, **tela**, **roteiro** (o Codex escreve o texto fin
 **3.1 Criar o avatar em uma tela (5 min)**
 
 - **Tela:** Ajustes › Avatares (ou a pendência "Aprovar um avatar" no Início). Mostrar:
+  - **Criar a partir de uma foto**: a pessoa escolhe uma foto dela; a IA lê cabelo, pele, barba, óculos e roupa e monta um avatar parecido. A foto fica só no computador (precisa do ChatGPT/Codex conectado);
   - **Sugerir com IA pela marca**, que preenche nome, personalidade, estilo e cores;
   - a prévia ao vivo: é o motor de verdade, falando, piscando e mudando de pose (botões de pose e "Falando");
-  - trocar **Rosto e corpo**, **Pele**, **Cabelo** e **Cor do cabelo**, **Roupa** e **Cor da roupa** (a cor da marca vem primeiro), **Detalhes**, **Acessório** (Nenhum, Fone, Óculos), **Nome** e **Personalidade**;
+  - **Começar com** Masculino, Feminino ou Neutro (pontos de partida; tudo continua disponível);
+  - trocar **Rosto**, **Pele**, **Cabelo** (17 estilos: curto, topete, raspado, careca, moicano, franja, chanel, longo liso, ondulado, rabo de cavalo, coque, black power, tranças e os 3 originais) e **Cor do cabelo**, **Barba e cílios**, **Corpo**, **Roupa** (camiseta, camisa social, blazer e gravata, moletom, vestido, jaleco, avental) e **Cor da roupa**, **Cor da calça**, **Detalhes**, **Acessório** (Nenhum, Fone, Óculos), **Chapéu** (boné), **Nome** e **Personalidade**;
   - **Salvar avatar**: "Pronto. Os próximos vídeos já usam este avatar."
 - **Checklist:** avatar salvo; o resumo do Início mostra "Com o avatar <nome>".
 
@@ -176,6 +178,19 @@ Para cada aula: **objetivo**, **tela**, **roteiro** (o Codex escreve o texto fin
   - o vídeo sai pronto, sem exportar.
 - **Resultado:** tocar o vídeo e mostrar **Postar agora**, **Colocar no piloto automático** e **Ajustar** ("O que você quer mudar?", com a versão anterior ao lado e **Voltar à anterior**).
 - **Checklist:** 1 Reels pronto em Meus Reels.
+
+**4.1b Estilos desenhados pela IA (6 min)**
+
+- **Tela:** Criar → **Ajustar** (ou Criar Reel completo). Mostrar:
+  - **Estilo visual**: Automático (a IA escolhe) ou um dos 11 estilos desenhados (Pixel art, Aquarela, Pintura a óleo, Giz de cera, HQ/nanquim, Guache, Filme retrô, Vetor limpo, Neon noturno, Rabisco (caderno), TV retrô). Cada estilo tem uma miniatura de exemplo. Os modelos antigos ficam em **Modelos clássicos**;
+  - **Descreva o visual**: escrever o estilo com as próprias palavras ("aquarela sonhadora em tons pastel");
+  - **Personagens**: Automático, Pixel art (seu avatar) ou Palito desenhado;
+  - **Formato**: Vertical 9:16, Quadrado 1:1 ou Paisagem 16:9 (YouTube).
+- **Pontos:**
+  - a IA escreve o roteiro e **desenha os cenários e objetos do pedido** (uma loja, um barco, um celular com o post) e dirige cada tomada: câmera, closes, aproximações, panorâmicas;
+  - gráficos aparecem quando ajudam: contador, antes e depois, barras, checklist, notificações chegando, passos, depoimento (números só quando reais);
+  - o vídeo vem com trilha composta e efeitos sonoros e ambiente do lugar, sem nada para creditar.
+- **Checklist:** um Reels em Rabisco com personagens palito e um em Pixel art com o seu avatar.
 
 **4.2 Ideias que o Radar sugere (5 min)**
 
@@ -225,7 +240,7 @@ Para cada aula: **objetivo**, **tela**, **roteiro** (o Codex escreve o texto fin
 
 - **Tela:** Histórias › **Série pronta com IA**.
 - **Pontos:**
-  - escolher Gênero, Episódios (3/5/7), Personagens (2/3), "O produto aparece?", "Onde se passa" e uma ideia opcional (em branco, a IA decide pela marca);
+  - escolher Gênero, Episódios (3/5/7), Personagens (2/3), "O produto aparece?", "Onde se passa" (qualquer lugar: a IA desenha), **Estilo visual** (um dos 11 estilos ou "Quadrinho clássico"), **Personagens** (pixel art ou palito) e uma ideia opcional (em branco, a IA decide pela marca);
   - **Criar série pronta**: a IA cria o elenco, escreve todos os episódios e gera os vídeos (pode sair da tela);
   - ao terminar: **Ligar piloto automático: 1 episódio por dia**.
 - **Checklist:** série com episódios prontos e agendados.
@@ -236,6 +251,7 @@ Para cada aula: **objetivo**, **tela**, **roteiro** (o Codex escreve o texto fin
   - Personagens: avatar e voz (botão **Ouvir**);
   - editor do episódio em blocos (personagem, humor e fala), com ações de IA por fala (reescrever, deixar mais engraçado, encurtar), "O que mudar no roteiro?" e **Outro final**;
   - duração estimada (25 a 45 s);
+  - o lugar de cada cena é livre (a IA desenha o cenário) e o estilo da série fica salvo para todos os episódios;
   - os avisos mostram o que o motor não suporta;
   - **Gerar de novo**.
 
@@ -261,7 +277,7 @@ Para cada aula: **objetivo**, **tela**, **roteiro** (o Codex escreve o texto fin
 - O app expõe um servidor MCP local. A ponte `tools/cutroom-claude-desktop-bridge.cjs` roda no próprio executável do app (`ELECTRON_RUN_AS_NODE=1`), então não precisa de Node instalado.
 - A configuração pronta vem do botão Copiar (IPC `mcpSetup`).
 
-### 6.2 Ferramentas (71), por grupo
+### 6.2 Ferramentas (72), por grupo
 
 - **Projeto do editor:** `get_project`, `edit_project`, `transcribe`, `inspect_frame`, `create_blank_canvas`, `import_media`, `export_video`.
 - **Áudio e marca:** `add_audio`, `list_voices`, `add_voiceover`, `search_music`, `add_music`, `get_brand`.
@@ -272,6 +288,7 @@ Para cada aula: **objetivo**, **tela**, **roteiro** (o Codex escreve o texto fin
   - `create_film` e `update_film_avatar`;
   - `film_voiceover` (uma voz) e `film_dialogue` (uma voz por fala);
   - `compose_music` (trilha composta para o filme, sem licença a creditar);
+  - `film_sfx` (efeitos e ambiente sintetizados para filmes no formato `desenhado`);
   - `film_asset`, `write_film_file`, `read_film_file`, `film_capture_page`;
   - `list_effects` e `film_add_effect` (236 efeitos);
   - `film_check`, `film_stills`, `film_review`;
