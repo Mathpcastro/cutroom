@@ -43,7 +43,7 @@ export type Aspect = keyof typeof ASPECTS;
 export const ASPECT_LABEL: Record<Aspect, string> = { "9:16": "Vertical 9:16 (Reels, TikTok, Shorts)", "1:1": "Quadrado 1:1 (feed)", "16:9": "Paisagem 16:9 (YouTube)" };
 export const MUSIC_MOODS = ["alegre", "calmo", "lofi", "tenso", "epico", "misterio"] as const;
 export type MusicMood = (typeof MUSIC_MOODS)[number];
-export const KIT_SYMBOLS = ["tree", "pine", "bush", "cloud", "sun", "moon", "mountain", "hills", "building", "house", "lamp", "desk", "laptop", "phone", "cup", "plant", "window", "door", "sofa", "wave", "rock", "bird", "star", "shelf"] as const;
+export const KIT_SYMBOLS = ["tree", "pine", "bush", "cloud", "sun", "moon", "mountain", "hills", "building", "house", "lamp", "desk", "laptop", "phone", "cup", "plant", "window", "door", "sofa", "wave", "rock", "bird", "star", "shelf", "ui-phone", "ui-browser", "ui-card", "ui-chart", "ui-button", "ui-toggle", "ui-check", "ui-bell", "ui-bubble", "ui-avatar", "ui-bag", "ui-cart", "ui-paycard", "ui-box", "ui-tshirt", "ui-heart", "ui-play", "ui-sparkle", "ui-blob", "ui-cursor"] as const;
 
 /* ------------------------------------------------------------------ SVG sanitizer */
 
@@ -272,11 +272,11 @@ export function cleanShotPlan(raw: unknown): { plan: ShotPlan; dropped: string[]
       const def = EFFECTS[s.effect.name], fx = s.effect.vars;
       // A line too long for the effect reads better as the engine's kinetic text.
       if (def.fit && String(fx.text ?? "").length > def.fit) return { ...s, effect: undefined, ui: { kind: "reveal" as const, text: String(fx.text).slice(0, 90), items: [] } };
-      // The counter only lands on whole numbers: 4,9 goes to the engine's counter, which keeps the decimals.
-      if (s.effect.name === "count-up" && (!Number.isInteger(Number(fx.end ?? 0)) || !Number.isInteger(Number(fx.start ?? 0)))) {
-        return { ...s, effect: undefined, graphic: { kind: "stat" as const, value: Number(fx.end) || 0, from: Number(fx.start) || 0, prefix: typeof fx.prefix === "string" ? fx.prefix.slice(0, 6) : undefined, suffix: typeof fx.suffix === "string" ? fx.suffix.slice(0, 10) : undefined, items: [] } };
+      // The counter only lands on whole numbers and shrinks long words: 4,9 or "Mais de … pedidos" go to the engine's counter.
+      if (s.effect.name === "count-up" && (!Number.isInteger(Number(fx.end ?? 0)) || !Number.isInteger(Number(fx.start ?? 0)) || String(fx.prefix ?? "").length + String(fx.suffix ?? "").length > 6)) {
+        return { ...s, effect: undefined, graphic: { kind: "stat" as const, value: Number(fx.end) || 0, from: Number(fx.start) || 0, prefix: typeof fx.prefix === "string" && fx.prefix ? (/\p{L}$/u.test(fx.prefix) ? fx.prefix + " " : fx.prefix).slice(0, 14) : undefined, suffix: typeof fx.suffix === "string" && fx.suffix ? (/^\p{L}/u.test(fx.suffix) ? " " + fx.suffix : fx.suffix).slice(0, 16) : undefined, items: [] } };
       }
-      const area = s.effect.area ?? EFFECTS[s.effect.name].area ?? "center";
+      const area = EFFECTS[s.effect.name].area === "full" ? "full" : s.effect.area ?? EFFECTS[s.effect.name].area ?? "center";
       if (area === "full" || area === "center") return { ...s, ui: undefined, graphic: undefined, proof: undefined, proofStyle: undefined, text: s.text?.kind === "sign" ? s.text : undefined };
       if (area === "top") return { ...s, graphic: undefined, text: undefined, ui: s.ui?.kind === "island" ? undefined : s.ui };
       return s;
@@ -324,6 +324,7 @@ CENÁRIOS (sets) em SVG
 - Para personagens palito, desenhe cenários mais simples e claros (eles são traço fino).
 - Deixe o chão onde os personagens pisam entre y=${Math.round(o.height * 0.74)} e y=${Math.round(o.height * 0.9)}, com espaço livre acima dele.
 - A paleta precisa de contraste: inclua um tom escuro para silhuetas, contornos e sombras, além dos claros. Evite cenários todos em tons pastel.
+- KIT DE INTERFACE (vídeos de produto e Motion UI): monte as telas com as peças kit-ui-* (celular, navegador, cartões, gráfico, botão, chave, check, sino, bolha, avatar, sacola, carrinho, cartão de pagamento, caixa, camiseta, coração, play, brilho, mancha de fundo, cursor), recoloridas com a paleta (--c é o destaque), em vez de desenhar celulares e cartões à mão; componha várias peças em camadas, com mancha (ui-blob) e brilhos atrás, e marque-as com data-motion.
 - Kit pronto e recolorível (opcional, para ganhar tempo): <use href="#kit-NOME" x y width height style="--a:#hex;--b:#hex;--c:#hex;--d:#hex"/> com NOME em ${KIT_SYMBOLS.join(", ")} (a = cor principal, b = sombra, c = luz ou detalhe, d = escuro).
 - Capricho: cada cenário é uma ilustração completa, não um esboço. Pelo menos 3 camadas de profundidade e 25 formas: céu ou parede com degradê, elementos de fundo (morros, prédios, prateleiras, nuvens), o lugar principal com seus detalhes (portas, janelas, letreiros sem texto, caixotes, plantas, reflexos), sombras no chão e um primeiro plano que emoldura a cena. Use luz e sombra coerentes com a hora do dia.
 - Cada SVG entre 4000 e 9000 caracteres. Use de 2 a 4 cenários e reaproveite-os em várias tomadas, variando o enquadramento.

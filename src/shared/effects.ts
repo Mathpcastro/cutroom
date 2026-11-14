@@ -27,7 +27,8 @@ export interface EffectDef {
 }
 
 export const EFFECT_AREAS = ["full", "center", "top", "lower"] as const;
-export type EffectArea = (typeof EFFECT_AREAS)[number];
+/** "band" is the snug strip text effects take by default (not chosen by the AI). */
+export type EffectArea = (typeof EFFECT_AREAS)[number] | "band";
 
 const T = "frase curta (até 7 palavras)";
 export const EFFECTS: Record<string, EffectDef> = {
@@ -118,6 +119,7 @@ export function effectBox(area: EffectArea, W: number, H: number) {
   switch (area) {
     case "full": return { left: 0, top: 0, width: W, height: r(H * (tall ? 0.78 : 0.8)) };
     case "top": return { left: r(W * 0.06), top: r(H * 0.05), width: r(W * 0.88), height: r(H * (tall ? 0.24 : 0.3)) };
+    case "band": return { left: r(W * (tall ? 0.05 : 0.12)), top: r(H * (tall ? 0.15 : 0.14)), width: r(W * (tall ? 0.9 : 0.76)), height: r(H * (tall ? 0.28 : 0.42)) };
     case "lower": return { left: r(W * 0.06), top: r(H * (tall ? 0.52 : 0.5)), width: r(W * 0.88), height: r(H * (tall ? 0.2 : 0.26)) };
     default: return { left: r(W * (tall ? 0.05 : 0.14)), top: r(H * (tall ? 0.2 : 0.16)), width: r(W * (tall ? 0.9 : 0.72)), height: r(H * (tall ? 0.42 : 0.58)) };
   }
@@ -147,8 +149,10 @@ export function effectMounts(
       const n = Math.min(12, String(vars[def.list]).split(",").filter((x) => x.trim()).length);
       if (n > 0) vars[def.cues] = Array.from({ length: n }, (_, k) => +(0.25 + (k * Math.max(0.6, dur - 0.9)) / n).toFixed(2)).join(",");
     }
-    const box = effectBox(fx.area ?? def.area ?? "center", o.width, o.height);
-    const round = fx.area === "full" || (!fx.area && def.area === "full") ? 0 : 36;
+    // Text effects sit in a snug band; data and product effects get the larger card.
+    // Full-screen scenes (chat, notes, phone) only read full screen, whatever area the plan asked for.
+    const box = effectBox(def.area === "full" ? "full" : fx.area ?? def.area ?? (def.group === "texto" ? "band" : "center"), o.width, o.height);
+    const round = def.area === "full" || fx.area === "full" ? 0 : 36;
     const style = `position:absolute;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;z-index:36;--bg:${o.panel};border-radius:${round}px;overflow:hidden${round ? `;background:${o.panel};box-shadow:0 24px 70px rgba(0,0,0,.18)` : ""}`;
     out.push(
       `<div id="fx-${i + 1}-${fx.name}" class="clip" data-composition-id="${fx.name}" data-composition-src="compositions/components/${fx.name}.html" data-start="${start.toFixed(2)}" data-duration="${dur.toFixed(2)}" data-track-index="${8 + (i % 4)}" data-variable-values='${attr(JSON.stringify(vars))}' style="${style}"></div>`,

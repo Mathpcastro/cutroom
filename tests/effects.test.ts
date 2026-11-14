@@ -63,7 +63,8 @@ describe("shot effects", () => {
         { say: "a", set: "a", effect: { name: "per-word-rise", vars: { text: "Chega de procurar e não achar" } } },
         { say: "b", set: "a", effect: { name: "per-word-rise", vars: { text: "Sem gravar" } } },
         { say: "c", set: "a", effect: { name: "count-up", vars: { start: 0, end: 4.9 } } },
-        { say: "d", set: "a", effect: { name: "count-up", vars: { start: 0, end: 1200, suffix: " pedidos" } } },
+        { say: "d", set: "a", effect: { name: "count-up", vars: { start: 0, end: 1200, suffix: "+" } } },
+        { say: "e", set: "a", effect: { name: "count-up", vars: { start: 0, end: 1200, prefix: "Mais de ", suffix: " pedidos" } } },
       ],
     });
     expect(plan.shots[0].effect).toBeUndefined();
@@ -71,6 +72,7 @@ describe("shot effects", () => {
     expect(plan.shots[1].effect?.name).toBe("per-word-rise");
     expect(plan.shots[2].graphic).toMatchObject({ kind: "stat", value: 4.9 });
     expect(plan.shots[3].effect?.name).toBe("count-up");
+    expect(plan.shots[4].graphic).toMatchObject({ kind: "stat", value: 1200, prefix: "Mais de ", suffix: " pedidos" });
   });
 
   it("a landscape-only effect becomes kinetic text in a vertical film", () => {
@@ -102,6 +104,9 @@ describe("shot effects", () => {
     expect(vars.cues.split(",")).toHaveLength(3);
     expect(html).toContain(`height:${effectBox("full", 1920, 1080).height}px`);
     expect(html).toContain("border-radius:0px");
+    // A full-screen scene stays full screen even when the plan asked for a strip.
+    const forced = effectMounts([{ effect: shotEffectSchema.parse({ name: "notes-typing", vars: { title: "Oi" }, area: "top" }) }], [{ start: 0, end: 3 }], { width: 1080, height: 1920, panel: "#fff" });
+    expect(forced).toContain(`height:${effectBox("full", 1080, 1920).height}px`);
     expect(html).not.toMatch(/<script/);
   });
 
