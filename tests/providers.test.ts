@@ -836,6 +836,7 @@ describe("Claude loopback bridge", () => {
       "list_films",
       "film_voiceover",
       "film_sfx",
+      "film_shot_effects",
       "compose_music",
       "film_asset",
       "write_film_file",

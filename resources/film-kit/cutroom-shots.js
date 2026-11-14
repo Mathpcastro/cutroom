@@ -271,6 +271,11 @@
   }
 
   /* ------------------------------------------------------------------ weather / particles */
+  function hexA(hex, a) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim()), n = m ? parseInt(m[1], 16) : 0xffffff;
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  }
+  function roundRectFx(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
   function drawFx(ctx, kind, t, W, H, look, seed) {
     var r = rng(seed * 31 + 7), i, n;
     ctx.save();
@@ -305,6 +310,48 @@
     } else if (kind === "light-rays") {
       ctx.globalCompositeOperation = "lighter";
       for (i = 0; i < 6; i++) { var ang = -0.5 + i * 0.18 + Math.sin(t * 0.4 + i) * 0.03; ctx.fillStyle = "rgba(255,240,200,.07)"; ctx.beginPath(); ctx.moveTo(W * 0.15, -50); ctx.lineTo(W * 0.15 + Math.cos(ang) * 2600 - 90, Math.sin(ang + 1.6) * 2600); ctx.lineTo(W * 0.15 + Math.cos(ang) * 2600 + 90, Math.sin(ang + 1.6) * 2600); ctx.closePath(); ctx.fill(); }
+    } else if (kind === "bokeh") {
+      // Soft out-of-focus discs drifting up, in the palette.
+      var bc = look.palette && look.palette.length ? look.palette : ["#FFD23F", "#7C5CFF", "#3EC1D3"];
+      ctx.globalCompositeOperation = "lighter";
+      for (i = 0; i < 34; i++) {
+        var br = 40 + r() * 120, bx = r() * W + Math.sin(t * 0.3 + i) * 40, by = (r() * (H + 400) - t * (20 + r() * 40) + H * 4) % (H + 400) - 200;
+        var bg2 = ctx.createRadialGradient(bx, by, 0, bx, by, br); bg2.addColorStop(0, hexA(bc[i % bc.length], 0.28 + 0.12 * Math.sin(t + i))); bg2.addColorStop(1, hexA(bc[i % bc.length], 0));
+        ctx.fillStyle = bg2; ctx.beginPath(); ctx.arc(bx, by, br, 0, 6.29); ctx.fill();
+      }
+    } else if (kind === "matrix") {
+      // Falling glyph columns (code, data, "inside the machine").
+      var col = 40, ncol = Math.ceil(W / col), glyphs = "01アイウエオカキクケコ$#%<>/";
+      ctx.font = "700 30px 'JetBrains Mono', monospace"; ctx.textAlign = "center";
+      for (i = 0; i < ncol; i++) {
+        var speed = 260 + r() * 420, len = 8 + Math.floor(r() * 14), head = ((t * speed + r() * H * 2) % (H + len * 34)) ;
+        for (var k = 0; k < len; k++) {
+          var gy = head - k * 34; if (gy < -34 || gy > H + 34) continue;
+          var ch = glyphs[Math.floor((r() * 97 + Math.floor(t * 12) + k * 7) % glyphs.length)];
+          ctx.fillStyle = k === 0 ? "rgba(220,255,230,.9)" : "rgba(60,230,120," + (0.55 * (1 - k / len)) + ")";
+          ctx.fillText(ch, i * col + col / 2, gy);
+        }
+      }
+    } else if (kind === "film-burn") {
+      // Warm light leaks breathing in from the edges, like burnt film.
+      ctx.globalCompositeOperation = "screen";
+      for (i = 0; i < 3; i++) {
+        var ph = t * (0.35 + i * 0.13) + i * 2.1, lx = (0.5 + 0.55 * Math.sin(ph)) * W, ly = (0.5 + 0.6 * Math.cos(ph * 0.8 + i)) * H, lr = Math.max(W, H) * (0.35 + 0.15 * Math.sin(ph * 1.7));
+        var lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr); lg.addColorStop(0, "rgba(255,150,60," + (0.34 + 0.16 * Math.sin(ph * 2.3)) + ")"); lg.addColorStop(0.5, "rgba(255,70,40,.12)"); lg.addColorStop(1, "rgba(255,40,20,0)");
+        ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+      }
+    } else if (kind === "grain") {
+      // Moving film grain (a new pattern a few times per second).
+      var gr = rng(seed * 13 + Math.floor(t * 12));
+      for (i = 0; i < 2600; i++) { ctx.fillStyle = gr() > 0.5 ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.08)"; ctx.fillRect(gr() * W, gr() * H, 2 + gr() * 3, 2 + gr() * 3); }
+    } else if (kind === "sound-wave") {
+      // An audio waveform pulsing across the lower third (podcast, voice, music).
+      var wc = (look.palette && look.palette.length ? look.palette[look.palette.length - 1] : "#FFFFFF"), nb = 48, bw2 = W / nb, cy2 = H * 0.66;
+      ctx.fillStyle = hexA(wc, 0.75);
+      for (i = 0; i < nb; i++) {
+        var amp = (0.25 + 0.75 * Math.abs(Math.sin(t * 5.2 + i * 0.55) * Math.sin(t * 2.3 + i * 0.21))) * H * 0.08 * (0.5 + 0.5 * Math.sin(i / nb * Math.PI));
+        roundRectFx(ctx, i * bw2 + bw2 * 0.22, cy2 - amp, bw2 * 0.56, amp * 2, bw2 * 0.28); ctx.fill();
+      }
     } else if (kind === "speed-lines") {
       ctx.strokeStyle = "rgba(255,255,255,.55)";
       for (i = 0; i < 46; i++) { var aa = r() * Math.PI * 2, r0 = 380 + r() * 300 + ((t * 900 + r() * 400) % 300); ctx.lineWidth = 2 + r() * 5; ctx.beginPath(); ctx.moveTo(W / 2 + Math.cos(aa) * r0, H / 2 + Math.sin(aa) * r0); ctx.lineTo(W / 2 + Math.cos(aa) * (r0 + 260), H / 2 + Math.sin(aa) * (r0 + 260)); ctx.stroke(); }
@@ -570,6 +617,7 @@
     var vx = view.getContext("2d");
     var work = document.createElement("canvas"); work.width = W; work.height = H; var wx = work.getContext("2d");
     var prevC = document.createElement("canvas"); prevC.width = W; prevC.height = H; var px = prevC.getContext("2d");
+    var tmpC = document.createElement("canvas"); tmpC.width = W; tmpC.height = H; var tx2 = tmpC.getContext("2d");
     var block = look.block || 0, small = null, sx = null, softC = null, softX = null, baseC = null, baseX = null;
     if (block) { small = document.createElement("canvas"); small.width = Math.ceil(W / block); small.height = Math.ceil(H / block); sx = small.getContext("2d", { willReadFrequently: true }); }
     var quant = block && look.quantize ? (look.palette.length ? look.palette : []).concat([ink, "#FFFFFF", "#0E0D12"]).map(hexRgb) : null;
@@ -785,6 +833,15 @@
       ".crs-ui .big{position:absolute;left:50%;transform:translateX(-50%);width:max-content;max-width:" + Math.round(W * 0.84) + "px;text-wrap:balance;top:" + Math.round(H * (W > H ? 0.22 : 0.18)) + "px;text-align:center;font:400 " + BIGFS + "px/1.04 " + (look.text === "clean" || look.text === "neon" ? FONTS.Anton : gNum) + ";color:" + (lightPaper ? ink : "#fff") + ";padding:" + Math.round(26 * uu) + "px " + Math.round(30 * uu) + "px;border-radius:" + Math.round(44 * uu) + "px;background:" + (lightPaper ? "rgba(255,255,255,.88)" : "rgba(8,8,18,.62)") + ";box-shadow:0 18px 50px rgba(0,0,0,.18)}" +
       ".crs-ui .big .w{display:inline-block;margin:0 .12em}.crs-ui .big .acc{color:" + accent + "}.crs-ui .slot{display:inline-block;overflow:hidden;vertical-align:bottom;height:1.08em;position:relative;text-align:left}.crs-ui .slot b{position:absolute;left:0;top:0;white-space:nowrap;font-weight:400;color:" + accent + "}" +
       ".crs-ui .splash{position:absolute;left:50%;top:" + Math.round(H * (W > H ? 0.14 : 0.2)) + "px;transform:translateX(-50%)}.crs-ui .splash svg{display:block}.crs-ui .splash .name{position:absolute;left:0;right:0;text-align:center;font:400 " + Math.round(86 * uu) + "px " + FONTS.Anton + ";color:" + ink + "}" +
+      ".crs-ui .l3{position:absolute;left:" + Math.round(W * 0.06) + "px;top:" + Math.round(H * (W > H ? 0.66 : 0.62)) + "px;display:flex;align-items:stretch;overflow:hidden;border-radius:" + Math.round(18 * uu) + "px;box-shadow:0 18px 44px rgba(0,0,0,.3)}" +
+      ".crs-ui .l3 .bar{flex:none;width:" + Math.round(16 * uu) + "px;background:" + accent + "}.crs-ui .l3 .tx{background:" + cardBg + ";padding:" + Math.round(20 * uu) + "px " + Math.round(34 * uu) + "px}" +
+      ".crs-ui .l3 b{display:block;font:400 " + Math.round(58 * uu) + "px/1.05 " + gNum + ";white-space:nowrap}.crs-ui .l3 small{display:block;font-size:" + Math.round(34 * uu) + "px;opacity:.72;white-space:nowrap;margin-top:" + Math.round(6 * uu) + "px}" +
+      ".crs-ui .cd{position:absolute;left:50%;top:" + Math.round(H * (W > H ? 0.14 : 0.18)) + "px;transform:translateX(-50%);text-align:center}.crs-ui .cd .lab{font-size:" + Math.round(46 * uu) + "px;margin-bottom:" + Math.round(18 * uu) + "px;color:" + (lightPaper ? ink : "#fff") + "}" +
+      ".crs-ui .cd .ring{position:relative;margin:0 auto}.crs-ui .cd .ring svg{position:absolute;left:0;top:0}.crs-ui .cd .num{position:absolute;inset:0;display:grid;place-items:center;font:400 " + Math.round(220 * uu) + "px/1 " + (look.text === "clean" || look.text === "neon" ? FONTS.Anton : gNum) + ";color:" + (lightPaper ? ink : "#fff") + "}" +
+      ".crs-ui .fol{position:absolute;left:50%;top:" + Math.round(H * (W > H ? 0.3 : 0.32)) + "px;transform:translateX(-50%);max-width:" + Math.round(W * 0.92) + "px;box-sizing:border-box;display:flex;align-items:center;gap:" + Math.round(18 * uu) + "px;background:" + cardBg + ";padding:" + Math.round(22 * uu) + "px " + Math.round(26 * uu) + "px;border-radius:999px;box-shadow:0 24px 60px rgba(0,0,0,.3)}" +
+      ".crs-ui .fol .av{flex:none;width:" + Math.round(88 * uu) + "px;height:" + Math.round(88 * uu) + "px;border-radius:50%;background:" + accent + ";color:" + ink + ";display:grid;place-items:center;font:400 " + Math.round(56 * uu) + "px " + gNum + "}" +
+      ".crs-ui .fol .who{font-size:" + Math.round(36 * uu) + "px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-right:" + Math.round(8 * uu) + "px}.crs-ui .fol .go{flex:none;border-radius:999px;padding:" + Math.round(18 * uu) + "px " + Math.round(30 * uu) + "px;font:400 " + Math.round(38 * uu) + "px " + gNum + ";white-space:nowrap}" +
+      ".crs-ui .fol .bell{flex:none;font-size:" + Math.round(50 * uu) + "px;transform-origin:50% 10%}" +
       ".crs-ui .loader{position:absolute;left:50%;top:" + Math.round(H * (W > H ? 0.2 : 0.22)) + "px;transform:translateX(-50%);text-align:center}.crs-ui .loader .lab{margin-top:" + Math.round(26 * uu) + "px;font-size:" + Math.round(50 * uu) + "px;white-space:nowrap}";
     document.head.appendChild(ucss);
     var SVGNS = "http://www.w3.org/2000/svg";
@@ -918,6 +975,49 @@
         UIS.push(function (t) {
           if (!vis(box, s, t, 0.01)) return;
           spans.forEach(function (el2, i) { var k4 = sp(t - s.start - 0.05 - i * step, SPR.snappy); el2.style.opacity = String(clamp(k4 * 1.6, 0, 1)); el2.style.transform = "translateY(" + ((1 - k4) * 36) + "px)"; });
+        });
+      } else if (u.kind === "lowerthird") {
+        // Lower third: name and role slide in on a bar (who is talking, what this is).
+        var l3 = document.createElement("div"); l3.className = "l3"; l3.innerHTML = '<div class="bar"></div><div class="tx"><b>' + esc(u.text || (items[0] && items[0].label) || BRAND_NAME || "") + "</b>" + ((items[0] && (u.text ? items[0].label : items[0].note)) ? "<small>" + esc(u.text ? items[0].label : items[0].note) + "</small>" : "") + "</div>"; box.appendChild(l3);
+        var l3tx = l3.querySelector(".tx"), l3bar = l3.querySelector(".bar");
+        UIS.push(function (t) {
+          if (!vis(box, s, t, 0.01)) return;
+          var kb = sp(t - s.start, SPR.snappy), kt = sp(t - s.start - 0.12, SPR.soft), out = sp(t - (s.end - 0.3), SPR.firm);
+          l3bar.style.transform = "scaleY(" + clamp(kb, 0, 1.2) + ")";
+          l3tx.style.clipPath = "inset(0 " + (100 - 100 * clamp(kt, 0, 1)) + "% 0 0)";
+          l3.style.transform = "translateX(" + (-out * W * 0.7) + "px)";
+        });
+      } else if (u.kind === "countdown") {
+        // Countdown: digits tick down inside a draining ring (offer ending, 3-2-1 launch).
+        var from = Math.max(1, Math.min(10, Math.round((items[0] && items[0].value) || 3)));
+        var cd = document.createElement("div"), rs = Math.round(Math.min(W, H) * 0.42); cd.className = "cd";
+        cd.innerHTML = (u.text ? '<div class="lab">' + esc(u.text) + "</div>" : "") + '<div class="ring" style="width:' + rs + "px;height:" + rs + 'px"><svg viewBox="0 0 120 120" width="' + rs + '" height="' + rs + '"><circle cx="60" cy="60" r="52" fill="none" stroke="' + uiMuted.replace(".12", ".22").replace(".07", ".14") + '" stroke-width="9"/><circle class="arc" cx="60" cy="60" r="52" fill="none" stroke="' + accent + '" stroke-width="9" stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="326.7"/></svg><div class="num"></div></div>';
+        box.appendChild(cd);
+        var arc = cd.querySelector(".arc"), num = cd.querySelector(".num"), stepD = Math.max(0.35, (dur - 0.3) / (from + 1));
+        UIS.push(function (t) {
+          if (!vis(box, s, t)) return;
+          var lt = t - s.start, k = Math.min(from, Math.floor(lt / stepD)), val = from - k, kk = sp(lt - k * stepD, SPR.pop);
+          num.textContent = val > 0 ? String(val) : (items[1] && items[1].label) || "Já!";
+          num.style.transform = "scale(" + (1.5 - 0.5 * clamp(kk, 0, 1.2)) + ")"; num.style.opacity = String(clamp(kk * 1.6, 0, 1));
+          arc.style.strokeDashoffset = String(326.7 * clamp(lt / (stepD * from), 0, 1));
+          cd.style.transform = "translateX(-50%) scale(" + (0.85 + 0.15 * sp(lt, SPR.bouncy)) + ")";
+        });
+      } else if (u.kind === "follow") {
+        // Follow reminder: profile pill, the button turns into "Seguindo ✓" and the bell rings.
+        var handle = u.text || (window.BRAND && window.BRAND.handle ? "@" + String(window.BRAND.handle).replace(/^@/, "") : BRAND_NAME);
+        var fol = document.createElement("div"); fol.className = "fol";
+        fol.innerHTML = '<div class="av">' + esc((u.icon || (BRAND_NAME || handle || "V").replace(/^@/, "").slice(0, 1)).slice(0, 2).toUpperCase()) + '</div><div class="who">' + esc(handle) + '</div><div class="go"></div><div class="bell">🔔</div>';
+        box.appendChild(fol);
+        var go = fol.querySelector(".go"), bell = fol.querySelector(".bell"), tapAt = s.start + Math.min(1, dur * 0.42);
+        var label0 = u.button || "Seguir", label1 = (items[0] && items[0].label) || "Seguindo ✓";
+        UIS.push(function (t) {
+          if (!vis(box, s, t)) return;
+          var inn = sp(t - s.start, SPR.bouncy), tapped = t >= tapAt, kp = tapped ? sp(t - tapAt, SPR.pop) : 0;
+          fol.style.transform = "translateX(-50%) scale(" + (0.7 + 0.3 * inn) + ")";
+          go.textContent = tapped ? label1 : label0;
+          go.style.background = tapped ? uiMuted : accent; go.style.color = tapped ? cardFg : ink;
+          go.style.transform = "scale(" + (tapped ? 0.9 + 0.1 * kp : 1) + ")";
+          var ring = tapped ? Math.max(0, 1 - (t - tapAt) / 1.1) : 0; bell.style.transform = "rotate(" + (Math.sin((t - tapAt) * 28) * 22 * ring) + "deg)";
         });
       } else if (u.kind === "splash" || u.kind === "loader") {
         var size = Math.min(W, H) * 0.42, wrap = document.createElement("div"); wrap.className = u.kind; box.appendChild(wrap);
@@ -1096,7 +1196,7 @@
       for (var i = 1; i < shots.length; i++) {
         var s = shots[i], kind = s.transition || "cut";
         if (kind === "cut" || kind === "flash") continue;
-        var dur = kind === "whip" ? 0.28 : kind === "iris" ? 0.6 : 0.45;
+        var dur = kind === "whip" ? 0.28 : kind === "iris" || kind === "clock" ? 0.6 : kind === "pixelate" ? 0.5 : kind === "push" || kind === "zoom" ? 0.4 : 0.45;
         if (t >= s.start && t < s.start + dur) return { from: shots[i - 1], to: s, p: (t - s.start) / dur, kind: kind };
       }
       return null;
@@ -1187,6 +1287,31 @@
         if (tr.kind === "fade" || tr.kind === "dissolve") { wx.globalAlpha = 1 - p; wx.drawImage(prevC, 0, 0); }
         else if (tr.kind === "wipe") { wx.beginPath(); wx.rect(W * p, 0, W * (1 - p), H); wx.clip(); wx.drawImage(prevC, 0, 0); }
         else if (tr.kind === "iris") { wx.beginPath(); wx.rect(0, 0, W, H); wx.arc(W / 2, H * 0.48, Math.max(1, p * H * 0.75), 0, Math.PI * 2, true); wx.clip("evenodd"); wx.drawImage(prevC, 0, 0); }
+        else if (tr.kind === "blinds") {
+          // Venetian blinds: the old shot survives in slats that close.
+          var nb = W > H ? 9 : 12, bh = H / nb; wx.beginPath();
+          for (var bi = 0; bi < nb; bi++) wx.rect(0, bi * bh + bh * p, W, bh * (1 - p));
+          wx.clip(); wx.drawImage(prevC, 0, 0);
+        }
+        else if (tr.kind === "clock") {
+          // Clock wipe: a hand sweeps around the centre revealing the new shot.
+          var a0 = -Math.PI / 2 + p * Math.PI * 2; wx.beginPath(); wx.moveTo(W / 2, H / 2); wx.arc(W / 2, H / 2, Math.hypot(W, H), a0, Math.PI * 1.5); wx.closePath(); wx.clip(); wx.drawImage(prevC, 0, 0);
+        }
+        else if (tr.kind === "pixelate") {
+          // Blocks grow on the old shot, the new one resolves from blocks.
+          var src = p < 0.5 ? prevC : wx.canvas, blk = Math.max(1, Math.round(2 + 70 * Math.sin(p * Math.PI)));
+          tx2.clearRect(0, 0, W, H); tx2.imageSmoothingEnabled = true; tx2.drawImage(src, 0, 0, Math.ceil(W / blk), Math.ceil(H / blk));
+          wx.imageSmoothingEnabled = false; wx.drawImage(tmpC, 0, 0, Math.ceil(W / blk), Math.ceil(H / blk), 0, 0, W, H); wx.imageSmoothingEnabled = true;
+        }
+        else if (tr.kind === "push") {
+          // The new shot pushes the old one off to the left.
+          tx2.clearRect(0, 0, W, H); tx2.drawImage(wx.canvas, 0, 0); wx.clearRect(0, 0, W, H);
+          wx.drawImage(prevC, -W * p, 0); wx.drawImage(tmpC, W * (1 - p), 0);
+        }
+        else if (tr.kind === "zoom") {
+          // Zoom through: the old shot rushes toward the camera and fades.
+          var zs = 1 + p * 1.6; wx.globalAlpha = 1 - p; wx.translate(W / 2, H / 2); wx.scale(zs, zs); wx.translate(-W / 2, -H / 2); wx.filter = "blur(" + Math.round(10 * p) + "px)"; wx.drawImage(prevC, 0, 0);
+        }
         else if (tr.kind === "whip") {
           var off = W * p;
           wx.globalAlpha = 1 - p * 0.3; wx.filter = "blur(" + Math.round(18 * Math.sin(p * Math.PI)) + "px)"; wx.drawImage(prevC, -off, 0);

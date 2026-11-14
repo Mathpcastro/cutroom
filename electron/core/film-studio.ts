@@ -11,7 +11,9 @@ import { filmAvatarCacheKey, snapshotFilmAvatar } from "./film-avatar";
 import { FORMATS, formatGuide } from "./formats";
 import { Studio, probeAudio } from "./studio";
 import { MUSIC_MOODS, writeComposedMusic } from "./compose-music";
-import { writeFilmSoundtrack } from "./compose-sfx";
+import { readFilmWords, writeFilmSoundtrack } from "./compose-sfx";
+import { effectMounts } from "../../src/shared/effects";
+import { cleanShotPlan, effectPanel, timeShots } from "../../src/shared/shots";
 import type { AvatarStore } from "./avatar-store";
 import type { BrandStore } from "./brand";
 
@@ -176,6 +178,25 @@ export class FilmStudio {
     await this.host.films.meta(a.film);
     const result = await writeFilmSoundtrack(this.host.films.dir(a.film), a.seconds);
     return { ...result, audio: `<audio id="efeitos" data-start="0" data-duration="${a.seconds}" data-track-index="22" data-volume="0.9" src="${result.file}"></audio>` };
+  }
+
+  /**
+   * Registry effects chosen per shot (plano.json shot.effect): copies each one into the film and returns
+   * the mount divs, timed to the shots through the narration (timing.js).
+   */
+  async shotEffects(args: Record<string, unknown>) {
+    const a = z.object({ film, seconds: z.number().min(1).max(600), width: z.number().int().min(240).max(4096), height: z.number().int().min(240).max(4096) }).strict().parse(args);
+    await this.host.films.meta(a.film);
+    const dir = this.host.films.dir(a.film);
+    const { plan } = cleanShotPlan(JSON.parse(await readFile(join(dir, "plano.json"), "utf8")));
+    const used = [...new Set(plan.shots.flatMap((s) => (s.effect ? [s.effect.name] : [])))];
+    const ok = new Set<string>();
+    for (const name of used) {
+      try { await this.host.films.addEffect(a.film, name); ok.add(name); } catch { /* a missing effect is simply left out */ }
+    }
+    const shots = plan.shots.map((s) => (s.effect && ok.has(s.effect.name) ? s : { ...s, effect: undefined }));
+    const timed = timeShots(shots, await readFilmWords(dir), a.seconds);
+    return { effects: ok.size, mounts: effectMounts(shots, timed, { width: a.width, height: a.height, panel: effectPanel(plan) }) };
   }
 
   /** A soundtrack composed for this film (assets/musica.wav), from a mood and a length. */

@@ -148,13 +148,16 @@ export function mixSoundtrack(cues: SoundCue[], ambience: AmbienceSpan[], durati
   return mix;
 }
 
+/** Word timings of the film's narration (timing.js), empty when there are none. */
+export async function readFilmWords(dir: string): Promise<Word[]> {
+  const timing = await readFile(join(dir, "timing.js"), "utf8").catch(() => "");
+  try { return (JSON.parse(timing.replace(/^[^=]*=\s*/, "").replace(/;\s*$/, "")) as { words?: Word[] }).words ?? []; } catch { return []; }
+}
+
 /** Reads the film's plan and timing, writes assets/sfx.wav. */
 export async function writeFilmSoundtrack(dir: string, duration: number) {
   const plan = JSON.parse(await readFile(join(dir, "plano.json"), "utf8")) as ShotPlan;
-  const timing = await readFile(join(dir, "timing.js"), "utf8").catch(() => "");
-  const words = ((): Word[] => {
-    try { return (JSON.parse(timing.replace(/^[^=]*=\s*/, "").replace(/;\s*$/, "")) as { words?: Word[] }).words ?? []; } catch { return []; }
-  })();
+  const words = await readFilmWords(dir);
   const { cues, ambience } = soundCues(plan, words, duration);
   await writeFile(join(dir, "assets", "sfx.wav"), wavBytes(mixSoundtrack(cues, ambience, duration), RATE));
   return { file: "assets/sfx.wav", cues: cues.length, ambience: ambience.map((a) => a.kind) };

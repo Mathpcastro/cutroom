@@ -191,6 +191,15 @@ export const STUDIO_TOOLS = [
     inputSchema: objectSchema({ film: string("Film id."), seconds: number("Film duration in seconds.", { minimum: 1, maximum: 600 }) }, ["film", "seconds"]),
   },
   {
+    name: "film_shot_effects",
+    description:
+      "For a drawn film with shot.effect in plano.json: copies each chosen registry effect into the film and returns the mount divs, timed to the shots through the narration (timing.js) and placed in their area. Put the mounts inside #film (shotFilmHtml option effects).",
+    inputSchema: objectSchema(
+      { film: string("Film id."), seconds: number("Film duration in seconds.", { minimum: 1, maximum: 600 }), width: number("Film width in px.", { minimum: 240, maximum: 4096 }), height: number("Film height in px.", { minimum: 240, maximum: 4096 }) },
+      ["film", "seconds", "width", "height"],
+    ),
+  },
+  {
     name: "compose_music",
     description:
       "Compose a soundtrack for the film on this computer (no download, no license to credit): chords, bass, arpeggio and light drums from a mood, as long as the film. Writes assets/musica.wav and returns the <audio> tag (volume 0.16, under the voice).",

@@ -106,11 +106,13 @@ export async function generateShotReel(profile: StudioProfile, draft: ReelDraft,
   const music = plan.music ? await api<{ file: string }>("compose_music", { film: created.film, mood: plan.music.mood, seconds: duration }).catch(() => undefined) : undefined;
   await api("write_film_file", { film: created.film, path: "plano.json", content: JSON.stringify(plan, null, 1) });
   const sfx = await api<{ file: string }>("film_sfx", { film: created.film, seconds: duration }).catch(() => undefined);
+  const [width, height] = ASPECTS[draft.aspect ?? "9:16"];
+  const fx = await api<{ mounts: string }>("film_shot_effects", { film: created.film, seconds: duration, width, height }).catch(() => undefined);
   const cast: Record<string, string> = { ...EXTRA_CAST };
   if (presenter) cast[presenter] = "film";
   await api("write_film_file", {
     film: created.film, path: "index.html",
-    content: shotFilmHtml({ plan, duration, voiceDuration: voice.duration, language, width: ASPECTS[draft.aspect ?? "9:16"][0], height: ASPECTS[draft.aspect ?? "9:16"][1], cast, hasFilmAvatar: withAvatar, captions: true, proofs, ...(music ? { music: { file: music.file } } : {}), ...(sfx ? { sfx: { file: sfx.file } } : {}) }),
+    content: shotFilmHtml({ plan, duration, voiceDuration: voice.duration, language, width, height, cast, hasFilmAvatar: withAvatar, captions: true, proofs, ...(music ? { music: { file: music.file } } : {}), ...(sfx ? { sfx: { file: sfx.file } } : {}), ...(fx?.mounts ? { effects: fx.mounts } : {}) }),
   });
   const review = await reviewShots(created.film, duration, SHOT_CHECKLIST);
   await api("profileLinkProject", { profileId: profile.id, projectId: created.film });
