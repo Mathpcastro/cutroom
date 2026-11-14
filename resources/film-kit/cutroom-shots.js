@@ -218,21 +218,22 @@
     (shot.cast || []).forEach(function (a) { castX += a.x * k; castY += a.y * k; tall = Math.max(tall, (SIZE[a.size] || SIZE.m) * BODY * H / 1920); n++; });
     var fx = c.focus ? c.focus[0] * k : n ? castX / n : sw / 2;
     var fy = c.focus ? c.focus[1] * k : n ? castY / n - tall * (move === "close" ? 0.8 : 0.42) : sh * 0.55;
-    var e = inOut(clamp(p, 0, 1)), z = 1, x = fx, y = fy, rot = 0;
+    // Mostly linear with a soft start: the frame is always travelling, never parked at either end.
+    var pc = clamp(p, 0, 1), e = pc * 0.8 + inOut(pc) * 0.2, z = 1, x = fx, y = fy, rot = 0;
     var zIn = c.zoom || 0;
     switch (move) {
-      case "medium": z = lerp(1.32, 1.4, e); break;
-      case "close": z = lerp(1.62, 1.72, e) / Math.max(1, tall / (H * 0.36)); z = Math.max(1.15, z); break;
-      case "push-in": z = lerp(1, 1.55, e); break;
-      case "pull-out": z = lerp(1.6, 1, e); break;
+      case "medium": z = lerp(1.28, 1.46, e); x = fx + (e - 0.5) * W * 0.06; break;
+      case "close": z = lerp(1.58, 1.8, e) / Math.max(1, tall / (H * 0.36)); z = Math.max(1.15, z); break;
+      case "push-in": z = lerp(1, 1.65, e); break;
+      case "pull-out": z = lerp(1.7, 1, e); break;
       case "pan-left": z = sw > W * 1.15 ? 1 : 1.3; x = lerp(sw, 0, e); break;
       case "pan-right": z = sw > W * 1.15 ? 1 : 1.3; x = lerp(0, sw, e); break;
       case "tilt-up": z = 1.35; y = lerp(sh, 0, e); break;
       case "tilt-down": z = 1.35; y = lerp(0, sh, e); break;
-      case "dutch": z = lerp(1.3, 1.38, e); rot = lerp(-5, -7, e); break;
+      case "dutch": z = lerp(1.28, 1.44, e); rot = lerp(-4, -8, e); break;
       case "shake": z = 1.3; break;
       case "orbit": z = lerp(1.25, 1.4, e); x = fx + Math.sin(e * Math.PI) * 80; rot = lerp(-2, 2, e); break;
-      default: z = lerp(1, 1.12, e); x = fx + (e - 0.5) * Math.min(sw, W) * 0.05; y = sh / 2;
+      default: z = lerp(1, 1.16, e); x = fx + (e - 0.5) * Math.min(sw, W) * 0.08; y = sh / 2;
     }
     if (zIn) z = Math.max(z, zIn);
     var vw = W / z, vh = H / z;
@@ -528,6 +529,12 @@
 
     var ink = look.inkColor, accent = look.accent, font = FONTS[look.font] || FONTS.Fredoka;
     var lightPaper = !!look.paperColor && lum(look.paperColor) > 0.62;
+    // Key words in the captions: the accent, lifted toward white when it would sink into a dark backing.
+    var capKey = (function () {
+      var darkBacking = look.text === "pixel" || look.text === "clean" || look.text === "neon" || look.text === "mono";
+      if (!darkBacking || lum(accent) > 0.55) return accent;
+      var c = hexRgb(accent); return "rgb(" + c.map(function (v) { return Math.round(v + (255 - v) * 0.55); }).join(",") + ")";
+    })();
     root.style.background = look.paperColor || "#141318";
 
     // DOM: display canvas, text layer, flash.
@@ -537,7 +544,7 @@
       ".crs-t{position:absolute;z-index:30;visibility:hidden;opacity:0}" +
       ".crs-cap{left:70px;right:70px;bottom:" + Math.round(H * 0.16) + "px;text-align:center;font:" + (look.text === "pixel" ? "400 54px/1.3" : look.text === "hand" ? "700 84px/1.05" : look.text === "comic" ? "400 82px/1.05" : look.text === "serif" ? "400 86px/1.02" : "600 74px/1.08") + " " + font + ";color:#fff;" +
         (look.text === "neon" ? "text-shadow:0 0 18px " + accent + ",0 0 40px " + accent + ";" : look.text === "pixel" ? "text-shadow:4px 4px 0 " + ink + ";" : "text-shadow:0 6px 0 rgba(0,0,0,.45), 0 0 26px rgba(0,0,0,.45);") + (look.text === "comic" ? "text-transform:uppercase;letter-spacing:1px;-webkit-text-stroke:3px " + ink + ";paint-order:stroke fill;" : "") + "}" +
-      ".crs-cap .w{display:inline-block;opacity:0}.crs-cap .w.key{color:" + accent + "}" +
+      ".crs-cap .w{display:inline-block;opacity:0}.crs-cap .w.key{color:" + capKey + "}" +
       ".crs-cap .w{padding:" + (look.text === "pixel" ? ".16em .2em" : ".06em .17em") + ";margin:0;line-height:1.45;" +
         (look.text === "pixel" ? "background:" + ink + "E6;box-shadow:0 0 0 6px " + ink + "E6;" : look.text === "clean" || look.text === "neon" ? "background:rgba(10,10,20,.55);border-radius:18px;" : look.text === "comic" ? "background:#FFF6D6;color:" + ink + ";border:5px solid " + ink + ";text-shadow:none;-webkit-text-stroke:0;" : "background:rgba(255,253,246,.88);color:" + ink + ";border-radius:14px;text-shadow:none;") + "}" +
       ".crs-bub{max-width:" + (W - 160) + "px;padding:" + (look.text === "pixel" ? "26px 30px" : "28px 40px") + ";background:#FFFDF6;color:" + ink + ";font:" + (look.text === "pixel" ? "400 40px/1.35" : look.text === "hand" ? "700 64px/1.05" : look.text === "serif" ? "400 64px/1.05" : look.text === "comic" ? "400 60px/1.08" : "600 56px/1.12") + " " + font + ";" +
@@ -769,7 +776,13 @@
     function vis(el, s, t, fadeIn) {
       var on = t >= s.start && t < s.end;
       el.style.visibility = on ? "visible" : "hidden";
-      if (on) el.style.opacity = String(clamp(Math.min((t - s.start) / (fadeIn || 0.12), (s.end - t) / 0.15), 0, 1));
+      if (on) {
+        el.style.opacity = String(clamp(Math.min((t - s.start) / (fadeIn || 0.12), (s.end - t) / 0.15), 0, 1));
+        // Float: a slow bob and tilt that never stops, plus a slight push with the shot.
+        var lt = t - s.start, pr = clamp(lt / Math.max(0.5, s.end - s.start), 0, 1);
+        el.style.transform = "translate(" + (Math.sin(lt * 1.1) * 6 * uu) + "px," + (Math.sin(lt * 1.7) * 9 * uu) + "px) rotate(" + (Math.sin(lt * 0.9) * 0.6) + "deg) scale(" + (1 + pr * 0.04) + ")";
+        el.style.transformOrigin = "50% 30%";
+      }
       return on;
     }
     /** Item times inside a shot (same rule as the graphics and the sound cues). */
@@ -928,6 +941,9 @@
       var si = shots.indexOf(s);
       if (si > 0 && (!s.transition || s.transition === "cut" || s.transition === "flash")) cam.z *= 1 + 0.075 * (1 - sp(tq - s.start, SPR.bouncy));
       else if (si === 0) cam.z *= 1 + 0.12 * (1 - sp(tq, SPR.soft));
+      // Long shots get a punch-in halfway (an editor's jump zoom): a new framing without a new shot.
+      var sdur = s.end - s.start;
+      if (sdur > 2.6 && cam.move !== "close") { var mid = s.start + sdur * 0.52; cam.z *= 1 + 0.1 * sp(tq - mid, SPR.bouncy); }
       if (cam.move === "shake" || look.fps < 30) {
         var amp = cam.move === "shake" ? 9 : 2.2, j = Math.floor(tq * 24);
         cam.x += (hash(j) - 0.5) * amp * 2; cam.y += (hash(j + 99) - 0.5) * amp * 2;
@@ -936,6 +952,7 @@
       ctx.fillStyle = look.paperColor || "#141318"; ctx.fillRect(0, 0, W, H);
       set.layers.forEach(function (layer) {
         var d = layer.depth, f = 0.35 + 0.65 * d, lx = csx + (cam.x - csx) * f, ly = csy + (cam.y - csy) * f, lz = 1 + (cam.z - 1) * (0.5 + 0.5 * d);
+        if (d < 0.9) { lx += Math.sin(tq * 0.45 + d * 3) * W * 0.012 * (1 - d); ly += Math.cos(tq * 0.38 + d * 5) * H * 0.006 * (1 - d); }
         ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(cam.rot * Math.PI / 180); ctx.scale(lz, lz); ctx.translate(-lx, -ly);
         drawImg(ctx, layer.imgs[variant(tq, layer.imgs.length)], 0, 0, cam.sw, cam.sh);
         ctx.restore();
@@ -959,7 +976,8 @@
         } else {
           var A = CAST[it.v.who]; if (!A) return;
           var scale = (SIZE[it.v.size] || SIZE.m) * H / 1920, fx = it.v.x * cam.k, fy = it.v.y * cam.k;
-          A.shots = [{ t: 0, x: fx, y: fy, scale: scale, d: 0 }];
+          var idle = it.i * 1.9 + names.indexOf(it.v.who) * 0.7;
+          A.shots = [{ t: 0, x: fx + Math.sin(tq * 1.3 + idle) * scale * 0.8, y: fy, scale: scale * (1 + Math.sin(tq * 2.1 + idle) * 0.006), d: 0 }];
           ctx.save();
           if (it.v.facing === "left") { ctx.translate(fx, 0); ctx.scale(-1, 1); ctx.translate(-fx, 0); }
           A.draw(ctx, tq);
