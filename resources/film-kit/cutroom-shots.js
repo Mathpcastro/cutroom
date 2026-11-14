@@ -722,6 +722,8 @@
 
     var ink = look.inkColor, accent = look.accent, font = FONTS[look.font] || FONTS.Fredoka;
     var lightPaper = !!look.paperColor && lum(look.paperColor) > 0.62;
+    // Soft shadows under living elements, for the clean looks (no boil, smooth frame rate).
+    var SOFT_SHADOW = !look.boil && look.fps >= 30 && !look.quantize ? (lightPaper ? "rgba(22,24,40,.16)" : "rgba(0,0,0,.42)") : "";
     // Key words in the captions: the accent, lifted toward white when it would sink into a dark backing.
     var capKey = (function () {
       var darkBacking = look.text === "pixel" || look.text === "clean" || look.text === "neon" || look.text === "mono";
@@ -1366,6 +1368,11 @@
           var m = elementMotion(sp2, tq, et, set.w, cuesOf, calm);
           ctx.save(); ctx.globalAlpha = (li > 0 ? clamp(build * 1.4, 0, 1) : 1) * clamp(m.a, 0, 1);
           ctx.translate((m.ox + m.dx) * ks, (m.oy + m.dy) * ks); ctx.rotate(m.rot * Math.PI / 180); ctx.scale(m.s, m.s); ctx.translate(-m.ox * ks, -m.oy * ks);
+          // Clean looks: living elements cast a soft shadow that grows as they lift (float, bounce, entrances).
+          if (SOFT_SHADOW && layer.depth > 0.2) {
+            var lift = clamp(-(m.dy || 0) / Math.max(20, sp2.h * 0.2), -1, 1);
+            ctx.shadowColor = SOFT_SHADOW; ctx.shadowBlur = (18 + 22 * Math.max(0, lift)) * ks * lz; ctx.shadowOffsetY = (10 + 14 * Math.max(0, lift)) * ks * lz;
+          }
           drawImg(ctx, sp2.imgs[variant(tq + sp2.i * 0.13, sp2.imgs.length)], sp2.x * ks, sp2.y * ks, sp2.w * ks, sp2.h * ks);
           ctx.restore();
         });
