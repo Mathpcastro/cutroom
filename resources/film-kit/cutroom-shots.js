@@ -942,8 +942,17 @@
       if (si > 0 && (!s.transition || s.transition === "cut" || s.transition === "flash")) cam.z *= 1 + 0.075 * (1 - sp(tq - s.start, SPR.bouncy));
       else if (si === 0) cam.z *= 1 + 0.12 * (1 - sp(tq, SPR.soft));
       // Long shots get a punch-in halfway (an editor's jump zoom): a new framing without a new shot.
+      // Punches on the rhythm of the voice: at each pause inside the shot (comma, full stop, question)
+      // the framing jumps, alternating closer and wider, like an editor cutting on the narration.
       var sdur = s.end - s.start;
-      if (sdur > 2.6 && cam.move !== "close") { var mid = s.start + sdur * 0.52; cam.z *= 1 + 0.1 * sp(tq - mid, SPR.bouncy); }
+      if (cam.move !== "close") {
+        if (!s._beats) {
+          s._beats = [];
+          (s.words || []).forEach(function (w, wi) { if (wi < s.words.length - 1 && /[,.;:!?…]$/.test(w.text) && w.end - s.start > 0.6 && s.end - w.end > 0.6) s._beats.push(w.end + 0.04); });
+          if (!s._beats.length && sdur > 2.6) s._beats.push(s.start + sdur * 0.52);
+        }
+        for (var bi = 0; bi < s._beats.length; bi++) cam.z *= 1 + (bi % 2 ? -0.06 : 0.1) * sp(tq - s._beats[bi], SPR.bouncy);
+      }
       if (cam.move === "shake" || look.fps < 30) {
         var amp = cam.move === "shake" ? 9 : 2.2, j = Math.floor(tq * 24);
         cam.x += (hash(j) - 0.5) * amp * 2; cam.y += (hash(j + 99) - 0.5) * amp * 2;
