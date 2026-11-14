@@ -25,6 +25,7 @@ describe("effect catalogue", () => {
   it("goes into the shot rules", () => {
     const rules = shotPlanRules({ width: 1080, height: 1920, story: false, cast: [] });
     expect(rules).toContain("marker-highlight");
+    expect(rules).toContain("ui \"reveal\" em no máximo 3 tomadas");
     expect(rules).toContain(effectsPrompt().split("\n")[1].trim());
   });
 });
@@ -74,24 +75,28 @@ describe("shot effects", () => {
 
   it("a landscape-only effect becomes kinetic text in a vertical film", () => {
     const svg = '<svg viewBox="0 0 1080 1920"><g data-depth="0"><rect width="1080" height="1920" fill="#123"/></g></svg>';
-    const { plan } = cleanShotPlan({ title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }], shots: [{ say: "a", set: "a", effect: { name: "headline-slam", vars: { text: "Bonita ou barata?" } } }] });
-    expect(adaptEffects(plan, 1920, 1080).shots[0].effect?.name).toBe("headline-slam");
+    const { plan } = cleanShotPlan({ title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }], shots: [{ say: "a", set: "a", effect: { name: "pull-back-reveal", vars: { detail_text: "4,9", headline: "Bonita ou barata?" } } }] });
+    expect(adaptEffects(plan, 1920, 1080).shots[0].effect?.name).toBe("pull-back-reveal");
     const tall = adaptEffects(plan, 1080, 1920).shots[0];
     expect(tall.effect).toBeUndefined();
     expect(tall.ui).toMatchObject({ kind: "reveal", text: "Bonita ou barata?" });
+    // Retired effects become kinetic text in any format.
+    const { plan: old } = cleanShotPlan({ title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }], shots: [{ say: "a", set: "a", effect: { name: "headline-slam", vars: { text: "E lá se foram horas" } } }] });
+    expect(adaptEffects(old, 1920, 1080).shots[0].ui).toMatchObject({ kind: "reveal", text: "E lá se foram horas" });
+    expect(shotPlanRules({ width: 1920, height: 1080, story: false, cast: [] })).not.toContain("headline-slam");
   });
 
   it("mounts each effect for its shot, with cues spread across it", () => {
     const shots = [
       {},
-      { effect: shotEffectSchema.parse({ name: "grid-card-assemble", vars: { items: "Roteiro, Voz, Animação" } }) },
+      { effect: shotEffectSchema.parse({ name: "constellation-hub", vars: { hub_label: "Videosell", nodes: "Roteiro, Voz, Animação" } }) },
       { effect: shotEffectSchema.parse({ name: "chat-thread", vars: { contact: "Ana", messages: "recv:oi|sent:olá" } }) },
     ];
     const timed = [{ start: 0, end: 2 }, { start: 2, end: 5 }, { start: 5, end: 8.5 }];
     const html = effectMounts(shots, timed, { width: 1920, height: 1080, panel: "rgba(14,15,26,0.9)" });
     // Landscape-only effects stay out of vertical films.
-    expect(effectMounts(shots, timed, { width: 1080, height: 1920, panel: "#000" })).not.toContain("grid-card-assemble");
-    expect(html).toContain('data-composition-src="compositions/components/grid-card-assemble.html"');
+    expect(effectMounts(shots, timed, { width: 1080, height: 1920, panel: "#000" })).not.toContain("constellation-hub");
+    expect(html).toContain('data-composition-src="compositions/components/constellation-hub.html"');
     expect(html).toContain('data-start="2.00" data-duration="3.00"');
     const vars = JSON.parse(/data-variable-values='([^']*)'/.exec(html)![1]);
     expect(vars.cues.split(",")).toHaveLength(3);

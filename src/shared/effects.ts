@@ -18,6 +18,8 @@ export interface EffectDef {
   list?: string;
   /** Longest `text` that still reads well; a longer line falls back to the engine's kinetic text. */
   fit?: number;
+  /** Retired after a real render (reads badly in every format): never offered, always replaced by kinetic text. */
+  off?: boolean;
   /** Small in a vertical frame: offered and mounted only in landscape films. */
   wide?: boolean;
   /** Group shown in the prompt. */
@@ -30,7 +32,7 @@ export type EffectArea = (typeof EFFECT_AREAS)[number];
 const T = "frase curta (até 7 palavras)";
 export const EFFECTS: Record<string, EffectDef> = {
   /* ---------------------------------------------------------------- kinetic text */
-  "headline-slam": { group: "texto", wide: true, fit: 24, use: "manchete pesada que bate na tela e assenta", vars: { text: "até 6 palavras", accent_word_index: "índice (0, 1, 2…) da palavra colorida" } },
+  "headline-slam": { group: "texto", off: true, wide: true, fit: 24, use: "manchete pesada que bate na tela e assenta", vars: { text: "até 6 palavras", accent_word_index: "índice (0, 1, 2…) da palavra colorida" } },
   "char-slam-explode": { group: "texto", fit: 12, use: "letras espalhadas que se juntam com impacto", vars: { text: "1 a 3 palavras" } },
   "kinetic-type-swap": { group: "texto", use: "frase fixa com uma palavra que vai trocando", vars: { prefix: "texto fixo antes", options: "palavras que giram, separadas por vírgula", suffix: "texto fixo depois (opcional)" }, cues: "cues", list: "options" },
   "line-swap": { group: "texto", use: "uma frase sai e outra entra, com sublinhado na palavra-chave (quebra de crença)", vars: { line_a: "frase que sai", line_b: "frase que entra", underline_word: "palavra de line_b sublinhada" } },
@@ -58,7 +60,7 @@ export const EFFECTS: Record<string, EffectDef> = {
   "chat-thread": { group: "produto", use: "conversa de celular completa em tela cheia", vars: { contact: "nome do contato", messages: "recv:mensagem recebida|sent:mensagem enviada|recv:…" }, area: "full" },
   "chat-message": { group: "produto", use: "uma mensagem de celular chegando", vars: { type: "recv | sent", text: "a mensagem" } },
   "typed-prompt": { group: "produto", wide: true, use: "um pedido sendo digitado num campo de IA", vars: { text: "o pedido" } },
-  "grid-card-assemble": { group: "produto", wide: true, use: "cartões de recursos se montando em grade", vars: { items: "itens separados por vírgula; \"Rótulo: descrição\" opcional" }, cues: "cues", list: "items" },
+  "grid-card-assemble": { group: "produto", off: true, wide: true, use: "cartões de recursos se montando em grade", vars: { items: "itens separados por vírgula; \"Rótulo: descrição\" opcional" }, cues: "cues", list: "items" },
   "constellation-hub": { group: "produto", wide: true, use: "o produto no centro e os recursos acendendo ao redor", vars: { hub_label: "nome do produto", nodes: "recursos separados por vírgula (3 a 6)" }, cues: "cues", list: "nodes" },
   "tracing-beam": { group: "produto", wide: true, use: "feixe de luz percorrendo 3 etapas", vars: { labels: "3 etapas separadas por vírgula" } },
   "notes-typing": { group: "produto", use: "app de notas sendo escrito (confissão, lista de dores)", vars: { title: "título (| quebra linha)", lines: "linhas separadas por |" }, area: "full" },
@@ -97,7 +99,7 @@ export type ShotEffect = z.infer<typeof shotEffectSchema>;
 export function effectsPrompt(landscape = false) {
   const groups: Record<EffectDef["group"], string[]> = { texto: [], dados: [], produto: [], fechamento: [] };
   for (const [name, d] of Object.entries(EFFECTS)) {
-    if (d.wide && !landscape) continue;
+    if (d.off || (d.wide && !landscape)) continue;
     const vars = Object.entries(d.vars).map(([k, h]) => `${k}: ${h}`).join("; ");
     groups[d.group].push(`  ${name}: ${d.use}${vars ? ` {${vars}}` : ""}`);
   }
@@ -137,7 +139,7 @@ export function effectMounts(
     const fx = s.effect;
     if (!fx || !timed[i]) return;
     const def = EFFECTS[fx.name];
-    if (def.wide && o.height > o.width) return;
+    if (def.off || (def.wide && o.height > o.width)) return;
     const start = Math.max(0, timed[i].start), dur = Math.max(1.2, timed[i].end - timed[i].start);
     const vars: Record<string, string | number | boolean> = { ...fx.vars };
     if (fx.accent) vars.accent = fx.accent;

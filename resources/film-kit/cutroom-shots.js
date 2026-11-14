@@ -179,16 +179,29 @@
     var vb = (root.getAttribute("viewBox") || "0 0 1080 1920").split(/[\s,]+/).map(Number);
     var vw = vb[2] || 1080, vh = vb[3] || 1920;
     var defs = "", runs = [], cur = null;
+    Array.prototype.forEach.call(root.childNodes, function (n) { if (n.nodeType === 1 && n.nodeName === "defs") defs += new XMLSerializer().serializeToString(n); });
     Array.prototype.forEach.call(root.childNodes, function (n) {
       if (n.nodeType !== 1) return;
-      var markup = new XMLSerializer().serializeToString(n);
-      if (n.nodeName === "defs") { defs += markup; return; }
+      if (n.nodeName === "defs") return;
       var depth = n.getAttribute && n.getAttribute("data-depth");
       var d = depth == null || depth === "" ? null : clamp(+depth || 0, 0, 2);
-      if (!cur || (d != null && d !== cur.depth) || (d == null && cur.explicit)) { cur = { depth: d == null ? 1 : d, explicit: d != null, parts: [] }; runs.push(cur); }
-      cur.parts.push(markup);
+      if (!cur || (d != null && d !== cur.depth) || (d == null && cur.explicit)) { cur = { depth: d == null ? 1 : d, explicit: d != null, parts: [], living: [] }; runs.push(cur); }
+      // Living elements (data-motion, outermost only) leave the still layer and become sprites of their own.
+      var marked = Array.prototype.filter.call(n.querySelectorAll ? n.querySelectorAll("[data-motion]") : [], function (el) { return !el.parentNode.closest || !el.parentNode.closest("[data-motion]"); });
+      if (n.getAttribute && n.getAttribute("data-motion")) marked = [n];
+      marked.slice(0, 12).forEach(function (el) {
+        // Keep what the element inherits from its groups (transform, fill, stroke, opacity) when it is cut out.
+        var markup = new XMLSerializer().serializeToString(el);
+        for (var anc = el.parentNode; anc && anc !== n.parentNode && anc.nodeType === 1; anc = anc.parentNode) {
+          var at = Array.prototype.filter.call(anc.attributes, function (x) { return !/^(data-|id$|class$)/.test(x.name); }).map(function (x) { return x.name + '="' + String(x.value).replace(/"/g, "") + '"'; }).join(" ");
+          if (at) markup = "<g " + at + ">" + markup + "</g>";
+        }
+        cur.living.push({ motion: el.getAttribute("data-motion"), delay: +(el.getAttribute("data-delay") || 0) || 0, markup: markup });
+        if (el !== n) el.parentNode.removeChild(el);
+      });
+      if (marked[0] !== n) cur.parts.push(new XMLSerializer().serializeToString(n));
     });
-    var variants = look.boil ? 3 : 1;
+    var variants = look.boil ? 3 : 1, order = 0;
     return {
       w: vw, h: vh,
       layers: runs.map(function (run, li) {
@@ -199,9 +212,60 @@
             (look.boil ? '<g filter="url(#crsBoil)">' : "<g>") + run.parts.join("") + "</g></svg>";
           imgs.push(svgImage(text));
         }
-        return { depth: run.depth, imgs: imgs };
+        var sprites = run.living.map(function (lv) {
+          var box = measureSvg(lv.markup, defs, vw, vh);
+          if (!box || box.width < 2 || box.height < 2) return null;
+          var pad = Math.max(box.width, box.height) * 0.08 + (look.boil ? look.boil * 2 : 6);
+          var bx = box.x - pad, by = box.y - pad, bw = box.width + pad * 2, bh = box.height + pad * 2, simgs = [];
+          for (var v2 = 0; v2 < variants; v2++)
+            simgs.push(svgImage('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="' + [bx, by, bw, bh].join(" ") + '" width="' + Math.max(1, Math.round(bw * scale)) + '" height="' + Math.max(1, Math.round(bh * scale)) + '">' +
+              "<defs>" + KIT + boilDefs(look, 11 + v2 * 19 + li * 7) + "</defs>" + defs + (look.boil ? '<g filter="url(#crsBoil)">' : "<g>") + lv.markup + "</g></svg>"));
+          return { motion: lv.motion, delay: lv.delay, x: bx, y: by, w: bw, h: bh, cx: box.x + box.width / 2, cy: box.y + box.height / 2, by2: box.y + box.height, imgs: simgs, i: order++ };
+        }).filter(Boolean);
+        return { depth: run.depth, imgs: imgs, sprites: sprites };
       }),
     };
+  }
+  /** Bounding box of one element in set units (drawn once off-screen and measured). */
+  function measureSvg(markup, defs, vw, vh) {
+    try {
+      var host = document.createElement("div");
+      host.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + vw + " " + vh + '" width="' + vw + '" height="' + vh + '"><defs>' + KIT + "</defs>" + defs + '<g class="m">' + markup + "</g></svg>";
+      holderEl().appendChild(host);
+      var b = host.querySelector("g.m").getBBox(), out = { x: b.x, y: b.y, width: b.width, height: b.height };
+      holderEl().removeChild(host);
+      return out;
+    } catch (e) { return null; }
+  }
+  /**
+   * How a living element moves at time gt (film) and et (since its set appeared). Continuous motions
+   * loop forever; entrance motions land on a spring and then breathe a little.
+   */
+  function elementMotion(sp2, gt, et, W) {
+    var i = sp2.i, ph = i * 1.7, h = sp2.h, m = { dx: 0, dy: 0, rot: 0, s: 1, a: 1, ox: sp2.cx, oy: sp2.cy };
+    var k = sp(et - sp2.delay - 0.05, SPR.bouncy), k2 = clamp(k, 0, 1.3);
+    switch (sp2.motion) {
+      case "float": m.dy = Math.sin(gt * 1.5 + ph) * Math.min(26, h * 0.06 + 6); m.rot = Math.sin(gt * 1.1 + ph) * 1.5; break;
+      case "sway": m.rot = Math.sin(gt * 1.8 + ph) * 6; m.oy = sp2.by2; break;
+      case "spin": m.rot = gt * 36 + i * 40; break;
+      case "pulse": m.s = 1 + 0.07 * Math.sin(gt * 4 + ph); break;
+      case "blink": m.a = 0.3 + 0.7 * Math.abs(Math.sin(gt * 2.4 + ph)); break;
+      case "drift": m.dx = Math.sin(gt * 0.35 + ph) * W * 0.08; break;
+      case "bounce": m.dy = -Math.abs(Math.sin(gt * 3.4 + ph)) * Math.min(60, h * 0.18 + 10); break;
+      case "orbit": m.dx = Math.cos(gt * 1.3 + ph) * 18; m.dy = Math.sin(gt * 1.3 + ph) * 18; break;
+      case "shake": m.dx = Math.sin(gt * 40 + ph) * 4; m.rot = Math.sin(gt * 33 + ph) * 2; break;
+      case "pop": m.s = Math.max(0.001, k2); m.oy = sp2.by2; m.a = clamp(k * 2, 0, 1); break;
+      case "rise": m.dy = (1 - k2) * (h * 0.6 + 120); m.a = clamp(k * 1.6, 0, 1); break;
+      case "drop": m.dy = -(1 - k2) * (h * 0.6 + 160); m.a = clamp(k * 1.6, 0, 1); break;
+      case "slide-left": m.dx = (1 - k2) * W * 0.7; m.a = clamp(k * 1.6, 0, 1); break;
+      case "slide-right": m.dx = -(1 - k2) * W * 0.7; m.a = clamp(k * 1.6, 0, 1); break;
+    }
+    // Entrances do not freeze after landing: they ease into a gentle float and tilt of their own.
+    if (/^(pop|rise|drop|slide-left|slide-right)$/.test(sp2.motion)) {
+      var settle = clamp((et - sp2.delay - 0.6) / 0.8, 0, 1);
+      m.dy += Math.sin(gt * 1.4 + ph) * Math.min(14, h * 0.035 + 4) * settle; m.rot += Math.sin(gt * 1.05 + ph) * 1.2 * settle;
+    }
+    return m;
   }
   function rasterProp(svg, look, scale) {
     var doc = PARSER.parseFromString(svg, "image/svg+xml"), root = doc.documentElement;
@@ -788,7 +852,12 @@
       tl.fromTo(el, { autoAlpha: 0, y: 40, scale: 0.92 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.32, ease: "back.out(1.8)" }, t0);
       tl.to(el, { autoAlpha: 0, y: -20, duration: 0.18 }, Math.max(t0 + 0.5, s.end - 0.18));
       var dur = Math.max(0.6, s.end - s.start);
-      if (g.kind === "stat") counter(el.querySelector(".num"), g.from || 0, g.value != null ? g.value : 0, t0 + 0.15, Math.min(1.6, dur * 0.6), g.prefix, g.suffix);
+      if (g.kind === "stat") {
+        // A long prefix or suffix ("Mais de ", " pedidos") shrinks the figure so the line fits the card.
+        var statNum = el.querySelector(".num"), statLen = ((g.prefix || "") + fmt(g.value != null ? g.value : 0, decimalsOf(g.value || 0)) + (g.suffix || "")).length;
+        statNum.style.fontSize = Math.round(Math.min(170 * unit, (GW - 90 * unit) / Math.max(1, statLen * 0.5))) + "px"; statNum.style.whiteSpace = "nowrap";
+        counter(statNum, g.from || 0, g.value != null ? g.value : 0, t0 + 0.15, Math.min(1.6, dur * 0.6), g.prefix, g.suffix);
+      }
       if (g.kind === "compare") {
         var vs = el.querySelectorAll(".col .v"), ps = el.querySelectorAll(".pillar"), b = g.before || {}, a = g.after || {}, mx = Math.max(Math.abs(b.value || 0), Math.abs(a.value || 0), 1);
         [b, a].forEach(function (c, i) {
@@ -1100,11 +1169,23 @@
       }
       var csx = cam.sw / 2, csy = cam.sh / 2;
       ctx.fillStyle = look.paperColor || "#141318"; ctx.fillRect(0, 0, W, H);
-      set.layers.forEach(function (layer) {
+      // When a set appears (first shot of a run on it), its layers build in: the near ones rise in on springs.
+      if (s._runStart == null) { var rs = si; while (rs > 0 && shots[rs - 1].set === s.set) rs--; s._runStart = shots[rs].start; }
+      var et = tq - s._runStart, ks = cam.sw / set.w;
+      set.layers.forEach(function (layer, li) {
         var d = layer.depth, f = 0.35 + 0.65 * d, lx = csx + (cam.x - csx) * f, ly = csy + (cam.y - csy) * f, lz = 1 + (cam.z - 1) * (0.5 + 0.5 * d);
         if (d < 0.9) { lx += Math.sin(tq * 0.45 + d * 3) * W * 0.012 * (1 - d); ly += Math.cos(tq * 0.38 + d * 5) * H * 0.006 * (1 - d); }
-        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(cam.rot * Math.PI / 180); ctx.scale(lz, lz); ctx.translate(-lx, -ly);
+        var build = li === 0 ? 1 : clamp(sp(et - 0.03 - li * 0.07, SPR.soft), 0, 1.2);
+        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(cam.rot * Math.PI / 180); ctx.scale(lz, lz); ctx.translate(-lx, -ly + (1 - build) * H * 0.07 * Math.min(1.4, d + 0.3));
+        if (li > 0) ctx.globalAlpha = clamp(build * 1.4, 0, 1);
         drawImg(ctx, layer.imgs[variant(tq, layer.imgs.length)], 0, 0, cam.sw, cam.sh);
+        (layer.sprites || []).forEach(function (sp2) {
+          var m = elementMotion(sp2, tq, et, set.w);
+          ctx.save(); ctx.globalAlpha = (li > 0 ? clamp(build * 1.4, 0, 1) : 1) * clamp(m.a, 0, 1);
+          ctx.translate((m.ox + m.dx) * ks, (m.oy + m.dy) * ks); ctx.rotate(m.rot * Math.PI / 180); ctx.scale(m.s, m.s); ctx.translate(-m.ox * ks, -m.oy * ks);
+          drawImg(ctx, sp2.imgs[variant(tq + sp2.i * 0.13, sp2.imgs.length)], sp2.x * ks, sp2.y * ks, sp2.w * ks, sp2.h * ks);
+          ctx.restore();
+        });
         ctx.restore();
       });
       ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(cam.rot * Math.PI / 180); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);

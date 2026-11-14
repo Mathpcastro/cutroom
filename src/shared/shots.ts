@@ -27,6 +27,8 @@ export const LOOKS: Record<LookPreset, { label: string; hint: string; palette: s
 };
 
 export const CAMERA_MOVES = ["wide", "medium", "close", "push-in", "pull-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "dutch", "shake", "orbit"] as const;
+/** Life inside a set: an element marked with data-motion is cut out and animated on its own. */
+export const ELEMENT_MOTIONS = ["float", "sway", "spin", "pulse", "blink", "drift", "bounce", "orbit", "shake", "pop", "rise", "slide-left", "slide-right", "drop"] as const;
 export const TRANSITIONS = ["cut", "fade", "wipe", "iris", "whip", "flash", "dissolve", "blinds", "clock", "pixelate", "push", "zoom"] as const;
 export const PROP_MOTIONS = ["none", "bob", "sway", "drift", "drift-left", "spin", "pulse", "fly-left", "fly-right", "rise", "fall", "shake", "grow", "blink"] as const;
 export const FX = ["rain", "snow", "dust", "fireflies", "stars", "confetti", "sparks", "leaves", "smoke", "light-rays", "speed-lines", "bokeh", "matrix", "film-burn", "grain", "sound-wave"] as const;
@@ -66,6 +68,7 @@ const ATTRS: Record<string, (v: string) => boolean> = {
   viewBox: (v) => LIST.test(v), gradientUnits: (v) => /^(?:userSpaceOnUse|objectBoundingBox)$/.test(v), clipPathUnits: (v) => /^(?:userSpaceOnUse|objectBoundingBox)$/.test(v),
   id: (v) => ID.test(v) && !/^(?:kit-|crs)/i.test(v), "clip-path": (v) => /^url\(#[A-Za-z][\w-]{0,40}\)$/.test(v),
   href: (v) => /^#[A-Za-z][\w-]{0,40}$/.test(v), "data-depth": (v) => NUM.test(v) && +v >= 0 && +v <= 2,
+  "data-motion": (v) => (ELEMENT_MOTIONS as readonly string[]).includes(v), "data-delay": (v) => NUM.test(v) && +v >= 0 && +v <= 8,
   style: () => true,
 };
 
@@ -188,8 +191,8 @@ export const graphicSchema = z.object({
   label: text(70).optional(),
   value: z.number().finite().optional().catch(undefined),
   from: z.number().finite().optional().catch(undefined),
-  prefix: affix(6).optional(),
-  suffix: affix(10).optional(),
+  prefix: affix(14).optional(),
+  suffix: affix(16).optional(),
   before: side.optional().catch(undefined),
   after: side.optional().catch(undefined),
   items: capped(graphicItem.nullable().catch(null), 5).transform((list) => list.filter((i): i is z.infer<typeof graphicItem> => Boolean(i))).default([]),
@@ -282,15 +285,15 @@ export function cleanShotPlan(raw: unknown): { plan: ShotPlan; dropped: string[]
 }
 
 /**
- * Effects made for landscape do not read in a vertical film: there they become the engine's kinetic
- * text with the effect's own words (or are dropped when they carry no text).
+ * Effects made for landscape do not read in a vertical film, and retired ones read badly anywhere: they
+ * become the engine's kinetic text with the effect's own words (or are dropped when they carry no text).
  */
 export function adaptEffects(plan: ShotPlan, width: number, height: number): ShotPlan {
-  if (width >= height) return plan;
   return {
     ...plan,
     shots: plan.shots.map((s) => {
-      if (!s.effect || !EFFECTS[s.effect.name].wide) return s;
+      const def = s.effect ? EFFECTS[s.effect.name] : undefined;
+      if (!s.effect || !def || !(def.off || (def.wide && width < height))) return s;
       const words = Object.values(s.effect.vars).find((v): v is string => typeof v === "string" && /[a-zA-ZÀ-ÿ]/.test(v));
       return { ...s, effect: undefined, ...(words && !s.ui ? { ui: { kind: "reveal" as const, text: words.slice(0, 90), items: [] } } : {}) };
     }),
@@ -315,6 +318,7 @@ look: {"preset":"...","palette":["#hex" x4 a 6, da mais usada para o acento],"pa
 CENÁRIOS (sets) em SVG
 - Cada cenário é um <svg viewBox="0 0 L ${o.height}"> com L entre ${o.width} e ${o.width * 2} (use L maior que ${o.width} quando houver pan lateral). Altura sempre ${o.height}.
 - Organize em camadas de profundidade com <g data-depth="0"> (céu e fundo distante), <g data-depth="0.4"> (meio), <g data-depth="1"> (chão e objetos perto), <g data-depth="1.4"> (primeiro plano, opcional). A câmera faz paralaxe entre elas.
+- VIDA NA CENA (obrigatório): dentro das camadas, embrulhe de 4 a 8 elementos em <g data-motion="..."> para o motor animar cada um sozinho. Contínuos: float (flutua), sway (balança, pela base), spin (gira), pulse (pulsa), blink (pisca), drift (desliza devagar de um lado a outro), bounce (quica), orbit (circula), shake (treme). De entrada (quando o cenário aparece, com mola): pop, rise, drop, slide-left, slide-right; data-delay="0.3" atrasa em segundos para entrarem em sequência. Exemplos: nuvens drift, sol spin ou pulse, folhas e plantas sway, cartões e celulares float, ícones e selos pop + data-delay em escada, setas bounce, luzes blink, notificações slide-left. Use pelo menos 3 contínuos por cenário (é o que mantém a cena viva depois que tudo entrou) e as entradas para o que deve surgir em sequência. Elementos animados ficam por cima da sua camada; não marque o fundo nem o chão.
 - Desenhe com path, rect, circle, ellipse, polygon, line e degradês (linearGradient/radialGradient). Sem <text>, sem imagens, sem scripts, sem filtros, sem CSS. Use a paleta do look; cada objeto com 2 ou 3 tons (luz, base, sombra) para dar volume.
 - Desenhe os objetos e lugares específicos da história com silhuetas reconhecíveis (por exemplo um farol, um barco, um balcão de loja). Não desenhe pessoas: os personagens vêm do motor.
 - Para personagens palito, desenhe cenários mais simples e claros (eles são traço fino).
@@ -366,6 +370,7 @@ TOMADAS (shots)
   {"kind":"countdown","text":"A oferta acaba em","items":[{"value":3},{"label":"Agora!"}]} contagem regressiva num anel (lançamento, oferta, 3-2-1);
   {"kind":"follow","text":"@perfil","button":"Seguir"} lembrete de seguir: o botão vira "Seguindo ✓" e o sino toca (fechamento).
   Use ui para mostrar o produto funcionando e para os momentos de virada; em Motion UI use em quase toda tomada.
+  VARIEDADE (o que mais prende): nunca o mesmo tipo de ui, graphic ou effect em duas tomadas seguidas; ui "reveal" em no máximo 3 tomadas do filme; use pelo menos 5 tipos diferentes entre ui, graphic, effect e proof ao longo do vídeo. Antes de responder, confira a sequência e troque o que repetir.
 - effect opcional (EFEITOS DE MOTION prontos e caprichados, montados por cima da cena com as cores do look; no máximo um por tomada): {"name":"...","vars":{...},"area":"center|top|lower|full"}. area: center (cartão no meio, padrão), top (faixa de cima), lower (faixa acima das legendas), full (toma a tela). Preencha vars com as palavras da própria fala, no idioma da narração e curtas. Em center ou full o efeito substitui ui, graphic, proof e title daquela tomada.
 ${effectsPrompt(landscape)}
   Use efeitos em um terço a metade das tomadas, variando (não repita o mesmo efeito seguido), alternando com ui, graphic, proof e cenas com personagens. Números, depoimentos e marcas SOMENTE se estiverem no pedido, na marca ou nas provas.

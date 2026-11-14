@@ -25,6 +25,12 @@ describe("sanitizeSvg", () => {
     expect(out).toContain('<use href="#kit-sun"');
   });
 
+  it("keeps living-element marks and drops unknown motions", () => {
+    const out = sanitizeSvg(set('<g data-depth="1"><g data-motion="float" data-delay="0.4"><rect width="9" height="9"/></g><g data-motion="explode" data-delay="99"><circle r="3"/></g></g>'))!;
+    expect(out).toContain('<g data-motion="float" data-delay="0.4">');
+    expect(out).not.toMatch(/explode|data-delay="99"/);
+  });
+
   it("does not let a drawing redefine engine ids", () => {
     const out = sanitizeSvg(set('<g id="kit-tree"><rect width="9" height="9" id="crsBoil"/></g>'))!;
     expect(out).not.toMatch(/id="(?:kit-|crs)/);
