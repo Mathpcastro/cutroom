@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { AVATAR_BASES, composeAvatar } from "../src/shared/avatar-compose";
+import { AVATAR_BASES, FACIAL_HAIR, HAIR_STYLES, HATS, OUTFITS, composeAvatar, type FacialHair, type HairStyle, type Hat, type Outfit } from "../src/shared/avatar-compose";
 import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
@@ -22,6 +22,7 @@ import { randomUUID } from "node:crypto";
 import { createReadStream, mkdirSync } from "node:fs";
 import {
   access,
+  copyFile,
   mkdir,
   readFile,
   readdir,
@@ -1283,6 +1284,24 @@ async function request(method: string, params?: unknown): Promise<unknown> {
       for (const id of AVATAR_BASES) out[id] = JSON.parse(await readFile(join(resources, "avatar-engine", "examples", `${id}.json`), "utf8"));
       return out;
     }
+    case "avatarPhotoPick": {
+      // A photo of the person, kept only on this computer, sent to the connected AI to describe traits.
+      const selection = await dialog.showOpenDialog(window!, { properties: ["openFile"], filters: [{ name: "Foto", extensions: ["png", "jpg", "jpeg", "webp"] }] });
+      if (selection.canceled || !selection.filePaths[0]) return { canceled: true };
+      const source = selection.filePaths[0];
+      const info = await stat(source);
+      if (info.size > 15 * 1024 * 1024) throw new Error("A foto precisa ter até 15 MB.");
+      const ext = (extname(source).toLowerCase().replace(".jpeg", ".jpg").slice(1) || "jpg") as "jpg" | "png" | "webp";
+      if (!["jpg", "png", "webp"].includes(ext)) throw new Error("Use uma foto JPG, PNG ou WEBP.");
+      const id = `${randomUUID()}.${ext}`;
+      const folder = join(userDir, "avatar-photos");
+      await mkdir(folder, { recursive: true });
+      // Downscaled copy (the AI only needs the face) and a small preview for the screen.
+      const target = join(folder, id);
+      await runProcess(ffmpegPath, ["-y", "-v", "error", "-i", source, "-vf", "scale='min(768,iw)':-2", ...(ext === "jpg" ? ["-q:v", "4"] : []), target]).catch(() => copyFile(source, target));
+      const preview = `data:image/${ext === "jpg" ? "jpeg" : ext};base64,${(await readFile(target)).toString("base64")}`;
+      return { id, preview };
+    }
     case "avatarStudioSave": {
       // One click: compose the chosen layers, store it as a revision and make it the profile's avatar.
       const input = z.strictObject({
@@ -1290,10 +1309,15 @@ async function request(method: string, params?: unknown): Promise<unknown> {
         name: z.string().trim().min(1).max(40),
         personality: z.string().trim().max(600).default(""),
         choice: z.strictObject({
-          face: z.enum(AVATAR_BASES), hair: z.enum(AVATAR_BASES), outfit: z.enum(AVATAR_BASES),
+          face: z.enum(AVATAR_BASES), hair: z.enum(Object.keys(HAIR_STYLES) as [HairStyle, ...HairStyle[]]), outfit: z.enum(AVATAR_BASES),
           accessory: z.enum(["none", "headphones", "glasses"]),
           skin: z.number().int().min(0).max(4),
           hairColor: z.string().regex(/^#[0-9a-f]{6}$/i), outfitColor: z.string().regex(/^#[0-9a-f]{6}$/i), accentColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+          top: z.enum(Object.keys(OUTFITS) as [Outfit, ...Outfit[]]).optional(),
+          facial: z.enum(Object.keys(FACIAL_HAIR) as [FacialHair, ...FacialHair[]]).optional(),
+          lashes: z.boolean().optional(),
+          hat: z.enum(Object.keys(HATS) as [Hat, ...Hat[]]).optional(),
+          pantsColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
         }),
       }).parse(params);
       const profile = await profileService.get(input.profileId);
@@ -2005,10 +2029,12 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       state.connection = { status: "disconnected", models: [] };
       return emit();
     case "sendChat": {
-      const { text, displayText, model, reasoningEffort } = z
+      const { text, displayText, model, reasoningEffort, images } = z
         .object({
           text: z.string().trim().min(1).max(25_000),
           displayText: z.string().max(2000).optional(),
+          /** Photos picked with avatarPhotoPick (ids, never paths). */
+          images: z.array(z.string().regex(/^[a-f0-9-]{36}\.(?:jpg|png|webp)$/)).max(2).optional(),
           model: z.string().max(200).optional(),
           reasoningEffort: z
             .enum(["none", "minimal", "low", "medium", "high", "xhigh", "max"])
@@ -2023,7 +2049,9 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       message("user", displayText || text);
       message("assistant", "");
       try {
-        await codex.send(text, model, reasoningEffort);
+        if (images?.length && !(codex instanceof CodexClient))
+          throw new Error("Ler uma foto precisa do ChatGPT (Codex) conectado. Conecte em Inteligência artificial.");
+        await codex.send(text, model, reasoningEffort, images?.map((id) => join(userDir, "avatar-photos", id)));
         if (model) state.connection.model = model;
       } catch (error) {
         message(

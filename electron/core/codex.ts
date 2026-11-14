@@ -740,6 +740,7 @@ export class CodexClient {
     text: string,
     model?: string,
     reasoningEffort?: ReasoningEffort,
+    images: string[] = [],
   ): Promise<void> {
     if (!text.trim()) return;
     if (!this.child || !this.status)
@@ -820,7 +821,10 @@ export class CodexClient {
         threadId: this.threadId,
         model: selected,
         effort,
-        input: [{ type: "text", text, text_elements: [] }],
+        input: [
+          { type: "text", text, text_elements: [] },
+          ...images.map((path) => ({ type: "localImage", path })),
+        ],
       });
       const active = this.turn as ActiveTurn | undefined;
       if (active) {

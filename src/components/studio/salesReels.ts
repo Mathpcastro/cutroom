@@ -76,15 +76,15 @@ function marketingContext(profile: StudioProfile) {
 }
 
 /** The AI's last reply, without code fences. */
-async function replyText(text: string, displayText: string) {
+async function replyText(text: string, displayText: string, images?: string[]) {
   const { model, effort } = aiPreferences();
-  const result = await studioRequest<AppSnapshot>("sendChat", { text, displayText, ...(model ? { model } : {}), ...(effort ? { reasoningEffort: effort } : {}) });
+  const result = await studioRequest<AppSnapshot>("sendChat", { text, displayText, ...(model ? { model } : {}), ...(effort ? { reasoningEffort: effort } : {}), ...(images?.length ? { images } : {}) });
   const reply = result.messages.filter((message) => message.role === "assistant").at(-1)?.text.trim() ?? "";
   return reply.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
 }
 
-export async function structuredReply<T>(text: string, displayText: string, schema: z.ZodType<T>) {
-  const json = await replyText(text, displayText);
+export async function structuredReply<T>(text: string, displayText: string, schema: z.ZodType<T>, images?: string[]) {
+  const json = await replyText(text, displayText, images);
   try {
     return schema.parse(JSON.parse(json));
   } catch (error) {

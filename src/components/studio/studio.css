@@ -2593,3 +2593,9 @@
 .look-grid img { display: block; width: 100%; aspect-ratio: 270 / 480; object-fit: cover; object-position: left; }
 .look-grid span { padding: 2px 8px 6px; font-size: 12px; }
 .episode-place { min-width: 0; flex: 1; }
+
+/* Avatar creator: photo reference and compact selects. */
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.avatar-photo { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--studio-line); }
+.avatar-row select { min-width: 0; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--studio-line); background: var(--studio-surface); color: var(--studio-text); }
+.avatar-row .mcp-mode { margin-left: 8px; }
