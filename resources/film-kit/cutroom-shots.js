@@ -33,7 +33,7 @@
   /* ------------------------------------------------------------------ looks */
   var LOOKS = {
     pixel: { fps: 12, boil: 0, block: 6, quantize: true, font: "Silkscreen", text: "pixel", outline: "ink", glow: false, vignette: 0.22, avatar: "crisp" },
-    aquarela: { fps: 12, boil: 7, boilFreq: 0.012, soften: 2.6, paper: "wash", paperAlpha: 0.85, bleed: 0.3, edges: 0.35, filter: "saturate(.82) contrast(.92) brightness(1.08)", font: "Fredoka", text: "paper", outline: "ink", glow: false, vignette: 0.1, avatar: "soft" },
+    aquarela: { fps: 12, boil: 7, boilFreq: 0.012, soften: 2.6, paper: "wash", paperAlpha: 0.5, bleed: 0.25, edges: 0.3, filter: "saturate(.82) contrast(.92) brightness(1.08)", font: "Fredoka", text: "paper", outline: "ink", glow: false, vignette: 0.1, avatar: "soft" },
     oleo: { fps: 12, boil: 10, boilFreq: 0.02, soften: 2, paper: "canvas", paperAlpha: 0.45, brush: 0.6, filter: "saturate(1.16) contrast(1.08)", font: "InstrumentSerif", text: "serif", outline: "ink", glow: false, vignette: 0.28, avatar: "soft" },
     giz: { fps: 8, boil: 6, boilFreq: 0.05, soften: 1.6, paper: "crayon", paperAlpha: 0.9, filter: "saturate(1.08)", font: "Caveat", text: "hand", outline: "ink", glow: false, vignette: 0.12, avatar: "soft" },
     hq: { fps: 12, boil: 2, boilFreq: 0.02, halftone: 0.32, filter: "contrast(1.22) saturate(.9)", font: "Anton", text: "comic", outline: "ink", glow: false, vignette: 0.18, avatar: "crisp", ink: 1 },
@@ -97,7 +97,7 @@
         // Pigment pooling: a few big soft stains over the grain.
         var cx = c.getContext("2d"), blot = document.createElement("canvas"); blot.width = 18; blot.height = 32;
         var bx2 = blot.getContext("2d"), br2 = rng(5);
-        for (var yy2 = 0; yy2 < 32; yy2++) for (var xx2 = 0; xx2 < 18; xx2++) { var g2 = Math.round(255 - br2() * 70); bx2.fillStyle = "rgb(" + g2 + "," + (g2 - 2) + "," + (g2 - 8) + ")"; bx2.fillRect(xx2, yy2, 1, 1); }
+        for (var yy2 = 0; yy2 < 32; yy2++) for (var xx2 = 0; xx2 < 18; xx2++) { var g2 = Math.round(255 - br2() * 34); bx2.fillStyle = "rgb(" + g2 + "," + (g2 - 2) + "," + (g2 - 8) + ")"; bx2.fillRect(xx2, yy2, 1, 1); }
         cx.globalCompositeOperation = "multiply"; cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = "high"; cx.drawImage(blot, 0, 0, w, h); cx.globalCompositeOperation = "source-over";
       }
     } else if (kind === "crayon") {
@@ -380,7 +380,7 @@
     var vx = view.getContext("2d");
     var work = document.createElement("canvas"); work.width = W; work.height = H; var wx = work.getContext("2d");
     var prevC = document.createElement("canvas"); prevC.width = W; prevC.height = H; var px = prevC.getContext("2d");
-    var block = look.block || 0, small = null, sx = null, softC = null, softX = null;
+    var block = look.block || 0, small = null, sx = null, softC = null, softX = null, baseC = null, baseX = null;
     if (block) { small = document.createElement("canvas"); small.width = Math.ceil(W / block); small.height = Math.ceil(H / block); sx = small.getContext("2d", { willReadFrequently: true }); }
     var quant = block && look.quantize ? (look.palette.length ? look.palette : []).concat([ink, "#FFFFFF", "#0E0D12"]).map(hexRgb) : null;
 
@@ -571,24 +571,29 @@
         vx.imageSmoothingEnabled = false;
         vx.drawImage(small, 0, 0, W, H);
       } else {
-        var src = work;
+        var src = work, scale = 1;
         if (look.soften) {
           // Downsample + smooth upscale: one soft "painted" surface for sets and characters alike.
-          if (!softC) { softC = document.createElement("canvas"); softC.width = Math.round(W / look.soften); softC.height = Math.round(H / look.soften); softX = softC.getContext("2d"); }
-          softX.imageSmoothingEnabled = true; softX.imageSmoothingQuality = "high";
-          softX.drawImage(work, 0, 0, softC.width, softC.height);
+          // Wet edges and colour bleed are painted on the small canvas too (far fewer pixels to filter).
+          if (!softC) {
+            softC = document.createElement("canvas"); softC.width = Math.round(W / look.soften); softC.height = Math.round(H / look.soften); softX = softC.getContext("2d");
+            baseC = document.createElement("canvas"); baseC.width = softC.width; baseC.height = softC.height; baseX = baseC.getContext("2d");
+          }
+          scale = 1 / look.soften;
+          baseX.imageSmoothingEnabled = true; baseX.imageSmoothingQuality = "high";
+          baseX.clearRect(0, 0, baseC.width, baseC.height); baseX.drawImage(work, 0, 0, baseC.width, baseC.height);
+          softX.clearRect(0, 0, softC.width, softC.height);
+          if (look.filter && look.filter !== "none") softX.filter = look.filter;
+          softX.drawImage(baseC, 0, 0); softX.filter = "none";
+          if (look.edges) { softX.globalAlpha = look.edges; softX.globalCompositeOperation = "multiply"; softX.filter = "blur(1px) contrast(1.6) brightness(.92)"; softX.drawImage(baseC, 0.6, 0.6); softX.filter = "none"; softX.globalCompositeOperation = "source-over"; softX.globalAlpha = 1; }
+          if (look.bleed) { softX.globalAlpha = look.bleed; softX.globalCompositeOperation = "multiply"; softX.filter = "blur(2px)"; softX.drawImage(baseC, 0, 0); softX.filter = "none"; softX.globalCompositeOperation = "source-over"; softX.globalAlpha = 1; }
           src = softC;
         }
         vx.imageSmoothingEnabled = true; vx.imageSmoothingQuality = "high";
-        if (look.filter && look.filter !== "none") vx.filter = look.filter;
+        if (!look.soften && look.filter && look.filter !== "none") vx.filter = look.filter;
         var wv = look.weave ? (hash(Math.floor(tq * 12)) - 0.5) * look.weave * 2 : 0;
         vx.drawImage(src, wv, wv * 0.6, W, H);
         vx.filter = "none";
-        if (look.edges) {
-          // Wet edges: pigment collects where colour changes (a dark halo from a blurred difference).
-          vx.globalAlpha = look.edges; vx.globalCompositeOperation = "multiply"; vx.filter = "blur(2px) contrast(1.6) brightness(.92)"; vx.drawImage(src, 1.5, 1.5, W, H); vx.filter = "none"; vx.globalCompositeOperation = "source-over"; vx.globalAlpha = 1;
-        }
-        if (look.bleed) { vx.globalAlpha = look.bleed; vx.filter = "blur(5px)"; vx.globalCompositeOperation = "multiply"; vx.drawImage(src, 0, 0, W, H); vx.filter = "none"; vx.globalCompositeOperation = "source-over"; vx.globalAlpha = 1; }
         if (look.glow) { vx.globalAlpha = look.glow; vx.filter = "blur(14px)"; vx.globalCompositeOperation = "lighter"; vx.drawImage(src, 0, 0, W, H); vx.filter = "none"; vx.globalCompositeOperation = "source-over"; vx.globalAlpha = 1; }
         if (look.brush) { vx.globalAlpha = look.brush; vx.globalCompositeOperation = "soft-light"; vx.drawImage(texture("brush", W, H), 0, 0, W, H); vx.globalCompositeOperation = "source-over"; vx.globalAlpha = 1; }
         if (look.paper) { vx.globalAlpha = look.paperAlpha; vx.globalCompositeOperation = "multiply"; vx.drawImage(texture(look.paper, W, H), 0, 0, W, H); vx.globalCompositeOperation = "source-over"; vx.globalAlpha = 1; }

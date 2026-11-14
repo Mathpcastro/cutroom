@@ -234,6 +234,7 @@ CENÁRIOS (sets) em SVG
 - Desenhe com path, rect, circle, ellipse, polygon, line e degradês (linearGradient/radialGradient). Sem <text>, sem imagens, sem scripts, sem filtros, sem CSS. Use a paleta do look; cada objeto com 2 ou 3 tons (luz, base, sombra) para dar volume.
 - Desenhe os objetos e lugares específicos da história com silhuetas reconhecíveis (por exemplo um farol, um barco, um balcão de loja). Não desenhe pessoas: os personagens vêm do motor.
 - Deixe o chão onde os personagens pisam entre y=${Math.round(o.height * 0.74)} e y=${Math.round(o.height * 0.9)}, com espaço livre acima dele.
+- A paleta precisa de contraste: inclua um tom escuro para silhuetas, contornos e sombras, além dos claros. Evite cenários todos em tons pastel.
 - Kit pronto e recolorível (opcional, para ganhar tempo): <use href="#kit-NOME" x y width height style="--a:#hex;--b:#hex;--c:#hex;--d:#hex"/> com NOME em ${KIT_SYMBOLS.join(", ")} (a = cor principal, b = sombra, c = luz ou detalhe, d = escuro).
 - Capricho: cada cenário é uma ilustração completa, não um esboço. Pelo menos 3 camadas de profundidade e 25 formas: céu ou parede com degradê, elementos de fundo (morros, prédios, prateleiras, nuvens), o lugar principal com seus detalhes (portas, janelas, letreiros sem texto, caixotes, plantas, reflexos), sombras no chão e um primeiro plano que emoldura a cena. Use luz e sombra coerentes com a hora do dia.
 - Cada SVG entre 4000 e 9000 caracteres. Use de 2 a 4 cenários e reaproveite-os em várias tomadas, variando o enquadramento.
@@ -243,7 +244,7 @@ TOMADAS (shots)
 - Entre 8 e 24 tomadas para 25 a 45 segundos: troque de plano a cada frase ou a cada 1,5 a 3 segundos. Comece com um plano forte no meio da ação.
 - say: o trecho exato que será falado nessa tomada (todas juntas formam a narração completa, em ordem). ${o.story ? 'who: o nome do personagem que fala (ou "Narrador").' : ""}
 - camera.move em ${CAMERA_MOVES.join(", ")}; camera.focus [x,y] opcional no cenário. Varie: abertos para situar, closes para emoção, push-in para revelar, pan para percorrer.
-- cast: personagens em cena [{"who","x","y","size":"s|m|l|xl","pose","expression","facing","enter"}]; x,y = posição dos pés no cenário. ${o.cast.length ? `Elenco disponível: ${o.cast.join(", ")}.` : "Este filme não tem personagens; deixe cast vazio."} ${o.presenter ? `${o.presenter} é o apresentador e fala a narração quando aparece.` : ""} Poses: ${POSES.join(", ")}. Expressões: ${EXPRESSIONS.join(", ")}.
+- cast: personagens em cena [{"who","x","y","size":"s|m|l|xl","pose","expression","facing","enter"}]; x,y = posição dos pés no cenário. Mantenha cada personagem a pelo menos 200 px das bordas laterais do cenário e lado a lado com 220 px de distância. ${o.cast.length ? `Elenco disponível: ${o.cast.join(", ")}.` : "Este filme não tem personagens; deixe cast vazio."} ${o.presenter ? `${o.presenter} é o apresentador e fala a narração quando aparece.` : ""} Poses: ${POSES.join(", ")}. Expressões: ${EXPRESSIONS.join(", ")}.
 - fx opcional (até 2): ${FX.join(", ")}.
 - text opcional: {"kind":"title","content":"até 6 palavras","kicker":"opcional"} só na abertura ou em um momento-chave; {"kind":"sign","content":"..."} para um letreiro. As legendas da fala o motor coloca sozinho.
 - music: {"mood": um de ${MUSIC_MOODS.join(", ")}}: a trilha é composta para o filme e fica baixa, embaixo da voz.
