@@ -176,3 +176,33 @@ describe("graphics, characters and sound cues", () => {
     expect(shotPlanRules({ width: 1920, height: 1080, story: false, cast: [] })).toContain("paisagem 16:9");
   });
 });
+
+describe("Motion UI components", () => {
+  const base = { title: "x", look: { preset: "interface", palette: ["#7C5CFF", "#22D3EE"] }, sets: [{ id: "fundo", svg: set('<rect width="9" height="9"/>') }] };
+  it("keeps valid components and drops unknown ones without failing the plan", () => {
+    const { plan: p } = cleanShotPlan({ ...base, shots: [
+      { say: "Um", set: "fundo", ui: { kind: "chat", text: "Loja", items: [{ label: "Oi" }, { label: "Olá" }] } },
+      { say: "Dois", set: "fundo", ui: { kind: "hologram" } },
+      { say: "Três", set: "fundo", ui: { kind: "click", button: "Gerar Reels", items: [{ label: "Pronto!" }] } },
+    ] });
+    expect(p.look.preset).toBe("interface");
+    expect(p.shots[0].ui?.items.map((i) => i.label)).toEqual(["Oi", "Olá"]);
+    expect(p.shots[1].ui).toBeUndefined();
+    expect(p.shots[2].ui).toMatchObject({ kind: "click", button: "Gerar Reels" });
+  });
+  it("spots the UI sounds: the click, the chat pops, the island dings", () => {
+    const { plan: p } = cleanShotPlan({ ...base, shots: [
+      { say: "um dois", set: "fundo", ui: { kind: "click", button: "Ir" } },
+      { say: "três quatro", set: "fundo", ui: { kind: "island", items: [{ label: "Pedido" }] } },
+    ] });
+    const words = "um dois três quatro".split(" ").map((text, i) => ({ text, start: i * 0.8, end: i * 0.8 + 0.5 }));
+    const kinds = soundCues(p, words, 4).cues.map((c) => c.kind);
+    expect(kinds).toEqual(expect.arrayContaining(["click", "chime", "ding"]));
+  });
+  it("loads the Fluid core before the engine", () => {
+    const { plan: p } = cleanShotPlan({ ...base, shots: [{ say: "Oi", set: "fundo" }] });
+    const html = shotFilmHtml({ plan: p, duration: 3, voiceDuration: 2 });
+    expect(html.indexOf("kit/fluid-motion.js")).toBeGreaterThan(-1);
+    expect(html.indexOf("kit/fluid-motion.js")).toBeLessThan(html.indexOf("kit/cutroom-shots.js"));
+  });
+});
