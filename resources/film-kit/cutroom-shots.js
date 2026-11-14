@@ -225,8 +225,9 @@
       var d = depth == null || depth === "" ? null : clamp(+depth || 0, 0, 2);
       if (!cur || (d != null && d !== cur.depth) || (d == null && cur.explicit)) { cur = { depth: d == null ? 1 : d, explicit: d != null, parts: [], living: [] }; runs.push(cur); }
       // Living elements (data-motion, outermost only) leave the still layer and become sprites of their own.
-      var marked = Array.prototype.filter.call(n.querySelectorAll ? n.querySelectorAll("[data-motion]") : [], function (el) { return !el.parentNode.closest || !el.parentNode.closest("[data-motion]"); });
-      if (n.getAttribute && n.getAttribute("data-motion")) marked = [n];
+      var LIVE = "[data-motion],[data-el]";
+      var marked = Array.prototype.filter.call(n.querySelectorAll ? n.querySelectorAll(LIVE) : [], function (el) { return !el.parentNode.closest || !el.parentNode.closest(LIVE); });
+      if (n.getAttribute && (n.getAttribute("data-motion") || n.getAttribute("data-el"))) marked = [n];
       marked.slice(0, 12).forEach(function (el) {
         // Keep what the element inherits from its groups (transform, fill, stroke, opacity) when it is cut out.
         var markup = new XMLSerializer().serializeToString(el);
@@ -234,13 +235,13 @@
           var at = Array.prototype.filter.call(anc.attributes, function (x) { return !/^(data-|id$|class$)/.test(x.name); }).map(function (x) { return x.name + '="' + String(x.value).replace(/"/g, "") + '"'; }).join(" ");
           if (at) markup = "<g " + at + ">" + markup + "</g>";
         }
-        cur.living.push({ motion: el.getAttribute("data-motion"), delay: +(el.getAttribute("data-delay") || 0) || 0, markup: markup });
+        cur.living.push({ motion: el.getAttribute("data-motion") || "none", name: el.getAttribute("data-el") || null, delay: +(el.getAttribute("data-delay") || 0) || 0, markup: markup });
         if (el !== n) el.parentNode.removeChild(el);
       });
       if (marked[0] !== n) cur.parts.push(new XMLSerializer().serializeToString(n));
     });
     var variants = look.boil ? 3 : 1, order = 0;
-    return {
+    var out = {
       w: vw, h: vh,
       layers: runs.map(function (run, li) {
         var imgs = [];
@@ -258,11 +259,15 @@
           for (var v2 = 0; v2 < variants; v2++)
             simgs.push(svgImage('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="' + [bx, by, bw, bh].join(" ") + '" width="' + Math.max(1, Math.round(bw * scale)) + '" height="' + Math.max(1, Math.round(bh * scale)) + '">' +
               "<defs>" + KIT + boilDefs(look, 11 + v2 * 19 + li * 7) + "</defs>" + defs + (look.boil ? '<g filter="url(#crsBoil)">' : "<g>") + lv.markup + "</g></svg>"));
-          return { motion: lv.motion, delay: lv.delay, x: bx, y: by, w: bw, h: bh, cx: box.x + box.width / 2, cy: box.y + box.height / 2, by2: box.y + box.height, imgs: simgs, i: order++ };
+          return { motion: lv.motion, name: lv.name, delay: lv.delay, x: bx, y: by, w: bw, h: bh, cx: box.x + box.width / 2, cy: box.y + box.height / 2, by2: box.y + box.height, imgs: simgs, i: order++ };
         }).filter(Boolean);
         return { depth: run.depth, imgs: imgs, sprites: sprites };
       }),
     };
+    // Named elements (data-el), for word cues, camera targets and elements shared between sets.
+    out.els = {};
+    out.layers.forEach(function (layer) { layer.sprites.forEach(function (sp2) { if (sp2.name && !out.els[sp2.name]) out.els[sp2.name] = { sp: sp2, depth: layer.depth }; }); });
+    return out;
   }
   /** Bounding box of one element in set units (drawn once off-screen and measured). */
   function measureSvg(markup, defs, vw, vh) {
@@ -279,9 +284,12 @@
    * How a living element moves at time gt (film) and et (since its set appeared). Continuous motions
    * loop forever; entrance motions land on a spring and then breathe a little.
    */
-  function elementMotion(sp2, gt, et, W) {
+  function elementMotion(sp2, gt, et, W, cues) {
     var i = sp2.i, ph = i * 1.7, h = sp2.h, m = { dx: 0, dy: 0, rot: 0, s: 1, a: 1, ox: sp2.cx, oy: sp2.cy };
-    var k = sp(et - sp2.delay - 0.05, SPR.bouncy), k2 = clamp(k, 0, 1.3);
+    var entrance = /^(pop|rise|drop|slide-left|slide-right)$/.test(sp2.motion);
+    // An entrance with a word cue waits for that word; without one it plays when the set appears.
+    var since = entrance && cues && cues.length ? gt - cues[0] : et - sp2.delay - 0.05;
+    var k = sp(since, SPR.bouncy), k2 = clamp(k, 0, 1.3);
     switch (sp2.motion) {
       case "float": m.dy = Math.sin(gt * 1.5 + ph) * Math.min(26, h * 0.06 + 6); m.rot = Math.sin(gt * 1.1 + ph) * 1.5; break;
       case "sway": m.rot = Math.sin(gt * 1.8 + ph) * 6; m.oy = sp2.by2; break;
@@ -299,8 +307,13 @@
       case "slide-right": m.dx = -(1 - k2) * W * 0.7; m.a = clamp(k * 1.6, 0, 1); break;
     }
     // Entrances do not freeze after landing: they ease into a gentle float and tilt of their own.
-    if (/^(pop|rise|drop|slide-left|slide-right)$/.test(sp2.motion)) {
-      var settle = clamp((et - sp2.delay - 0.6) / 0.8, 0, 1);
+    // Every other cue of the element is a highlight: a quick spring bump when its word is said.
+    (cues || []).forEach(function (c, ci) {
+      if (entrance && ci === 0) return;
+      var lt = gt - c; if (lt >= 0 && lt < 0.6) { var b = Math.sin(lt / 0.6 * Math.PI) * (1 - lt / 0.6 * 0.4); m.s *= 1 + 0.13 * b; m.rot += Math.sin(lt * 26) * 3 * (1 - lt / 0.6); }
+    });
+    if (entrance) {
+      var settle = clamp((since - 0.55) / 0.8, 0, 1);
       m.dy += Math.sin(gt * 1.4 + ph) * Math.min(14, h * 0.035 + 4) * settle; m.rot += Math.sin(gt * 1.05 + ph) * 1.2 * settle;
     }
     return m;
@@ -670,6 +683,20 @@
     if (!shots.length) throw new Error("CRS.film: o plano não tem tomadas com cenário.");
     var timing = CRS.timeShots(shots, T.words || [], D);
     shots.forEach(function (s, i) { s.start = timing[i].start; s.end = timing[i].end; s.words = timing[i].words; });
+    // Word cues: {el, at} → the moment that word is spoken in the shot. Runs are consecutive shots on one set.
+    function nw(x) { return String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); }
+    var runN = 0, RUNCUES = {};
+    shots.forEach(function (s, i) {
+      if (i > 0 && shots[i - 1].set !== s.set) runN++;
+      s._run = runN;
+      s._cueT = (s.cues || []).map(function (c) {
+        var key = nw(String(c.at || "").split(/\s+/)[0]), hit = null;
+        (s.words || []).some(function (w) { var tx = nw(w.text); if (key && (tx === key || tx.indexOf(key) === 0)) { hit = w; return true; } return false; });
+        return { el: c.el, t: hit ? hit.start : s.start + 0.25 };
+      });
+      var m = RUNCUES[runN] || (RUNCUES[runN] = {});
+      s._cueT.forEach(function (c) { (m[c.el] = m[c.el] || []).push(c.t); });
+    });
     var scaleSet = look.block ? 1 : look.boil ? 1.2 : 1.6;
     var SETS = {}, PROPS = {};
     (plan.sets || []).forEach(function (s) { SETS[s.id] = rasterSet(s.svg, look, scaleSet); });
@@ -1169,10 +1196,43 @@
     function variant(t, n) { return n <= 1 ? 0 : Math.floor(t * (look.fps >= 30 ? 8 : look.fps / 2)) % n; }
     function drawImg(ctx, im, x, y, w, h) { if (im && im.complete && im.naturalWidth) ctx.drawImage(im, x, y, w, h); }
 
-    function drawShot(ctx, s, t) {
-      var set = SETS[s.set]; if (!set) return;
+    /** Framing of the element called `name` (data-el): centred through its layer's parallax, filling ~60% of the frame. */
+    function elFocus(set, cam, name) {
+      var e = set.els && set.els[name]; if (!e) return null;
+      var ks = cam.sw / set.w, f = 0.35 + 0.65 * e.depth, csx = cam.sw / 2, csy = cam.sh / 2;
+      var ex = (e.sp.x + e.sp.w / 2) * ks, ey = (e.sp.y + e.sp.h / 2) * ks;
+      var fill = clamp(Math.min(W / (e.sp.w * ks * 1.8), H / (e.sp.h * ks * 1.8)), 1.05, 2.1);
+      return { x: csx + (ex - csx) / f, y: csy + (ey - csy) / f, z: 1 + (fill - 1) / (0.5 + 0.5 * e.depth) };
+    }
+    function clampCam(cam) {
+      var vwc = W / cam.z, vhc = H / cam.z;
+      cam.x = cam.sw <= vwc ? cam.sw / 2 : clamp(cam.x, vwc / 2, cam.sw - vwc / 2);
+      cam.y = cam.sh <= vhc ? cam.sh / 2 : clamp(cam.y, vhc / 2, cam.sh - vhc / 2);
+    }
+    /**
+     * camera.target frames one element and pushes in slowly; camera.move "follow" travels to each cued
+     * element at the moment its word is spoken, on a spring. Returns true when the camera is aimed.
+     */
+    function aimCamera(s, set, cam, tq, p) {
+      var c = s.camera || {};
+      var stops = (s._cueT || []).filter(function (q) { return set.els && set.els[q.el]; });
+      if (c.move === "follow" && stops.length) {
+        var cur = { x: cam.x, y: cam.y, z: cam.z };
+        stops.forEach(function (q) {
+          var F = elFocus(set, cam, q.el), g = clamp(sp(tq - q.t + 0.18, SPR.soft), 0, 1.08);
+          cur = { x: cur.x + (F.x - cur.x) * g, y: cur.y + (F.y - cur.y) * g, z: cur.z + (F.z - cur.z) * g };
+        });
+        cam.x = cur.x; cam.y = cur.y; cam.z = cur.z; clampCam(cam); return true;
+      }
+      var T0 = c.target && elFocus(set, cam, c.target);
+      if (T0) { cam.x = T0.x; cam.y = T0.y; cam.z = T0.z * (0.9 + 0.12 * p); clampCam(cam); return true; }
+      return false;
+    }
+    /** The camera of a shot at time t: the move, aiming, kicks, coverage cuts, beat punches and glides. */
+    function shotCam(s, set, t, noGlide) {
       var dur = Math.max(0.01, s.end - s.start), p = clamp((t - s.start) / dur, 0, 1);
       var cam = camAt(s, set, p, W, H), tq = stepped(t);
+      var aimed = aimCamera(s, set, cam, tq, p);
       // Spring kick on every cut: the frame lands a little closer and settles (energy without a transition).
       var si = shots.indexOf(s);
       if (si > 0 && (!s.transition || s.transition === "cut" || s.transition === "flash")) cam.z *= 1 + 0.075 * (1 - sp(tq - s.start, SPR.bouncy));
@@ -1180,6 +1240,7 @@
       // Long shots get a punch-in halfway (an editor's jump zoom): a new framing without a new shot.
       // Coverage cuts: a shot longer than 2.8 s is cut every ~2 s on a word boundary into another framing
       // (tighter, then wider and to the other side), so the picture never holds one framing too long.
+      if (!s._cuts && aimed) s._cuts = []; // an aimed camera is not cut into other framings
       if (!s._cuts) {
         s._cuts = [];
         var lastCut = s.start;
@@ -1197,7 +1258,7 @@
       // Punches on the rhythm of the voice: at each pause inside the shot (comma, full stop, question)
       // the framing jumps, alternating closer and wider, like an editor cutting on the narration.
       var sdur = s.end - s.start;
-      if (cam.move !== "close") {
+      if (cam.move !== "close" && !aimed) {
         if (!s._beats) {
           s._beats = [];
           (s.words || []).forEach(function (w, wi) { if (wi < s.words.length - 1 && /[,.;:!?…]$/.test(w.text) && w.end - s.start > 0.6 && s.end - w.end > 0.6) s._beats.push(w.end + 0.04); });
@@ -1209,11 +1270,46 @@
         var amp = cam.move === "shake" ? 9 : 2.2, j = Math.floor(tq * 24);
         cam.x += (hash(j) - 0.5) * amp * 2; cam.y += (hash(j + 99) - 0.5) * amp * 2;
       }
+      // Glide: on the same set, the camera travels from where the last shot ended instead of cutting.
+      if (!noGlide && si > 0 && s.transition === "glide" && shots[si - 1].set === s.set) {
+        var pc = shotCam(shots[si - 1], set, s.start - 0.001, true), gl = clamp(sp(tq - s.start, SPR.soft), 0, 1);
+        cam.x = pc.x + (cam.x - pc.x) * gl; cam.y = pc.y + (cam.y - pc.y) * gl; cam.z = pc.z + (cam.z - pc.z) * gl; cam.rot = pc.rot + (cam.rot - pc.rot) * gl;
+      }
+      return cam;
+    }
+    /** Where a named element sits on screen in a shot at time t (centre and size of its drawing). */
+    function elScreen(shot, set, name, t) {
+      var e = set.els[name], cam = shotCam(shot, set, t), ks = cam.sw / set.w, d = e.depth;
+      var csx = cam.sw / 2, csy = cam.sh / 2, f = 0.35 + 0.65 * d, lx = csx + (cam.x - csx) * f, ly = csy + (cam.y - csy) * f, lz = 1 + (cam.z - 1) * (0.5 + 0.5 * d);
+      var vx = ((e.sp.x + e.sp.w / 2) * ks - lx) * lz, vy = ((e.sp.y + e.sp.h / 2) * ks - ly) * lz, r = cam.rot * Math.PI / 180;
+      return { x: W / 2 + vx * Math.cos(r) - vy * Math.sin(r), y: H / 2 + vx * Math.sin(r) + vy * Math.cos(r), w: e.sp.w * ks * lz, h: e.sp.h * ks * lz, rot: cam.rot, sp: e.sp };
+    }
+    /** The shared element travelling from its place in the last shot to its place in this one. */
+    function drawFlight(ctx, s, set, name, t, tq) {
+      var prev = s._flyFrom, a = elScreen(prev, SETS[prev.set], name, s.start - 0.001), b = elScreen(s, set, name, t);
+      var g = clamp(sp(tq - s.start, SPR.soft), 0, 1.04), x = a.x + (b.x - a.x) * g, y = a.y + (b.y - a.y) * g - Math.sin(clamp(g, 0, 1) * Math.PI) * H * 0.035;
+      var w = a.w + (b.w - a.w) * g, h = a.h + (b.h - a.h) * g;
+      ctx.save(); ctx.translate(x, y); ctx.rotate((a.rot + (b.rot - a.rot) * g) * Math.PI / 180 + Math.sin(clamp(g, 0, 1) * Math.PI) * 0.05);
+      ctx.globalAlpha = clamp(1 - g, 0, 1); drawImg(ctx, a.sp.imgs[0], -w / 2, -h / 2, w, h);
+      ctx.globalAlpha = clamp(g, 0, 1); drawImg(ctx, b.sp.imgs[0], -w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+    function drawShot(ctx, s, t) {
+      var set = SETS[s.set]; if (!set) return;
+      var tq = stepped(t), si = shots.indexOf(s), cam = shotCam(s, set, t);
       var csx = cam.sw / 2, csy = cam.sh / 2;
       ctx.fillStyle = look.paperColor || "#141318"; ctx.fillRect(0, 0, W, H);
       // When a set appears (first shot of a run on it), its layers build in: the near ones rise in on springs.
       if (s._runStart == null) { var rs = si; while (rs > 0 && shots[rs - 1].set === s.set) rs--; s._runStart = shots[rs].start; }
-      var et = tq - s._runStart, ks = cam.sw / set.w;
+      var et = tq - s._runStart, ks = cam.sw / set.w, runCues = RUNCUES[s._run] || {};
+      // Elements named the same in the last set and in this one fly across the cut (shared element).
+      if (s._fly == null) {
+        s._fly = [];
+        var prevS = si > 0 && shots[si - 1].set !== s.set ? shots[si - 1] : null, prevSet = prevS && SETS[prevS.set];
+        if (prevSet && prevSet.els && set.els) Object.keys(set.els).forEach(function (nm) { if (prevSet.els[nm]) s._fly.push(nm); });
+        s._flyFrom = prevS;
+      }
+      var flying = s._fly.length && tq < s.start + 0.62;
       set.layers.forEach(function (layer, li) {
         var d = layer.depth, f = 0.35 + 0.65 * d, lx = csx + (cam.x - csx) * f, ly = csy + (cam.y - csy) * f, lz = 1 + (cam.z - 1) * (0.5 + 0.5 * d);
         if (d < 0.9) { lx += Math.sin(tq * 0.45 + d * 3) * W * 0.012 * (1 - d); ly += Math.cos(tq * 0.38 + d * 5) * H * 0.006 * (1 - d); }
@@ -1222,7 +1318,10 @@
         if (li > 0) ctx.globalAlpha = clamp(build * 1.4, 0, 1);
         drawImg(ctx, layer.imgs[variant(tq, layer.imgs.length)], 0, 0, cam.sw, cam.sh);
         (layer.sprites || []).forEach(function (sp2) {
-          var m = elementMotion(sp2, tq, et, set.w);
+          if (flying && sp2.name && s._fly.indexOf(sp2.name) >= 0) return;
+          // An element that flew in has already arrived: no second entrance.
+          var cuesOf = sp2.name && s._fly.indexOf(sp2.name) >= 0 ? [s.start - 5].concat(runCues[sp2.name] || []) : sp2.name ? runCues[sp2.name] : null;
+          var m = elementMotion(sp2, tq, et, set.w, cuesOf);
           ctx.save(); ctx.globalAlpha = (li > 0 ? clamp(build * 1.4, 0, 1) : 1) * clamp(m.a, 0, 1);
           ctx.translate((m.ox + m.dx) * ks, (m.oy + m.dy) * ks); ctx.rotate(m.rot * Math.PI / 180); ctx.scale(m.s, m.s); ctx.translate(-m.ox * ks, -m.oy * ks);
           drawImg(ctx, sp2.imgs[variant(tq + sp2.i * 0.13, sp2.imgs.length)], sp2.x * ks, sp2.y * ks, sp2.w * ks, sp2.h * ks);
@@ -1258,6 +1357,7 @@
         }
       });
       ctx.restore();
+      if (flying) s._fly.forEach(function (nm) { drawFlight(ctx, s, set, nm, t, tq); });
       if (s.proof && PROOFS[s.proof] && PROOFS[s.proof].length) drawProof(ctx, PROOFS[s.proof], s, t, tq);
       (s.fx || []).forEach(function (k, ki) { drawFx(ctx, k, tq, W, H, look, ki + 1 + shots.indexOf(s) * 3); });
     }
@@ -1318,7 +1418,7 @@
     function transitionAt(t) {
       for (var i = 1; i < shots.length; i++) {
         var s = shots[i], kind = s.transition || "cut";
-        if (kind === "cut" || kind === "flash") continue;
+        if (kind === "cut" || kind === "flash" || kind === "glide") continue;
         var dur = kind === "whip" ? 0.28 : kind === "iris" || kind === "clock" ? 0.6 : kind === "pixelate" ? 0.5 : kind === "push" || kind === "zoom" ? 0.4 : 0.45;
         if (t >= s.start && t < s.start + dur) return { from: shots[i - 1], to: s, p: (t - s.start) / dur, kind: kind };
       }

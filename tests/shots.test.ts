@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanShotPlan, sanitizeSvg, shotFilmHtml, shotNarration, shotPlanRules } from "../src/shared/shots";
+import { cleanShotPlan, cueTime, sanitizeSvg, shotFilmHtml, shotNarration, shotPlanRules } from "../src/shared/shots";
 
 const set = (inner: string, box = "0 0 1080 1920") => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}">${inner}</svg>`;
 
@@ -23,6 +23,12 @@ describe("sanitizeSvg", () => {
     const out = sanitizeSvg(set('<use href="#kit-tree" x="10" y="20" width="200" height="260" style="--a:#123456;--b:#abc;color:red;--z:#fff"/><use xlink:href="#kit-sun" width="9" height="9"/>'))!;
     expect(out).toContain('<use href="#kit-tree" x="10" y="20" width="200" height="260" style="--a:#123456;--b:#abc"/>');
     expect(out).toContain('<use href="#kit-sun"');
+  });
+
+  it("keeps element names for cues and the camera", () => {
+    const out = sanitizeSvg(set('<g data-depth="1"><g data-el="cartao" data-motion="pop"><rect width="9" height="9"/></g><g data-el="1bad"><circle r="3"/></g></g>'))!;
+    expect(out).toContain('data-el="cartao"');
+    expect(out).not.toContain("1bad");
   });
 
   it("keeps living-element marks and drops unknown motions", () => {
@@ -226,5 +232,27 @@ describe("product-only sales films", () => {
     const rules = shotPlanRules({ width: 1080, height: 1920, story: false, cast: [], characters: "nenhum" });
     expect(rules).toContain("O produto é o protagonista");
     expect(rules).toContain('"phone"');
+  });
+});
+
+describe("word choreography", () => {
+  const svg = '<svg viewBox="0 0 1080 1920"><g data-depth="0"><rect width="1080" height="1920" fill="#123"/></g><g data-depth="1"><g data-el="cartao" data-motion="pop"><rect x="100" y="100" width="200" height="120"/></g></g></svg>';
+  it("finds the moment a cue word is spoken, ignoring accents and case", () => {
+    const words = [{ text: "Você", start: 1, end: 1.2 }, { text: "paga", start: 1.3, end: 1.5 }, { text: "por", start: 1.6, end: 1.7 }, { text: "Pix.", start: 1.8, end: 2 }];
+    expect(cueTime("pix", words, 1)).toBe(1.8);
+    expect(cueTime("VOCE agora", words, 1)).toBe(1);
+    expect(cueTime("cartão", words, 1)).toBe(1.25);
+  });
+  it("plans cues, camera targets, follow and glide, and sounds a pop on each cue", () => {
+    const { plan } = cleanShotPlan({
+      title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }],
+      shots: [{ say: "Você paga por Pix", set: "a", camera: { move: "follow", target: "cartao" }, transition: "glide", cues: [{ el: "cartao", at: "Pix" }, null, { el: "9x", at: "a" }] }],
+    });
+    const shot = plan.shots[0];
+    expect(shot.camera).toMatchObject({ move: "follow", target: "cartao" });
+    expect(shot.transition).toBe("glide");
+    expect(shot.cues).toEqual([{ el: "cartao", at: "Pix" }]);
+    const words = [{ text: "Você", start: 0.2, end: 0.4 }, { text: "paga", start: 0.5, end: 0.7 }, { text: "por", start: 0.8, end: 0.9 }, { text: "Pix", start: 1, end: 1.3 }];
+    expect(soundCues(plan, words, 3).cues).toContainEqual({ t: 1, kind: "pop", gain: 0.5 });
   });
 });

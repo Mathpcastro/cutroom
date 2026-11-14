@@ -26,10 +26,10 @@ export const LOOKS: Record<LookPreset, { label: string; hint: string; palette: s
   neon: { label: "Neon noturno", hint: "Cidade à noite com neon: fundo muito escuro, contornos e letreiros em cores neon (magenta, ciano, roxo), reflexos no chão.", palette: ["#FF2E97", "#00E5FF", "#8A2BE2", "#FFE66D"], paper: "#0B0820", ink: "#0B0820" },
 };
 
-export const CAMERA_MOVES = ["wide", "medium", "close", "push-in", "pull-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "dutch", "shake", "orbit"] as const;
+export const CAMERA_MOVES = ["wide", "medium", "close", "push-in", "pull-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "dutch", "shake", "orbit", "follow"] as const;
 /** Life inside a set: an element marked with data-motion is cut out and animated on its own. */
 export const ELEMENT_MOTIONS = ["float", "sway", "spin", "pulse", "blink", "drift", "bounce", "orbit", "shake", "pop", "rise", "slide-left", "slide-right", "drop"] as const;
-export const TRANSITIONS = ["cut", "fade", "wipe", "iris", "whip", "flash", "dissolve", "blinds", "clock", "pixelate", "push", "zoom"] as const;
+export const TRANSITIONS = ["cut", "fade", "wipe", "iris", "whip", "flash", "dissolve", "blinds", "clock", "pixelate", "push", "zoom", "glide"] as const;
 export const PROP_MOTIONS = ["none", "bob", "sway", "drift", "drift-left", "spin", "pulse", "fly-left", "fly-right", "rise", "fall", "shake", "grow", "blink"] as const;
 export const FX = ["rain", "snow", "dust", "fireflies", "stars", "confetti", "sparks", "leaves", "smoke", "light-rays", "speed-lines", "bokeh", "matrix", "film-burn", "grain", "sound-wave"] as const;
 export const POSES = ["neutral", "explaining", "pointing", "surprised", "celebrating"] as const;
@@ -68,7 +68,7 @@ const ATTRS: Record<string, (v: string) => boolean> = {
   viewBox: (v) => LIST.test(v), gradientUnits: (v) => /^(?:userSpaceOnUse|objectBoundingBox)$/.test(v), clipPathUnits: (v) => /^(?:userSpaceOnUse|objectBoundingBox)$/.test(v),
   id: (v) => ID.test(v) && !/^(?:kit-|crs)/i.test(v), "clip-path": (v) => /^url\(#[A-Za-z][\w-]{0,40}\)$/.test(v),
   href: (v) => /^#[A-Za-z][\w-]{0,40}$/.test(v), "data-depth": (v) => NUM.test(v) && +v >= 0 && +v <= 2,
-  "data-motion": (v) => (ELEMENT_MOTIONS as readonly string[]).includes(v), "data-delay": (v) => NUM.test(v) && +v >= 0 && +v <= 8,
+  "data-motion": (v) => (ELEMENT_MOTIONS as readonly string[]).includes(v), "data-el": (v) => /^[a-z][a-z0-9-]{0,30}$/i.test(v), "data-delay": (v) => NUM.test(v) && +v >= 0 && +v <= 8,
   style: () => true,
 };
 
@@ -216,7 +216,9 @@ export const shotSchema = z.object({
   say: text(400).default(""),
   who: text(40).optional(),
   set: idSchema,
-  camera: z.object({ move: z.enum(CAMERA_MOVES).catch("wide"), focus: point.optional(), zoom: z.number().min(1).max(4).optional() }).default({ move: "wide" }),
+  camera: z.object({ move: z.enum(CAMERA_MOVES).catch("wide"), focus: point.optional(), zoom: z.number().min(1).max(4).optional(), target: idSchema.optional().catch(undefined) }).default({ move: "wide" }),
+  /** Word cues: the named element (data-el) enters, or gets a highlight, when the word "at" is spoken. */
+  cues: capped(z.object({ el: idSchema, at: text(40).pipe(z.string().min(1)) }).nullable().catch(null), 6).transform((list) => list.filter((c): c is { el: string; at: string } => Boolean(c))).default([]).catch([]),
   cast: capped(castSchema.nullable().catch(null), 5).transform((list) => list.filter((c): c is z.infer<typeof castSchema> => Boolean(c))).default([]),
   props: capped(propUseSchema.nullable().catch(null), 8).transform((list) => list.filter((p): p is z.infer<typeof propUseSchema> => Boolean(p))).default([]),
   fx: capped(z.enum(FX).nullable().catch(null), 3).transform((list) => list.filter((f): f is (typeof FX)[number] => Boolean(f))).default([]).catch([]),
@@ -318,7 +320,7 @@ look: {"preset":"...","palette":["#hex" x4 a 6, da mais usada para o acento],"pa
 CENÁRIOS (sets) em SVG
 - Cada cenário é um <svg viewBox="0 0 L ${o.height}"> com L entre ${o.width} e ${o.width * 2} (use L maior que ${o.width} quando houver pan lateral). Altura sempre ${o.height}.
 - Organize em camadas de profundidade com <g data-depth="0"> (céu e fundo distante), <g data-depth="0.4"> (meio), <g data-depth="1"> (chão e objetos perto), <g data-depth="1.4"> (primeiro plano, opcional). A câmera faz paralaxe entre elas.
-- VIDA NA CENA (obrigatório): dentro das camadas, embrulhe de 4 a 8 elementos em <g data-motion="..."> para o motor animar cada um sozinho. Contínuos: float (flutua), sway (balança, pela base), spin (gira), pulse (pulsa), blink (pisca), drift (desliza devagar de um lado a outro), bounce (quica), orbit (circula), shake (treme). De entrada (quando o cenário aparece, com mola): pop, rise, drop, slide-left, slide-right; data-delay="0.3" atrasa em segundos para entrarem em sequência. Exemplos: nuvens drift, sol spin ou pulse, folhas e plantas sway, cartões e celulares float, ícones e selos pop + data-delay em escada, setas bounce, luzes blink, notificações slide-left. Use pelo menos 3 contínuos por cenário (é o que mantém a cena viva depois que tudo entrou) e as entradas para o que deve surgir em sequência. Elementos animados ficam por cima da sua camada; não marque o fundo nem o chão.
+- VIDA NA CENA (obrigatório): dentro das camadas, embrulhe de 4 a 8 elementos em <g data-motion="..."> para o motor animar cada um sozinho. Contínuos: float (flutua), sway (balança, pela base), spin (gira), pulse (pulsa), blink (pisca), drift (desliza devagar de um lado a outro), bounce (quica), orbit (circula), shake (treme). De entrada (quando o cenário aparece, com mola): pop, rise, drop, slide-left, slide-right; data-delay="0.3" atrasa em segundos para entrarem em sequência. Exemplos: nuvens drift, sol spin ou pulse, folhas e plantas sway, cartões e celulares float, ícones e selos pop + data-delay em escada, setas bounce, luzes blink, notificações slide-left. COREOGRAFIA COM A FALA (é o que faz parecer feito à mão): dê nome aos elementos importantes com data-el="nome" (ex.: <g data-el="cartao" data-motion="pop">, <g data-el="celular" data-motion="float">). Na tomada, cues: [{"el":"cartao","at":"Pix"}] faz o elemento entrar (se tiver entrada pop/rise/drop/slide) ou dar um destaque exatamente quando a palavra é falada; um elemento de entrada com cue fica escondido até a palavra dele. Use cues em quase toda tomada de produto, ligando cada objeto à palavra que o cita. Use pelo menos 3 contínuos por cenário (é o que mantém a cena viva depois que tudo entrou) e as entradas para o que deve surgir em sequência. Elementos animados ficam por cima da sua camada; não marque o fundo nem o chão.
 - Desenhe com path, rect, circle, ellipse, polygon, line e degradês (linearGradient/radialGradient). Sem <text>, sem imagens, sem scripts, sem filtros, sem CSS. Use a paleta do look; cada objeto com 2 ou 3 tons (luz, base, sombra) para dar volume.
 - Desenhe os objetos e lugares específicos da história com silhuetas reconhecíveis (por exemplo um farol, um barco, um balcão de loja). Não desenhe pessoas: os personagens vêm do motor.
 - Para personagens palito, desenhe cenários mais simples e claros (eles são traço fino).
@@ -342,7 +344,8 @@ SOM: cada cenário tem "ambience" em ${AMBIENCES.join(", ")} (ambiente sonoro ba
 TOMADAS (shots)
 - ${o.story ? "Uma tomada por fala, na ordem" : "Entre 14 e 24 tomadas para 25 a 45 segundos"}: cada tomada com 4 a 9 palavras faladas (1,5 a 3 segundos). Frase longa vira duas tomadas seguidas com planos diferentes (aberto → close, objeto → personagem, tela → reação). Comece com um plano forte no meio da ação.
 - say: o trecho exato que será falado nessa tomada (todas juntas formam a narração completa, em ordem). ${o.story ? 'who: o nome do personagem que fala (ou "Narrador").' : ""}
-- camera.move em ${CAMERA_MOVES.join(", ")}; camera.focus [x,y] opcional no cenário. Varie: abertos para situar, closes para emoção, push-in para revelar, pan para percorrer.
+- camera.move em ${CAMERA_MOVES.join(", ")}; camera.focus [x,y] opcional no cenário. Varie: abertos para situar, closes para emoção, push-in para revelar, pan para percorrer. camera.target: "nome" de um data-el enquadra esse elemento e aproxima devagar. camera.move "follow": a câmera viaja até cada elemento das cues no momento da palavra (use em demonstrações: celular → cartão → check). Transition "glide" entre tomadas no mesmo cenário: a câmera desliza de onde estava em vez de cortar.
+- CONTINUIDADE: repita o mesmo data-el (o celular, o produto, o cartão) em cenários seguidos; na troca de cenário ele voa da posição antiga para a nova em vez de sumir e reaparecer. Prefira poucos cenários com o produto persistente a muitos cenários soltos.
 - cast: personagens em cena [{"who","x","y","size":"s|m|l|xl","pose","expression","facing","enter"}]; x,y = posição dos pés no cenário. Mantenha cada personagem a pelo menos 200 px das bordas laterais do cenário e lado a lado com 220 px de distância. ${o.cast.length ? `Elenco disponível: ${o.cast.join(", ")}. Coloque personagens em cena na maioria das tomadas (reagindo, mostrando, usando o produto); tomadas só com objeto ou gráfico são a exceção.` : "Este filme não tem personagens; deixe cast vazio."} ${o.presenter ? `${o.presenter} é o apresentador e fala a narração quando aparece.` : ""} Poses: ${POSES.join(", ")}. Expressões: ${EXPRESSIONS.join(", ")}.
 - fx opcional (até 2): ${FX.join(", ")}.
 - text opcional: {"kind":"title","content":"até 6 palavras","kicker":"opcional"} só na abertura ou em um momento-chave; {"kind":"sign","content":"..."} para um letreiro. As legendas da fala o motor coloca sozinho.
@@ -539,6 +542,14 @@ export function timeShots(shots: { say: string }[], words: Word[], D: number) {
   return firstPass.map((x, i) => ({ words: x.words, start: x.start as number, end: i === firstPass.length - 1 ? D : Math.max((x.start as number) + 0.4, firstPass[i + 1].start as number) }));
 }
 
+/** When the first word of `at` is spoken in a shot (same rule as the engine), else just after the shot starts. */
+export function cueTime(at: string, words: { text: string; start: number }[], shotStart: number) {
+  const nw = (x: string) => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  const key = nw(String(at).split(/\s+/)[0] ?? "");
+  const hit = key ? words.find((w) => { const t = nw(w.text); return t === key || t.startsWith(key); }) : undefined;
+  return hit ? hit.start : shotStart + 0.25;
+}
+
 /** Same as CRS.graphicTimes: when each item of a graphic appears. */
 export function graphicTimes(n: number, start: number, end: number) {
   const span = Math.max(0.6, end - start - 0.6), out: number[] = [];
@@ -570,6 +581,7 @@ export function soundCues(plan: ShotPlan, words: Word[], D: number): { cues: Sou
       else if (["push-in", "dutch", "shake"].includes(shot.camera.move)) add(start, "swish", 0.45);
     }
     if (shot.text?.kind === "title") { if (i === 0) add(Math.max(0, start), "impact", 0.7); else add(start + 0.05, "impact", 0.6); }
+    (shot.cues ?? []).forEach((c) => { const t = cueTime(c.at, timed[i].words, start); add(t, "pop", 0.5); });
     if (shot.text?.kind === "sign") add(start + 0.05, "pop", 0.7);
     shot.cast.forEach((c) => {
       if (c.enter === "drop") add(start + 0.37, "thud", 0.8);

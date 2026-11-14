@@ -43,10 +43,10 @@ export const EFFECTS: Record<string, EffectDef> = {
   "particle-text-dissolve": { group: "texto", fit: 14, use: "texto que se forma a partir de partículas", vars: { text: "1 a 4 palavras" } },
   "scramble-reveal": { group: "texto", fit: 16, use: "texto que se decifra letra a letra, estilo hacker", vars: { text: "1 a 4 palavras" } },
   "text-shimmer": { group: "texto", fit: 18, use: "título com um brilho que atravessa", vars: { text: "1 a 5 palavras" } },
-  "shutter-slam": { group: "texto", fit: 10, use: "uma palavra arremessada com borrão de movimento", vars: { text: "uma palavra" } },
+  "shutter-slam": { group: "texto", fit: 8, use: "uma palavra arremessada com borrão de movimento", vars: { text: "uma palavra" } },
   "push-in": { group: "texto", fit: 22, use: "manchete com a câmera aproximando devagar (momento sério)", vars: { text: T } },
   "gloss-sweep": { group: "texto", fit: 14, use: "cartão que assenta com um brilho de vitrine", vars: { text: "1 a 4 palavras" } },
-  "beat-accent": { group: "texto", fit: 12, use: "batida de impacto com flash, para a virada", vars: { text: "1 a 3 palavras" } },
+  "beat-accent": { group: "texto", fit: 8, use: "batida de impacto com flash, para a virada", vars: { text: "1 a 3 palavras" } },
   "titlecard-calm": { group: "texto", use: "cartão de título calmo com sobretítulo (capítulo)", vars: { headline: "título", kicker: "sobretítulo curto" } },
   "pull-back-reveal": { group: "texto", wide: true, use: "um número em close e a câmera recua revelando a manchete", vars: { detail_text: "número ou dado curto", headline: "manchete" } },
   /* ---------------------------------------------------------------- data and proof */
