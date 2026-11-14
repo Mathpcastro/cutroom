@@ -235,7 +235,8 @@ CENÁRIOS (sets) em SVG
 - Desenhe os objetos e lugares específicos da história com silhuetas reconhecíveis (por exemplo um farol, um barco, um balcão de loja). Não desenhe pessoas: os personagens vêm do motor.
 - Deixe o chão onde os personagens pisam entre y=${Math.round(o.height * 0.74)} e y=${Math.round(o.height * 0.9)}, com espaço livre acima dele.
 - Kit pronto e recolorível (opcional, para ganhar tempo): <use href="#kit-NOME" x y width height style="--a:#hex;--b:#hex;--c:#hex;--d:#hex"/> com NOME em ${KIT_SYMBOLS.join(", ")} (a = cor principal, b = sombra, c = luz ou detalhe, d = escuro).
-- Cada SVG com até 9000 caracteres. Use de 1 a 4 cenários e reaproveite-os em várias tomadas.
+- Capricho: cada cenário é uma ilustração completa, não um esboço. Pelo menos 3 camadas de profundidade e 25 formas: céu ou parede com degradê, elementos de fundo (morros, prédios, prateleiras, nuvens), o lugar principal com seus detalhes (portas, janelas, letreiros sem texto, caixotes, plantas, reflexos), sombras no chão e um primeiro plano que emoldura a cena. Use luz e sombra coerentes com a hora do dia.
+- Cada SVG entre 4000 e 9000 caracteres. Use de 2 a 4 cenários e reaproveite-os em várias tomadas, variando o enquadramento.
 OBJETOS (props, opcional)
 - SVG pequeno com viewBox próprio (por exemplo "0 0 300 300"), desenhado com a base apoiada no fundo do viewBox. Na tomada: {"id","x","y","scale","motion"}; x,y é o ponto de apoio (base) em coordenadas do cenário. motion em ${PROP_MOTIONS.join(", ")}.
 TOMADAS (shots)

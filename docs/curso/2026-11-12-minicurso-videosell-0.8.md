@@ -261,16 +261,17 @@ Para cada aula: **objetivo**, **tela**, **roteiro** (o Codex escreve o texto fin
 - O app expõe um servidor MCP local. A ponte `tools/cutroom-claude-desktop-bridge.cjs` roda no próprio executável do app (`ELECTRON_RUN_AS_NODE=1`), então não precisa de Node instalado.
 - A configuração pronta vem do botão Copiar (IPC `mcpSetup`).
 
-### 6.2 Ferramentas (70), por grupo
+### 6.2 Ferramentas (71), por grupo
 
 - **Projeto do editor:** `get_project`, `edit_project`, `transcribe`, `inspect_frame`, `create_blank_canvas`, `import_media`, `export_video`.
 - **Áudio e marca:** `add_audio`, `list_voices`, `add_voiceover`, `search_music`, `add_music`, `get_brand`.
 - **Formatos:**
   - `list_formats` e `get_format_guide`;
-  - formatos: `avatar`, `ui-motion`, `professor`, `landing-flyover`, `historia`, `pixel`, `e-se`, `kurzgesagt`.
+  - formatos: `desenhado` (motor de tomadas: a IA desenha os cenários e escolhe um dos 9 estilos), `avatar`, `ui-motion`, `professor`, `landing-flyover`, `historia`, `pixel`, `e-se`, `kurzgesagt`.
 - **Filmes (vídeo em código):**
   - `create_film` e `update_film_avatar`;
   - `film_voiceover` (uma voz) e `film_dialogue` (uma voz por fala);
+  - `compose_music` (trilha composta para o filme, sem licença a creditar);
   - `film_asset`, `write_film_file`, `read_film_file`, `film_capture_page`;
   - `list_effects` e `film_add_effect` (236 efeitos);
   - `film_check`, `film_stills`, `film_review`;

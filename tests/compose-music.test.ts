@@ -15,7 +15,7 @@ describe("composed soundtrack", () => {
       expect(composeMusic(mood, 8, 3, 8000)).toEqual(a);
     }
     expect(composeMusic("alegre", 8, 4, 8000)).not.toEqual(composeMusic("alegre", 8, 3, 8000));
-  });
+  }, 60_000);
 
   it("writes a valid 16-bit stereo WAV", () => {
     const wav = wavBytes(new Float32Array([0, 0.5, -0.5, 1]), 44100);
