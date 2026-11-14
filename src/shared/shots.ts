@@ -277,7 +277,8 @@ export function cleanShotPlan(raw: unknown): { plan: ShotPlan; dropped: string[]
       if (!s.effect) return s;
       const def = EFFECTS[s.effect.name], fx = s.effect.vars;
       // A line too long for the effect reads better as the engine's kinetic text.
-      if (def.fit && String(fx.text ?? "").length > def.fit) return { ...s, effect: undefined, ui: { kind: "reveal" as const, text: String(fx.text).slice(0, 90), items: [] } };
+      const fitText = String(fx[def.fitVar ?? "text"] ?? "");
+      if (def.fit && fitText.length > def.fit) return { ...s, effect: undefined, ui: { kind: "reveal" as const, text: fitText.slice(0, 90), items: [] } };
       // The counter only lands on whole numbers and shrinks long words: 4,9 or "Mais de … pedidos" go to the engine's counter.
       if (s.effect.name === "count-up" && (!Number.isInteger(Number(fx.end ?? 0)) || !Number.isInteger(Number(fx.start ?? 0)) || String(fx.prefix ?? "").length + String(fx.suffix ?? "").length > 6)) {
         return { ...s, effect: undefined, graphic: { kind: "stat" as const, value: Number(fx.end) || 0, from: Number(fx.start) || 0, prefix: typeof fx.prefix === "string" && fx.prefix ? (/\p{L}$/u.test(fx.prefix) ? fx.prefix + " " : fx.prefix).slice(0, 14) : undefined, suffix: typeof fx.suffix === "string" && fx.suffix ? (/^\p{L}/u.test(fx.suffix) ? " " + fx.suffix : fx.suffix).slice(0, 16) : undefined, items: [] } };

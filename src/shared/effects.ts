@@ -18,6 +18,8 @@ export interface EffectDef {
   list?: string;
   /** Longest `text` that still reads well; a longer line falls back to the engine's kinetic text. */
   fit?: number;
+  /** Which variable `fit` measures (default `text`). */
+  fitVar?: string;
   /** Retired after a real render (reads badly in every format): never offered, always replaced by kinetic text. */
   off?: boolean;
   /** Small in a vertical frame: offered and mounted only in landscape films. */
@@ -68,8 +70,8 @@ export const EFFECTS: Record<string, EffectDef> = {
   "parallax-device-dive": { group: "produto", use: "celular sobe e a câmera mergulha na tela do app", vars: { app_title: "nome da tela" }, area: "full" },
   "toggle-flip": { group: "produto", use: "chave grande que liga", vars: { label: "o que liga" } },
   /* ---------------------------------------------------------------- closing */
-  "cta-close": { group: "fechamento", use: "chamada final palavra por palavra com botão", vars: { action_line: "a chamada", button_label: "texto do botão" } },
-  "cta-lockup": { group: "fechamento", use: "fechamento com chamada, botão e frase de apoio", vars: { action_line: "a chamada", button_label: "texto do botão", microcopy: "apoio curto" } },
+  "cta-close": { group: "fechamento", fit: 18, fitVar: "action_line", use: "chamada final palavra por palavra com botão", vars: { action_line: "a chamada curta (até 3 palavras)", button_label: "texto do botão" } },
+  "cta-lockup": { group: "fechamento", fit: 22, fitVar: "action_line", use: "fechamento com chamada, botão e frase de apoio", vars: { action_line: "a chamada curta (até 4 palavras)", button_label: "texto do botão", microcopy: "apoio curto" } },
   "social-proof-card": { group: "fechamento", use: "fechamento estilo loja de apps: marca, estrelas, prova e botão", vars: { brand: "marca", proof: "prova curta", cta: "botão", f1: "recurso 1 (| quebra)", f2: "recurso 2", f3: "recurso 3" }, area: "full" },
   "logo-sting": { group: "fechamento", use: "marca batendo na tela com um anel", vars: { wordmark: "nome da marca" } },
   "logo-brand-close": { group: "fechamento", use: "assinatura da marca com slogan e site", vars: { wordmark: "nome da marca", tagline: "slogan", url: "site ou @perfil" } },

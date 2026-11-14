@@ -70,6 +70,9 @@ describe("shot effects", () => {
     expect(plan.shots[0].effect).toBeUndefined();
     expect(plan.shots[0].ui).toMatchObject({ kind: "reveal", text: "Chega de procurar e não achar" });
     expect(plan.shots[1].effect?.name).toBe("per-word-rise");
+    const { plan: cta } = cleanShotPlan({ title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }], shots: [{ say: "a", set: "a", effect: { name: "cta-close", vars: { action_line: "Compre hoje com frete grátis", button_label: "Pedir" } } }, { say: "b", set: "a", effect: { name: "cta-close", vars: { action_line: "Compre hoje", button_label: "Pedir" } } }] });
+    expect(cta.shots[0].ui).toMatchObject({ kind: "reveal", text: "Compre hoje com frete grátis" });
+    expect(cta.shots[1].effect?.name).toBe("cta-close");
     expect(plan.shots[2].graphic).toMatchObject({ kind: "stat", value: 4.9 });
     expect(plan.shots[3].effect?.name).toBe("count-up");
     expect(plan.shots[4].graphic).toMatchObject({ kind: "stat", value: 1200, prefix: "Mais de ", suffix: " pedidos" });
