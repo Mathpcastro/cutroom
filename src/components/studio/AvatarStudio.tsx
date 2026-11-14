@@ -254,7 +254,7 @@ Responda só com JSON: ${KIT_JSON}`, "Criar avatar pela foto", suggestion, [pick
           <div className="avatar-row"><span>{t("Detalhes")}</span><Swatches label="Cor dos detalhes" colors={["#E7B85C", "#C8FF5A", "#FFFFFF", "#78D4D0", "#FF8FA3"]} value={choice.accentColor} onChange={(accentColor) => set({ accentColor })} /></div>
           <div className="avatar-row"><span>{t("Acessório")}</span><Options label="Acessório" value={choice.accessory} onChange={(accessory) => set({ accessory })} options={Object.entries(ACCESSORIES) as [AccessoryId, string][]} /></div>
           <div className="avatar-row"><span>{t("Chapéu")}</span><Options label="Chapéu" value={choice.hat ?? "none"} onChange={(hat) => set({ hat })} options={Object.entries(HATS) as [Hat, string][]} /></div>
-          <label className="field"><span>{t("Personalidade")}</span><textarea rows={3} maxLength={600} value={personality} placeholder={t("Como ele fala e se mexe. Ex.: animado, direto, gesticula muito.")} onChange={(e) => { setPersonality(e.target.value); setDone(false); }} /></label>
+          <label className="field"><span>{t("Personalidade")}</span><textarea rows={2} maxLength={600} value={personality} placeholder={t("Como ele fala e se mexe. Ex.: animado, direto, gesticula muito.")} onChange={(e) => { setPersonality(e.target.value); setDone(false); }} /></label>
           <div className="avatar-save">
             <button type="button" className="studio-primary-button" disabled={!!busy || !pkg} onClick={() => void save()}>
               {busy === "save" ? <LoaderCircle size={14} className="spin" /> : <Check size={14} />} {t(saved ? "Salvar mudanças" : "Salvar avatar")}

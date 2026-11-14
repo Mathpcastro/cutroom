@@ -2599,3 +2599,12 @@
 .avatar-photo { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--studio-line); }
 .avatar-row select { min-width: 0; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--studio-line); background: var(--studio-surface); color: var(--studio-text); }
 .avatar-row .mcp-mode { margin-left: 8px; }
+
+/* Avatar creator v2: two columns of compact controls so the screen fits without scrolling. */
+.avatar-studio .avatar-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; align-content: start; }
+.avatar-studio .avatar-controls > .field, .avatar-studio .avatar-controls > .avatar-save { grid-column: 1 / -1; }
+.avatar-studio .avatar-controls .avatar-row { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0; }
+.avatar-studio .avatar-controls .avatar-row > span { font-size: 12px; color: var(--studio-muted); }
+.avatar-studio .avatar-controls .avatar-row .segmented { align-self: flex-start; }
+.avatar-studio .avatar-controls .avatar-row .mcp-mode { margin: 0; }
+.avatar-studio .avatar-controls textarea { min-height: 0; }
