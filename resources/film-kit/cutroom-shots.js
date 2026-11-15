@@ -305,6 +305,7 @@
       case "bounce": m.dy = -Math.abs(Math.sin(gt * 3.4 + ph)) * Math.min(60, h * 0.18 + 10); break;
       case "orbit": m.dx = Math.cos(gt * 1.3 + ph) * 18; m.dy = Math.sin(gt * 1.3 + ph) * 18; break;
       case "shake": m.dx = Math.sin(gt * 40 + ph) * 4; m.rot = Math.sin(gt * 33 + ph) * 2; break;
+      case "tilt": var ta = Math.sin(gt * 1.15 + ph); m.sx = 1 - 0.09 * Math.abs(ta); m.skew = ta * 0.07; m.glare = (ta + 1) / 2; m.dy = Math.sin(gt * 1.5 + ph) * 8; break;
       case "pop": m.s = Math.max(0.001, k2); m.oy = sp2.by2; m.a = clamp(k * 2, 0, 1); break;
       case "rise": m.dy = (1 - k2) * (h * 0.6 + 120); m.a = clamp(k * 1.6, 0, 1); break;
       case "drop": m.dy = -(1 - k2) * (h * 0.6 + 160); m.a = clamp(k * 1.6, 0, 1); break;
@@ -313,7 +314,7 @@
     }
     // Entrances do not freeze after landing: they ease into a gentle float and tilt of their own.
     // Hierarchy: in a shot that names its heroes, everyone else keeps only a hint of their idle motion.
-    if (calm != null && calm < 1 && !entrance) { m.dx *= calm; m.dy *= calm; m.rot *= calm; m.s = 1 + (m.s - 1) * calm; m.a = 1 - (1 - m.a) * calm; }
+    if (calm != null && calm < 1 && !entrance) { m.dx *= calm; m.dy *= calm; m.rot *= calm; m.s = 1 + (m.s - 1) * calm; m.a = 1 - (1 - m.a) * calm; if (m.skew) { m.skew *= calm; m.sx = 1 - (1 - m.sx) * calm; } }
     // Every other cue of the element is a highlight: a quick spring bump when its word is said.
     (cues || []).forEach(function (c, ci) {
       if (entrance && ci === 0) return;
@@ -324,6 +325,20 @@
       m.dy += Math.sin(gt * 1.4 + ph) * Math.min(14, h * 0.035 + 4) * settle; m.rot += Math.sin(gt * 1.05 + ph) * 1.2 * settle;
     }
     return m;
+  }
+  var GLC = null, GLX = null;
+  /** A light band sweeping across an element, kept inside its own shape (a card catching the light). */
+  function drawGlare(ctx, img, x, y, w, h, pos) {
+    if (!img || !img.complete || !img.naturalWidth || w < 2 || h < 2) return;
+    if (!GLC) { GLC = document.createElement("canvas"); GLX = GLC.getContext("2d"); }
+    var cw = Math.ceil(Math.min(w, 2048)), ch = Math.ceil(Math.min(h, 2048));
+    if (GLC.width !== cw || GLC.height !== ch) { GLC.width = cw; GLC.height = ch; }
+    GLX.globalCompositeOperation = "source-over"; GLX.clearRect(0, 0, cw, ch); GLX.drawImage(img, 0, 0, cw, ch);
+    GLX.globalCompositeOperation = "source-in";
+    var gx0 = cw * (pos * 1.6 - 0.6), lg = GLX.createLinearGradient(gx0, 0, gx0 + cw * 0.5, ch);
+    lg.addColorStop(0, "rgba(255,255,255,0)"); lg.addColorStop(0.5, "rgba(255,255,255,.38)"); lg.addColorStop(1, "rgba(255,255,255,0)");
+    GLX.fillStyle = lg; GLX.fillRect(0, 0, cw, ch);
+    ctx.save(); ctx.shadowColor = "transparent"; ctx.drawImage(GLC, x, y, w, h); ctx.restore();
   }
   function rasterProp(svg, look, scale) {
     var doc = PARSER.parseFromString(svg, "image/svg+xml"), root = doc.documentElement;
@@ -473,6 +488,26 @@
       for (i = 0; i < nb; i++) {
         var amp = (0.25 + 0.75 * Math.abs(Math.sin(t * 5.2 + i * 0.55) * Math.sin(t * 2.3 + i * 0.21))) * H * 0.08 * (0.5 + 0.5 * Math.sin(i / nb * Math.PI));
         roundRectFx(ctx, i * bw2 + bw2 * 0.22, cy2 - amp, bw2 * 0.56, amp * 2, bw2 * 0.28); ctx.fill();
+      }
+    } else if (kind === "aurora") {
+      // Moving coloured light over the scene (animated gradient), blended so the drawing shows through.
+      var ac = look.palette && look.palette.length ? look.palette : ["#7C5CFF", "#22D3EE", "#F472B6"];
+      ctx.globalCompositeOperation = "soft-light";
+      for (i = 0; i < 4; i++) {
+        var ax = W * (0.5 + 0.45 * Math.sin(t * 0.23 + i * 1.9)), ay = H * (0.5 + 0.45 * Math.cos(t * 0.19 + i * 2.3)), ar = Math.max(W, H) * (0.45 + 0.1 * Math.sin(t * 0.4 + i));
+        var ag = ctx.createRadialGradient(ax, ay, 0, ax, ay, ar); ag.addColorStop(0, hexA(ac[i % ac.length], 0.75)); ag.addColorStop(1, hexA(ac[i % ac.length], 0));
+        ctx.fillStyle = ag; ctx.fillRect(0, 0, W, H);
+      }
+    } else if (kind === "ripple") {
+      // Rings spreading on water from a few points, in perspective (white on dark scenes, deep blue on light ones).
+      var wet = look.paperColor && lum(look.paperColor) > 0.6 ? "30,70,140" : "255,255,255";
+      for (i = 0; i < 4; i++) {
+        var rx = r() * W, ry = H * (0.35 + r() * 0.5), per = 2.2 + r(), ph0 = ((t + r() * per) % per) / per;
+        for (var k3 = 0; k3 < 3; k3++) {
+          var pp = (ph0 + k3 * 0.2) % 1, rr = 20 + pp * W * 0.45;
+          ctx.strokeStyle = "rgba(" + wet + "," + (0.4 * (1 - pp)) + ")"; ctx.lineWidth = 7 * (1 - pp) + 1.5;
+          ctx.beginPath(); ctx.ellipse(rx, ry, rr, rr * 0.38, 0, 0, 6.29); ctx.stroke();
+        }
       }
     } else if (kind === "speed-lines") {
       ctx.strokeStyle = "rgba(255,255,255,.55)";
@@ -994,6 +1029,12 @@
       ".crs-ui .fol .who{font-size:" + Math.round(36 * uu) + "px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-right:" + Math.round(8 * uu) + "px}.crs-ui .fol .go{flex:none;border-radius:999px;padding:" + Math.round(18 * uu) + "px " + Math.round(30 * uu) + "px;font:400 " + Math.round(38 * uu) + "px " + gNum + ";white-space:nowrap}" +
       ".crs-ui .fol .bell{flex:none;font-size:" + Math.round(50 * uu) + "px;transform-origin:50% 10%}" +
       ".crs-ui.on .phone{border:0;box-shadow:none;border-radius:" + Math.round(24 * uu) + "px}.crs-ui.on .isl{box-shadow:none}" +
+      ".crs-ui .flap{position:absolute;left:50%;top:" + Math.round(H * (W > H ? 0.2 : 0.2)) + "px;transform:translateX(-50%);text-align:center}.crs-ui .flap .lab{display:inline-block;font-size:" + Math.round(40 * uu) + "px;margin-bottom:" + Math.round(16 * uu) + "px;padding:" + Math.round(10 * uu) + "px " + Math.round(26 * uu) + "px;border-radius:999px;background:" + cardBg + ";color:" + cardFg + ";box-shadow:0 10px 28px rgba(0,0,0,.18)}" +
+      ".crs-ui .flap .row{display:flex;gap:" + Math.round(8 * uu) + "px;justify-content:center}.crs-ui .flap .t{position:relative;display:grid;place-items:center;border-radius:" + Math.round(14 * uu) + "px;background:#15151B;color:#F5F5F7;font-family:" + FONTS.Anton + ";box-shadow:0 14px 34px rgba(0,0,0,.35);transform-origin:50% 50%;overflow:hidden}" +
+      ".crs-ui .flap .t:after{content:'';position:absolute;left:0;right:0;top:50%;height:" + Math.max(2, Math.round(3 * uu)) + "px;background:rgba(0,0,0,.55)}.crs-ui .flap .t.sp{background:transparent;box-shadow:none}" +
+      ".crs-ui .net{position:absolute;left:50%;transform:translateX(-50%);top:" + Math.round(H * (W > H ? 0.1 : 0.12)) + "px}.crs-ui .net svg{position:absolute;left:0;top:0;overflow:visible}" +
+      ".crs-ui .net .hub{position:absolute;left:50%;top:50%;padding:" + Math.round(22 * uu) + "px " + Math.round(34 * uu) + "px;border-radius:999px;background:" + accent + ";color:" + ink + ";font:400 " + Math.round(50 * uu) + "px " + gNum + ";white-space:nowrap;box-shadow:0 18px 44px rgba(0,0,0,.28)}" +
+      ".crs-ui .net .nd{position:absolute;padding:" + Math.round(14 * uu) + "px " + Math.round(24 * uu) + "px;border-radius:999px;background:" + cardBg + ";color:" + cardFg + ";font-size:" + Math.round(34 * uu) + "px;white-space:nowrap;box-shadow:0 12px 30px rgba(0,0,0,.2)}" +
       ".crs-ui .loader{position:absolute;left:50%;top:" + Math.round(H * (W > H ? 0.2 : 0.22)) + "px;transform:translateX(-50%);text-align:center}.crs-ui .loader .lab{margin-top:" + Math.round(26 * uu) + "px;font-size:" + Math.round(50 * uu) + "px;white-space:nowrap}";
     document.head.appendChild(ucss);
     var SVGNS = "http://www.w3.org/2000/svg";
@@ -1139,6 +1180,48 @@
           if (!vis(box, s, t, 0.01)) return;
           spans.forEach(function (el2, i) { var k4 = sp(t - s.start - 0.05 - i * step, SPR.snappy); el2.style.opacity = String(clamp(k4 * 1.6, 0, 1)); el2.style.transform = "translateY(" + ((1 - k4) * 36) + "px)"; });
         });
+      } else if (u.kind === "flap") {
+        // Split-flap board: every tile spins through letters and lands on the answer, left to right.
+        var target = String((items[0] && items[0].label) || u.text || "2026").toUpperCase().slice(0, 12);
+        var fsF = Math.round(Math.min(150 * uu, (W * 0.88) / Math.max(1, target.length * 0.78)));
+        var flapEl = document.createElement("div"); flapEl.className = "flap";
+        flapEl.innerHTML = (u.text && items[0] ? '<div class="lab">' + esc(u.text) + "</div>" : "") + '<div class="row">' + Array.from(target).map(function (ch) { return '<span class="t' + (ch === " " ? " sp" : "") + '" style="width:' + Math.round(fsF * 0.72) + "px;height:" + Math.round(fsF * 1.25) + "px;font-size:" + fsF + 'px"><b></b></span>'; }).join("") + "</div>";
+        box.appendChild(flapEl);
+        var tiles = flapEl.querySelectorAll(".t"), POOL = "0123456789ABCDEFGHIJKLMNOPRSTUVXZ$%+";
+        UIS.push(function (t) {
+          if (!vis(box, s, t)) return;
+          var lt = t - s.start;
+          tiles.forEach(function (tile, i) {
+            var ch = target[i], land = 0.3 + Math.min(1.1, dur * 0.35) + i * 0.08;
+            var shown = lt >= land || ch === " " ? ch : POOL[(Math.floor(lt * 16) * 7 + i * 13) % POOL.length];
+            var b = tile.firstChild; if (b.textContent !== shown) b.textContent = shown;
+            var sq = lt >= land ? 1 - 0.18 * (1 - clamp(sp(lt - land, SPR.pop), 0, 1)) : 0.6 + 0.4 * Math.abs(Math.cos(((lt * 16) % 1) * Math.PI));
+            tile.style.transform = "scaleY(" + sq + ")";
+          });
+          flapEl.style.transform = "translateX(-50%) scale(" + (0.85 + 0.15 * sp(lt, SPR.bouncy)) + ")";
+        });
+      } else if (u.kind === "network") {
+        // Network graph: the product at the centre, features joining on their beats and orbiting in depth.
+        var nodes = items.length ? items : [{ label: "Roteiro" }, { label: "Voz" }, { label: "Música" }, { label: "Legendas" }];
+        var NW = Math.min(W * 0.92, 1000 * uu), NH = Math.min(H * (W > H ? 0.7 : 0.46), NW), cxn = NW / 2, cyn = NH / 2, rad = Math.min(NW, NH) * 0.38;
+        var net = document.createElement("div"); net.className = "net"; net.style.width = NW + "px"; net.style.height = NH + "px";
+        net.innerHTML = '<svg width="' + NW + '" height="' + NH + '">' + nodes.map(function () { return '<line class="l" stroke="' + accent + '" stroke-width="' + Math.max(2, 4 * uu) + '" stroke-linecap="round"/>'; }).join("") + "</svg>" +
+          '<div class="hub">' + esc(u.text || BRAND_NAME || "") + "</div>" + nodes.map(function (n) { return '<div class="nd">' + esc(n.label) + "</div>"; }).join("");
+        box.appendChild(net);
+        var nLines = net.querySelectorAll(".l"), nds = net.querySelectorAll(".nd"), hub = net.querySelector(".hub");
+        UIS.push(function (t) {
+          if (!vis(box, s, t)) return;
+          var lt = t - s.start;
+          hub.style.transform = "translate(-50%,-50%) scale(" + (0.4 + 0.6 * clamp(sp(lt, SPR.bouncy), 0, 1.2)) + ")";
+          nds.forEach(function (nd, i) {
+            var a = -Math.PI / 2 + i * 2 * Math.PI / nds.length + lt * 0.22, depth = 0.86 + 0.14 * Math.sin(a), x = cxn + Math.cos(a) * rad * 1.18, y = cyn + Math.sin(a) * rad * 0.82;
+            var k = sp(t - times[i], SPR.bouncy), d = clamp(sp(t - times[i] + 0.12, SPR.soft), 0, 1);
+            nd.style.left = x + "px"; nd.style.top = y + "px"; nd.style.zIndex = String(depth > 0.93 ? 2 : 1);
+            nd.style.transform = "translate(-50%,-50%) scale(" + Math.max(0.001, k) * depth + ")"; nd.style.opacity = String(clamp(k * 1.5, 0, 1));
+            var L = nLines[i]; L.setAttribute("x1", cxn); L.setAttribute("y1", cyn); L.setAttribute("x2", cxn + (x - cxn) * d); L.setAttribute("y2", cyn + (y - cyn) * d); L.setAttribute("opacity", String(0.25 + 0.45 * d));
+          });
+        });
+        box._R = function () { var top = H * (W > H ? 0.1 : 0.12); return { x0: W / 2 - NW / 2, y0: top, x1: W / 2 + NW / 2, y1: top + NH }; };
       } else if (u.kind === "lowerthird") {
         // Lower third: name and role slide in on a bar (who is talking, what this is).
         var l3 = document.createElement("div"); l3.className = "l3"; l3.innerHTML = '<div class="bar"></div><div class="tx"><b>' + esc(u.text || (items[0] && items[0].label) || BRAND_NAME || "") + "</b>" + ((items[0] && (u.text ? items[0].label : items[0].note)) ? "<small>" + esc(u.text ? items[0].label : items[0].note) + "</small>" : "") + "</div>"; box.appendChild(l3);
@@ -1378,7 +1461,10 @@
             var lift = clamp(-(m.dy || 0) / Math.max(20, sp2.h * 0.2), -1, 1);
             ctx.shadowColor = SOFT_SHADOW; ctx.shadowBlur = (18 + 22 * Math.max(0, lift)) * ks * lz; ctx.shadowOffsetY = (10 + 14 * Math.max(0, lift)) * ks * lz;
           }
-          drawImg(ctx, sp2.imgs[variant(tq + sp2.i * 0.13, sp2.imgs.length)], sp2.x * ks, sp2.y * ks, sp2.w * ks, sp2.h * ks);
+          if (m.sx) { ctx.translate(m.ox * ks, m.oy * ks); ctx.transform(m.sx, m.skew || 0, 0, 1, 0, 0); ctx.translate(-m.ox * ks, -m.oy * ks); }
+          var spImg = sp2.imgs[variant(tq + sp2.i * 0.13, sp2.imgs.length)];
+          drawImg(ctx, spImg, sp2.x * ks, sp2.y * ks, sp2.w * ks, sp2.h * ks);
+          if (m.glare != null) drawGlare(ctx, spImg, sp2.x * ks, sp2.y * ks, sp2.w * ks, sp2.h * ks, m.glare);
           ctx.restore();
         });
         ctx.restore();
@@ -1473,7 +1559,7 @@
       for (var i = 1; i < shots.length; i++) {
         var s = shots[i], kind = s.transition || "cut";
         if (kind === "cut" || kind === "flash" || kind === "glide") continue;
-        var dur = kind === "whip" ? 0.28 : kind === "iris" || kind === "clock" ? 0.6 : kind === "pixelate" ? 0.5 : kind === "push" || kind === "zoom" ? 0.4 : 0.45;
+        var dur = kind === "whip" ? 0.28 : kind === "iris" || kind === "clock" || kind === "liquid" ? 0.6 : kind === "pixelate" ? 0.5 : kind === "push" || kind === "zoom" ? 0.4 : 0.45;
         if (t >= s.start && t < s.start + dur) return { from: shots[i - 1], to: s, p: (t - s.start) / dur, kind: kind };
       }
       return null;
@@ -1564,6 +1650,12 @@
         if (tr.kind === "fade" || tr.kind === "dissolve") { wx.globalAlpha = 1 - p; wx.drawImage(prevC, 0, 0); }
         else if (tr.kind === "wipe") { wx.beginPath(); wx.rect(W * p, 0, W * (1 - p), H); wx.clip(); wx.drawImage(prevC, 0, 0); }
         else if (tr.kind === "iris") { wx.beginPath(); wx.rect(0, 0, W, H); wx.arc(W / 2, H * 0.48, Math.max(1, p * H * 0.75), 0, Math.PI * 2, true); wx.clip("evenodd"); wx.drawImage(prevC, 0, 0); }
+        else if (tr.kind === "liquid") {
+          // Liquid displacement: the old shot melts sideways in waving strips while it fades.
+          var strips = 60, stH = H / strips, amp = W * 0.2 * Math.sin(p * Math.PI);
+          wx.globalAlpha = clamp(1 - p * 1.15, 0, 1);
+          for (var si3 = 0; si3 < strips; si3++) { var yy = si3 * stH, off = Math.sin(si3 * 0.42 + p * 9) * amp * (0.6 + 0.4 * Math.sin(si3 * 0.13)); wx.drawImage(prevC, 0, yy, W, stH + 1, off, yy, W, stH + 1); }
+        }
         else if (tr.kind === "blinds") {
           // Venetian blinds: the old shot survives in slats that close.
           var nb = W > H ? 9 : 12, bh = H / nb; wx.beginPath();
