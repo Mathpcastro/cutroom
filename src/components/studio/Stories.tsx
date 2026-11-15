@@ -13,7 +13,8 @@ import { renderReel } from "./ReelFlow";
 import { ExportedVideoPlayer, InstagramActions } from "./InstagramActions";
 import { explainError } from "./InstagramConnect";
 import { ManualSeries, ReadySeries } from "./StoryWizard";
-import { useSeriesFactory } from "./seriesFactory";
+import { directEpisode, saveSeriesLook, seriesLook, useSeriesFactory } from "./seriesFactory";
+import { LookSelect } from "./LookSelect";
 
 /** Spec 5: series → (episodes | characters | bible) → episode editor with the script in blocks. */
 
@@ -344,6 +345,7 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
   const [output, setOutput] = useState(episode.output ?? "");
   const [post, setPost] = useState(false);
   const [pilotNote, setPilotNote] = useState("");
+  const [look, setLook] = useState(() => seriesLook(series.id));
   const ref = { profileId: profile.id, seriesId: series.id, number: episode.number };
   const cast = series.characters.filter((c) => !c.narrator).map((c) => c.name);
   const issues = useMemo(() => (script ? validateScript(script, cast) : []), [script, cast]);
@@ -380,7 +382,11 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
   const generate = () => run("generate", async () => {
     if (!script) return;
     await save(script);
-    const r = await studioRequest<{ film: string; warnings: string[] }>("episodeGenerate", ref);
+    saveSeriesLook(series.id, look);
+    setBusy("draw");
+    const direction = await directEpisode(profile, series, script, look);
+    setBusy("generate");
+    const r = await studioRequest<{ film: string; warnings: string[] }>("episodeGenerate", { ...ref, ...(direction ? { direction } : {}) });
     if (r.warnings.length) setError(r.warnings.join(" "));
     setBusy("render");
     const path = await renderReel(r.film, () => undefined);
@@ -414,9 +420,8 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
               <div key={s} className="episode-scene">
                 <div className="episode-scene-head">
                   <span>{t("Cena")} {s + 1}</span>
-                  <select value={scene.place} onChange={(e) => update({ ...script, scenes: script.scenes.map((x, i) => (i === s ? { ...x, place: e.target.value } : x)) })}>
-                    {[...new Set([...STORY_PLACES, scene.place])].map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  <input className="episode-place" value={scene.place} maxLength={60} list="story-places" aria-label={t("Lugar da cena")}
+                    onChange={(e) => update({ ...script, scenes: script.scenes.map((x, i) => (i === s ? { ...x, place: e.target.value } : x)) })} />
                   <select value={scene.time} onChange={(e) => update({ ...script, scenes: script.scenes.map((x, i) => (i === s ? { ...x, time: e.target.value as "dia" | "noite" } : x)) })}>
                     <option value="dia">{t("dia")}</option><option value="noite">{t("noite")}</option>
                   </select>
@@ -449,6 +454,7 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
               </div>
             ))}
             {!asText && <button type="button" className="ig-link" onClick={() => update({ ...script, scenes: [...script.scenes, { place: "quarto", time: "dia", lines: [{ who: NARRATOR, text: "…" }] }] })}><Plus size={12} /> {t("cena")}</button>}
+            <datalist id="story-places">{STORY_PLACES.map((p) => <option key={p} value={p} />)}</datalist>
             {issues.filter((i) => i.line === undefined).map((i) => <p key={i.message} className="episode-issue">{i.message} {i.fix}</p>)}
             <div className="episode-change">
               <input value={change} placeholder={t("O que mudar no roteiro?")} onChange={(e) => setChange(e.target.value)} />
@@ -458,9 +464,10 @@ function EpisodeEditor({ profile, series, episodes, episode, onBack, onSaved, on
           </section>
           <aside className="episode-preview">
             {output ? <ExportedVideoPlayer key={output} path={output} /> : <div className="episode-preview-empty"><BookOpen size={28} /><span>{t("A prévia aparece aqui depois de gerar.")}</span></div>}
+            <LookSelect look={look.look} lookText={look.lookText} characters={look.characters ?? ""} classicLabel="Quadrinho clássico (modelo antigo)" disabled={!!busy} onChange={(next) => { setLook(next); saveSeriesLook(series.id, next); }} />
             <button type="button" className="studio-primary-button" disabled={!!busy || issues.some((i) => i.line !== undefined || !/dura/.test(i.message))}
               title={issues.length ? t("Corrija os pontos marcados no roteiro.") : ""} onClick={() => void generate()}>
-              <Sparkles size={15} /> {t(busy === "generate" ? "Gravando as vozes…" : busy === "render" ? "Finalizando o vídeo…" : output ? "Gerar de novo" : "Gerar episódio")}
+              <Sparkles size={15} /> {t(busy === "draw" ? "Desenhando as cenas…" : busy === "generate" ? "Gravando as vozes…" : busy === "render" ? "Finalizando o vídeo…" : output ? "Gerar de novo" : "Gerar episódio")}
             </button>
             {output && <>
               <button type="button" className="studio-secondary-button" onClick={() => setPost(!post)}>{t("Postar")}</button>

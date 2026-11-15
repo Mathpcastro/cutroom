@@ -202,6 +202,8 @@ export class Films {
     await mkdir(join(dir, "kit"), { recursive: true });
     await cp(join(this.kit, "cutroom-kit.js"), join(dir, "kit", "cutroom-kit.js"));
     await cp(join(this.kit, "cutroom-motion.js"), join(dir, "kit", "cutroom-motion.js"));
+    await cp(join(this.kit, "cutroom-shots.js"), join(dir, "kit", "cutroom-shots.js")).catch(() => undefined);
+    await cp(join(this.kit, "fluid-motion.js"), join(dir, "kit", "fluid-motion.js")).catch(() => undefined);
     // Pixel avatar engine + a sample avatar, so avatar formats preview before the user's own avatar is attached.
     const engine = join(this.kit, "..", "avatar-engine");
     if (await stat(join(engine, "avatar-engine.js")).then(() => true, () => false)) {

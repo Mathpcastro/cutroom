@@ -49,7 +49,7 @@ export const seriesSchema = z.object({
 export type Series = z.infer<typeof seriesSchema>;
 
 export const lineSchema = z.object({ who: text(40).min(1), mood: z.string().max(20).optional(), text: text(300).min(1) });
-export const sceneSchema = z.object({ place: z.string().max(20), time: z.enum(STORY_TIMES), lines: z.array(lineSchema).min(1).max(30) });
+export const sceneSchema = z.object({ place: z.string().max(60), time: z.enum(STORY_TIMES), lines: z.array(lineSchema).min(1).max(30) });
 export const scriptSchema = z.object({ title: text(120).min(1), scenes: z.array(sceneSchema).min(1).max(8), hook: text(300).optional() });
 export type StoryScript = z.infer<typeof scriptSchema>;
 export type StoryLine = z.infer<typeof lineSchema>;
@@ -111,13 +111,12 @@ export function validateScript(script: StoryScript, cast: string[]): ScriptIssue
   const issues: ScriptIssue[] = [];
   const names = new Set([...cast.map((n) => n.toLowerCase()), NARRATOR.toLowerCase()]);
   script.scenes.forEach((scene, s) => {
-    if (!(STORY_PLACES as readonly string[]).includes(scene.place))
-      issues.push({ scene: s, message: `Cenário "${scene.place}" não existe.`, fix: `Use ${STORY_PLACES.join(", ")}.` });
+    // Any place: the drawn engine paints it (the classic engine falls back to a neutral set).
+    if (!scene.place.trim()) issues.push({ scene: s, message: "Cena sem lugar.", fix: "Diga onde a cena acontece (ex.: farol, feira, escritório)." });
     const onScene = new Set(scene.lines.filter((l) => l.who.toLowerCase() !== NARRATOR.toLowerCase()).map((l) => l.who.toLowerCase()));
     if (onScene.size > MAX_ON_SCENE) issues.push({ scene: s, message: `${onScene.size} personagens nesta cena.`, fix: `No máximo ${MAX_ON_SCENE} + narrador por cena.` });
     scene.lines.forEach((line, l) => {
       if (!names.has(line.who.toLowerCase())) issues.push({ scene: s, line: l, message: `"${line.who}" não está no elenco.`, fix: `Escolha um personagem da série.` });
-      if (line.mood && !(STORY_MOODS as readonly string[]).includes(line.mood)) issues.push({ scene: s, line: l, message: `Humor "${line.mood}" não existe.`, fix: `Use ${STORY_MOODS.join(", ")}.` });
       const words = line.text.split(/\s+/).filter(Boolean).length;
       if (words > MAX_WORDS) issues.push({ scene: s, line: l, message: `Fala com ${words} palavras.`, fix: `Encurte para até ${MAX_WORDS}.` });
     });

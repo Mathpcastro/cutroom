@@ -85,10 +85,12 @@ describe("Desktop MCP server", () => {
       bridge.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
     send(1, "tools/list");
     send(2, "tools/call", { name: "get_project", arguments: {} });
-    for (let i = 0; i < 100 && replies.length < 2; i++) await new Promise((r) => setTimeout(r, 30));
+    // Spawning Node can take seconds while the whole suite runs in parallel: wait up to 20 s, return as soon as both replies arrive.
+    const deadline = Date.now() + 20_000;
+    while (replies.length < 2 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 30));
     bridge.kill();
     const call = replies.find((reply) => reply.id === 2);
     expect(call.result.isError).toBeFalsy();
     expect(call.result.content[0].text).toContain("get_project");
-  });
+  }, 30_000);
 });

@@ -185,6 +185,35 @@ export const STUDIO_TOOLS = [
     ),
   },
   {
+    name: "film_sfx",
+    description:
+      "For a drawn film (format desenhado, with plano.json and timing.js): synthesises sound effects where something happens on screen (transitions, entrances, graphic items, titles) and a quiet ambience for each set (set.ambience), mixed into assets/sfx.wav. No downloads, nothing to credit. Returns the <audio> tag.",
+    inputSchema: objectSchema({ film: string("Film id."), seconds: number("Film duration in seconds.", { minimum: 1, maximum: 600 }) }, ["film", "seconds"]),
+  },
+  {
+    name: "film_shot_effects",
+    description:
+      "For a drawn film with shot.effect in plano.json: copies each chosen registry effect into the film and returns the mount divs, timed to the shots through the narration (timing.js) and placed in their area. Put the mounts inside #film (shotFilmHtml option effects).",
+    inputSchema: objectSchema(
+      { film: string("Film id."), seconds: number("Film duration in seconds.", { minimum: 1, maximum: 600 }), width: number("Film width in px.", { minimum: 240, maximum: 4096 }), height: number("Film height in px.", { minimum: 240, maximum: 4096 }) },
+      ["film", "seconds", "width", "height"],
+    ),
+  },
+  {
+    name: "compose_music",
+    description:
+      "Compose a soundtrack for the film on this computer (no download, no license to credit): chords, bass, arpeggio and light drums from a mood, as long as the film. Writes assets/musica.wav and returns the <audio> tag (volume 0.16, under the voice).",
+    inputSchema: objectSchema(
+      {
+        film: string("Film id."),
+        mood: { type: "string", enum: ["alegre", "calmo", "lofi", "tenso", "epico", "misterio"] },
+        seconds: number("Length in seconds (the film duration).", { minimum: 3, maximum: 180 }),
+        seed: number("Optional: another variation of the same mood.", { minimum: 0 }),
+      },
+      ["film", "mood", "seconds"],
+    ),
+  },
+  {
     name: "film_asset",
     description:
       "Put media into the film's assets/ folder: music or a sound effect from search_music (music: id; license re-checked, CC BY credit recorded and returned), or a local file the user gave you (path: absolute; images, video or audio, e.g. product screenshots). Returns the relative path to use in index.html (src=\"assets/...\").",

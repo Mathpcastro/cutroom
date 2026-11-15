@@ -20,7 +20,8 @@ describe("Série pronta com IA", () => {
       { who: "Zé", text: "oi" }, { who: "Bia", text: "a" }, { who: "Ana", text: "b" }, { who: "Rui", text: "c" },
     ] }] }, ["Léo", "Bia", "Ana", "Rui"]);
     expect(validateScript(fitted, ["Léo", "Bia", "Ana", "Rui"]).filter((i) => i.line !== undefined || !/dura/.test(i.message))).toEqual([]);
-    expect(fitted.scenes[0].place).toBe("quarto");
+    // Any place is drawn for the story now: it is kept as written.
+    expect(fitted.scenes[0].place).toBe("praia");
     expect(fitted.scenes[0].lines[0].who).toBe("Léo");
   });
 });

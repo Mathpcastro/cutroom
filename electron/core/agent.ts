@@ -9,7 +9,8 @@ import {
 
 export interface AgentClient {
   connect(apiKey?: string): Promise<CodexStatus>;
-  send(text: string, model?: string, effort?: ReasoningEffort): Promise<void>;
+  /** `images`: absolute paths of local images sent with the message (vision); not every client supports them. */
+  send(text: string, model?: string, effort?: ReasoningEffort, images?: string[]): Promise<void>;
   interrupt(): Promise<void>;
   disconnect(): void;
 }

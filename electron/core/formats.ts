@@ -14,6 +14,25 @@ const STYLE_BRIEF = "O pedido define assunto, objetivo, roteiro, cenas, duraçã
 
 export const FORMATS: VideoFormat[] = [
   {
+    id: "desenhado",
+    name: "Desenhado pela IA (motor de tomadas)",
+    aspect: "9:16",
+    length: "Definida no pedido",
+    goodFor: "Qualquer tema em um visual descrito em palavras: pixel art, aquarela, óleo, giz de cera, HQ, guache, filme retrô, vetor ou neon.",
+    needs: ["o pedido do usuário"],
+    guide: `# Desenhado pela IA (motor de tomadas)
+
+Use \`kit/cutroom-shots.js\` (carregue depois de gsap, timing.js, cutroom-kit.js, cutroom-motion.js e kit/avatar/engine.js):
+\`CRS.film({ tl, film: "#film", duration: D, engine: window.AvatarEngine, plan, cast: { "Nome": window.FILM_AVATAR }, captions: true })\`.
+- **plan.look:** {"preset": interface|pixel|aquarela|oleo|giz|hq|guache|retro|vetor|neon|rabisco|tv, "palette": ["#hex"...], "paper", "ink", "accent"}. O motor aplica textura, tremido de animação à mão (12 fps) e acabamento.
+- **plan.sets:** [{"id","svg"}]: cenários em SVG com viewBox "0 0 L 1920" (L de 1080 a 2160), camadas <g data-depth="0|0.4|1|1.4"> para paralaxe, sem texto nem imagens. Kit recolorível: <use href="#kit-tree|pine|bush|cloud|sun|moon|mountain|hills|building|house|lamp|desk|laptop|phone|cup|plant|window|door|sofa|wave|rock|bird|star|shelf" style="--a:#hex;--b:#hex;--c:#hex;--d:#hex"/>.
+- **plan.props:** [{"id","svg"}] objetos animáveis (base no fundo do viewBox).
+- **plan.shots:** [{"say","who","set","camera":{"move": wide|medium|close|push-in|pull-out|pan-left|pan-right|tilt-up|tilt-down|dutch|shake|orbit,"focus":[x,y]},"cast":[{"who","x","y","size":"s|m|l|xl","pose","expression","facing","enter"}],"props":[{"id","x","y","scale","motion"}],"fx":["rain"...],"text":{"kind":"title|sign","content"},"transition": cut|fade|wipe|iris|whip|flash|dissolve}]. Cada \`say\` é o trecho falado da tomada; o motor casa as tomadas com as palavras de \`timing.js\`.
+- **shot.graphic** (dados: stat, compare, bars, checklist, notifications, steps, quote) e **shot.ui** (Motion UI em molas: island, chat, click, toggle, tabs, wordcycle, reveal, splash, loader); carregue \`kit/fluid-motion.js\` antes de \`cutroom-shots.js\`. **shot.effect** \`{name, vars, area}\` monta um dos efeitos do catálogo (src/shared/effects.ts: manchetes, contadores, gráficos, notificações, depoimentos, cursores, CTA) por cima da tomada; \`film_shot_effects{film, seconds, width, height}\` copia os efeitos e devolve as montagens. Personagens: \`plan.characters\` "pixel", "palito" ou "nenhum". Som: \`film_sfx\` e \`compose_music\`.
+Troque de plano a cada frase (8 a 24 tomadas). Confira com \`film_stills\` antes do render.`,
+    checklist: ["Cenários desenhados com silhuetas claras e profundidade", "Uma tomada por frase, com planos variados", "Personagens, balões e legendas legíveis"],
+  },
+  {
     id: "professor",
     name: "Aula com apresentador em pixel art",
     aspect: "9:16",

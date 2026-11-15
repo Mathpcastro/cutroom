@@ -2582,3 +2582,31 @@
 .swatch-custom input[type="color"] { position: absolute; inset: -6px; width: 40px; height: 40px; opacity: 0; cursor: pointer; }
 .avatar-save { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 6px; border-top: 1px solid var(--studio-line); }
 @media (max-width: 1100px) { .avatar-studio-body { grid-template-columns: 1fr; } .avatar-stage { position: static; } }
+
+/* Drawn looks: sample frames in the style pickers. */
+.look-preview { display: block; width: 100%; max-width: 360px; aspect-ratio: 540 / 480; object-fit: cover; border-radius: 10px; border: 1px solid var(--studio-line); }
+.look-preview-large { display: block; width: 100%; border-radius: 12px; }
+.look-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.look-grid button { display: grid; gap: 4px; padding: 0; border: 1px solid var(--studio-line); border-radius: 10px; background: transparent; color: inherit; cursor: pointer; overflow: hidden; text-align: left; }
+.look-grid button:hover { border-color: var(--studio-accent-line); }
+.look-grid span { color: var(--studio-text); }
+.look-grid img { display: block; width: 100%; aspect-ratio: 270 / 480; object-fit: cover; object-position: left; }
+.look-grid span { padding: 2px 8px 6px; font-size: 12px; }
+.episode-place { min-width: 0; flex: 1; }
+
+/* Avatar creator: photo reference and compact selects. */
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.avatar-photo { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--studio-line); }
+.avatar-row select { min-width: 0; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--studio-line); background: var(--studio-surface); color: var(--studio-text); }
+.avatar-row .mcp-mode { margin-left: 8px; }
+
+/* Avatar creator v2: two columns of compact controls so the screen fits without scrolling. */
+.avatar-studio .avatar-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; align-content: start; }
+.avatar-studio .avatar-controls > .field, .avatar-studio .avatar-controls > .avatar-save { grid-column: 1 / -1; }
+.avatar-studio .avatar-controls .avatar-row { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0; }
+.avatar-studio .avatar-controls .avatar-row > span { font-size: 12px; color: var(--studio-muted); }
+.avatar-studio .avatar-controls .avatar-row .segmented { align-self: flex-start; }
+.avatar-studio .avatar-controls .avatar-row .mcp-mode { margin: 0; }
+.avatar-studio .avatar-controls textarea { min-height: 0; }
+
+.reel-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
