@@ -188,7 +188,7 @@ describe("authored avatar examples", () => {
       expect(report.ok).toBe(true);
       expect(Object.keys(report.hashes)).toHaveLength(8);
     },
-    20_000,
+    60_000, // the Intel macOS runner needs more than 20 s for the composed states
   );
 
   it("produces three different full neutral pixel hashes", async () => {
