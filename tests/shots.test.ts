@@ -271,3 +271,21 @@ describe("music, hierarchy and interface inside elements", () => {
     expect(shotFilmHtml({ plan: quiet, duration: 4, voiceDuration: 3 })).not.toContain("beat:");
   });
 });
+
+describe("effects recreated from the reference libraries", () => {
+  it("accepts the split-flap board, the network graph, tilt, liquid, aurora and ripples", () => {
+    const svg = '<svg viewBox="0 0 1080 1920"><g data-depth="0"><rect width="1080" height="1920" fill="#123"/></g><g data-depth="1"><g data-el="cartao" data-motion="tilt"><rect width="9" height="9"/></g></g></svg>';
+    const { plan } = cleanShotPlan({
+      title: "t", look: { preset: "interface", palette: ["#007AFF", "#34C759"] }, sets: [{ id: "a", svg }],
+      shots: [
+        { say: "a", set: "a", fx: ["aurora", "ripple"], ui: { kind: "flap", text: "Hoje por", items: [{ label: "R$ 97" }] } },
+        { say: "b", set: "a", transition: "liquid", ui: { kind: "network", text: "Videosell", items: [{ label: "Voz" }, { label: "Roteiro" }] } },
+      ],
+    });
+    expect(plan.shots[0].fx).toEqual(["aurora", "ripple"]);
+    expect(plan.shots[0].ui?.kind).toBe("flap");
+    expect(plan.shots[1].transition).toBe("liquid");
+    expect(plan.shots[1].ui?.kind).toBe("network");
+    expect(plan.sets[0].svg).toContain('data-motion="tilt"');
+  });
+});

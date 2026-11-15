@@ -28,15 +28,15 @@ export const LOOKS: Record<LookPreset, { label: string; hint: string; palette: s
 
 export const CAMERA_MOVES = ["wide", "medium", "close", "push-in", "pull-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "dutch", "shake", "orbit", "follow"] as const;
 /** Life inside a set: an element marked with data-motion is cut out and animated on its own. */
-export const ELEMENT_MOTIONS = ["float", "sway", "spin", "pulse", "blink", "drift", "bounce", "orbit", "shake", "pop", "rise", "slide-left", "slide-right", "drop"] as const;
+export const ELEMENT_MOTIONS = ["float", "sway", "spin", "pulse", "blink", "drift", "bounce", "orbit", "shake", "tilt", "pop", "rise", "slide-left", "slide-right", "drop"] as const;
 /** Tempo of the soundtrack composed for each mood (compose-music.ts): the engine cuts on its beats. */
 export const MUSIC_BPM: Record<string, number> = { alegre: 112, calmo: 76, lofi: 82, tenso: 96, epico: 88, misterio: 70 };
-export const TRANSITIONS = ["cut", "fade", "wipe", "iris", "whip", "flash", "dissolve", "blinds", "clock", "pixelate", "push", "zoom", "glide"] as const;
+export const TRANSITIONS = ["cut", "fade", "wipe", "iris", "whip", "flash", "dissolve", "blinds", "clock", "pixelate", "push", "zoom", "glide", "liquid"] as const;
 export const PROP_MOTIONS = ["none", "bob", "sway", "drift", "drift-left", "spin", "pulse", "fly-left", "fly-right", "rise", "fall", "shake", "grow", "blink"] as const;
-export const FX = ["rain", "snow", "dust", "fireflies", "stars", "confetti", "sparks", "leaves", "smoke", "light-rays", "speed-lines", "bokeh", "matrix", "film-burn", "grain", "sound-wave"] as const;
+export const FX = ["rain", "snow", "dust", "fireflies", "stars", "confetti", "sparks", "leaves", "smoke", "light-rays", "speed-lines", "bokeh", "matrix", "film-burn", "grain", "sound-wave", "aurora", "ripple"] as const;
 export const POSES = ["neutral", "explaining", "pointing", "surprised", "celebrating"] as const;
 export const EXPRESSIONS = ["neutral", "happy", "thinking", "surprised", "serious", "confident"] as const;
-export const UI_KINDS = ["island", "chat", "click", "toggle", "tabs", "wordcycle", "reveal", "splash", "loader", "lowerthird", "countdown", "follow"] as const;
+export const UI_KINDS = ["island", "chat", "click", "toggle", "tabs", "wordcycle", "reveal", "splash", "loader", "lowerthird", "countdown", "follow", "flap", "network"] as const;
 export const GRAPHICS = ["stat", "compare", "bars", "checklist", "notifications", "steps", "quote"] as const;
 export const AMBIENCES = ["nenhum", "quarto", "escritorio", "cafe", "rua", "natureza", "praia", "chuva", "noite", "multidao", "vento"] as const;
 export const CHARACTER_STYLES = ["pixel", "palito", "nenhum"] as const;
@@ -325,7 +325,7 @@ look: {"preset":"...","palette":["#hex" x4 a 6, da mais usada para o acento],"pa
 CENÁRIOS (sets) em SVG
 - Cada cenário é um <svg viewBox="0 0 L ${o.height}"> com L entre ${o.width} e ${o.width * 2} (use L maior que ${o.width} quando houver pan lateral). Altura sempre ${o.height}.
 - Organize em camadas de profundidade com <g data-depth="0"> (céu e fundo distante), <g data-depth="0.4"> (meio), <g data-depth="1"> (chão e objetos perto), <g data-depth="1.4"> (primeiro plano, opcional). A câmera faz paralaxe entre elas.
-- VIDA NA CENA (obrigatório): dentro das camadas, embrulhe de 4 a 8 elementos em <g data-motion="..."> para o motor animar cada um sozinho. Contínuos: float (flutua), sway (balança, pela base), spin (gira), pulse (pulsa), blink (pisca), drift (desliza devagar de um lado a outro), bounce (quica), orbit (circula), shake (treme). De entrada (quando o cenário aparece, com mola): pop, rise, drop, slide-left, slide-right; data-delay="0.3" atrasa em segundos para entrarem em sequência. Exemplos: nuvens drift, sol spin ou pulse, folhas e plantas sway, cartões e celulares float, ícones e selos pop + data-delay em escada, setas bounce, luzes blink, notificações slide-left. COREOGRAFIA COM A FALA (é o que faz parecer feito à mão): dê nome aos elementos importantes com data-el="nome" (ex.: <g data-el="cartao" data-motion="pop">, <g data-el="celular" data-motion="float">). Na tomada, cues: [{"el":"cartao","at":"Pix"}] faz o elemento entrar (se tiver entrada pop/rise/drop/slide) ou dar um destaque exatamente quando a palavra é falada; um elemento de entrada com cue fica escondido até a palavra dele. Use cues em quase toda tomada de produto, ligando cada objeto à palavra que o cita. Use pelo menos 3 contínuos por cenário (é o que mantém a cena viva depois que tudo entrou) e as entradas para o que deve surgir em sequência. Elementos animados ficam por cima da sua camada; não marque o fundo nem o chão.
+- VIDA NA CENA (obrigatório): dentro das camadas, embrulhe de 4 a 8 elementos em <g data-motion="..."> para o motor animar cada um sozinho. Contínuos: float (flutua), sway (balança, pela base), spin (gira), pulse (pulsa), blink (pisca), drift (desliza devagar de um lado a outro), bounce (quica), orbit (circula), shake (treme), tilt (inclina em 3D com um reflexo de luz passando; ótimo para cartões, cartão de pagamento e celular). De entrada (quando o cenário aparece, com mola): pop, rise, drop, slide-left, slide-right; data-delay="0.3" atrasa em segundos para entrarem em sequência. Exemplos: nuvens drift, sol spin ou pulse, folhas e plantas sway, cartões e celulares float, ícones e selos pop + data-delay em escada, setas bounce, luzes blink, notificações slide-left. COREOGRAFIA COM A FALA (é o que faz parecer feito à mão): dê nome aos elementos importantes com data-el="nome" (ex.: <g data-el="cartao" data-motion="pop">, <g data-el="celular" data-motion="float">). Na tomada, cues: [{"el":"cartao","at":"Pix"}] faz o elemento entrar (se tiver entrada pop/rise/drop/slide) ou dar um destaque exatamente quando a palavra é falada; um elemento de entrada com cue fica escondido até a palavra dele. Use cues em quase toda tomada de produto, ligando cada objeto à palavra que o cita. Use pelo menos 3 contínuos por cenário (é o que mantém a cena viva depois que tudo entrou) e as entradas para o que deve surgir em sequência. Elementos animados ficam por cima da sua camada; não marque o fundo nem o chão.
 - Desenhe com path, rect, circle, ellipse, polygon, line e degradês (linearGradient/radialGradient). Sem <text>, sem imagens, sem scripts, sem filtros, sem CSS. Use a paleta do look; cada objeto com 2 ou 3 tons (luz, base, sombra) para dar volume.
 - Desenhe os objetos e lugares específicos da história com silhuetas reconhecíveis (por exemplo um farol, um barco, um balcão de loja). Não desenhe pessoas: os personagens vêm do motor.
 - Para personagens palito, desenhe cenários mais simples e claros (eles são traço fino).
@@ -377,7 +377,9 @@ TOMADAS (shots)
   {"kind":"loader","items":[{"label":"Gerando…"},{"label":"Pronto!"}]} carregando que vira ✓;
   {"kind":"lowerthird","text":"Nome","items":[{"label":"cargo ou o que é"}]} faixa de nome que desliza (quem fala, o que é o produto);
   {"kind":"countdown","text":"A oferta acaba em","items":[{"value":3},{"label":"Agora!"}]} contagem regressiva num anel (lançamento, oferta, 3-2-1);
-  {"kind":"follow","text":"@perfil","button":"Seguir"} lembrete de seguir: o botão vira "Seguindo ✓" e o sino toca (fechamento).
+  {"kind":"follow","text":"@perfil","button":"Seguir"} lembrete de seguir: o botão vira "Seguindo ✓" e o sino toca (fechamento);
+  {"kind":"flap","text":"rótulo","items":[{"label":"R$ 97"}]} placar de aeroporto: as letras giram e param na resposta (preço, número, palavra curta, até 12 caracteres);
+  {"kind":"network","text":"Produto","items":[{"label":"recurso"}]} rede: o produto no centro e os recursos se ligando a ele um a um, girando em profundidade.
   Use ui para mostrar o produto funcionando e para os momentos de virada; em Motion UI use em quase toda tomada.
   ui.on: "nome" de um data-el coloca chat, click, loader, splash, toggle, tabs ou island DENTRO daquele elemento desenhado (a conversa dentro do celular, o botão dentro do navegador), acompanhando a câmera: assim o texto mora na interface em vez de flutuar por cima. Use sempre que houver um celular ou navegador na cena.
   HIERARQUIA: em cada tomada, um herói (o elemento das cues ou do camera.target) se move por inteiro; o resto da cena fica quase parado.
@@ -583,7 +585,7 @@ export function soundCues(plan: ShotPlan, words: Word[], D: number): { cues: Sou
     if (i > 0) {
       if (shot.transition === "flash") add(start, "impact", 0.8);
       else if (shot.transition === "whip" || shot.transition === "wipe" || shot.transition === "push" || shot.transition === "zoom") add(start - 0.05, "whoosh");
-      else if (shot.transition === "blinds" || shot.transition === "clock") add(start - 0.05, "swish", 0.7);
+      else if (shot.transition === "blinds" || shot.transition === "clock" || shot.transition === "liquid") add(start - 0.05, "swish", 0.7);
       else if (shot.transition === "pixelate") add(start, "tick", 0.6);
       else if (shot.transition === "fade" || shot.transition === "dissolve" || shot.transition === "iris") add(start - 0.1, "swish", 0.6);
       else if (["push-in", "dutch", "shake"].includes(shot.camera.move)) add(start, "swish", 0.45);
