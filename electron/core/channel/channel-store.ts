@@ -60,7 +60,7 @@ export const createEpisodeArgs = z.object({
 
 export class ChannelStore {
   private queue = new KeyedQueue();
-  constructor(private userDir: string) {}
+  constructor(readonly userDir: string) {}
 
   // ---------- paths ----------
   root(profileId: string) {
