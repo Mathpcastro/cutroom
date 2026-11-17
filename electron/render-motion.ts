@@ -15,7 +15,7 @@ import {
 
 interface Spec {
   mode?:
-    "scene" | "film" | "stills" | "lint" | "capture" | "analyze" | "avatar";
+    "scene" | "film" | "stills" | "lint" | "capture" | "analyze" | "avatar" | "bench";
   browser: string;
   fps: number;
   directory: string;
@@ -141,6 +141,104 @@ async function stills(spec: Spec) {
   } finally {
     await browser.close();
     server.close();
+  }
+}
+
+/**
+ * Channel studio QA bench: one browser for many scenes. For each scene and time it seeks,
+ * optionally screenshots, and measures every visible text box (for overflow, overlap and
+ * foreign-text checks) plus how many visible layers there are (empty-start check).
+ */
+type BenchScene = { directory: string; times: number[]; output?: string };
+type TextBox = { text: string; x: number; y: number; w: number; h: number; id: string; cls: string; clipped: boolean };
+async function bench(spec: Spec & { scenes: BenchScene[] }) {
+  const { default: puppeteer } = await import("puppeteer-core");
+  const browser = await puppeteer.launch({
+    executablePath: spec.browser,
+    headless: true,
+    args: ["--autoplay-policy=no-user-gesture-required", "--mute-audio"],
+  });
+  const results: { directory: string; duration: number; frames: { t: number; file?: string; boxes: TextBox[]; layers: number }[]; errors: string[] }[] = [];
+  try {
+    for (const scene of spec.scenes) {
+      const server = await createFileServer({ projectDir: scene.directory, fps: { num: spec.fps, den: 1 } });
+      const errors: string[] = [];
+      const page = await browser.newPage();
+      try {
+        page.on("pageerror", (e) => errors.push(`Erro de script: ${e instanceof Error ? e.message : String(e)}`));
+        await page.setRequestInterception(true);
+        page.on("request", (r) => {
+          const url = r.url();
+          if (url.startsWith(server.url) || url.startsWith("data:") || url.startsWith("blob:")) void r.continue();
+          else {
+            errors.push(`Bloqueado (fora da pasta da cena): ${url.slice(0, 120)}`);
+            void r.abort();
+          }
+        });
+        await page.setViewport({ width: spec.width ?? 1920, height: spec.height ?? 1080, deviceScaleFactor: spec.scale ?? 0.4 });
+        await page.goto(`${server.url}/index.html`, { waitUntil: "load" });
+        await page.waitForFunction(() => {
+          const hf = (window as unknown as { __hf?: { seek?: unknown; duration?: number } }).__hf;
+          return !!hf && typeof hf.seek === "function" && (hf.duration ?? 0) > 0;
+        }, { timeout: 60_000 });
+        const duration = await page.evaluate(() => (window as unknown as { __hf: { duration: number } }).__hf.duration);
+        const frames: { t: number; file?: string; boxes: TextBox[]; layers: number }[] = [];
+        for (const [i, t] of scene.times.entries()) {
+          const at = Math.max(0, Math.min(t, duration - 1 / spec.fps));
+          await page.evaluate((s) => (window as unknown as { __hf: { seek(t: number): void } }).__hf.seek(s), at);
+          await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+          let file: string | undefined;
+          if (scene.output) {
+            await mkdir(scene.output, { recursive: true });
+            file = join(scene.output, `q${i}.png`);
+            await page.screenshot({ path: file as `${string}.png` });
+          }
+          const measured = await page.evaluate(() => {
+            const visible = (el: Element | null) => {
+              let opacity = 1;
+              for (let e = el; e; e = e.parentElement) {
+                const s = getComputedStyle(e);
+                if (s.visibility === "hidden" || s.display === "none") return 0;
+                opacity *= Number(s.opacity);
+              }
+              return opacity;
+            };
+            const boxes: { text: string; x: number; y: number; w: number; h: number; id: string; cls: string; clipped: boolean }[] = [];
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+              const text = (n.textContent ?? "").replace(/\s+/g, " ").trim();
+              const el = n.parentElement;
+              if (!text || !el || el.closest("script,style")) continue;
+              if (visible(el) < 0.05) continue;
+              const range = document.createRange();
+              range.selectNodeContents(n);
+              const r = range.getBoundingClientRect();
+              if (r.width < 1 || r.height < 1) continue;
+              const block = el.closest("div") ?? el;
+              const clipped = block.scrollWidth > block.clientWidth + 2 && getComputedStyle(block).overflow !== "visible";
+              boxes.push({ text, x: r.x, y: r.y, w: r.width, h: r.height, id: el.id || (el.closest("[id]") as HTMLElement | null)?.id || "", cls: String(el.className || ""), clipped });
+            }
+            const area = innerWidth * innerHeight;
+            let layers = 0;
+            for (const el of document.querySelectorAll("#zoom *, #film > video")) {
+              const r = el.getBoundingClientRect();
+              if (r.width * r.height > area * 0.002 && visible(el) > 0.05 && el.children.length === 0) layers++;
+            }
+            return { boxes, layers };
+          });
+          frames.push({ t: +at.toFixed(3), file, ...measured });
+        }
+        results.push({ directory: scene.directory, duration, frames, errors: [...new Set(errors)].slice(0, 20) });
+      } catch (error) {
+        results.push({ directory: scene.directory, duration: 0, frames: [], errors: [String(error instanceof Error ? error.message : error)] });
+      } finally {
+        await page.close().catch(() => undefined);
+        server.close();
+      }
+    }
+    return { scenes: results };
+  } finally {
+    await browser.close();
   }
 }
 
@@ -499,6 +597,8 @@ if (
       });
     else if (mode === "stills")
       say({ complete: true, ...(await stills(spec)) });
+    else if (mode === "bench")
+      say({ complete: true, ...(await bench(spec as Spec & { scenes: BenchScene[] })) });
     else if (mode === "avatar")
       say({ complete: true, ...(await renderAvatarProof(spec)) });
     else {
