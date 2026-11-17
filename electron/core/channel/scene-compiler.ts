@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import { z } from "zod";
 import { COMPILED_SCENES, type Beat, type Channel, type Fact, type MediaItem } from "../../../src/shared/channel";
 import type { SfxKind } from "../../../src/shared/shots";
+import { withCsp } from "../film";
 import { normToken } from "./aligner";
 import type { ChannelStore } from "./channel-store";
 import { readJsonOr, writeJsonAtomic } from "./fs-json";
@@ -588,7 +589,8 @@ export async function writeScene(dir: string, scene: CompiledScene, plan: SceneP
   await mkdir(join(dir, "assets"), { recursive: true });
   await mkdir(join(dir, "fonts"), { recursive: true });
   await mkdir(join(dir, "kit"), { recursive: true });
-  await writeFile(join(dir, "index.html"), scene.html, "utf8");
+  // Rendered under a strict CSP (same as films): scene HTML cannot reach the internet.
+  await writeFile(join(dir, "index.html"), withCsp(scene.html), "utf8");
   await writeFile(join(dir, "kit", "gsap.min.js"), await readFile(kit.gsap));
   for (const f of scene.fonts) await linkOrCopy(join(kit.fontsDir, f), join(dir, "fonts", f));
   for (const a of scene.assets) await linkOrCopy(a.from, join(dir, a.to));

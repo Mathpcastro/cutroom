@@ -127,7 +127,7 @@ export async function concatPieces(pieces: { file: string; from?: number; to?: n
 }
 
 /** loudnorm to −16 LUFS integrated, −1.5 dBTP (two passes for an exact target). */
-export async function normalizeLoudness(input: string, output: string, target = NARRATION_LUFS, signal?: AbortSignal) {
+export async function normalizeLoudness(input: string, output: string, target = NARRATION_LUFS, signal?: AbortSignal, format: { channels: number; rate: number } = { channels: 1, rate: 44100 }) {
   const { spawn } = await import("node:child_process");
   const { ffmpegPath } = await import("../media");
   const measure = await new Promise<Record<string, string>>((resolve, reject) => {
@@ -148,7 +148,7 @@ export async function normalizeLoudness(input: string, output: string, target = 
   const second = measure.input_i
     ? `loudnorm=I=${target}:TP=-1.5:LRA=11:measured_I=${measure.input_i}:measured_TP=${measure.input_tp}:measured_LRA=${measure.input_lra}:measured_thresh=${measure.input_thresh}:offset=${measure.target_offset}:linear=true`
     : `loudnorm=I=${target}:TP=-1.5:LRA=11`;
-  await ffmpeg(["-y", "-i", input, "-af", second, "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", output], { signal });
+  await ffmpeg(["-y", "-i", input, "-af", second, "-ar", String(format.rate), "-ac", String(format.channels), "-c:a", "pcm_s16le", output], { signal });
   return output;
 }
 
