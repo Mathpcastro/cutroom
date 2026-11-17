@@ -46,6 +46,15 @@ export const beatInputSchema = z.object({
   cta: z.enum(["comment", "subscribe", "like", "endscreen", "next"]).optional(),
 });
 export type BeatInput = z.input<typeof beatInputSchema>;
+/** Patch of a beat: no defaults (a `.partial()` of the input schema would fill `scene` and `facts` and wipe them). */
+export const beatPatchSchema = z.object({
+  section: z.string().regex(/^[a-z0-9-]{1,40}$/).optional(),
+  text: z.string().trim().min(1).max(600).optional(),
+  say: z.string().max(1200).optional(),
+  facts: z.array(z.string()).max(12).optional(),
+  scene: sceneSchema.partial().optional(),
+  cta: z.enum(["comment", "subscribe", "like", "endscreen", "next"]).optional(),
+});
 
 function makeBeat(id: string, input: BeatInput, dictionary: Pronunciations, isNew?: boolean): Beat {
   const b = beatInputSchema.parse(input);
@@ -79,7 +88,7 @@ export function buildScript(input: { sections?: { id: string; title: string }[];
 
 export const beatEditSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("insert"), after: z.string().optional(), before: z.string().optional(), beat: beatInputSchema }),
-  z.object({ op: z.literal("update"), id: z.string(), patch: beatInputSchema.partial() }),
+  z.object({ op: z.literal("update"), id: z.string(), patch: beatPatchSchema }),
   z.object({ op: z.literal("delete"), id: z.string() }),
   z.object({ op: z.literal("move"), id: z.string(), after: z.string().optional(), before: z.string().optional() }),
 ]);

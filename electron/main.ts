@@ -2,6 +2,13 @@ import { createHash } from "node:crypto";
 import { AVATAR_BASES, FACIAL_HAIR, HAIR_STYLES, HATS, OUTFITS, composeAvatar, type FacialHair, type HairStyle, type Hat, type Outfit } from "../src/shared/avatar-compose";
 import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
+import { ChannelStore } from "./core/channel/channel-store";
+import { JobRunner } from "./core/channel/jobs";
+import { createChannelToolDispatcher, isChannelTool } from "./core/channel/channel-tools";
+import { scribeTranscriber } from "./core/channel/aligner";
+import { elevenLabsSpeaker } from "./core/channel/narration";
+import { durationOf as channelDuration } from "./core/channel/ffmpeg";
+import { openAiSpeech } from "./core/voice";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
 import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
 import { adaptEffects, cleanShotPlan, shotFilmHtml, type ShotPlan } from "../src/shared/shots";
@@ -145,6 +152,7 @@ let avatarStore: AvatarStore;
 let avatarService: AvatarService;
 let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
 let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
+let dispatchChannelTool: ReturnType<typeof createChannelToolDispatcher>;
 /** Host images for scenes: the brand logo as data-asset="logo". */
 async function motionAssets(): Promise<MotionAssets> {
   const brand = await brandStore?.get();
@@ -893,6 +901,7 @@ async function executeTool(
 ): Promise<unknown> {
   if (isProfileTool(name)) return dispatchProfileTool(name, args);
   if (isAvatarTool(name)) return dispatchAvatarTool(name, args);
+  if (isChannelTool(name)) return dispatchChannelTool(name, args);
   if (name === "get_project") return structuredClone(state.project);
   if (name === "edit_project") {
     await executeCommand(args);
@@ -1164,6 +1173,58 @@ async function executeTool(
     };
   }
   throw new Error("Ferramenta não autorizada.");
+}
+
+/** Estúdio de Canais Dark: store, jobs (resumed on open) and the MCP tools. */
+function setupChannelStudio() {
+  const store = new ChannelStore(userDir);
+  const jobs = new JobRunner(join(userDir, "jobs"));
+  dispatchChannelTool = createChannelToolDispatcher({
+    store,
+    jobs,
+    secret: (name) => secretStore.get(name),
+    kit: { gsap: createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"), fontsDir: join(resources, "film-kit", "fonts") },
+    runner: async () => {
+      if (!(await motionPackageInfo(packages.root)).installed)
+        throw Object.assign(new Error("Instale Efeitos e animações na aba Pacotes: as cenas do canal usam esse renderizador."), { code: "RENDERER_MISSING" });
+      return { worker: join(here, "render-motion.js"), browser: process.env.CHROME_PATH || motionBrowser(packages.root) };
+    },
+    // Whisper local by default; ElevenLabs Scribe when the local package is missing and there is a key.
+    transcriber: async () => {
+      if ((await packages.list())[0]?.installed)
+        return async (file, { signal }) => {
+          const duration = await channelDuration(file, { signal });
+          const info = await stat(file);
+          const media = { id: `canal-${info.size}-${Math.round(info.mtimeMs)}`, name: "Narração", path: file, duration, width: 1, height: 1, fps: 1, hasAudio: true };
+          const words = await packages.transcribe(media as never, cacheDir, () => undefined, signal, true);
+          return words.map((w) => ({ text: w.text, start: w.start, end: w.end }));
+        };
+      const key = await secretStore.get("voice.elevenlabs");
+      if (key) return scribeTranscriber(key);
+      throw Object.assign(new Error("Instale a Transcrição local na aba Pacotes (ou configure a ElevenLabs para usar o Scribe)."), { code: "TRANSCRIBER_MISSING" });
+    },
+    speaker: async (voice) => {
+      if (voice.provider === "elevenlabs") {
+        const key = await secretStore.get("voice.elevenlabs");
+        if (!key) throw Object.assign(new Error("Configure a chave da ElevenLabs em Vozes."), { code: "VOICE_KEY_MISSING" });
+        return elevenLabsSpeaker(key, voice);
+      }
+      if (voice.provider === "openai") {
+        const key = await secretStore.get("voice.openai");
+        if (!key) throw Object.assign(new Error("Configure a chave da OpenAI em Vozes."), { code: "VOICE_KEY_MISSING" });
+        return (text, { signal }) => openAiSpeech({ apiKey: key, voice: voice.voiceId || "onyx", text, signal });
+      }
+      if (voice.provider === "kokoro") return (text, { signal }) => packages.kokoroSpeak(text, voice.voiceId || undefined, join(cacheDir, "voice"), signal);
+      return async (text, { signal }) => {
+        const dir = join(cacheDir, "voice");
+        await mkdir(dir, { recursive: true });
+        const s = signal ?? new AbortController().signal;
+        return localSpeech(text, voice.voiceId || undefined, s, dir, (path) => probeAudio(path, s));
+      };
+    },
+    series: async (profileId, seriesId) => (await seriesStore.get(profileId, seriesId)).series,
+  });
+  void jobs.resumeInterrupted().catch(() => undefined);
 }
 
 async function executeDesktopMcpTool(
@@ -2269,6 +2330,7 @@ app.whenReady().then(async () => {
     process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000,
   );
   seriesStore = new SeriesStore(userDir);
+  setupChannelStudio();
   avatarStore = new AvatarStore(join(userDir, "avatars"));
   filmStudio = new FilmStudio(
     {

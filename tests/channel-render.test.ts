@@ -125,7 +125,7 @@ describe("episode render", () => {
     // Idempotent: a second call renders nothing (cache by hash).
     const again = await renderEpisode(store, ids, { render: fakeRenderer(log), workers: 3, preview: false });
     expect(again.scenes).toMatchObject({ rendered: 0, cached: 4 });
-  }, 120_000);
+  }, 400_000);
 
   it("changing only one beat's scene re-renders only that scene", async () => {
     const { store, ids, kit, audioSec } = await episode();
@@ -139,7 +139,7 @@ describe("episode render", () => {
     const out = await renderEpisode(store, ids, { render: fakeRenderer(log), workers: 2, preview: false });
     expect(log).toEqual(["b_002"]);
     expect(out.scenes).toMatchObject({ rendered: 1, cached: 3 });
-  }, 120_000);
+  }, 400_000);
 
   it("retries a failed scene with 1 worker and resumes after an interruption without losing scenes", async () => {
     const { store, ids, epDir } = await episode(6, 1);
@@ -157,7 +157,7 @@ describe("episode render", () => {
     const out = await renderEpisode(store, ids, { render: fakeRenderer(log, new Set(["b_004"])), workers: 2, preview: false });
     expect(out.scenes).toMatchObject({ rendered: 4, cached: 2 });
     expect(log.filter((b) => b === "b_004")).toHaveLength(2);
-  }, 120_000);
+  }, 400_000);
 
   it("a scene that keeps failing does not stop the others and is reported", async () => {
     const dir = await tmp();

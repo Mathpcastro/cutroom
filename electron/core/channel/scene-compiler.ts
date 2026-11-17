@@ -637,6 +637,8 @@ export async function compileEpisodeScenes(store: ChannelStore, ids: Ids, kit: K
       await writeScene(dir, scene, plan, kit);
       results.push({ beatId: beat.id, hash: scene.hash, changed: true, warnings: scene.warnings });
     } catch (error) {
+      // A stale scene must never be rendered in place of one that no longer compiles.
+      await rm(join(dir, "scene.json"), { force: true });
       results.push({ beatId: beat.id, changed: false, error: (error as Error).message, warnings: [] });
     }
   }

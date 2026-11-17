@@ -1,3 +1,4 @@
+import { CHANNEL_TOOLS } from "../electron/core/channel/channel-tools";
 import { createServer, type Server, type RequestListener } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -886,6 +887,7 @@ describe("Claude loopback bridge", () => {
       "avatar_cancel",
       "avatar_import_reference",
       "avatar_analyze_reference",
+      ...CHANNEL_TOOLS.map((t) => t.name),
     ]);
     expect(
       (await (await rpc("tools/call", { name: "shell", arguments: {} })).json())

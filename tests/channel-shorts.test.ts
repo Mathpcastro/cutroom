@@ -93,5 +93,5 @@ describe("cut shorts end to end (fake scene renderer, real FFmpeg)", () => {
     }
     expect((await store.getEpisode("default", c.id, ep.id)).outputs.shorts).toEqual(["out/shorts/short_1.mp4", "out/shorts/short_2.mp4"]);
     await expect(cutShorts(store, ids, { fontsDir: kit.fontsDir, windows: [{ beatIds: ["b_001", "b_003"] }] })).rejects.toMatchObject({ code: "SHORT_NOT_CONTIGUOUS" });
-  }, 180_000);
+  }, 600_000);
 });

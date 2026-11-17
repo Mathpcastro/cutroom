@@ -109,6 +109,11 @@ describe("script building and edits by id", () => {
     expect(b.script.beats.at(-1)?.id).toBe("b_011");
     expect(b.script.beats.at(-1)?.isNew).toBe(true);
     const c = applyBeatEdits(b.script, [{ op: "update", id: "b_003", patch: { text: "Texto novo da fala." } }], { narrated: true });
+    // Editing only the text keeps the scene data and the facts (bug: defaults wiped them).
+    expect(c.script.beats.find((x) => x.id === "b_003")!.scene).toEqual(s.beats[2].scene);
+    const withFacts = applyBeatEdits(buildScript({ beats: [{ section: "gancho", text: "a", facts: ["f_ab12"], scene: { type: "title", data: { lines: [{ text: "x" }] }, media: [] } }] }, channel()), [{ op: "update", id: "b_001", patch: { text: "b" } }]);
+    expect(withFacts.script.beats[0].facts).toEqual(["f_ab12"]);
+    expect(withFacts.script.beats[0].scene.data).toEqual({ lines: [{ text: "x" }] });
     expect(c.changed).toEqual(["b_003"]);
     const b3 = c.script.beats.find((x) => x.id === "b_003")!;
     expect(b3.isNew).toBe(true);
