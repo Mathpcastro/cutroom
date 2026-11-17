@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { afterEach, describe, expect, it } from "vitest";
 import { ChannelStore } from "../electron/core/channel/channel-store";
 import { addFacts } from "../electron/core/channel/research";
-import { FPS, compileEpisodeScenes, compileScene, cueTime, lookOf, planScenes, safeText, sceneHash, SceneError, type CompileInput, type SceneMedia } from "../electron/core/channel/scene-compiler";
+import { FPS, frameDuration, compileEpisodeScenes, compileScene, cueTime, lookOf, planScenes, safeText, sceneHash, SceneError, type CompileInput, type SceneMedia } from "../electron/core/channel/scene-compiler";
 import { saveScript } from "../electron/core/channel/script-writer";
 import { COMPILED_SCENES, defaultBible, type Beat, type Fact } from "../src/shared/channel";
 
@@ -117,6 +117,12 @@ describe("scene compiler", () => {
     expect(sceneHash(input(SAMPLES.photo))).toBe(a);
     expect(sceneHash(input({ ...SAMPLES.photo, media: ["m_ph0002"] }))).not.toBe(a);
     expect(sceneHash(input(SAMPLES.photo, { frames: 151 }))).not.toBe(a);
+  });
+
+  it("writes a duration HyperFrames turns into exactly the planned frames (ceil of duration × fps)", () => {
+    for (const frames of [126, 154, 155, 169, 170, 194, 406, 557, 1]) expect(Math.ceil(frameDuration(frames) * FPS - 1e-9)).toBe(frames);
+    const out = compileScene(input(SAMPLES.title, { frames: 170 }));
+    expect(out.html).toContain('data-duration="5.666"');
   });
 
   it("plans frame-exact scenes that add up to the narration, +12 s on the end screen", () => {

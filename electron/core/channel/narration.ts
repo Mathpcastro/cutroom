@@ -91,7 +91,7 @@ async function saveAsWav(res: SpeechResult, wav: string, signal?: AbortSignal) {
   const tmp = `${wav}.tmp.wav`;
   await writeFile(raw, res.audio);
   try {
-    await toWav(raw, tmp, signal);
+    await toWav(raw, tmp, signal, { trim: true });
     await rename(tmp, wav);
   } finally {
     await rm(raw, { force: true });
@@ -100,8 +100,11 @@ async function saveAsWav(res: SpeechResult, wav: string, signal?: AbortSignal) {
 }
 
 /** Any audio → WAV mono 44.1 kHz 16-bit. */
-export async function toWav(input: string, output: string, signal?: AbortSignal) {
-  await ffmpeg(["-y", "-i", input, "-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le", output], { signal });
+export async function toWav(input: string, output: string, signal?: AbortSignal, options: { trim?: boolean } = {}) {
+  // TTS engines (the Windows voice above all) pad each answer with silence; trimmed, only the
+  // planned pauses remain between beats and sections (QA flags silences over 1.5 s).
+  const trim = "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05,areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.08,areverse";
+  await ffmpeg(["-y", "-i", input, ...(options.trim ? ["-af", trim] : []), "-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le", output], { signal });
   return output;
 }
 

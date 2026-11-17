@@ -21,7 +21,7 @@ import { integerToWords } from "./pt-numbers";
  */
 
 export const FPS = 30;
-export const SCENE_KIT_VERSION = "canal-2";
+export const SCENE_KIT_VERSION = "canal-3";
 export const FIRST_ELEMENT_MAX = 10 / FPS;
 export const ENDSCREEN_EXTRA = 12;
 
@@ -332,7 +332,7 @@ ${this.css.join("\n")}
 </style>
 </head>
 <body>
-<div id="film" data-composition-id="scene" data-start="0" data-duration="${round(D)}" data-width="${size.w}" data-height="${size.h}">
+<div id="film" data-composition-id="scene" data-start="0" data-duration="${frameDuration(input.frames)}" data-width="${size.w}" data-height="${size.h}">
   ${this.clips.join("\n  ")}
   <div id="stage"><div id="zoom">
     ${this.layers.join("\n    ")}
@@ -347,7 +347,7 @@ ${this.css.join("\n")}
     // Slow continuous zoom of 2.5% per scene.
     tl.fromTo("#zoom", { scale: 1 }, { scale: 1.025, duration: ${round(D)}, ease: "none" }, 0);
     ${this.js.join("\n    ")}
-    tl.set({}, {}, ${round(D)});
+    tl.set({}, {}, ${frameDuration(input.frames)});
     window.__timelines["scene"] = tl;
   </script>
 </div>
@@ -370,6 +370,12 @@ ${this.css.join("\n")}
 }
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
+/**
+ * Duration written into the composition so HyperFrames renders exactly `frames` frames: it
+ * renders ceil(duration × fps), so 170 frames written as 5.667 s became 171. Truncating to the
+ * millisecond keeps duration × fps in (frames − 0.03, frames].
+ */
+export const frameDuration = (frames: number) => Math.floor((frames / FPS) * 1000) / 1000;
 
 // ---------- scene types ----------
 
