@@ -2,8 +2,8 @@ import { ffmpegPath, ffprobePath } from "../media";
 import { runProcess } from "../process";
 
 /** FFmpeg and ffprobe for the channel studio (the bundled static builds, unpacked from asar). */
-export async function ffmpeg(args: string[], options: { signal?: AbortSignal } = {}) {
-  return runProcess(ffmpegPath, ["-hide_banner", "-loglevel", "error", "-nostdin", ...args], { signal: options.signal });
+export async function ffmpeg(args: string[], options: { signal?: AbortSignal; cwd?: string } = {}) {
+  return runProcess(ffmpegPath, ["-hide_banner", "-loglevel", "error", "-nostdin", ...args], { signal: options.signal, cwd: options.cwd });
 }
 
 export type ProbeInfo = {
