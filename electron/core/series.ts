@@ -1,24 +1,22 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { assertProfileId } from "../../src/shared/profile";
+import { writeJsonAtomic } from "./channel/fs-json";
 import { characterSchema, episodeSchema, ideaSchema, scriptSchema, seriesSchema, type Character, type Episode, type Series } from "../../src/shared/story";
 
 /**
  * Spec 5 F: `<userData>/profiles/<profileId>/series/<seriesId>/series.json` and `episodes/<n>.json`.
  * Validated with zod, written atomically, one queue per profile (like ProfileService).
+ * The channel studio builds on this model: `ChannelStore.importSeries` turns a series into a channel.
  */
 
 const slug = (value: string) =>
   value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "serie";
 const seriesId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/);
 
-async function atomic(file: string, value: unknown) {
-  const tmp = `${file}.${randomUUID().slice(0, 8)}.partial`;
-  await writeFile(tmp, JSON.stringify(value, null, 2), "utf8");
-  await rename(tmp, file);
-}
+/** Shared with the channel studio (`channel/fs-json.ts`): temp file + rename, retried on a busy Windows rename. */
+const atomic = writeJsonAtomic;
 
 export class SeriesStore {
   private queues = new Map<string, Promise<unknown>>();
