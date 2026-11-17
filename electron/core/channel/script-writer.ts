@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import {
   GLOBAL_FORBIDDEN,
+  COMPILED_SCENES,
   REAL_IMAGE_SCENES,
   TEXT_SCENES,
   beatSchema,
@@ -237,6 +238,10 @@ export function reviewScript(script: Script, ctx: { channel: Channel; research?:
     if (b.scene.data.tag && !b.scene.place) issues.push({ level: "erro", code: "PLACE_TAG", beatId: b.id, message: "Etiqueta de lugar sem `place`: imagem genérica entra sem etiqueta." });
   }
 
+  for (const b of beats)
+    if (!(COMPILED_SCENES as readonly string[]).includes(b.scene.type))
+      issues.push({ level: "erro", code: "SCENE_NOT_SUPPORTED", beatId: b.id, message: `A cena "${b.scene.type}" ainda não é compilada; use ${COMPILED_SCENES.join(", ")}.` });
+
   // Forbidden words and themes.
   const forbidden = [...new Set([...GLOBAL_FORBIDDEN, ...bible.forbidden])].map((f) => [f, norm(f)] as const).filter(([, n]) => n.length >= 3 && !n.startsWith("piada com") && !n.startsWith("acusacao"));
   for (const b of beats) {
@@ -315,7 +320,16 @@ export function scriptBrief(channel: Channel, episode: Pick<Episode, "title" | "
       "Etiqueta de lugar (scene.data.tag) só com scene.place; imagem genérica vai sem etiqueta. Nunca escrever \"imagem ilustrativa\".",
       "Se os dados não confirmam a premissa do título, responda com honestidade e faça disso a virada.",
     ],
-    sceneTypes: ["photo", "video", "stat", "title", "list", "cta", "rank", "versus", "timeline", "map", "quote"],
+    sceneTypes: COMPILED_SCENES,
+    sceneData: {
+      photo: "{ move?: 'in'|'out'|'l'|'r', tag?: 'LUGAR' (só com scene.place), caption?: string } — mídia em scene.media",
+      video: "{ clips?: [{ media: 'm_…', at?: 'palavra|alternativa', tag?: string }], caption?: string, big?: string }",
+      stat: "{ value: number, prefix?: 'R$ ', suffix?: '%', decimals?: 0-2, label: string, source?: 'IBGE, 2022', at?: 'palavra' }",
+      title: "{ lines: [{ text, color?: 'accent'|'ink'|'red'|'green', strike?: boolean, at?: 'palavra' }] (1 a 4), stamp?: string }",
+      list: "{ title?: string, tone?: 'green'|'red', items: [{ text, mark: 'ok'|'no', at?: 'palavra' }] }",
+      cta: "{ kind: 'comment'|'subscribe'|'like'|'endscreen', text?: string, examples?: ['Niterói', 'Recife'] }",
+      any: "bgVideo: 'm_…' (vídeo de fundo com véu), stickers são da próxima leva",
+    },
   };
 }
 

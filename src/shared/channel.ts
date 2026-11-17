@@ -266,6 +266,8 @@ export const SCENE_TYPES = [
   "cta", "poll", "next", "placa", "avatar",
 ] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
+/** Scene types the compiler renders today (phase 1 starts with these six; the rest of the catalog follows). */
+export const COMPILED_SCENES = ["photo", "video", "stat", "title", "list", "cta"] as const satisfies readonly SceneType[];
 /** Scenes that show real imagery (photo, B-roll); `bgVideo` also counts on any scene. */
 export const REAL_IMAGE_SCENES: readonly SceneType[] = ["photo", "video"];
 /** Pure text scenes: the review forbids 3 in a row. */
