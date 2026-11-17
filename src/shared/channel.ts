@@ -249,6 +249,8 @@ export const researchSchema = z.object({
   facts: z.array(factSchema).max(400),
   /** Pages that could not be read (paywall, timeout): they never count as a source. */
   unread: z.array(z.object({ url: z.string().max(1000), reason: text(200) })).max(100),
+  /** Pages read for this episode (limit of 30 per episode). */
+  pages: z.array(z.object({ url: z.string().max(1000), title: text(300), readAt: iso })).max(60).default([]),
   premise: z.object({ question: text(300), verdict: z.enum(["confirma", "nega", "parcial", "indefinido"]), note: text(600) }).optional(),
   provider: z.enum(["agent", "tavily", "brave", "exa", "perplexity", "manual"]).optional(),
   updatedAt: iso,
@@ -366,7 +368,7 @@ export const MIGRATIONS: Record<ChannelFileKind, Record<number, Migration>> = {
   channel: { 0: (v) => ({ ...v, schemaVersion: 1 }) },
   backlog: { 0: (v) => ({ ideas: v.__list ?? v.ideas ?? [], schemaVersion: 1 }) },
   episode: { 0: (v) => ({ ...v, schemaVersion: 1 }) },
-  research: { 0: (v) => ({ questions: [], unread: [], ...v, schemaVersion: 1 }) },
+  research: { 0: (v) => ({ questions: [], unread: [], pages: [], ...v, schemaVersion: 1 }) },
   script: { 0: (v) => ({ sections: [], ...v, schemaVersion: 1 }) },
   licenses: { 0: (v) => ({ items: v.__list ?? v.items ?? [], schemaVersion: 1 }) },
 };

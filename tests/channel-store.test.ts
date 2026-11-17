@@ -122,7 +122,7 @@ describe("ChannelStore", () => {
     expect(await store.readEpisodeFile(P, c.id, ep.id, "licenses")).toBeUndefined();
     await writeFile(store.episodeFile(P, c.id, ep.id, "licenses"), "[]", "utf8");
     expect(await store.readEpisodeFile(P, c.id, ep.id, "licenses")).toEqual({ schemaVersion: 1, items: [] });
-    const research = await store.mutateEpisodeFile(P, c.id, ep.id, "research", () => ({ schemaVersion: 1, questions: [], facts: [], unread: [], updatedAt: new Date().toISOString() }), (r) => {
+    const research = await store.mutateEpisodeFile(P, c.id, ep.id, "research", () => ({ schemaVersion: 1, questions: [], facts: [], unread: [], pages: [], updatedAt: new Date().toISOString() }), (r) => {
       r.questions.push("Qual a população?");
     });
     expect(research.questions).toEqual(["Qual a população?"]);
