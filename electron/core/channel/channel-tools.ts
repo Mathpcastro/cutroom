@@ -11,7 +11,7 @@ import { pickForBeat, readCandidates, registerUserMedia, searchForBeat, type Key
 import { DEFAULT_VOICE_SETTINGS, alignNarration, generateNarration, narrationChars, redoBeats, type Speaker, type VoiceSettings } from "./narration";
 import { generatePackage, packageInputSchema } from "./packager";
 import { VISION_RUBRIC, hyperframesBench, runQa, type BenchRunner } from "./qa";
-import { SEARCH_PROVIDERS, addFacts, emptyResearch, factInputSchema, runResearch, setFactExcluded, setPremise, summarizeResearch, type SearchProviderId } from "./research";
+import { addFacts, emptyResearch, factInputSchema, setFactExcluded, setPremise, summarizeResearch } from "./research";
 import { compileEpisodeScenes } from "./scene-compiler";
 import { beatEditSchema, beatInputSchema, editScript, pageScript, readPronunciations, reviewScript, saveScript, scriptBrief, writePronunciations } from "./script-writer";
 import { cutShorts } from "./shorts";
@@ -51,8 +51,7 @@ export const CHANNEL_TOOLS = [
   { name: "channel_episode_list", description: "List a channel's episodes. Immediate.", inputSchema: obj(C, req.C) },
   { name: "episode_status", description: "Stages with status, warnings, cost and outputs of an episode, plus the render grid. Immediate.", inputSchema: obj(E, req.E) },
   { name: "episode_approve", description: "Record an approval (script, frames or final). ONLY after the user approved in chat (or the channel is in direct mode for script/frames). Immediate.", inputSchema: obj({ ...E, gate: str("script, frames or final.", { enum: ["script", "frames", "final"] }), note: str("Optional note.") }, [...req.E, "gate"]) },
-  { name: "research_add_facts", description: "Store facts YOU researched, each with the exact claim, value, unit, date of the data and the source {url, publisher, title, publishedAt, quote}. The app classifies the source (official/press/blog), sets confidence (2 independent sources or 1 official = alta; 1 press = média; blog = baixa, never enters the script), merges confirmations and conflicts (with prudent wording). Immediate.", inputSchema: obj({ ...E, facts: arr(anyObj("Fact."), "Facts with sources.", { maxItems: 60 }) }, [...req.E, "facts"]) },
-  { name: "research_run", description: "Internal research with the user's search key (or links you paste: manual mode): searches each question, reads the 3 best pages (15 s timeout, 30 pages per episode) and returns candidate sentences as DATA for you to confirm with research_add_facts. Job.", inputSchema: obj({ ...E, questions: arr(str("Question."), "8 to 15 questions.", { maxItems: 20 }), links: arr(str("URL."), "Links to read instead of searching."), provider: str("tavily, brave, exa or perplexity.", { enum: ["tavily", "brave", "exa", "perplexity"] }) }, [...req.E, "questions"]) },
+  { name: "research_add_facts", description: "Store facts YOU researched with your own search (Videosell does not search the web), each with the exact claim, value, unit, date of the data and the source {url, publisher, title, publishedAt, quote}. The app classifies the source (official/press/blog), sets confidence (2 independent sources or 1 official = alta; 1 press = média; blog = baixa, never enters the script), merges confirmations and conflicts (with prudent wording). Immediate.", inputSchema: obj({ ...E, facts: arr(anyObj("Fact."), "Facts with sources.", { maxItems: 60 }) }, [...req.E, "facts"]) },
   { name: "research_get", description: "Facts table (claim, value, source, date, confidence, used in), conflicts, unread pages and warnings. Immediate.", inputSchema: obj({ ...E, page: num("Page (40 facts per page).") }, req.E) },
   { name: "research_exclude_fact", description: "Mark a fact 'não usar' (or back). The script must then be rewritten without it.", inputSchema: obj({ ...E, factId: str("Fact id."), excluded: { type: "boolean" } }, [...req.E, "factId", "excluded"]) },
   { name: "research_set_premise", description: "Record whether the data confirm the title's premise (confirma, nega, parcial, indefinido). If not, the script answers honestly and that becomes the turn.", inputSchema: obj({ ...E, question: str("The video's question."), verdict: str("Verdict.", { enum: ["confirma", "nega", "parcial", "indefinido"] }), note: str("Short explanation.") }, [...req.E, "question", "verdict", "note"]) },
@@ -139,11 +138,6 @@ export function createChannelToolDispatcher(deps: ChannelToolDeps) {
     }
   };
   const handlers: Record<string, (input: J & Record<string, unknown>, ctx: Parameters<Parameters<JobRunner["register"]>[1]>[1]) => Promise<unknown>> = {
-    research: async (i, ctx) => {
-      const provider = i.provider as SearchProviderId | undefined;
-      const apiKey = provider ? await deps.secret(SEARCH_PROVIDERS[provider].secret) : undefined;
-      return runResearch(store, i, { questions: (i.questions as string[]) ?? [], links: i.links as string[] | undefined, provider, apiKey, signal: ctx.signal, onProgress: ctx.progress });
-    },
     media: async (i, ctx) => {
       if (i.mode === "pick") return pickForBeat(store, i, String(i.beatId), Number(i.index), { place: i.place as string | undefined, role: i.role as never, signal: ctx.signal, http: { signal: ctx.signal, onWait: (s, host) => ctx.log(`${host} limitou os downloads. Tentando de novo em ${s} s.`) } });
       if (i.mode === "music") {
@@ -316,10 +310,6 @@ export function createChannelToolDispatcher(deps: ChannelToolDeps) {
         const res = await addFacts(store, r.profileId, r.channelId, r.episodeId, r.facts);
         await store.setStage(r.profileId, r.channelId, r.episodeId, "research", { status: "ok", inputHash: String(res.summary.facts) });
         return res;
-      }
-      case "research_run": {
-        const r = ids.extend({ questions: z.array(z.string().max(300)).min(1).max(20), links: z.array(z.string().url()).max(30).optional(), provider: z.enum(["tavily", "brave", "exa", "perplexity"]).optional() }).parse(a);
-        return job("research", r);
       }
       case "research_get": {
         const r = ids.extend({ page: z.number().int().min(1).optional() }).parse(a);
