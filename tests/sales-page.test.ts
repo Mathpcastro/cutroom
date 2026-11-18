@@ -27,6 +27,16 @@ describe("página de vendas do Videosell (/videosell)", () => {
     for (const file of files) expect(existsSync(resolve("site/upsell/videos", file)), file).toBe(true);
   });
 
+  it("vende o canal dark com a IA que a pessoa já assina, com o mesmo episódio real do upsell", () => {
+    for (const word of ["Canais dark", "Claude", "ChatGPT", "YouTube", "TikTok", "Instagram", "2 Shorts"]) expect(sales).toContain(word);
+    for (const media of ["canal-episodio.mp4", "canal-short.mp4", "canal-folha.jpg", "canal-mcp.png"]) {
+      expect(sales).toContain(media);
+      expect(upsell).toContain(media);
+    }
+    expect(sales).toContain("O mercado que ninguém está explorando");
+    expect(sales).not.toMatch(/monetiza\w* garantid|publica\w* (sozinho|direto) no (YouTube|TikTok)/i);
+  });
+
   it("o upsell ancora no preço normal", () => {
     expect(upsell).toContain("R$ 147");
     expect(upsell).toContain("R$ 97");
