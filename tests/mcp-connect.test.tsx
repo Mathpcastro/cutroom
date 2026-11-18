@@ -36,7 +36,7 @@ describe("Usar pelo seu agente (MCP)", () => {
     });
     const text = () => window.document.getElementById("root")!.textContent ?? "";
     expect(text()).toContain("Usar pelo seu agente");
-    expect(text()).toContain("Faça tudo pelo chat, sem mexer no app");
+    expect(text()).toContain("Tudo pelo chat, sem mexer no app");
     expect(text()).not.toContain("precisa de busca");
     await act(async () => emit?.({ type: "mcp", reason: "search" }));
     await act(async () => { await Promise.resolve(); });

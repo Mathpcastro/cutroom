@@ -22,7 +22,7 @@ export function McpButton() {
       <Plug size={15} />
       <span>
         <b>{t("Usar pelo seu agente")}</b>
-        <small>{t("Faça tudo pelo chat, sem mexer no app")}</small>
+        <small>{t("Tudo pelo chat, sem mexer no app")}</small>
       </span>
     </button>
   );
