@@ -3,7 +3,7 @@ import { mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Beat, Script } from "../../../src/shared/channel";
 import type { SpeechResult } from "../voice";
-import { alignBeats, type AlignResult, type TimedWord, type Transcriber } from "./aligner";
+import { CUT_GAP, alignBeats, type AlignResult, type TimedWord, type Transcriber } from "./aligner";
 import type { ChannelStore } from "./channel-store";
 import { durationOf, ffmpeg } from "./ffmpeg";
 import { writeJsonAtomic } from "./fs-json";
@@ -125,6 +125,38 @@ export async function concatPieces(pieces: { file: string; from?: number; to?: n
     await ffmpeg(["-y", "-f", "concat", "-safe", "0", "-i", list, "-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le", output], { signal });
   } finally {
     await rm(list, { force: true });
+  }
+  return output;
+}
+
+/**
+ * Sample-exact join for ranges of files: `atrim` + `concat` filters. The concat demuxer's
+ * inpoint/outpoint on WAV cut at packet boundaries (tens of ms), which moved every old beat.
+ */
+export async function concatExact(pieces: { file: string; from?: number; to?: number }[], output: string, signal?: AbortSignal) {
+  const files = [...new Set(pieces.map((p) => p.file))];
+  const uses = new Map(files.map((f) => [f, pieces.filter((p) => p.file === f).length]));
+  const lines: string[] = [];
+  const labels = new Map<string, string[]>();
+  files.forEach((f, i) => {
+    const n = uses.get(f)!;
+    const outs = Array.from({ length: n }, (_, k) => `s${i}_${k}`);
+    labels.set(f, outs);
+    lines.push(`[${i}:a]aresample=44100,aformat=sample_fmts=s16:channel_layouts=mono${n > 1 ? `,asplit=${n}${outs.map((o) => `[${o}]`).join("")}` : `[${outs[0]}]`}`);
+  });
+  const parts = pieces.map((p, i) => {
+    const src = labels.get(p.file)!.shift()!;
+    const trim = p.from !== undefined || p.to !== undefined ? `atrim=${p.from !== undefined ? `start=${p.from.toFixed(6)}` : ""}${p.from !== undefined && p.to !== undefined ? ":" : ""}${p.to !== undefined ? `end=${p.to.toFixed(6)}` : ""},` : "";
+    lines.push(`[${src}]${trim}asetpts=PTS-STARTPTS[p${i}]`);
+    return `[p${i}]`;
+  });
+  lines.push(`${parts.join("")}concat=n=${parts.length}:v=0:a=1[out]`);
+  const script = `${output}.filter.txt`;
+  await writeFile(script, lines.join(";\n"), "utf8");
+  try {
+    await ffmpeg(["-y", ...files.flatMap((f) => ["-i", f]), "-filter_complex_script", script, "-map", "[out]", "-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le", output], { signal });
+  } finally {
+    await rm(script, { force: true });
   }
   return output;
 }
@@ -272,30 +304,92 @@ export async function redoBeats(store: ChannelStore, ids: Ids, speak: Speaker, v
     }
     files.set(b.id, wav);
   }
-  const pieces: { file: string; from?: number; to?: number }[] = [];
-  const g = {
-    same: await silence(dir, PARTIAL_GAPS.sameSection),
-    section: await silence(dir, PARTIAL_GAPS.newSection),
-    before: await silence(dir, PARTIAL_GAPS.beforeNew),
-  };
-  script.beats.forEach((b, i) => {
+  // Each piece knows where it lands in the rebuilt audio, so old beats keep their exact timing
+  // (shifted by whole frames) and only the new beats are transcribed — a re-alignment of the
+  // whole file moves every beat a few ms and would make every scene render again.
+  type Piece = { file: string; from?: number; to?: number; seconds: number; beatId?: string; fresh?: boolean };
+  const pieces: Piece[] = [];
+  const gap = async (seconds: number) => ({ file: await silence(dir, Math.round(seconds * 1000) / 1000), seconds: Math.round(seconds * 1000) / 1000 });
+  const originalSeconds = await durationOf(original);
+  const FRAME = 1 / 30;
+  const placed = () => pieces.reduce((sum, p) => sum + p.seconds, 0);
+  for (const [i, b] of script.beats.entries()) {
     const prev = script.beats[i - 1];
     const fresh = files.get(b.id);
     if (fresh) {
-      if (prev) pieces.push({ file: prev.section !== b.section ? g.section : g.before });
-      pieces.push({ file: fresh });
+      if (prev) pieces.push(await gap(prev.section !== b.section ? PARTIAL_GAPS.newSection : PARTIAL_GAPS.beforeNew));
+      pieces.push({ file: fresh, seconds: await durationOf(fresh), beatId: b.id, fresh: true });
       const next = script.beats[i + 1];
-      if (next && !files.has(next.id)) pieces.push({ file: next.section !== b.section ? g.section : g.same });
+      if (next && !files.has(next.id)) pieces.push(await gap(next.section !== b.section ? PARTIAL_GAPS.newSection : PARTIAL_GAPS.sameSection));
     } else if (b.timing) {
-      // Old beat: from its start in the original to the next old beat's start (pause included).
-      pieces.push({ file: original, from: b.timing.start, to: b.timing.cut + 0.06 });
+      // From its start in the original (the first beat from 0) to the next beat's start there.
+      const from = i === 0 ? 0 : b.timing.start;
+      // Old beats move by whole frames only: pad the pause before them up to the next frame.
+      const shift = placed() - from;
+      // Pauses are rounded to the millisecond, so "already on a frame" needs a tolerance.
+      const frames = shift / FRAME;
+      if (pieces.length && Math.abs(frames - Math.round(frames)) > 0.05) pieces.push(await gap((Math.ceil(frames) - frames) * FRAME));
+      const to = Math.min(b.timing.cut + CUT_GAP, originalSeconds);
+      pieces.push({ file: original, from, to, seconds: to - from, beatId: b.id });
     }
-  });
-  const rebuilt = await concatPieces(pieces, join(dir, "narracao.rebuilt.wav"), options.signal);
+  }
+  const rebuilt = await concatExact(pieces, join(dir, "narracao.rebuilt.wav"), options.signal);
   await rename(original, join(dir, `narracao.prev.wav`)).catch(() => undefined);
   await rename(rebuilt, original);
-  const aligned = await alignNarration(store, ids, transcribe, options);
-  return { redone: [...targets], spentChars: spent, ratio: aligned.ratio, changedBeats: aligned.changedBeats };
+  const total = await durationOf(original);
+  const planned = pieces.reduce((sum, p) => sum + p.seconds, 0);
+  if (Math.abs(total - planned) > 0.05) {
+    // The pieces did not land where planned: fall back to aligning the whole file.
+    const aligned = await alignNarration(store, ids, transcribe, options);
+    return { redone: [...targets], spentChars: spent, ratio: aligned.ratio, changedBeats: aligned.changedBeats };
+  }
+  // Timings: old beats shifted; new beats aligned on their own file.
+  let at = 0;
+  const timings = new Map<string, NonNullable<Beat["timing"]>>();
+  let ratioSum = 0;
+  let ratioN = 0;
+  for (const p of pieces) {
+    if (p.beatId) {
+      const b = script.beats.find((x) => x.id === p.beatId)!;
+      if (p.fresh) {
+        const words = await transcribe(p.file, { language: options.language, signal: options.signal });
+        const r = alignBeats([b], words, p.seconds);
+        ratioSum += r.ratio;
+        ratioN++;
+        const t = r.timings[b.id];
+        timings.set(b.id, { start: at + (t?.words[0]?.s ?? 0), end: at + (t?.end ?? p.seconds), cut: 0, words: (t?.words ?? []).map((w) => ({ t: w.t, s: w.s + at, e: w.e + at })) });
+      } else {
+        const old = b.timing!;
+        const delta = at - (p.from ?? 0);
+        timings.set(b.id, { start: old.start + delta, end: old.end + delta, cut: 0, words: old.words.map((w) => ({ t: w.t, s: w.s + delta, e: w.e + delta })) });
+      }
+    }
+    at += p.seconds;
+  }
+  const order = script.beats.filter((b) => timings.has(b.id));
+  order.forEach((b, i) => {
+    const t = timings.get(b.id)!;
+    const next = order[i + 1] ? timings.get(order[i + 1].id)! : undefined;
+    t.cut = next ? Math.max(t.end, next.start - CUT_GAP) : total;
+  });
+  const round3 = (n: number) => Math.round(n * 1000) / 1000;
+  const changed: string[] = [];
+  await store.mutateEpisodeFile(ids.profileId, ids.channelId, ids.episodeId, "script", () => {
+    throw new Error("sem roteiro");
+  }, (s: Script) => {
+    for (const b of s.beats) {
+      const t = timings.get(b.id);
+      if (!t) continue;
+      const next = { start: round3(t.start), end: round3(t.end), cut: round3(t.cut), words: t.words.map((w) => ({ t: w.t, s: round3(w.s), e: round3(w.e) })) };
+      const len = (x?: { start: number; cut: number }) => (x ? x.cut - x.start : -1);
+      if (!b.timing || b.isNew || targets.has(b.id) || Math.abs(len(b.timing) - len(next)) > FRAME + 1e-6) changed.push(b.id);
+      b.timing = next;
+      b.isNew = undefined;
+    }
+  });
+  const words = [...timings.values()].flatMap((t) => t.words.map((w) => ({ text: w.t, start: w.s, end: w.e })));
+  await writeJsonAtomic(join(dir, "words.json"), { duration: total, words, ratio: ratioN ? ratioSum / ratioN : 1, partial: true });
+  return { redone: [...targets], spentChars: spent, ratio: ratioN ? Math.round((ratioSum / ratioN) * 1000) / 1000 : 1, changedBeats: changed };
 }
 
 export type { TimedWord };

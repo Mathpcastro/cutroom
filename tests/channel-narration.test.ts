@@ -176,6 +176,15 @@ describe("narration end to end (fake voice, real FFmpeg)", () => {
     expect(s3!.beats.map((b) => b.id)).toEqual(["b_001", "b_004", "b_002", "b_003"]);
     expect(s3!.beats.every((b) => !b.isNew)).toBe(true);
     expect(s3!.beats[0].timing!.start).toBeCloseTo(before.start, 1);
+    // Old beats keep their exact length and move by whole frames: their scenes stay cached.
+    for (const id of ["b_001", "b_002", "b_003"]) {
+      const a = s2!.beats.find((b) => b.id === id)!.timing!;
+      const b = s3!.beats.find((x) => x.id === id)!.timing!;
+      if (id !== "b_001") expect(b.cut - b.start).toBeCloseTo(a.cut - a.start, 2);
+      const shiftFrames = (b.start - a.start) * 30;
+      expect(Math.abs(shiftFrames - Math.round(shiftFrames))).toBeLessThan(0.05);
+    }
+    expect(redo.changedBeats).toEqual(["b_001", "b_004"]);
     const total = await durationOf(join(store.episodeDir(ids.profileId, ids.channelId, ids.episodeId), "audio", "narracao.wav"));
     expect(total).toBeGreaterThan(out.durationSec);
   }, 120_000);
