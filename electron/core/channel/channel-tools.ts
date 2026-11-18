@@ -330,7 +330,14 @@ export function createChannelToolDispatcher(deps: ChannelToolDeps) {
       case "script_generate": {
         const r = ids.parse(a);
         const [ch, ep, research] = await Promise.all([store.getChannel(r.profileId, r.channelId), store.getEpisode(r.profileId, r.channelId, r.episodeId), store.readEpisodeFile(r.profileId, r.channelId, r.episodeId, "research")]);
-        return { brief: scriptBrief(ch, ep, research), next: "Escreva as falas seguindo o briefing e salve com script_save." };
+        const brief = scriptBrief(ch, ep, research);
+        if (!brief.facts.length)
+          return {
+            needsResearch: true,
+            next: "O episódio ainda não tem fatos com fonte. Pesquise na internet com a sua busca e grave com research_add_facts antes do roteiro. Se você não tem busca na web (IA dentro do Videosell), chame open_mcp_setup { reason: 'search' } e explique ao usuário que ele pode fazer tudo pelo agente local dele (Claude Code ou Codex) conectado por MCP.",
+            brief,
+          };
+        return { brief, next: "Escreva as falas seguindo o briefing e salve com script_save." };
       }
       case "script_save": {
         const r = ids.extend({ beats: z.array(beatInputSchema).min(1).max(600), sections: z.array(z.object({ id: z.string(), title: z.string() })).optional(), wpm: z.number().min(60).max(260).optional() }).parse(a);

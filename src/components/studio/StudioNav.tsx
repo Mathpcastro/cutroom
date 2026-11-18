@@ -7,6 +7,7 @@ import type { StudioProfile } from "../../shared/profile";
 import type { StudioThemePreference } from "./studioTheme";
 import { ConnectionBadge } from "./InstagramConnect";
 import { AiBadge } from "./AiConnect";
+import { McpButton } from "./McpConnect";
 import type { AppSnapshot } from "../../shared/types";
 
 interface StudioNavProps {
@@ -69,6 +70,7 @@ export function StudioNav({
         })}
       </nav>
       <div className="studio-sidebar-bottom">
+        <McpButton />
         <div className="sidebar-account">
           <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
           <ConnectionBadge onOpen={() => onPage("publish")} />

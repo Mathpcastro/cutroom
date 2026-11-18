@@ -850,6 +850,7 @@ describe("Claude loopback bridge", () => {
       "film_stills",
       "film_review",
       "open_studio",
+      "open_mcp_setup",
       "instagram_accounts",
       "schedule_reel",
       "schedule_reels_daily",

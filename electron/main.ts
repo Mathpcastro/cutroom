@@ -1020,6 +1020,18 @@ async function executeTool(
           .strict()
           .parse(a).id,
       ),
+    open_mcp_setup: (a) => {
+      const { reason } = z.object({ reason: z.enum(["search", "general"]).optional() }).strict().parse(a);
+      if (!window || window.isDestroyed()) throw new Error("A janela do Videosell está fechada.");
+      window.webContents.send("editor:event", { type: "mcp", reason: reason === "search" ? "search" : undefined });
+      if (window.isMinimized()) window.restore();
+      window.focus();
+      return {
+        opened: true,
+        message:
+          "A janela 'Usar pelo seu agente' está aberta no Videosell. Explique ao usuário: o Videosell não busca na internet; conectando o Videosell ao Claude Code ou ao Codex (uma vez), ele pode pedir tudo pelo chat do agente, que pesquisa com fontes e monta o vídeo aqui, sem precisar mexer no app.",
+      };
+    },
     open_studio: (a) => {
       const { tab } = z
         .object({

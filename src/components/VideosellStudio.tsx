@@ -34,6 +34,7 @@ import { FirstRun, firstRunDone } from "./studio/FirstRun";
 import { generateSalesReel } from "./studio/ReelCreator";
 import { useInstagramConnection } from "./studio/InstagramConnect";
 import { AiConnectDialog, aiPreferences, openAiConnect, useAiPreferences } from "./studio/AiConnect";
+import { McpDialog } from "./studio/McpConnect";
 import { useStudioTheme, type StudioThemePreference } from "./studio/studioTheme";
 import "./studio/studio.css";
 
@@ -647,6 +648,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         onThemePreference={(next: StudioThemePreference) => appearance.setPreference(next)}
       />
       <AiConnectDialog connection={state.connection} run={run} />
+      <McpDialog />
       <main className="studio-main" id="studio-main-content">
         {needsAttention > 0 && page !== "routine" && (
           <button type="button" className="pilot-attention global" onClick={() => setPage("routine")}>
