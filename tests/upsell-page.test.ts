@@ -264,6 +264,23 @@ describe("contrato da página pública de upsell Videosell", () => {
     expect(episode.querySelector(".fact a[href^='https://']")).not.toBeNull();
   });
 
+  it("é um estúdio com dois caminhos (canal ou produto) e três módulos num funil", () => {
+    const buttons = Array.from(document.querySelectorAll("[data-path-btn]"), (b) => b.getAttribute("data-path-btn"));
+    expect(buttons).toEqual(["canal", "produto"]);
+    expect(document.querySelectorAll('[data-only="canal"]').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll('[data-only="produto"]').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll("#modulos .module")).toHaveLength(3);
+  });
+
+  it("mostra pelo menos 6 casos reais de canal com IA, cada um com o post no X", () => {
+    const cases = Array.from(document.querySelectorAll("#casos .case-grid li"));
+    expect(cases.length).toBeGreaterThanOrEqual(6);
+    for (const item of cases) {
+      expect(item.querySelector("strong")?.textContent?.trim()).toBeTruthy();
+      expect(item.querySelector("a")?.getAttribute("href")).toMatch(/^https:\/\/x\.com\/\w+\/status\/\d+$/);
+    }
+  });
+
   it("traz as medições do teste e a conexão pelo MCP", () => {
     expect(document.querySelectorAll("#medicoes li").length).toBeGreaterThanOrEqual(3);
     expect(document.querySelector("#conectar img[src='videos/canal-mcp.png']")).not.toBeNull();

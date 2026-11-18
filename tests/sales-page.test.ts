@@ -33,7 +33,8 @@ describe("página de vendas do Videosell (/videosell)", () => {
       expect(sales).toContain(media);
       expect(upsell).toContain(media);
     }
-    expect(sales).toContain("O mercado que ninguém está explorando");
+    expect(sales).toContain("Estúdio de vídeo em código");
+    expect(sales).toContain('data-path-btn="produto"');
     expect(sales).not.toMatch(/monetiza\w* garantid|publica\w* (sozinho|direto) no (YouTube|TikTok)/i);
   });
 

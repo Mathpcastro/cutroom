@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Videosell · Canais dark feitos em código</title>
-    <meta name="description" content="Você pede no chat do Claude ou do ChatGPT e o Videosell monta o episódio em código: pesquisa com fonte, fotos reais com licença, cenas animadas, narração, 10+ minutos e 2 Shorts para YouTube, TikTok e Instagram. App para Windows, R$ 147 em pagamento único." />
+    <title>Videosell · Estúdio de vídeo em código</title>
+    <meta name="description" content="Estúdio de vídeo em código: a IA que você já paga (Claude ou ChatGPT) escreve e o Videosell filma. Canais dark que dão dinheiro, Reels com avatar e Motion que vendem o seu produto. App para Windows, R$ 147 em pagamento único." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Sora:wght@600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet" />
@@ -65,8 +65,8 @@
 
       /* Hero */
       .hero { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: 48px; align-items: center; padding-top: 24px; padding-bottom: 120px; }
-      h1 { font-size: clamp(36px, 4.4vw, 58px); line-height: 1.04; margin-bottom: 24px; }
-      h1 mark { color: var(--violet-deep); background: linear-gradient(transparent 62%, var(--lime) 62%); }
+      h1, .h1-like { font-size: clamp(36px, 4.4vw, 58px); line-height: 1.04; margin-bottom: 24px; }
+      .h1-like mark, h1 mark { color: var(--violet-deep); background: linear-gradient(transparent 62%, var(--lime) 62%); }
       .lead { max-width: 600px; margin-bottom: 30px; font-size: 20px; line-height: 1.55; color: #3a3742; }
       .lead i { font-style: normal; font-weight: 700; color: var(--ink); }
       .hero-media { position: relative; margin: 0 40px 56px 0; }
@@ -86,6 +86,15 @@
       .reel video { display: block; width: 100%; height: 100%; object-fit: cover; }
       .sound { position: absolute; left: 12px; top: 12px; min-width: 44px; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 999px; background: rgba(0,0,0,.72); color: #fff; font: 700 13px "Inter", sans-serif; cursor: pointer; }
 
+      /* Path switch: canal (default) or produto */
+      body[data-path="canal"] [data-only="produto"], body[data-path="produto"] [data-only="canal"] { display: none !important; }
+      .paths { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; padding: 6px; border-radius: 16px; background: var(--white); box-shadow: 0 6px 20px rgba(20,19,24,.08); }
+      .paths span { align-self: center; padding: 0 8px 0 10px; font-size: 13px; font-weight: 700; color: var(--muted); }
+      .paths button { min-height: 44px; padding: 10px 16px; border: 0; border-radius: 12px; background: none; color: var(--ink); font: 700 15px "Inter", sans-serif; cursor: pointer; }
+      .paths button[aria-pressed="true"] { background: var(--ink); color: var(--lime); }
+      .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; max-width: 520px; margin-left: auto; }
+      .duo .tall:last-child { transform: translateY(40px); }
+
       /* Problem */
       .problem { background: var(--ink); color: #fff; }
       .problem h2 em { color: var(--lime); }
@@ -104,6 +113,31 @@
       .flow p { font-size: 16px; color: var(--muted); }
       .flow li + li::before { content: "→"; position: absolute; left: -20px; top: 50%; transform: translate(-50%, -50%); font: 800 26px "Sora", sans-serif; color: var(--violet); }
       .gates { margin-top: 26px; padding: 16px 20px; border-radius: 14px; background: #ece8fb; font-size: 16px; }
+
+      /* Cases from X */
+      .cases { background: var(--white); }
+      .case-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; list-style: none; padding: 0; }
+      .case-grid li { display: flex; flex-direction: column; padding: 24px; border: 2px solid var(--ink); border-radius: 20px; background: var(--paper); }
+      .case-grid strong { display: block; font: 800 36px/1.05 "Sora", sans-serif; letter-spacing: -.03em; color: var(--violet-deep); }
+      .case-grid p { flex: 1; margin: 10px 0 16px; font-size: 16px; color: #34313c; }
+      .case-grid .who { font-size: 14px; font-weight: 700; color: var(--ink); }
+      .case-grid .who a { margin-left: 6px; font-weight: 600; color: var(--violet-deep); }
+      .case-grid .flag { display: inline-block; margin-bottom: 10px; padding: 3px 10px; border-radius: 999px; background: var(--lime); font-size: 12px; font-weight: 800; }
+      .br { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 26px; font-size: 15px; }
+      .br b { margin-right: 4px; }
+      .br a { padding: 8px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 600; text-decoration: none; }
+      .lesson { margin-top: 30px; padding: 22px 24px; border-left: 4px solid var(--violet); border-radius: 0 16px 16px 0; background: #ece8fb; font-size: 18px; }
+
+      /* Modules */
+      .modules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+      .module { display: flex; flex-direction: column; gap: 14px; }
+      .module .tall, .module .reel { width: min(260px, 100%); }
+      .module .tag-line { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--violet-deep); }
+      .module h3 { font-size: 24px; }
+      .module p { font-size: 16px; color: var(--muted); }
+      .funnel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 36px; padding: 18px 20px; border-radius: 16px; background: var(--ink); color: #fff; font-weight: 700; }
+      .funnel span { padding: 6px 12px; border-radius: 999px; background: var(--ink-2); }
+      .funnel i { font-style: normal; color: var(--lime); }
 
       /* Real episode */
       .episode { background: var(--white); }
@@ -162,8 +196,6 @@
       .rail:hover .track, .rail:focus-within .track, .rail.paused .track { animation-play-state: paused; }
       @keyframes rail { to { transform: translateX(calc(-50% - 11px)); } }
       .slide h3 { font-size: 16px; }
-      .show-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .45fr) minmax(0, .45fr); gap: 24px; align-items: end; margin-bottom: 40px; }
-      .show-grid .sub { margin-bottom: 0; }
 
       /* Offer */
       .offer { background: linear-gradient(180deg, var(--paper), #ece8fb); }
@@ -202,9 +234,9 @@
         .hero-media { margin: 0 24px 48px 0; }
         .hero-media .tall { right: -24px; bottom: -48px; width: 34%; border-width: 5px; border-radius: 22px; }
         .caption { max-width: 60%; margin-top: 14px; }
-        .flow, .nets { grid-template-columns: minmax(0, 1fr); }
-        .show-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-        .show-grid > div { grid-column: 1 / -1; }
+        .flow, .nets, .case-grid { grid-template-columns: minmax(0, 1fr); }
+        .modules { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+        .duo { margin: 0 auto 40px; }
         .flow li + li::before { left: 50%; top: -12px; transform: translate(-50%, -50%) rotate(90deg); }
         .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .auto-points { grid-template-columns: minmax(0, 1fr); }
@@ -233,7 +265,7 @@
       }
     </style>
   </head>
-  <body>
+  <body data-path="canal">
     <header class="wrap site-header">
       <a class="brand" href="#inicio" aria-label="Videosell — início">
         <svg width="40" height="40" viewBox="0 0 64 64" fill="none" aria-hidden="true">
@@ -244,7 +276,8 @@
         <span class="wordmark">Video<span>sell</span></span>
       </a>
       <nav class="top-nav" aria-label="Seções">
-        <a href="#como-funciona">Como funciona</a>
+        <a href="#casos">Casos</a>
+        <a href="#modulos">Módulos</a>
         <a href="#episodio">Episódio real</a>
         <a href="#plataformas">Plataformas</a>
         <a class="nav-cta" href="#oferta">Quero o Videosell</a>
@@ -254,21 +287,35 @@
     <!-- 1. LEAD -->
     <section class="hero wrap" id="inicio" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">YouTube · Shorts · TikTok · Reels</p>
-        <h1 id="hero-title">Canais dark feitos em código. <mark>O mercado que ninguém está explorando.</mark></h1>
-        <p class="lead">
-          Enquanto todo mundo paga caro por vídeo de IA genérico, você pede no chat
-          do Claude ou do ChatGPT, a IA que você já assina: <i>“faz o próximo
-          episódio”</i>. O Videosell entrega pronto: pesquisa com fonte, fotos reais,
-          cenas animadas, narração, 10+ minutos e 2 Shorts. Barato de produzir,
-          fácil de editar, no automático. <b>Acerte o formato e a monetização vira
-          questão de tempo.</b>
-        </p>
+        <p class="eyebrow">Estúdio de vídeo em código</p>
+        <div class="paths" role="group" aria-label="O que você quer fazer com vídeo?">
+          <span>Eu quero:</span>
+          <button type="button" data-path-btn="canal" aria-pressed="true">Um canal que dá dinheiro</button>
+          <button type="button" data-path-btn="produto" aria-pressed="false">Vender o meu produto</button>
+        </div>
+        <div data-only="canal">
+          <h1 id="hero-title">Canais dark que dão dinheiro, <mark>feitos pela IA que você já paga.</mark></h1>
+          <p class="lead">
+            Você pede no chat do Claude ou do ChatGPT: <i>“faz o próximo episódio”</i>.
+            O Videosell entrega em código: pesquisa com fonte, fotos reais, animação,
+            narração, 10+ minutos e 2 Shorts. O canal ganha com as views e com o que
+            você vende na descrição. <b>Acerte o formato e a monetização vira questão
+            de tempo.</b>
+          </p>
+        </div>
+        <div data-only="produto">
+          <h2 class="h1-like">Vídeos que vendem o seu produto, <mark>sem gravar e sem editar.</mark></h2>
+          <p class="lead">
+            Um avatar de IA apresenta o seu produto com a sua voz, o Motion mostra ele
+            funcionando e um canal dark traz público novo toda semana. Tudo feito em
+            código pela IA que você já paga. <b>Você pede no chat, o Videosell entrega.</b>
+          </p>
+        </div>
         <a class="cta" href="#oferta">Quero o Videosell <small>R$ 147</small></a>
         <p class="fine">Pagamento único · App para Windows · Funciona com Claude (Pro ou Max) ou ChatGPT (Plus ou Pro) · 7 dias de garantia</p>
-        <a class="no" href="#episodio">Ver um episódio feito do zero ↓</a>
+        <a class="no" href="#casos">Ver quem já está ganhando com isso ↓</a>
       </div>
-      <figure class="hero-media">
+      <figure class="hero-media" data-only="canal">
         <div class="screen16">
           <video src="videos/canal-episodio.mp4" poster="videos/canal-episodio.jpg" muted loop playsinline preload="metadata" data-loop aria-label="Trecho de um episódio longo feito no Videosell"></video>
           <span class="tag">Episódio longo · 16:9</span>
@@ -279,10 +326,20 @@
         </div>
         <figcaption class="caption">↑ Episódio e Short reais, feitos de ponta a ponta pelo agente através do Videosell. Nenhuma edição manual.</figcaption>
       </figure>
+      <figure class="duo" data-only="produto">
+        <div class="tall">
+          <video src="videos/avatar.mp4" poster="videos/avatar.jpg" muted loop playsinline preload="none" data-loop aria-label="Reels com avatar de IA"></video>
+          <span class="tag">Avatar</span>
+        </div>
+        <div class="tall">
+          <video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="none" data-loop aria-label="Motion do produto funcionando"></video>
+          <span class="tag">Motion</span>
+        </div>
+      </figure>
     </section>
 
     <!-- 2. HISTÓRIA / PROBLEMA -->
-    <section class="problem" aria-labelledby="problem-title">
+    <section class="problem" aria-labelledby="problem-title" data-only="canal">
       <div class="wrap narrow">
         <h2 id="problem-title">Todo mundo está brigando pelo mesmo vídeo de IA. <em>O dinheiro está no formato que ninguém consegue produzir.</em></h2>
         <div class="prose">
@@ -307,6 +364,77 @@
             ninguém chegou.
           </p>
         </div>
+      </div>
+    </section>
+
+    <section class="problem" aria-labelledby="problem-product-title" data-only="produto">
+      <div class="wrap narrow">
+        <h2 id="problem-product-title">O seu produto é bom. <em>O problema é que quase ninguém viu.</em></h2>
+        <div class="prose">
+          <p>
+            Quem nunca ouviu falar de você te descobre por vídeo: YouTube, Shorts,
+            TikTok, Reels. Só que vídeo cobra caro: roteiro, gravação, edição, legenda,
+            <b>todo dia</b>. E ferramenta de avatar e de animação cobra por mês, cada uma
+            a sua.
+          </p>
+          <p>
+            Enquanto isso, você paga o Claude ou o ChatGPT todo mês… e usa só para
+            escrever texto.
+          </p>
+          <p class="pull">
+            Quem posta todo dia aparece. Agora quem posta todo dia pode ser a sua IA.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2b. CASOS REAIS (X) -->
+    <section class="cases" id="casos" aria-labelledby="cases-title">
+      <div class="wrap">
+        <p class="eyebrow">Quem entrou cedo</p>
+        <h2 id="cases-title">Canal dark com IA <em>já está pagando.</em></h2>
+        <p class="sub">Pelas views e pelo que se vende na descrição. Lá fora isso já virou negócio; em português, o espaço ainda está aberto.</p>
+        <ul class="case-grid">
+          <li>
+            <strong>≈ US$ 20 mil/mês</strong>
+            <p>Canal de finanças feito de <b>desenho de palito</b>, estilo Paint: cerca de 1 milhão de views por mês, só com anúncio. O estilo foi refeito com o Claude Code, sem editar nada.</p>
+            <span class="who">@maestroslay · jun/2026 <a href="https://x.com/maestroslay/status/2065887796204593661" target="_blank" rel="noopener noreferrer">ver post</a></span>
+          </li>
+          <li>
+            <strong>US$ 10.891</strong>
+            <p>Nos primeiros 90 dias de um canal com menos de 5 mil inscritos. Quem achou o nicho foi o <b>Claude Code</b>, analisando dados do YouTube.</p>
+            <span class="who">@BIGMayrr · set/2026 <a href="https://x.com/BIGMayrr/status/2096548578462208304" target="_blank" rel="noopener noreferrer">ver post</a></span>
+          </li>
+          <li>
+            <strong>US$ 21.534/mês</strong>
+            <p>Canal faceless feito com IA: 1,2 milhão de inscritos e 410 milhões de views só nos 6 maiores Shorts.</p>
+            <span class="who">@igus_ai · out/2026 <a href="https://x.com/igus_ai/status/2112233610241884615" target="_blank" rel="noopener noreferrer">ver post</a></span>
+          </li>
+          <li>
+            <span class="flag">Brasileiro</span>
+            <strong>R$ 862</strong>
+            <p>A cada 10 mil views, num canal dark de documentários feito para a França, recém-monetizado. Os vídeos novos fazem de 5 a 12 mil views.</p>
+            <span class="who">@stangszz · set/2026 <a href="https://x.com/stangszz/status/2100573103151596025" target="_blank" rel="noopener noreferrer">ver post</a></span>
+          </li>
+          <li>
+            <strong>US$ 1,6 milhão</strong>
+            <p>Em 93 dias, numa página de receitas 100% IA no TikTok, <b>vendendo um livro de US$ 25 no link</b>. 55 milhões de views, sem rosto e sem cozinha.</p>
+            <span class="who">@spwfeijen · ago/2025 <a href="https://x.com/spwfeijen/status/1953119219945554163" target="_blank" rel="noopener noreferrer">ver post</a></span>
+          </li>
+          <li>
+            <strong>9 dias</strong>
+            <p>Foi o tempo para um canal faceless monetizar e fazer US$ 4.917, com o passo a passo mostrado em vídeo.</p>
+            <span class="who">@0xAI42exe · nov/2026 <a href="https://x.com/0xAI42exe/status/2121750273958011322" target="_blank" rel="noopener noreferrer">ver post</a></span>
+          </li>
+        </ul>
+        <p class="br">
+          <b>No Brasil, já começou:</b>
+          <a href="https://x.com/binhara/status/2123031180790403082" target="_blank" rel="noopener noreferrer">13 canais dark tocados com IA</a>
+          <a href="https://x.com/pdralnk/status/2120525626188898426" target="_blank" rel="noopener noreferrer">canais dark “pro Claude tocar”</a>
+          <a href="https://x.com/nowdrago/status/2116302119800045958" target="_blank" rel="noopener noreferrer">10 canais dark abrindo de uma vez</a>
+        </p>
+        <p class="lesson"><b>Repare no primeiro caso:</b> o canal de US$ 20 mil por mês é feito de desenho de palito. O que paga não é efeito caro, é <b>formato certo publicado com constância</b>. É exatamente o que o vídeo em código entrega.</p>
+        <p class="note">Posts públicos no X, com os números publicados pelos próprios autores. Coletados em 18/11/2026.</p>
       </div>
     </section>
 
@@ -339,6 +467,36 @@
           </li>
         </ol>
         <p class="gates"><b>Produção 100% automática.</b> Você só bate o olho em 3 momentos: roteiro, quadros e vídeo final.</p>
+      </div>
+    </section>
+
+    <!-- 3b. TRÊS MÓDULOS, UM FUNIL -->
+    <section class="modules-wrap" id="modulos" aria-labelledby="modules-title" style="padding-top: 0">
+      <div class="wrap">
+        <p class="eyebrow">Um estúdio, três módulos</p>
+        <h2 id="modules-title">Atrai, vende e mostra. <em>Um funil inteiro em vídeo.</em></h2>
+        <p class="sub">Cada módulo sozinho já dá resultado. Juntos, viram uma máquina: o canal traz o público, o avatar vende, o Motion prova e o link na descrição fecha.</p>
+        <div class="modules">
+          <div class="module">
+            <span class="tag-line">1 · Atrai e paga</span>
+            <div class="tall"><video src="videos/canal-short.mp4" poster="videos/canal-short.jpg" muted loop playsinline preload="none" data-loop aria-label="Short de um canal dark"></video></div>
+            <h3>Canal dark</h3>
+            <p>Episódios de 10+ minutos e Shorts para YouTube, TikTok e Reels. Ganha com as views e com o link na descrição.</p>
+          </div>
+          <article class="case module">
+            <span class="tag-line">2 · Vende</span>
+            <div class="reel"><video src="videos/avatar.mp4" poster="videos/avatar.jpg" muted loop playsinline preload="metadata" data-autoplay></video></div>
+            <h3>Avatar com IA</h3>
+            <p>Um apresentador de IA com a sua voz fala do seu produto, do seu curso ou do seu link de afiliado.</p>
+          </article>
+          <article class="case module">
+            <span class="tag-line">3 · Mostra</span>
+            <div class="reel"><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="metadata" data-autoplay></video></div>
+            <h3>Motion</h3>
+            <p>O app, a página ou o produto funcionando, animado em código, em 20 segundos.</p>
+          </article>
+        </div>
+        <p class="funnel"><span>Views pagam</span><i>→</i><span>público chega</span><i>→</i><span>avatar convence</span><i>→</i><span>Motion prova</span><i>→</i><span>venda no link da descrição</span></p>
       </div>
     </section>
 
@@ -484,23 +642,20 @@ IBGE — Cidades e Estados (2022)
       </div>
     </section>
 
-    <!-- 5b. REELS DE PRODUTO -->
+    <!-- 5b. MAIS FORMATOS -->
     <section class="showcase" aria-labelledby="show-title">
-      <div class="wrap show-grid">
-        <div>
-          <p class="eyebrow">Vem junto</p>
-          <h2 id="show-title">E quando quiser vender algo: <em>Reels com avatar.</em></h2>
-          <p class="sub">O mesmo app faz Reels curtos para o seu produto ou serviço, com avatar de IA e a sua voz. Todos estes foram feitos no Videosell. Toque em um para ouvir.</p>
-        </div>
-        <article class="case"><h3>Avatar <span>apresentador</span></h3><div class="reel"><video src="videos/avatar.mp4" poster="videos/avatar.jpg" muted loop playsinline preload="metadata" data-autoplay></video></div></article>
-        <article class="case"><h3>App <span>funcionando</span></h3><div class="reel"><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="metadata" data-autoplay></video></div></article>
+      <div class="wrap">
+        <p class="eyebrow">E mais formatos prontos</p>
+        <h2 id="show-title">Aula, explicação, história, <em>jogo em pixel art.</em></h2>
+        <p class="sub">Todos feitos no Videosell, com a minha voz. Passe o mouse para pausar e toque em um para ouvir.</p>
       </div>
-      <div class="rail" tabindex="0" aria-label="Reels feitos no Videosell">
+      <div class="rail" tabindex="0" aria-label="Mais formatos feitos no Videosell">
         <article class="case slide"><h3>Aula com <span>avatar</span></h3><div class="reel"><video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
         <article class="case slide"><h3>Explicação <span>animada</span></h3><div class="reel"><video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
         <article class="case slide"><h3>Reels de <span>mentoria</span></h3><div class="reel"><video src="videos/mentoria.mp4" poster="videos/mentoria.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
         <article class="case slide"><h3>“E se…?”</h3><div class="reel"><video src="videos/e-se.mp4" poster="videos/e-se.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
         <article class="case slide"><h3>Jogo em <span>pixel art</span></h3><div class="reel"><video src="videos/pixel.mp4" poster="videos/pixel.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
+        <article class="case slide"><h3>Voo pela <span>landing page</span></h3><div class="reel"><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
       </div>
     </section>
 
@@ -508,18 +663,19 @@ IBGE — Cidades e Estados (2022)
     <section class="offer" id="oferta" aria-labelledby="offer-title">
       <div class="wrap narrow">
         <div class="offer-box">
-          <p class="eyebrow">Tudo em um app</p>
+          <p class="eyebrow">O estúdio completo</p>
           <h2 id="offer-title">Leve o Videosell hoje</h2>
           <ul class="stack">
             <li><span>App Videosell para Windows, com todas as atualizações</span></li>
-            <li><span>Estúdio de Canais: pesquisa com fonte, roteiro em falas, narração, cenas animadas, episódio de 10+ min, revisão por quadros, pacote e 2 Shorts</span></li>
+            <li><span><b>Módulo Canal dark:</b> pesquisa com fonte, roteiro, narração, cenas animadas, episódio de 10+ min, revisão por quadros, pacote e 2 Shorts</span></li>
+            <li><span><b>Módulo Avatar:</b> apresentador de IA com a sua voz, em vários formatos de Reels</span></li>
+            <li><span><b>Módulo Motion:</b> o seu produto funcionando, animado em código</span></li>
             <li><span>Conexão com Claude Code, Codex e o app do Claude, com o guia que ensina o seu agente a fazer tudo</span></li>
-            <li><span>Fotos e vídeos com licença (Wikimedia Commons, Openverse, Pexels, Pixabay) e crédito automático</span></li>
-            <li><span>Narração com Kokoro local (offline, sem créditos), API da ElevenLabs ou da OpenAI, ou a sua gravação</span></li>
-            <li><span>Reels com avatar de IA, postagem e agendamento no Instagram</span></li>
+            <li><span>Fotos, vídeos e músicas com licença e crédito automático; narração com Kokoro local, ElevenLabs, OpenAI ou a sua gravação</span></li>
+            <li><span>Postagem e agendamento no Instagram</span></li>
           </ul>
           <div class="price">
-            <span class="per">Ferramentas de vídeo com IA cobram por mês e por minuto gerado. Aqui você paga uma vez e usa a IA que já assina.</span>
+            <span class="per">Um editor cobra por vídeo. Ferramenta de avatar e de animação cobra por mês, cada uma. Aqui é um pagamento só, e a IA você já paga.</span>
             <strong>R$ 147</strong>
             <span>Pagamento único · sem mensalidade · sem crédito por vídeo</span>
           </div>
@@ -538,6 +694,7 @@ IBGE — Cidades e Estados (2022)
     <section class="faq" aria-labelledby="faq-title">
       <div class="wrap narrow">
         <h2 id="faq-title">Antes de decidir</h2>
+        <details><summary>Como o canal dá dinheiro?</summary><p>De dois jeitos: com as views, quando o canal entra no programa de parcerias do YouTube, e com o que você vende no link da descrição: o seu produto, um curso ou um link de afiliado. O avatar e o Motion fazem os vídeos que vendem.</p></details>
         <details><summary>Preciso pagar outra IA?</summary><p>Não. Você usa a assinatura que já tem: Claude (Pro ou Max), com o Claude Code, ou ChatGPT (Plus ou Pro), com o Codex. O Videosell não cobra crédito por vídeo.</p></details>
         <details><summary>Preciso saber programar?</summary><p>Não. “Em código” é como o vídeo é feito por dentro. Você copia uma configuração uma vez, clica em “Ensinar o meu agente” e conversa no chat.</p></details>
         <details><summary>Serve para qualquer nicho?</summary><p>Qualquer nicho com assunto para pesquisar: cidades, curiosidades, história, finanças, tecnologia, ciência, esportes, mistérios. Se dá para contar com fatos, dá para virar canal.</p></details>
@@ -650,6 +807,18 @@ IBGE — Cidades e Estados (2022)
         { threshold: 0.25 },
       );
       document.querySelectorAll("video[data-loop]").forEach((video) => loops.observe(video));
+    </script>
+    <script>
+      // Caminho do visitante: canal (padrão) ou produto. ?p=produto abre direto no segundo.
+      (function () {
+        var buttons = Array.from(document.querySelectorAll("[data-path-btn]"));
+        function set(path) {
+          document.body.setAttribute("data-path", path);
+          buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-path-btn") === path)); });
+        }
+        buttons.forEach(function (b) { b.addEventListener("click", function () { set(b.getAttribute("data-path-btn")); }); });
+        if (new URLSearchParams(location.search).get("p") === "produto") set("produto");
+      })();
     </script>
     <script>
       // Link do checkout da Cakto: cole aqui e todos os botões de compra passam a usá-lo.
