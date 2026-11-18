@@ -10,9 +10,8 @@ const ffprobePath = ffprobeStatic.path;
 
 // Every video the page plays, with its poster (the page is the source of truth).
 const page = readFileSync(resolve("site/upsell/index.html"), "utf8");
-// Reels com som (botão "Ouvir") e trechos mudos do episódio de canal (data-loop).
+// Trechos audíveis do episódio de vitrine e amostras dos bônus.
 const names = [...new Set([...page.matchAll(/<video src="videos\/([\w-]+)\.mp4"[^>]*data-autoplay/g)].map((m) => m[1]))];
-const loops = [...new Set([...page.matchAll(/<video src="videos\/([\w-]+)\.mp4"[^>]*data-loop/g)].map((m) => m[1]))];
 
 async function probe(file: string) {
   const { stdout } = await execFile(ffprobePath, [
@@ -32,7 +31,7 @@ async function probe(file: string) {
 
 describe("vídeos reais da página de upsell", { timeout: 60_000 }, () => {
   it("a página toca os vídeos gerados pelo motor novo", () => {
-    expect(names).toEqual(expect.arrayContaining(["avatar", "professor", "ui-motion", "mentoria", "kurzgesagt"]));
+    expect(names).toEqual(expect.arrayContaining(["canal-episodio", "canal-short", "avatar", "ui-motion"]));
   });
 
   for (const name of names) {
@@ -40,7 +39,8 @@ describe("vídeos reais da página de upsell", { timeout: 60_000 }, () => {
       const info = await probe(resolve(`site/upsell/videos/${name}.mp4`));
       const video = info.streams.find((stream) => stream.codec_type === "video")!;
       const audio = info.streams.find((stream) => stream.codec_type === "audio");
-      expect(video.width! * 16).toBe(video.height! * 9);
+      const aspect = name === "canal-episodio" ? 16 / 9 : 9 / 16;
+      expect(video.width! / video.height!).toBeCloseTo(aspect, 6);
       expect(video.width).toBeGreaterThanOrEqual(540);
       expect(video.avg_frame_rate).toBe("30/1");
       expect(audio?.sample_rate).toBe("48000");
@@ -53,24 +53,6 @@ describe("vídeos reais da página de upsell", { timeout: 60_000 }, () => {
         probe(resolve(`site/upsell/videos/${name}.jpg`)),
       ]);
       const v = clip.streams.find((stream) => stream.codec_type === "video")!;
-      expect(poster.streams[0]).toMatchObject({ width: v.width, height: v.height });
-    });
-  }
-
-  it("a página mostra o episódio de canal (16:9) e o Short (9:16)", () => {
-    expect(loops).toEqual(expect.arrayContaining(["canal-episodio", "canal-short"]));
-  });
-
-  for (const name of loops) {
-    it(`${name}: trecho mudo 16:9 ou 9:16, 30 fps, com pôster do mesmo tamanho`, async () => {
-      const [clip, poster] = await Promise.all([
-        probe(resolve(`site/upsell/videos/${name}.mp4`)),
-        probe(resolve(`site/upsell/videos/${name}.jpg`)),
-      ]);
-      const v = clip.streams.find((stream) => stream.codec_type === "video")!;
-      expect([v.width! * 9 === v.height! * 16, v.width! * 16 === v.height! * 9]).toContain(true);
-      expect(v.avg_frame_rate).toBe("30/1");
-      expect(Number(clip.format.duration)).toBeGreaterThan(10);
       expect(poster.streams[0]).toMatchObject({ width: v.width, height: v.height });
     });
   }

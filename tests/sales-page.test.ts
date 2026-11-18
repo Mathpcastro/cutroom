@@ -28,13 +28,15 @@ describe("página de vendas do Videosell (/videosell)", () => {
   });
 
   it("vende o canal dark com a IA que a pessoa já assina, com o mesmo episódio real do upsell", () => {
-    for (const word of ["Canais dark", "Claude", "ChatGPT", "YouTube", "TikTok", "Instagram", "2 Shorts"]) expect(sales).toContain(word);
+    for (const word of ["canal dark", "Claude", "ChatGPT", "YouTube", "TikTok", "Instagram", "2 Shorts"]) expect(sales).toContain(word);
     for (const media of ["canal-episodio.mp4", "canal-short.mp4", "canal-folha.jpg", "canal-mcp.png"]) {
       expect(sales).toContain(media);
       expect(upsell).toContain(media);
     }
     expect(sales).toContain("Estúdio de vídeo em código");
-    expect(sales).toContain('data-path-btn="produto"');
+    expect(sales).not.toMatch(/data-path|data-only=/);
+    expect(sales.slice(sales.indexOf('id="oferta"'))).toContain("Bônus 1 · Avatar de IA");
+    expect(sales.slice(sales.indexOf('id="oferta"'))).toContain("Bônus 3 · Motion em código");
     expect(sales).not.toMatch(/monetiza\w* garantid|publica\w* (sozinho|direto) no (YouTube|TikTok)/i);
   });
 

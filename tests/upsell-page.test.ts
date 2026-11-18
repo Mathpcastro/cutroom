@@ -255,8 +255,8 @@ describe("contrato da página pública de upsell Videosell", () => {
 
   it("mostra um episódio real: trecho 16:9, Short, folha de quadros, 3 thumbs e o pacote com FONTES", async () => {
     const episode = document.querySelector("#episodio")!;
-    expect(episode.querySelector("video[src='videos/canal-episodio.mp4']")).not.toBeNull();
-    expect(episode.querySelector("video[src='videos/canal-short.mp4']")).not.toBeNull();
+    expect(document.querySelector("#inicio video[src='videos/canal-episodio.mp4'][data-autoplay]")).not.toBeNull();
+    expect(document.querySelector("#inicio video[src='videos/canal-short.mp4'][data-autoplay]")).not.toBeNull();
     expect(episode.querySelector("img[src='videos/canal-folha.jpg']")).not.toBeNull();
     expect(episode.querySelectorAll(".thumbs img")).toHaveLength(3);
     const pkg = episode.querySelector(".pkg")?.textContent ?? "";
@@ -264,21 +264,24 @@ describe("contrato da página pública de upsell Videosell", () => {
     expect(episode.querySelector(".fact a[href^='https://']")).not.toBeNull();
   });
 
-  it("é um estúdio com dois caminhos (canal ou produto) e três módulos num funil", () => {
-    const buttons = Array.from(document.querySelectorAll("[data-path-btn]"), (b) => b.getAttribute("data-path-btn"));
-    expect(buttons).toEqual(["canal", "produto"]);
-    expect(document.querySelectorAll('[data-only="canal"]').length).toBeGreaterThan(0);
-    expect(document.querySelectorAll('[data-only="produto"]').length).toBeGreaterThan(0);
-    expect(document.querySelectorAll("#modulos .module")).toHaveLength(3);
+  it("vende uma oferta e reserva os cinco bônus para o bloco de compra", () => {
+    expect(document.querySelector("[data-path], [data-path-btn], [data-only], #modulos")).toBeNull();
+    const offer = document.querySelector("#oferta")!;
+    expect(offer.querySelectorAll(".stack li")).toHaveLength(5);
+    expect(offer.querySelector('video[src="videos/avatar.mp4"]')).not.toBeNull();
+    expect(offer.querySelector('video[src="videos/ui-motion.mp4"]')).not.toBeNull();
+    expect(offer.querySelector(".price s")?.textContent).toBe("R$ 147");
+    expect(document.querySelector("#inicio h1")?.textContent).toContain("canal dark");
   });
 
-  it("mostra pelo menos 6 casos reais de canal com IA, cada um com o post no X", () => {
-    const cases = Array.from(document.querySelectorAll("#casos .case-grid li"));
-    expect(cases.length).toBeGreaterThanOrEqual(6);
-    for (const item of cases) {
-      expect(item.querySelector("strong")?.textContent?.trim()).toBeTruthy();
-      expect(item.querySelector("a")?.getAttribute("href")).toMatch(/^https:\/\/x\.com\/\w+\/status\/\d+$/);
+  it("leva aos vídeos originais dos casos de mercado e distingue o piloto do produto", () => {
+    const links = Array.from(document.querySelectorAll("#casos .case-grid a"));
+    expect(links).toHaveLength(3);
+    for (const item of links) {
+      expect(item.textContent).toContain("vídeo");
+      expect(item.getAttribute("href")).toMatch(/^https:\/\/x\.com\/\w+\/status\/\d+$/);
     }
+    expect(document.querySelector("#inicio .caption")?.textContent).toContain("piloto de Niterói");
   });
 
   it("traz as medições do teste e a conexão pelo MCP", () => {
@@ -287,7 +290,7 @@ describe("contrato da página pública de upsell Videosell", () => {
   });
 
   it("promessa forte sem prometer o que o app não faz", () => {
-    expect(visibleText).toContain("a monetização vira questão de tempo");
+    expect(visibleText).toContain("programa de parcerias do YouTube");
     expect(visibleText).not.toMatch(/monetiza\w* garantid|publica\w* (sozinho|direto) no (YouTube|TikTok)/i);
   });
 
