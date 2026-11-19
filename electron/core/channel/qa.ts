@@ -1,5 +1,5 @@
-import { mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
 import { TEXT_SCENES, type Beat, type Channel, type Licenses, type Research, type Script } from "../../../src/shared/channel";
 import { runFilmWorker, type FilmRunner } from "../film";
 import { wordCheck, type Transcriber } from "./aligner";
@@ -151,19 +151,48 @@ export async function silenceCheck(file: string, signal?: AbortSignal): Promise<
 
 // ---------- sheets ----------
 
-const fontArg = (file: string) => file.replace(/\\/g, "/").replace(/:/g, "\\\\:");
+const assTime = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.floor(sec / 60) % 60).padStart(2, "0")}:${(sec % 60).toFixed(2).padStart(5, "0")}`;
+const assText = (text: string) => text.replace(/[{}\\]/g, " ").replace(/\s+/g, " ").trim();
 
-/** Numbered sheet: rows of `cols` frames (scene number + point), each at `w`×`h`. */
+/**
+ * Numbered sheet: rows of `cols` frames (scene number + point), each at `w`×`h`.
+ * The labels are burned with libass (`ass` filter), not `drawtext`: the FFmpeg shipped for
+ * macOS has no freetype/drawtext, while libass is present on every platform (Shorts use it).
+ */
 export async function numberedSheet(frames: { file: string; label: string }[], output: string, o: { w: number; h: number; cols: number; font: string; signal?: AbortSignal }) {
   const rows = Math.ceil(frames.length / o.cols);
-  const inputs = frames.flatMap((f) => ["-i", f.file]);
-  const font = fontArg(o.font);
-  const parts = frames.map((f, i) => `[${i}:v]scale=${o.w}:${o.h}:force_original_aspect_ratio=decrease,pad=${o.w}:${o.h}:(ow-iw)/2:(oh-ih)/2:color=0x111111,setsar=1,drawtext=fontfile='${font}':text='${f.label.replace(/[':\\%]/g, " ")}':x=14:y=12:fontsize=${Math.round(o.h / 11)}:fontcolor=white:box=1:boxcolor=black@0.65:boxborderw=8[v${i}]`);
-  const pads = Array.from({ length: rows * o.cols - frames.length }, (_, i) => `color=c=0x111111:s=${o.w}x${o.h}:d=1[p${i}]`);
-  const labels = [...frames.map((_, i) => `[v${i}]`), ...pads.map((_, i) => `[p${i}]`)];
-  const layout = labels.map((_, i) => `${(i % o.cols) * o.w}_${Math.floor(i / o.cols) * o.h}`).join("|");
-  const graph = labels.length === 1 ? `${parts[0].replace(/\[v0\]$/, "[out]")}` : [...parts, ...pads, `${labels.join("")}xstack=inputs=${labels.length}:layout=${layout}[out]`].join(";");
-  await ffmpeg(["-y", ...inputs, "-filter_complex", graph, "-map", "[out]", "-frames:v", "1", "-q:v", "4", output], { signal: o.signal });
+  const out = resolve(output);
+  const work = await mkdtemp(join(dirname(out), ".sheet-"));
+  try {
+    // libass reads the font from a folder next to the .ass (relative paths: no drive letters).
+    await mkdir(join(work, "fonts"));
+    await copyFile(o.font, join(work, "fonts", basename(o.font)));
+    const family = basename(o.font).split(/[-_.]/)[0] || "Sans";
+    const size = Math.round(o.h / 11);
+    const events = frames.map((f, i) => {
+      const x = (i % o.cols) * o.w + 14;
+      const y = Math.floor(i / o.cols) * o.h + 12;
+      return `Dialogue: 0,${assTime(0)},${assTime(3600)},Label,,0,0,0,,{\\pos(${x},${y})}${assText(f.label)}`;
+    });
+    const ass = [
+      "[Script Info]", "ScriptType: v4.00+", `PlayResX: ${o.cols * o.w}`, `PlayResY: ${rows * o.h}`, "WrapStyle: 2", "ScaledBorderAndShadow: yes", "",
+      "[V4+ Styles]",
+      "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+      `Style: Label,${family},${size},&H00FFFFFF,&H00FFFFFF,&H59000000,&H59000000,0,0,0,0,100,100,0,0,3,${Math.max(4, Math.round(size / 3))},0,7,0,0,0,1`, "",
+      "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text", ...events, "",
+    ].join("\n");
+    await writeFile(join(work, "sheet.ass"), ass, "utf8");
+    const inputs = frames.flatMap((f) => ["-i", resolve(f.file)]);
+    const parts = frames.map((_, i) => `[${i}:v]scale=${o.w}:${o.h}:force_original_aspect_ratio=decrease,pad=${o.w}:${o.h}:(ow-iw)/2:(oh-ih)/2:color=0x111111,setsar=1[v${i}]`);
+    const pads = Array.from({ length: rows * o.cols - frames.length }, (_, i) => `color=c=0x111111:s=${o.w}x${o.h}:d=1[p${i}]`);
+    const labels = [...frames.map((_, i) => `[v${i}]`), ...pads.map((_, i) => `[p${i}]`)];
+    const layout = labels.map((_, i) => `${(i % o.cols) * o.w}_${Math.floor(i / o.cols) * o.h}`).join("|");
+    const grid = labels.length === 1 ? parts[0].replace(/\[v0\]$/, "[g]") : [...parts, ...pads, `${labels.join("")}xstack=inputs=${labels.length}:layout=${layout}[g]`].join(";");
+    const graph = `${grid};[g]ass=filename=sheet.ass:fontsdir=fonts[out]`;
+    await ffmpeg(["-y", ...inputs, "-filter_complex", graph, "-map", "[out]", "-frames:v", "1", "-q:v", "4", out], { signal: o.signal, cwd: work });
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
   return output;
 }
 
