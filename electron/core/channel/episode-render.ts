@@ -214,13 +214,16 @@ export async function mixAudio(o: { narration: string; music: MusicSpan[]; sfx?:
   const inputs = ["-i", o.narration];
   const graph: string[] = ["[0:a]aresample=48000,aformat=channel_layouts=stereo,apad,atrim=0:" + o.duration.toFixed(3) + ",asplit=2[voice][key]"];
   const beds: string[] = [];
-  o.music.forEach((m, i) => {
-    inputs.push("-stream_loop", "-1", "-i", m.file);
+  // Loops happen inside the graph (aloop over the decoded file): an endless -stream_loop input
+  // hangs FFmpeg on macOS, and the file is read only once this way.
+  for (const [i, m] of o.music.entries()) {
+    inputs.push("-i", m.file);
     const len = Math.max(0.1, m.to - m.from);
     const fade = Math.min(1, len / 3);
-    graph.push(`[${i + 1}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${len.toFixed(3)},asetpts=PTS-STARTPTS,afade=t=in:d=${fade.toFixed(2)},afade=t=out:st=${(len - fade).toFixed(3)}:d=${fade.toFixed(2)},adelay=${Math.round(m.from * 1000)}:all=1[m${i}]`);
+    const samples = Math.max(1, Math.round((await durationOf(m.file, { signal: o.signal })) * 48000));
+    graph.push(`[${i + 1}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,aloop=loop=-1:size=${samples},atrim=0:${len.toFixed(3)},asetpts=PTS-STARTPTS,afade=t=in:d=${fade.toFixed(2)},afade=t=out:st=${(len - fade).toFixed(3)}:d=${fade.toFixed(2)},adelay=${Math.round(m.from * 1000)}:all=1[m${i}]`);
     beds.push(`[m${i}]`);
-  });
+  }
   const mixInputs = ["[voice]"];
   if (beds.length) {
     const end = o.endscreenAt ?? o.duration + 1;
