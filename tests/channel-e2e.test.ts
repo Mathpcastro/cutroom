@@ -110,7 +110,8 @@ describe("channel studio end to end through the MCP tools", () => {
       speaker: async () => speaker,
       renderer,
       bench,
-      waitMs: 120_000,
+      // The Intel Mac runner takes over 2 min to cut the Shorts: wait long enough for every job here.
+      waitMs: 480_000,
     });
     const call = (name: string, args: Record<string, unknown> = {}) => tool(name, { profileId: P, ...args }) as Promise<Record<string, unknown>>;
 
