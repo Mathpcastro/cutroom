@@ -244,6 +244,16 @@
         *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
       }
       .hero h1 { line-height: 1.12; margin-bottom: 16px; }
+      @media (max-width: 560px) {
+        .site-header { padding-top: 16px; padding-bottom: 8px; }
+        .top-nav .nav-cta { display: none; }
+        .hero .eyebrow { display: none; }
+        .hero { padding-top: 20px; }
+        .hero h1 { font-size: 34px; line-height: 1.1; margin-bottom: 20px; }
+        .hero .lead { margin-bottom: 32px; }
+        .hero .fine { margin-top: 14px; text-align: center; }
+        .hero-copy .no { display: block; text-align: center; }
+      }
       .hero h1 mark { color: var(--violet-deep); }
       .demo-pair { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); gap: 14px; align-items: start; }
       .demo-pair .caption { grid-column: 1 / -1; max-width: none; margin: 0; }
@@ -276,12 +286,10 @@
     <section class="hero wrap" id="inicio" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow">Estúdio de vídeo em código</p>
-        <h1 id="hero-title">Crie seu canal dark com IA <mark>sem editor de vídeo, sem mensalidade e com a assinatura que você já paga.</mark></h1>
-        <p class="lead">Use o Claude ou ChatGPT que você já assina para criar vídeos longos no YouTube e monetizar uma audiência do zero, baseado em nichos já validados e formatos que já receberam milhões de visualizações.</p>
-        <p class="deliverable"><strong>O que você recebe</strong> Vídeo todo editado dentro do Videosell, pronto pra postar como conteúdo longo no YouTube.</p>
-        <a class="cta" href="#oferta">Quero criar meu primeiro vídeo <small>R$ 147</small></a>
+        <h1 id="hero-title">Crie seu canal dark com IA <mark>usando a assinatura que você já paga.</mark></h1>
+        <p class="lead">O Claude ou o ChatGPT faz roteiro, narração, edição e thumb dentro do Videosell. <i>Você só publica no YouTube.</i></p>
+        <a class="cta" href="#oferta">Quero criar meu canal <small>R$ 147</small></a>
         <p class="fine">Pagamento único · Windows · 7 dias de garantia</p>
-        <a class="no" href="#como-funciona">Ver como a produção funciona ↓</a>
       </div>
       <div class="demo-pair">
         <article class="case">
