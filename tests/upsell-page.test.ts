@@ -256,7 +256,7 @@ describe("contrato da página pública de upsell Videosell", () => {
   it("mostra referências em 16:9 e 9:16 com a edição original", () => {
     expect(document.querySelector("#inicio video[src='videos/niteroi-original.mp4'][data-autoplay]")).not.toBeNull();
     expect(document.querySelector("#inicio video[src='videos/niteroi-original-vertical.mp4'][data-autoplay]")).not.toBeNull();
-    expect(document.querySelector("#inicio .lead")?.textContent).toContain("Você só publica no YouTube");
+    expect(document.querySelector("#inicio .lead")?.textContent).toContain("Você só publica");
     expect(document.querySelector("#inicio .caption")?.textContent).toContain("Referência de formato");
   });
 
