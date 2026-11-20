@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Leve seu primeiro canal dark do chat ao vídeo | Videosell</title>
-    <meta name="description" content="Crie episódios originais em código com o Claude ou ChatGPT que você já assina. Pesquisa com fontes, narração, vídeo, thumbs e Shorts." />
+    <title>Crie seu canal dark com a IA que você já assina | Videosell</title>
+    <meta name="description" content="Use o Claude ou ChatGPT que você já assina para criar vídeos longos e Shorts para seu canal dark. Pagamento único pelo Videosell." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Sora:wght@600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Sora:wght@600;700;800&amp;display=swap" rel="stylesheet" />
     <style>
       :root {
         --ink: #141318;
@@ -93,8 +93,6 @@
       .flow li { position: relative; list-style: none; padding: 28px 26px; border: 2px solid var(--ink); border-radius: 22px; background: var(--white); }
       .flow li:nth-child(2) { background: var(--ink); color: #fff; }
       .flow li:nth-child(2) p { color: rgba(255,255,255,.75); }
-      .flow li:nth-child(2) .who { color: var(--lime); }
-      .flow .who { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--violet-deep); }
       .flow h3 { margin-bottom: 10px; font-size: 22px; }
       .flow p { font-size: 16px; color: var(--muted); }
       .flow li + li::before { content: "→"; position: absolute; left: -20px; top: 50%; transform: translate(-50%, -50%); font: 800 26px "Sora", sans-serif; color: var(--violet); }
@@ -102,13 +100,44 @@
 
       /* Cases from X */
       .cases { background: var(--white); }
-      .case-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; list-style: none; padding: 0; }
-      .case-grid li { display: flex; flex-direction: column; padding: 24px; border: 2px solid var(--ink); border-radius: 20px; background: var(--paper); }
-      .case-grid strong { display: block; font: 800 36px/1.05 "Sora", sans-serif; letter-spacing: -.03em; color: var(--violet-deep); }
-      .case-grid p { flex: 1; margin: 10px 0 16px; font-size: 16px; color: #34313c; }
-      .case-grid .who { font-size: 14px; font-weight: 700; color: var(--ink); }
-      .case-grid .who a { margin-left: 6px; font-weight: 600; color: var(--violet-deep); }
-      .case-grid .flag { display: inline-block; margin-bottom: 10px; padding: 3px 10px; border-radius: 999px; background: var(--lime); font-size: 12px; font-weight: 800; }
+      .case-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; list-style: none; padding: 0; }
+      .case-grid > li { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 2px solid var(--ink); border-radius: 20px; background: var(--paper); }
+      .case-grid header, .case-body { padding: 18px 20px; }
+      .case-grid h3 { margin: 4px 0 0; font: 800 clamp(18px, 2.5vw, 25px)/1.15 "Sora", sans-serif; }
+      .case-niche, .case-time, .case-video-title, .case-method { margin: 0; font-size: 14px; color: #34313c; }
+      .case-niche { font-weight: 700; color: var(--violet-deep); }
+      .case-preview, .case-player { position: relative; display: block; aspect-ratio: 16 / 9; width: 100%; overflow: hidden; background: var(--ink); }
+      .case-preview img, .case-player iframe { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; }
+      .case-preview span { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 53px; height: 53px; border: 2px solid currentColor; border-radius: 50%; color: #fff; background: var(--ink); }
+      .case-preview:focus-visible { outline-offset: -4px; }
+      .case-body { display: flex; flex: 1; flex-direction: column; align-items: flex-start; }
+      .case-result { display: block; margin: 6px 0 2px; font: 800 clamp(24px, 3vw, 36px)/1.1 "Sora", sans-serif; color: var(--violet-deep); letter-spacing: -.035em; }
+      .case-links { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 16px; margin-top: auto; font-size: 13px; font-weight: 700; }
+      .case-method { margin-top: 16px; max-width: 75ch; }
+      .case-grid a, .case-method a { text-decoration: underline; }
+      .deliverable { margin: 14px 0 9px; font-size: 14px; color: var(--muted); }
+      .deliverable strong { display: block; color: var(--ink); }
+      .case-evidence { margin: 10px 0 14px; font-size: 15px; }
+      .format-gallery { padding: clamp(40px, 7vw, 75px) 0; }
+      .gallery-goals { display: grid; grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+      .gallery-goal { min-width: 0; padding: 16px; border: 2px solid var(--line); border-radius: 16px; background: var(--white); }
+      .gallery-goal h3 { font: 800 21px/1.2 "Sora", sans-serif; }
+      .gallery-goal p { margin-top: 6px; font-size: 14px; color: var(--muted); }
+      .gallery-goal .gallery-note { margin-top: 10px; font-size: 12px; }
+      .gallery-grid { display: grid; gap: 12px; margin-top: 14px; }
+      .gallery-goal--dark .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .gallery-goal:not(.gallery-goal--dark) figure { width: min(100%, 155px); margin-inline: auto; }
+      .gallery-grid figure { margin: 0; min-width: 0; }
+      .gallery-grid video { display: block; width: 100%; height: auto; background: var(--ink); border: 2px solid var(--ink); border-radius: 10px; }
+      .gallery-goal--dark video { aspect-ratio: 16 / 9; }
+      .gallery-goal:not(.gallery-goal--dark) video { aspect-ratio: 9 / 16; }
+      .gallery-grid figcaption { margin-top: 6px; color: var(--ink); font-size: 13px; font-weight: 700; }
+      .gallery-toggle { margin-top: 14px; padding: 8px 12px; border: 1px solid var(--ink); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+      .format-note { margin: 8px 0 16px; color: var(--muted); font-size: 14px; }
+      @media (max-width: 800px) {
+        .gallery-goals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .gallery-goal--dark { grid-column: 1 / -1; }
+      }
       .br { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 26px; font-size: 15px; }
       .br b { margin-right: 4px; }
       .br a { padding: 8px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 600; text-decoration: none; }
@@ -118,31 +147,6 @@
       .funnel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 36px; padding: 18px 20px; border-radius: 16px; background: var(--ink); color: #fff; font-weight: 700; }
       .funnel span { padding: 6px 12px; border-radius: 999px; background: var(--ink-2); }
       .funnel i { font-style: normal; color: var(--lime); }
-
-      /* Real episode */
-      .episode { background: var(--white); }
-      .ep-row { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 56px; align-items: center; padding: 44px 0; border-top: 1px solid var(--line); }
-      .ep-row:first-of-type { border-top: 0; }
-      .ep-row .num { display: inline-grid; place-items: center; width: 40px; height: 40px; margin-bottom: 14px; border-radius: 12px; background: var(--ink); color: var(--lime); font: 800 18px "Sora", sans-serif; }
-      .ep-row h3 { margin-bottom: 10px; font-size: 26px; }
-      .ep-row p { color: var(--muted); }
-      .bubble { max-width: 520px; padding: 22px 24px; border-radius: 22px 22px 22px 6px; background: var(--ink); color: #fff; font-size: 19px; line-height: 1.5; }
-      .bubble small { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--lime); }
-      .fact { max-width: 520px; padding: 24px; border: 2px solid var(--ink); border-radius: 20px; background: var(--paper); }
-      .fact strong { display: block; font: 800 54px/1 "Sora", sans-serif; letter-spacing: -.03em; color: var(--ink); }
-      .fact span { display: block; margin-top: 6px; font-size: 17px; font-weight: 600; }
-      .fact .src { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 14px; font-weight: 500; color: var(--muted); }
-      .fact .badge { display: inline-block; margin-right: 6px; padding: 2px 8px; border-radius: 999px; background: var(--lime); color: var(--ink); font-size: 12px; font-weight: 800; }
-      .sheet { display: block; width: 100%; height: auto; border-radius: 16px; border: 6px solid var(--ink); }
-      .thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-      .thumbs img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
-      .pkg { max-height: 300px; overflow: auto; padding: 18px 20px; border-radius: 14px; background: var(--ink); color: rgba(255,255,255,.82); font: 500 13px/1.6 "JetBrains Mono", ui-monospace, monospace; white-space: pre-wrap; }
-      .pkg b { color: var(--lime); font-weight: 500; }
-      .short-wrap { width: min(300px, 100%); justify-self: center; }
-      .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 30px; list-style: none; padding: 0; }
-      .metrics li { padding: 22px; border-radius: 18px; background: var(--paper); }
-      .metrics strong { display: block; margin-bottom: 6px; font: 800 34px/1 "Sora", sans-serif; letter-spacing: -.03em; color: var(--violet-deep); }
-      .metrics span { font-size: 15px; color: var(--muted); }
 
       /* Connect */
       .connect-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 56px; align-items: center; }
@@ -188,14 +192,39 @@
       .final .cta { max-width: 560px; }
       footer { padding: 30px 0 50px; text-align: center; font-size: 13px; color: var(--muted); }
 
+      /* Real episodes made in the app (any niche) */
+      .real { padding: clamp(40px, 7vw, 80px) 0; background: var(--ink); color: #fff; }
+      .real h2 em { color: var(--lime); }
+      .real .eyebrow { color: var(--lime); }
+      .real .sub { color: rgba(255,255,255,.7); }
+      .real-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .5fr); gap: 18px; align-items: start; }
+      .real .case h3 { color: #fff; font-size: 17px; }
+      .real .case h3 span { color: var(--lime); font-weight: 600; }
+      .real .screen16 { border-color: #2a2833; box-shadow: none; }
+      .real-did { margin-top: 12px; padding: 0; list-style: none; font-size: 14px; color: rgba(255,255,255,.78); }
+      .real-did li { position: relative; padding: 4px 0 4px 22px; }
+      .real-did li::before { content: "✓"; position: absolute; left: 0; color: var(--lime); font-weight: 800; }
+      .real-extras { display: grid; grid-template-columns: minmax(0, .5fr) minmax(0, .5fr) minmax(0, 2fr); gap: 18px; margin-top: 26px; align-items: start; }
+      .real-thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+      .real-thumbs figcaption { grid-column: 1 / -1; font: 700 15px/1.3 "Inter", sans-serif; color: #fff; }
+      .real-thumbs img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
+      @media (max-width: 900px) {
+        .real-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+        .real-card--tall { grid-column: 1 / -1; width: min(320px, 100%); justify-self: center; }
+        .real-extras { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+        .real-thumbs { grid-column: 1 / -1; }
+      }
+      @media (max-width: 560px) {
+        .real-grid { grid-template-columns: minmax(0, 1fr); }
+        .real-thumbs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      }
       @media (max-width: 900px) {
         section { padding: 72px 0; }
-        .hero, .connect-grid, .ep-row { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+        .hero, .connect-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
         .hero { padding-bottom: 72px; }
         .caption { max-width: 60%; margin-top: 14px; }
         .flow, .nets, .case-grid { grid-template-columns: minmax(0, 1fr); }
         .flow li + li::before { left: 50%; top: -12px; transform: translate(-50%, -50%) rotate(90deg); }
-        .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .offer-box { padding: 30px 22px; box-shadow: 8px 8px 0 var(--ink); }
       }
       @media (max-width: 560px) {
@@ -210,8 +239,6 @@
         .cta { width: 100%; padding: 18px; font-size: 17px; }
         .cta.big { font-size: 18px; }
         .price strong { font-size: 60px; }
-        .metrics strong { font-size: 28px; }
-        .fact strong { font-size: 44px; }
       }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
@@ -222,10 +249,6 @@
       .demo-pair .caption { grid-column: 1 / -1; max-width: none; margin: 0; }
       .demo-short { max-width: 260px; }
       .demo-pair .sound { position: static; margin-top: 8px; background: var(--ink); }
-      .bonus-previews { display: grid; grid-template-columns: repeat(2, minmax(0, 170px)); gap: 14px; justify-content: center; margin: 24px 0; }
-      .bonus-previews .case h3 { font-size: 14px; }
-      .bonus-previews .reel { border-radius: 14px; }
-      .case-grid a { color: inherit; text-decoration: underline; }
       @media (max-width: 540px) {
         .demo-pair { gap: 10px; }
         .demo-pair .case h3 { font-size: 13px; }
@@ -245,7 +268,7 @@
       </a>
       <nav class="top-nav" aria-label="Seções">
         <a href="#casos">Casos</a>
-        <a href="#episodio">Episódio real</a>
+        <a href="#como-funciona">Como funciona</a>
         <a class="nav-cta" href="#oferta">Quero o Videosell</a>
       </nav>
     </header>
@@ -253,169 +276,267 @@
     <section class="hero wrap" id="inicio" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow">Estúdio de vídeo em código</p>
-        <h1 id="hero-title">Crie um canal dark <mark>com a IA que você já paga.</mark></h1>
-        <p class="lead">Peça um episódio no Claude Code ou no Codex. Receba o vídeo animado em código, com narração e imagens reais, além dos Shorts e do pacote para publicar.</p>
-        <a class="cta" href="#oferta">Quero criar meu canal <small>R$ 147</small></a>
+        <h1 id="hero-title">Crie seu canal dark com IA <mark>sem editor de vídeo, sem mensalidade e com a assinatura que você já paga.</mark></h1>
+        <p class="lead">Use o Claude ou ChatGPT que você já assina para criar vídeos longos no YouTube e monetizar uma audiência do zero, baseado em nichos já validados e formatos que já receberam milhões de visualizações.</p>
+        <p class="deliverable"><strong>O que você recebe</strong> Vídeo todo editado dentro do Videosell, pronto pra postar como conteúdo longo no YouTube.</p>
+        <a class="cta" href="#oferta">Quero criar meu primeiro vídeo <small>R$ 147</small></a>
         <p class="fine">Pagamento único · Windows · 7 dias de garantia</p>
-        <a class="no" href="#episodio">Ver a demonstração completa ↓</a>
+        <a class="no" href="#como-funciona">Ver como a produção funciona ↓</a>
       </div>
       <div class="demo-pair">
         <article class="case">
           <h3>Episódio <span>16:9</span></h3>
-          <div class="screen16"><video src="videos/canal-episodio.mp4" poster="videos/canal-episodio.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+          <div class="screen16"><video src="videos/niteroi-original.mp4" poster="videos/niteroi-original.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
         </article>
         <article class="case demo-short">
-          <h3>Corte <span>9:16</span></h3>
-          <div class="reel"><video src="videos/canal-short.mp4" poster="videos/canal-short.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+          <h3>Trecho vertical <span>9:16</span></h3>
+          <div class="reel"><video src="videos/niteroi-original-vertical.mp4" poster="videos/niteroi-original-vertical.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
         </article>
-        <p class="caption">Trechos do piloto de Niterói. Cenas e corte gerados no Videosell, com voz do Windows.</p>
+        <p class="caption">Referência de formato do canal Vale a Pena Morar?</p>
       </div>
     </section>
 
     <section class="problem" aria-labelledby="problem-title">
       <div class="wrap narrow">
-        <h2 id="problem-title">Vídeo em código abre espaço para <em>um formato que é só seu.</em></h2>
+        <h2 id="problem-title">O vídeo certo pode atrair <em>um público muito mais disposto a comprar de você.</em></h2>
         <div class="prose">
-          <p>Antes, fazer um episódio sem aparecer exigia horas de edição ou várias assinaturas. E produzir em escala com o mesmo template pode esbarrar na regra de <a href="https://support.google.com/youtube/answer/1311392" target="_blank" rel="noopener noreferrer">conteúdo repetitivo do YouTube</a>.</p>
-          <p>Com o Videosell, o agente escreve as cenas e o seu computador renderiza. Um canal de cidades pode misturar fotos e dados. Um de história pode criar uma linguagem visual própria. Você ajusta o formato pelo chat e reaproveita as cenas que ficaram boas.</p>
+          <p>Escolha um tema com demanda comprovada e crie seu canal dark no Videosell. A IA que você já assina automatiza a produção em código, sem outra assinatura de vídeo.</p>
+          <p>Com seu agente conectado, o Videosell prepara roteiro, narração natural com IA, edição, título, descrição e thumbnail. Basta você publicar no seu canal!</p>
         </div>
       </div>
     </section>
 
     <section class="cases" id="casos" aria-labelledby="cases-title">
       <div class="wrap">
-        <h2 id="cases-title">Veja como outros criadores <em>montam canais sem aparecer.</em></h2>
-        <p class="sub">Referências de mercado publicadas por terceiros. A demonstração do Videosell está no topo.</p>
+        <h2 id="cases-title">O que canais dark feitos com IA e código estão criando e <em>quantas visualizações isso está gerando.</em></h2>
         <ul class="case-grid">
-          <li><strong>Finanças em desenho</strong><p>Uma explicação visual simples com bonecos de palito e traço de Paint.</p><a href="https://x.com/maestroslay/status/2065887796204593661" target="_blank" rel="noopener noreferrer">Ver o exemplo em vídeo no X ↗</a></li>
-          <li><strong>Documentário faceless</strong><p>Um estudo em vídeo sobre como um criador pesquisou nichos antes de produzir o primeiro episódio.</p><a href="https://x.com/BIGMayrr/status/2096548578462208304" target="_blank" rel="noopener noreferrer">Ver a análise em vídeo no X ↗</a></li>
-          <li><strong>Vídeos curtos</strong><p>Um fluxo de roteiro, narração e cenas comandado por um agente.</p><a href="https://x.com/igus_ai/status/2112233610241884615" target="_blank" rel="noopener noreferrer">Ver a demonstração em vídeo no X ↗</a></li>
+          <li>
+            <header>
+              <p class="case-niche">O que aconteceria se… · Em espanhol</p>
+              <h3>Giro Imposible</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=0MHO3czAO60" target="_blank" rel="noopener noreferrer" data-case-video="0MHO3czAO60" aria-label="Assistir ao vídeo de Giro Imposible">
+              <img src="https://i.ytimg.com/vi/0MHO3czAO60/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se você parasse de sentir dor?</p>
+              <strong class="case-result">1 milhão de views</strong>
+              <p class="case-time">Em cerca de um mês</p>
+              <p class="case-evidence">O criador programou o motor de animação. As vozes são sintéticas, e a música e os efeitos são gerados em código.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=0MHO3czAO60" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@giro-imposible" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+                <a href="https://www.youtube.com/@giro-imposible/about" target="_blank" rel="noopener noreferrer" data-case-ai>Ver processo ↗</a>
+              </div>
+            </div>
+          </li>
+          <li>
+            <header>
+              <p class="case-niche">Ficção científica · Em inglês</p>
+              <h3>One Small If</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=KzdIyAqm15c" target="_blank" rel="noopener noreferrer" data-case-video="KzdIyAqm15c" aria-label="Assistir ao vídeo de One Small If">
+              <img src="https://i.ytimg.com/vi/KzdIyAqm15c/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se você dobrasse de tamanho a cada hora?</p>
+              <strong class="case-result">315 mil views</strong>
+              <p class="case-time">Em cerca de um mês</p>
+              <p class="case-evidence">O mesmo criador do Giro usa o motor em um segundo canal, com histórias próprias em inglês.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=KzdIyAqm15c" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@onesmallif" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+                <a href="https://www.youtube.com/@onesmallif/about" target="_blank" rel="noopener noreferrer" data-case-ai>Ver processo ↗</a>
+              </div>
+            </div>
+          </li>
+          <li>
+            <header>
+              <p class="case-niche">Curiosidades narradas</p>
+              <h3>FunNotSoFun</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=ch7RZklvrjk" target="_blank" rel="noopener noreferrer" data-case-video="ch7RZklvrjk" aria-label="Assistir ao vídeo de FunNotSoFun">
+              <img src="https://i.ytimg.com/vi/ch7RZklvrjk/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se o seu dinheiro multiplicasse por dez todo dia?</p>
+              <strong class="case-result">1 milhão de views</strong>
+              <p class="case-time">Em cerca de um mês</p>
+              <p class="case-evidence">O criador usa seu próprio fluxo de animação 3D e usa IA para código, roteiro, voz e música.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=ch7RZklvrjk" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@funnotsofun" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+                <a href="https://www.youtube.com/@funnotsofun/about" target="_blank" rel="noopener noreferrer" data-case-ai>Ver processo ↗</a>
+              </div>
+            </div>
+          </li>
+          <li data-case-reference>
+            <header>
+              <p class="case-niche">Referência de formato</p>
+              <h3>Jeremy Bearimy</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=aV7_cA_xVXI" target="_blank" rel="noopener noreferrer" data-case-video="aV7_cA_xVXI" aria-label="Assistir ao vídeo de Jeremy Bearimy">
+              <img src="https://i.ytimg.com/vi/aV7_cA_xVXI/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se você pudesse ver quem gosta de você?</p>
+              <strong class="case-result">2 milhões de views</strong>
+              <p class="case-time">Em 17 dias</p>
+              <p class="case-evidence">Histórias animadas de ‘E se…?’ com personagens recorrentes. O canal não detalha publicamente o método de produção.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=aV7_cA_xVXI" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@JeremyBearimyTheory" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+              </div>
+            </div>
+          </li>
         </ul>
+        <p class="case-method">Visualizações públicas dos vídeos em 19/11/2026.</p>
       </div>
     </section>
 
-    <!-- 3. TESE + MECANISMO -->
+    <section class="format-gallery" id="galeria" aria-labelledby="gallery-title">
+      <div class="wrap">
+        <h2 id="gallery-title">O que você pode criar <em>no Videosell.</em></h2>
+        <div class="gallery-goals">
+          <article class="gallery-goal gallery-goal--dark">
+            <h3>Canais dark no YouTube</h3>
+            <p>Crie conteúdo longo para construir uma audiência e tire Shorts de cada episódio para alcançar mais gente.</p>
+            <div class="gallery-grid">
+              <figure>
+                <video data-src="videos/previa-vitoria.mp4" poster="videos/previa-vitoria.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Vale a pena morar em Vitória?</figcaption>
+              </figure>
+              <figure>
+                <video data-src="videos/previa-curitiba.mp4" poster="videos/previa-curitiba.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Vale a pena morar em Curitiba?</figcaption>
+              </figure>
+              <figure>
+                <video data-src="videos/previa-e-se-wide.mp4" poster="videos/previa-e-se-wide.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Metáfora animada</figcaption>
+              </figure>
+              <figure>
+                <video data-src="videos/previa-historia-wide.mp4" poster="videos/previa-historia-wide.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>História animada</figcaption>
+              </figure>
+            </div>
+            <p class="gallery-note">Vitória e Curitiba são referências do canal Vale a Pena Morar?</p>
+          </article>
+          <article class="gallery-goal gallery-goal--avatar">
+            <h3>Avatar de IA</h3>
+            <p>Venda seu produto no Instagram e no TikTok com um apresentador que fala por você.</p>
+            <div class="gallery-grid">
+              <figure>
+                <video data-src="videos/previa-avatar.mp4" poster="videos/previa-avatar.jpg" width="270" height="480" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Reel com avatar</figcaption>
+              </figure>
+            </div>
+          </article>
+          <article class="gallery-goal gallery-goal--motion">
+            <h3>Motion UI</h3>
+            <p>Venda vídeos de demonstração como serviço para negócios locais ou digitais.</p>
+            <div class="gallery-grid">
+              <figure>
+                <video data-src="videos/previa-ui-motion.mp4" poster="videos/previa-ui-motion.jpg" width="270" height="480" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Demonstração de produto</figcaption>
+              </figure>
+            </div>
+          </article>
+        </div>
+        <button class="gallery-toggle" type="button" aria-controls="galeria" hidden>Pausar prévias</button>
+      </div>
+    </section>
+
+    <section class="real" id="exemplos-reais" aria-labelledby="real-title">
+      <div class="wrap">
+        <p class="eyebrow">Feitos do zero no Videosell</p>
+        <h2 id="real-title">Três canais, três nichos. <em>O mesmo app, sem editar nada.</em></h2>
+        <p class="sub">Cada vídeo saiu de um pedido no chat da IA. Ela pesquisou e escreveu o roteiro; o Videosell narrou, montou as cenas em código, revisou quadro a quadro e entregou episódio, Short, thumbs e descrição.</p>
+        <div class="real-grid">
+          <article class="case real-card">
+            <h3>Top Cósmico <span>· ranking de curiosidades</span></h3>
+            <div class="screen16"><video src="videos/canal-top.mp4" poster="videos/canal-top.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+            <ul class="real-did">
+              <li>Dados da NASA com a fonte na tela</li>
+              <li>Fotos reais com crédito automático</li>
+              <li>Contagem do 3º ao 1º lugar</li>
+            </ul>
+          </article>
+          <article class="case real-card">
+            <h3>E Se Fosse Você <span>· personagem fixo</span></h3>
+            <div class="screen16"><video src="videos/canal-ese.mp4" poster="videos/canal-ese.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+            <ul class="real-did">
+              <li>Avatar do Videosell como personagem</li>
+              <li>Contador de dias e inventário</li>
+              <li>Dado do IBGE e final com reviravolta</li>
+            </ul>
+          </article>
+          <article class="case real-card real-card--tall">
+            <h3>Receita de Vó <span>· nicho criado na hora</span></h3>
+            <div class="reel"><video src="videos/canal-receita.mp4" poster="videos/canal-receita.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+            <ul class="real-did">
+              <li>Formato escrito pela IA para o nicho</li>
+              <li>Cartões animados em código</li>
+            </ul>
+          </article>
+        </div>
+        <div class="real-extras">
+          <article class="case real-short">
+            <h3>Short <span>cortado sozinho</span></h3>
+            <div class="reel"><video src="videos/canal-top-short.mp4" poster="videos/canal-top-short.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+          </article>
+          <article class="case real-short">
+            <h3>Short <span>do “E se…”</span></h3>
+            <div class="reel"><video src="videos/canal-ese-short.mp4" poster="videos/canal-ese-short.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+          </article>
+          <figure class="real-thumbs">
+            <figcaption>3 thumbs por episódio, prontas para subir</figcaption>
+            <img src="videos/canal-top-thumb.jpg" alt="Thumb do Top Cósmico: Parece mentira" width="1280" height="720" loading="lazy" />
+            <img src="videos/canal-ese-thumb.jpg" alt="Thumb do E Se Fosse Você: 30 dias sem internet" width="1280" height="720" loading="lazy" />
+            <img src="videos/canal-receita-thumb.jpg" alt="Thumb da Receita de Vó: bolo em 2 minutos" width="1280" height="720" loading="lazy" />
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <section class="thesis" id="como-funciona" aria-labelledby="thesis-title">
       <div class="wrap">
-        <p class="eyebrow">O mecanismo: canal em código</p>
-        <h2 id="thesis-title">A sua IA pensa. <em>O Videosell filma.</em></h2>
-        <p class="sub">
-          Use a pesquisa do seu agente e o render local do Videosell para transformar uma ideia em um episódio com identidade própria.
-        </p>
+        <h2 id="thesis-title">Conecte sua IA e <em>automatize a produção do seu canal.</em></h2>
+        <p class="sub">A conexão MCP local permite ao Claude Code ou ao Codex, incluso no ChatGPT, operar o Videosell no seu computador.</p>
         <ol class="flow">
           <li>
-            <span class="who">Sua IA · Claude Code ou Codex</span>
-            <h3>Pesquisa e escreve</h3>
-            <p>Busca na internet, confere as fontes, escreve o roteiro em falas, os títulos e as frases das thumbs. Usa as ferramentas de pesquisa do seu agente.</p>
+            <h3>Conecte a IA que você já usa</h3>
+            <p>Abra o botão de MCP do Videosell e siga o guia. Depois de conectado, seu agente pode operar a produção pelo chat.</p>
           </li>
           <li>
-            <span class="who">Videosell · no seu computador</span>
-            <h3>Monta e confere</h3>
-            <p>Narra, alinha palavra por palavra, escolhe fotos e vídeos com licença, anima cada cena, revisa quadro a quadro e renderiza em 1080p.</p>
+            <h3>Escolha o tipo de vídeo</h3>
+            <p>Comece com um documentário de cidade, uma história animada, curiosidades em lista ou um episódio de “E se…?”. Seu agente pesquisa a pauta e adapta o formato ao nicho.</p>
           </li>
           <li>
-            <span class="who">Pronto para postar</span>
-            <h3>Episódio + Shorts + pacote</h3>
-            <p>Vídeo de 10+ min, 2 Shorts com legenda palavra por palavra, 3 thumbs, 3 títulos e descrição com capítulos, fontes e créditos.</p>
+            <h3>Receba o vídeo pronto para postar</h3>
+            <p>O agente aciona o Videosell para narrar, editar e preparar o episódio, os Shorts, o título, a descrição e a thumbnail.</p>
           </li>
         </ol>
-        <p class="gates"><b>Você dirige pelo chat.</b> Revise o roteiro, os quadros e o vídeo final.</p>
+        <p class="gates"><b>Você dirige pelo chat ou seu agente (Claude, ChatGPT, etc) faz tudo por você.</b> Aprove roteiro, quadros e vídeo final no seu ritmo.</p>
+        <p class="format-note">O estúdio já aceita formatos personalizados. Novos estilos de cena estão em desenvolvimento.</p>
+        <a class="no" href="#conectar">Ver como conectar meu agente via MCP ↓</a>
       </div>
     </section>
 
-    <!-- 4. CONSTRUÇÃO DE PRODUTO: um episódio real -->
-    <section class="episode" id="episodio" aria-labelledby="episode-title">
-      <div class="wrap">
-        <p class="eyebrow">Por dentro</p>
-        <h2 id="episode-title">Um episódio real. <em>Do pedido ao arquivo.</em></h2>
-        <p class="sub">Do pedido no chat aos arquivos de um piloto real sobre Niterói.</p>
-
-        <div class="ep-row">
-          <div>
-            <span class="num">1</span>
-            <h3>O pedido, no chat</h3>
-            <p>Uma frase no Claude Code ou no Codex. O agente já sabe a ordem do trabalho: o Videosell instala o guia dele com um clique.</p>
-          </div>
-          <p class="bubble"><small>Você, no chat da sua IA</small>Pesquise sobre Niterói e faça o próximo episódio do meu canal no Videosell, com fontes, fotos reais e 2 Shorts.</p>
-        </div>
-
-        <div class="ep-row">
-          <div>
-            <span class="num">2</span>
-            <h3>Pesquisa com fonte</h3>
-            <p>O agente traz os dados e o app confere: classifica a fonte (oficial, imprensa, blog), marca dado velho, junta confirmações e não deixa número entrar na tela sem fonte.</p>
-          </div>
-          <div class="fact">
-            <strong>481.749</strong>
-            <span>moradores em Niterói no Censo de 2022</span>
-            <p class="src"><span class="badge">oficial</span><a href="https://www.ibge.gov.br/cidades-e-estados/rj/niteroi.html" target="_blank" rel="noopener noreferrer">IBGE · Cidades e Estados (2022)</a></p>
-          </div>
-        </div>
-
-        <div class="ep-row">
-          <div>
-            <span class="num">3</span>
-            <h3>Revisão por quadros</h3>
-            <p>Antes do render final, o agente olha folhas de quadros: texto estourando, foto que não bate com a fala, cena vazia. Corrige só a cena com problema.</p>
-          </div>
-          <img class="sheet" src="videos/canal-folha.jpg" alt="Folha com 12 quadros do episódio, um a cada 7,5 segundos" width="1452" height="1098" loading="lazy" />
-        </div>
-
-        <div class="ep-row">
-          <div>
-            <span class="num">4</span>
-            <h3>Pacote pronto para subir</h3>
-            <p>3 thumbs, 3 títulos e a descrição com capítulos reais, a lista de FONTES e os créditos de cada foto e música, dentro do limite do YouTube.</p>
-          </div>
-          <div>
-            <div class="thumbs">
-              <img src="videos/canal-thumb-1.jpg" alt="Thumb 1: Mais cara que o Rio?" width="960" height="540" loading="lazy" />
-              <img src="videos/canal-thumb-2.jpg" alt="Thumb 2: O preço da ponte" width="960" height="540" loading="lazy" />
-              <img src="videos/canal-thumb-3.jpg" alt="Thumb 3: Vale a pena?" width="960" height="540" loading="lazy" />
-            </div>
-<pre class="pkg" aria-label="Trecho da descrição gerada">Niterói tem fama de qualidade de vida. Mas tem um preço que pouca gente conta.
-
-<b>CAPÍTULOS</b>
-00:00 Gancho
-00:16 Contexto
-00:32 Tese contrária
-00:43 O lado bom
-00:54 Virada
-01:11 Comparação
-01:24 Pergunta e assinatura
-
-<b>FONTES</b>
-IBGE — Cidades e Estados (2022)
-
-<b>FOTOS</b>
-"Praia de Icaraí - Niterói - Panoramica" por Leo Balter, CC BY-SA 3.0, via Wikimedia Commons
-"Panorâmica do Parque da Cidade" por Claudney Neves, CC BY-SA 3.0, via Wikimedia Commons
-"Vista Geral do Museu de Arte Contemporânea de Niterói" por Maria Fátima Leite, CC BY-SA 4.0, via Wikimedia Commons
-
-<b>MÚSICA</b>
-"Vibing Over Venus" Kevin MacLeod (incompetech.com), CC BY 4.0</pre>
-          </div>
-        </div>
-
-        <ul class="metrics" id="medicoes" aria-label="Medições do teste">
-          <li><strong>4 min 22 s</strong><span>para renderizar o episódio de 1:42 do teste</span></li>
-          <li><strong>66 s</strong><span>para trocar uma fala e refazer o vídeo (só 2 de 15 cenas)</span></li>
-          <li><strong>~30 min</strong><span>estimados para 10 minutos, a partir de testes num i5</span></li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- 4b. CONEXÃO MCP -->
+    <!-- Conexão MCP -->
     <section class="connect" id="conectar" aria-labelledby="connect-title">
       <div class="wrap connect-grid">
         <div>
           <p class="eyebrow">Sem mexer no app</p>
-          <h2 id="connect-title">Conecta uma vez. <em>Depois é só pedir no chat.</em></h2>
-          <p class="sub">O Videosell fica aberto no seu computador e o seu agente faz o trabalho por ele: pesquisa, roteiro, vídeo, Shorts e pacote para subir.</p>
+          <h2 id="connect-title">Conecte o agente <em>uma vez pelo MCP local.</em></h2>
+          <p class="sub">Conecte o Claude Code ou o Codex ao Videosell. Com o app aberto, você pode acompanhar a produção pelo chat e intervir quando quiser.</p>
           <ol class="steps">
             <li><b>1</b><span><strong>Copie a configuração.</strong> Claude Code, Codex ou o app do Claude: o Videosell mostra o que colar e onde.</span></li>
             <li><b>2</b><span><strong>Ensine o seu agente.</strong> Um botão instala o guia com a ordem do trabalho e as regras do canal.</span></li>
-            <li><b>3</b><span><strong>Peça no chat.</strong> “Faz o próximo episódio.” Você revisa o roteiro, os quadros e o vídeo pelo chat.</span></li>
+            <li><b>3</b><span><strong>Deixe o agente produzir.</strong> Envie a pauta e acompanhe até a entrega do vídeo e dos arquivos de publicação.</span></li>
           </ol>
         </div>
         <img class="dialog-shot" src="videos/canal-mcp.png" alt="Janela Usar pelo seu agente, no Videosell, com a configuração do Claude Code, do Codex e do app do Claude" width="480" height="806" loading="lazy" />
@@ -427,26 +548,22 @@ IBGE — Cidades e Estados (2022)
       <div class="wrap narrow">
         <div class="offer-box">
           <p class="eyebrow">Oferta Videosell</p>
-          <h2 id="offer-title">Comece seu canal dark com o Videosell</h2>
-          <p class="sub">App para Windows e treinamento do Estúdio de Canais Dark. Aprenda a ir da seleção do nicho ao episódio editado, com 2 Shorts, capa, título, descrição e créditos. Leve os arquivos para YouTube, TikTok e Instagram.</p>
+          <h2 id="offer-title">Seu estúdio para criar e publicar canais dark</h2>
+          <p class="sub">Videosell para Windows e curso com 20 aulas. Aprenda a escolher um nicho e publicar seu primeiro episódio com 2 Shorts, capa, título e descrição. Os cinco bônus ajudam a divulgar seu curso, app ou produto.</p>
           <ul class="stack" aria-label="Bônus incluídos na oferta">
-            <li><span><b>Bônus 1 · Avatar de IA.</b> Crie um apresentador que demonstra seu app, curso ou produto.</span></li>
-            <li><span><b>Bônus 2 · Reels e Shorts de divulgação.</b> Crie vídeos verticais com gancho e legenda para atrair público ao seu produto.</span></li>
-            <li><span><b>Bônus 3 · Motion em código.</b> Mostre o produto funcionando em uma demonstração animada.</span></li>
+            <li><span><b>Bônus 1 · Avatar de IA.</b> Crie um apresentador para explicar seu produto sem precisar aparecer.</span></li>
+            <li><span><b>Bônus 2 · Reels e Shorts de divulgação.</b> Crie vídeos curtos com gancho e legenda para YouTube, TikTok e Instagram.</span></li>
+            <li><span><b>Bônus 3 · Motion em código.</b> Transforme a tela do seu app numa demonstração animada.</span></li>
             <li><span><b>Bônus 4 · Instagram direto do app.</b> Publique e agende seus Reels após conferir conta, legenda e horário.</span></li>
-            <li><span><b>Bônus 5 · Piloto automático de Reels.</b> Planeje a sequência de vídeos e prepare o calendário da semana.</span></li>
+            <li><span><b>Bônus 5 · Piloto automático de Reels.</b> Organize o calendário de divulgação e revise os vídeos em sequência.</span></li>
           </ul>
-          <div class="bonus-previews">
-            <article class="case"><h3>Exemplo de avatar</h3><div class="reel"><video src="videos/avatar.mp4" poster="videos/avatar.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-            <article class="case"><h3>Exemplo de Motion</h3><div class="reel"><video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-          </div>
           <div class="price">
-            <span class="per">Use o Claude ou ChatGPT que você já assina. O render roda no seu computador.</span>
+            <span class="per">App + curso com 20 aulas + 5 bônus</span>
             <strong>R$ 147</strong>
             <span>Pagamento único pelo Videosell</span>
           </div>
           <a class="cta big" href="https://pay.cakto.com.br/d9qbuj2_1251358" data-checkout target="_blank" rel="noopener noreferrer">Quero o Videosell por R$ 147</a>
-          <p class="guarantee"><b>Garantia de 7 dias.</b> Testou e não fez sentido? Você pede o reembolso dentro de 7 dias e pronto.</p>
+          <p class="guarantee"><b>Garantia de 7 dias.</b> Você tem sete dias para testar e solicitar o reembolso.</p>
         </div>
         <p class="note">Funciona com a assinatura do Claude (Pro ou Max) ou do ChatGPT (Plus ou Pro) que você já tem.</p>
         <p class="cross">
@@ -460,10 +577,10 @@ IBGE — Cidades e Estados (2022)
     <section class="faq" aria-labelledby="faq-title">
       <div class="wrap narrow">
         <h2 id="faq-title">Antes de decidir</h2>
-        <details><summary>Como o canal dá dinheiro?</summary><p>De dois jeitos: com as views, quando o canal entra no programa de parcerias do YouTube, e com o que você vende no link da descrição: o seu produto, um curso ou um link de afiliado.</p></details>
+        <details><summary>Como posso ganhar dinheiro com o canal?</summary><p>Use a descrição para direcionar interessados ao seu produto, curso ou link de afiliado. Para receber por anúncios, o canal precisa entrar no programa de parcerias do YouTube.</p></details>
         <details><summary>Preciso pagar outra IA?</summary><p>Não. Você usa a assinatura que já tem: Claude (Pro ou Max), com o Claude Code, ou ChatGPT (Plus ou Pro), com o Codex. O Videosell não cobra crédito por vídeo.</p></details>
         <details><summary>Preciso saber programar?</summary><p>Não. “Em código” é como o vídeo é feito por dentro. Você copia uma configuração uma vez, clica em “Ensinar o meu agente” e conversa no chat.</p></details>
-        <details><summary>Serve para qualquer nicho?</summary><p>Qualquer nicho com assunto para pesquisar: cidades, curiosidades, história, finanças, tecnologia, ciência, esportes, mistérios. Se dá para contar com fatos, dá para virar canal.</p></details>
+        <details><summary>Que tipo de canal posso criar?</summary><p>Cidades, curiosidades, história e tecnologia são alguns exemplos. Escolha um assunto com boas pautas, fontes verificáveis e espaço para criar uma edição própria.</p></details>
         <details><summary>E a voz?</summary><p>Você escolhe: Kokoro, que roda no seu computador sem créditos; ElevenLabs ou OpenAI pela sua chave; ou a sua própria gravação.</p></details>
         <details><summary>Qual computador eu preciso?</summary><p>Use Windows 10 ou 11. O tempo de render depende do computador e da quantidade de cenas.</p></details>
         <details><summary>Tem mensalidade?</summary><p>Não. São R$ 147 uma vez. A assinatura da sua IA e as vozes por API, se você escolher usar, ficam nas suas contas.</p></details>
@@ -473,7 +590,7 @@ IBGE — Cidades e Estados (2022)
     <!-- 8. FECHAMENTO -->
     <section class="final" aria-labelledby="final-title">
       <div class="wrap narrow">
-        <h2 id="final-title">Seu primeiro episódio começa <mark>com um pedido no chat.</mark></h2>
+        <h2 id="final-title">Escolha uma pauta. <mark>Faça seu primeiro vídeo.</mark></h2>
         <a class="cta big" href="https://pay.cakto.com.br/d9qbuj2_1251358" data-checkout target="_blank" rel="noopener noreferrer">Quero o Videosell por R$ 147</a>
         <p class="fine">Pagamento único · App para Windows · 7 dias de garantia</p>
       </div>
@@ -560,6 +677,71 @@ IBGE — Cidades e Estados (2022)
         });
       });
 
+    </script>
+    <script>
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        document.querySelectorAll("[data-case-video]").forEach((link) => {
+          link.addEventListener("click", (event) => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            const player = document.createElement("div");
+            player.className = "case-player";
+            const frame = document.createElement("iframe");
+            frame.src = `https://www.youtube-nocookie.com/embed/${link.dataset.caseVideo}?autoplay=1`;
+            frame.title = link.getAttribute("aria-label");
+            frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+            frame.referrerPolicy = "strict-origin-when-cross-origin";
+            player.append(frame);
+            link.replaceWith(player);
+            frame.focus();
+          });
+        });
+      }
+
+      {
+        const handle = document.querySelector(".gallery-toggle");
+        if ("IntersectionObserver" in window) {
+          const galleryVideos = document.querySelectorAll("#galeria video[data-src]");
+          const inView = new Set();
+          const motion = matchMedia("(prefers-reduced-motion: reduce)");
+          let autoplay = !motion.matches;
+
+          const update = (video) => {
+            if (!autoplay || document.hidden || !inView.has(video)) {
+              video.pause();
+              return;
+            }
+            if (!video.hasAttribute("src")) video.src = video.dataset.src;
+            video.play().catch(() => {});
+          };
+
+          const sync = () => {
+            handle.textContent = autoplay ? "Pausar prévias" : "Reproduzir prévias";
+            galleryVideos.forEach(update);
+          };
+
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(({ target, isIntersecting, intersectionRatio }) => {
+              if (isIntersecting && intersectionRatio >= 0.35) inView.add(target);
+              else inView.delete(target);
+              update(target);
+            });
+          }, { threshold: [0, 0.35] });
+
+          galleryVideos.forEach((video) => observer.observe(video));
+          handle.hidden = false;
+          handle.addEventListener("click", () => {
+            autoplay = !autoplay;
+            sync();
+          });
+          motion.addEventListener("change", (event) => {
+            autoplay = !event.matches;
+            sync();
+          });
+          document.addEventListener("visibilitychange", sync);
+          sync();
+        }
+      }
     </script>
     <script>
       // Link do checkout da Cakto: cole aqui e todos os botões de compra passam a usá-lo.

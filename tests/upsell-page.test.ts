@@ -207,12 +207,12 @@ describe("contrato da página pública de upsell Videosell", () => {
     ).flatMap((element) => {
       if (
         (element.tagName === "IMG" || element.tagName === "SOURCE") &&
-        element.closest("a.orig")
+        (element.closest("a.orig") || element.closest("#casos [data-case-video]"))
       ) {
         return [];
       }
 
-      return ["src", "poster", "srcset"].flatMap((attribute) => {
+      return ["src", "poster", "srcset", "data-src"].flatMap((attribute) => {
         const value = element.getAttribute(attribute)?.trim();
         if (!value) return [];
         if (attribute !== "srcset") return [value];
@@ -253,39 +253,64 @@ describe("contrato da página pública de upsell Videosell", () => {
     expect(document.querySelector("#como-funciona .flow")?.querySelectorAll("li").length).toBe(3);
   });
 
-  it("mostra um episódio real: trecho 16:9, Short, folha de quadros, 3 thumbs e o pacote com FONTES", async () => {
-    const episode = document.querySelector("#episodio")!;
-    expect(document.querySelector("#inicio video[src='videos/canal-episodio.mp4'][data-autoplay]")).not.toBeNull();
-    expect(document.querySelector("#inicio video[src='videos/canal-short.mp4'][data-autoplay]")).not.toBeNull();
-    expect(episode.querySelector("img[src='videos/canal-folha.jpg']")).not.toBeNull();
-    expect(episode.querySelectorAll(".thumbs img")).toHaveLength(3);
-    const pkg = episode.querySelector(".pkg")?.textContent ?? "";
-    for (const part of ["CAPÍTULOS", "FONTES", "FOTOS", "MÚSICA"]) expect(pkg).toContain(part);
-    expect(episode.querySelector(".fact a[href^='https://']")).not.toBeNull();
+  it("mostra referências em 16:9 e 9:16 com a edição original", () => {
+    expect(document.querySelector("#inicio video[src='videos/niteroi-original.mp4'][data-autoplay]")).not.toBeNull();
+    expect(document.querySelector("#inicio video[src='videos/niteroi-original-vertical.mp4'][data-autoplay]")).not.toBeNull();
+    expect(document.querySelector("#inicio .deliverable")?.textContent).toContain("Vídeo todo editado dentro do Videosell");
+    expect(document.querySelector("#inicio .caption")?.textContent).toContain("Referência de formato");
   });
 
   it("vende uma oferta e reserva os cinco bônus para o bloco de compra", () => {
     expect(document.querySelector("[data-path], [data-path-btn], [data-only], #modulos")).toBeNull();
     const offer = document.querySelector("#oferta")!;
     expect(offer.querySelectorAll(".stack li")).toHaveLength(5);
-    expect(offer.querySelector('video[src="videos/avatar.mp4"]')).not.toBeNull();
-    expect(offer.querySelector('video[src="videos/ui-motion.mp4"]')).not.toBeNull();
+    expect(offer.querySelector("video")).toBeNull();
     expect(offer.querySelector(".price s")?.textContent).toBe("R$ 147");
     expect(document.querySelector("#inicio h1")?.textContent).toContain("canal dark");
   });
 
-  it("leva aos vídeos originais dos casos de mercado e distingue o piloto do produto", () => {
-    const links = Array.from(document.querySelectorAll("#casos .case-grid a"));
-    expect(links).toHaveLength(3);
-    for (const item of links) {
-      expect(item.textContent).toContain("vídeo");
-      expect(item.getAttribute("href")).toMatch(/^https:\/\/x\.com\/\w+\/status\/\d+$/);
+  it("mostra vídeos, canais e documentação sobre a produção em código", () => {
+    const cards = Array.from(document.querySelectorAll("#casos .case-grid > li"));
+    expect(cards).toHaveLength(4);
+    for (const card of cards) {
+      const video = card.querySelector("[data-case-video]")!;
+      const videoId = video.getAttribute("data-case-video");
+      expect(videoId).toMatch(/^[\w-]{11}$/);
+      expect(video.getAttribute("href")).toBe(`https://www.youtube.com/watch?v=${videoId}`);
+      expect(video.querySelector("img")?.getAttribute("src")).toContain(`/vi/${videoId}/`);
+      expect(card.querySelector("[data-case-channel]")?.getAttribute("href")).toMatch(/^https:\/\/www\.youtube\.com\/@[\w-]+$/);
+      if (card.hasAttribute("data-case-reference")) {
+        expect(card.textContent).toContain("Referência de formato");
+        expect(card.querySelector("[data-case-ai]")).toBeNull();
+      } else {
+        expect(card.querySelector("[data-case-ai]")?.getAttribute("href")).toMatch(/\/about$/);
+      }
+      expect(card.querySelector(".case-result")?.textContent).toContain("views");
+      expect(card.querySelector(".case-time")?.textContent).toBeTruthy();
     }
-    expect(document.querySelector("#inicio .caption")?.textContent).toContain("piloto de Niterói");
+    expect(document.querySelectorAll("#casos [data-case-ai]")).toHaveLength(3);
   });
 
-  it("traz as medições do teste e a conexão pelo MCP", () => {
-    expect(document.querySelectorAll("#medicoes li").length).toBeGreaterThanOrEqual(3);
+  it("reúne seis amostras leves com pôster e sem fonte de vídeo inicial", () => {
+    const previews = Array.from(document.querySelectorAll("#galeria video"));
+    expect(previews).toHaveLength(6);
+    expect(document.querySelectorAll("#galeria .gallery-goal")).toHaveLength(3);
+    expect(document.querySelectorAll("#galeria video[width='480'][height='270']")).toHaveLength(4);
+    for (const city of ["vitoria", "curitiba"]) {
+      expect(document.querySelector(`#galeria video[data-src="videos/previa-${city}.mp4"]`)).not.toBeNull();
+    }
+    for (const clip of previews) {
+      expect(clip.getAttribute("src")).toBeNull();
+      expect(clip.getAttribute("data-src")).toMatch(/^videos\/previa-[\w-]+\.mp4$/);
+      expect(clip.getAttribute("preload")).toBe("none");
+      expect(clip.hasAttribute("muted")).toBe(true);
+    }
+  });
+
+  it("mostra o fluxo via MCP local e retira as medições do teste", () => {
+    expect(document.querySelector("#medicoes")).toBeNull();
+    expect(document.querySelector("#como-funciona")?.textContent).toContain("MCP local");
+    expect(document.querySelector("#como-funciona")?.textContent).toContain("Codex");
     expect(document.querySelector("#conectar img[src='videos/canal-mcp.png']")).not.toBeNull();
   });
 

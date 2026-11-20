@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import ffprobeStatic from "ffprobe-static";
@@ -10,8 +10,11 @@ const ffprobePath = ffprobeStatic.path;
 
 // Every video the page plays, with its poster (the page is the source of truth).
 const page = readFileSync(resolve("site/upsell/index.html"), "utf8");
-// Trechos audíveis do episódio de vitrine e amostras dos bônus.
+// Trechos com a narração do episódio original.
 const names = [...new Set([...page.matchAll(/<video src="videos\/([\w-]+)\.mp4"[^>]*data-autoplay/g)].map((m) => m[1]))];
+
+const previews = [...page.matchAll(/<video data-src="videos\/(previa-[\w-]+)\.mp4"[^>]*width="(\d+)" height="(\d+)"/g)]
+  .map(([, name, width, height]) => ({ name, width: Number(width), height: Number(height) }));
 
 async function probe(file: string) {
   const { stdout } = await execFile(ffprobePath, [
@@ -30,16 +33,22 @@ async function probe(file: string) {
 }
 
 describe("vídeos reais da página de upsell", { timeout: 60_000 }, () => {
-  it("a página toca os vídeos gerados pelo motor novo", () => {
-    expect(names).toEqual(expect.arrayContaining(["canal-episodio", "canal-short", "avatar", "ui-motion"]));
+  it("mostra 3 canais reais feitos no app (episódios, Shorts e thumbs) com som", () => {
+    expect(names).toEqual(expect.arrayContaining(["canal-top", "canal-ese", "canal-receita", "canal-top-short", "canal-ese-short"]));
+    for (const thumb of ["canal-top-thumb", "canal-ese-thumb", "canal-receita-thumb"]) expect(page).toContain(`videos/${thumb}.jpg`);
+  });
+
+  it("a página toca as duas versões do episódio original", () => {
+    expect(names).toEqual(expect.arrayContaining(["niteroi-original", "niteroi-original-vertical"]));
   });
 
   for (const name of names) {
-    it(`${name}: vertical 9:16, 30 fps, com áudio a 48 kHz`, async () => {
+    it(`${name}: 30 fps com áudio a 48 kHz`, async () => {
       const info = await probe(resolve(`site/upsell/videos/${name}.mp4`));
       const video = info.streams.find((stream) => stream.codec_type === "video")!;
       const audio = info.streams.find((stream) => stream.codec_type === "audio");
-      const aspect = name === "canal-episodio" ? 16 / 9 : 9 / 16;
+      // Vertical clips: Shorts, the vertical cut of Niterói and the vertical recipe channel.
+      const aspect = /(-vertical|-short|receita)$/.test(name) ? 9 / 16 : 16 / 9;
       expect(video.width! / video.height!).toBeCloseTo(aspect, 6);
       expect(video.width).toBeGreaterThanOrEqual(540);
       expect(video.avg_frame_rate).toBe("30/1");
@@ -56,4 +65,15 @@ describe("vídeos reais da página de upsell", { timeout: 60_000 }, () => {
       expect(poster.streams[0]).toMatchObject({ width: v.width, height: v.height });
     });
   }
+  it("carrega amostras da galeria compactas e sem faixa de áudio", async () => {
+    expect(previews).toHaveLength(6);
+    await Promise.all(previews.map(async ({ name, width, height }) => {
+      const file = resolve(`site/upsell/videos/${name}.mp4`);
+      const { streams, format } = await probe(file);
+      expect(statSync(file).size).toBeLessThan(220_000);
+      expect(streams).toHaveLength(1);
+      expect(streams[0]).toMatchObject({ codec_type: "video", width, height });
+      expect(Number(format.duration)).toBeCloseTo(6, 1);
+    }));
+  });
 });

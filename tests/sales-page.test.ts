@@ -27,9 +27,9 @@ describe("página de vendas do Videosell (/videosell)", () => {
     for (const file of files) expect(existsSync(resolve("site/upsell/videos", file)), file).toBe(true);
   });
 
-  it("vende o canal dark com a IA que a pessoa já assina, com o mesmo episódio real do upsell", () => {
+  it("vende o canal dark com a IA que a pessoa já assina, com a mesma vitrine do upsell", () => {
     for (const word of ["canal dark", "Claude", "ChatGPT", "YouTube", "TikTok", "Instagram", "2 Shorts"]) expect(sales).toContain(word);
-    for (const media of ["canal-episodio.mp4", "canal-short.mp4", "canal-folha.jpg", "canal-mcp.png"]) {
+    for (const media of ["niteroi-original.mp4", "niteroi-original-vertical.mp4", "previa-vitoria.mp4", "previa-curitiba.mp4", "canal-mcp.png"]) {
       expect(sales).toContain(media);
       expect(upsell).toContain(media);
     }
