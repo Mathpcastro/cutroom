@@ -258,7 +258,7 @@ export interface EditCommand {
   args: Record<string, unknown>;
 }
 export type StudioTab = "start" | "brand" | "voices" | "films" | "publish";
-export type EditorEvent = { type: "state"; state: AppSnapshot } | { type: "studio"; tab: StudioTab };
+export type EditorEvent = { type: "state"; state: AppSnapshot } | { type: "studio"; tab: StudioTab } | { type: "mcp"; reason?: "search" };
 export interface StudioProfilesAPI {
   list(): Promise<StudioProfile[]>;
   getActive(): Promise<StudioProfile | undefined>;

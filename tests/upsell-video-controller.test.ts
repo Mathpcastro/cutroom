@@ -208,8 +208,8 @@ describe("controller acessível dos vídeos de upsell", () => {
       videos.map((video) => ({
         muted: (video as HTMLVideoElement).muted,
         paused: (video as HTMLVideoElement).paused,
-        text: video.parentElement!.querySelector("button.sound")!.textContent,
-        pressed: video.parentElement!.querySelector("button.sound")!.getAttribute("aria-pressed"),
+        text: video.closest("article")!.querySelector("button.sound")!.textContent,
+        pressed: video.closest("article")!.querySelector("button.sound")!.getAttribute("aria-pressed"),
       })),
     );
     const secondIndex = await second.locator("video").evaluate((video) =>

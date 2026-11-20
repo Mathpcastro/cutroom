@@ -300,6 +300,12 @@ export const STUDIO_TOOLS = [
     inputSchema: objectSchema({ tab: { type: "string", enum: ["start", "brand", "voices", "films", "publish"] } }, ["tab"]),
   },
   {
+    name: "open_mcp_setup",
+    description:
+      "Open Videosell's 'Usar pelo seu agente' window, which shows the USER how to connect Videosell to their local agent (Claude Code, Codex or the Claude app) through MCP and do everything from that agent's chat. Videosell has no web search: call it with reason 'search' whenever the request needs research on the internet (current data with sources, competitors, a dark-channel episode) and tell the user to ask for it in their agent after connecting.",
+    inputSchema: objectSchema({ reason: { type: "string", enum: ["search", "general"] } }),
+  },
+  {
     name: "instagram_accounts",
     description: "Instagram accounts the user connected for Reels publishing (Composio, set up in CutRoom › Estúdio › Publicar), the default account and recent posts. Never ask for the Composio key in chat.",
     inputSchema: objectSchema(),

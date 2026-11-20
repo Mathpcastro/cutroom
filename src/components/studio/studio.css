@@ -2610,3 +2610,32 @@
 .avatar-studio .avatar-controls textarea { min-height: 0; }
 
 .reel-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* "Usar pelo seu agente" (MCP): its own highlighted button and window. */
+.studio-mcp-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 9px 11px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.28), rgba(124, 92, 255, 0.12));
+  border: 1px solid rgba(150, 125, 255, 0.55);
+  border-radius: 9px;
+  text-align: left;
+  cursor: pointer;
+}
+.studio-mcp-button:hover { background: linear-gradient(135deg, rgba(124, 92, 255, 0.4), rgba(124, 92, 255, 0.18)); }
+.studio-mcp-button span { display: flex; flex-direction: column; min-width: 0; }
+.studio-mcp-button b { font-size: 12.5px; font-weight: 650; }
+.studio-mcp-button small { font-size: 10.5px; opacity: .82; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mcp-dialog header h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; }
+.mcp-search-notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; margin-bottom: 4px; color: var(--studio-text); background: var(--studio-accent-soft); border: 1px solid var(--studio-accent-line); border-radius: 10px; }
+.mcp-search-notice p { margin: 0; font-size: 12.5px; line-height: 1.45; }
+.mcp-search-notice svg { flex: 0 0 auto; margin-top: 2px; }
+.mcp-steps { margin: 0 0 4px; padding-left: 18px; font-size: 12.5px; line-height: 1.6; color: var(--studio-text); }
+.mcp-skill { align-self: flex-start; }
+.mcp-examples { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px dashed var(--studio-line); border-radius: 9px; }
+.mcp-examples small { color: var(--studio-muted); }
+.mcp-examples p { margin: 0; font-size: 12px; font-style: italic; }

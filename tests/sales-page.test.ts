@@ -27,6 +27,19 @@ describe("página de vendas do Videosell (/videosell)", () => {
     for (const file of files) expect(existsSync(resolve("site/upsell/videos", file)), file).toBe(true);
   });
 
+  it("vende o canal dark com a IA que a pessoa já assina, com a mesma vitrine do upsell", () => {
+    for (const word of ["canal dark", "Claude", "ChatGPT", "YouTube", "TikTok", "Instagram", "2 Shorts"]) expect(sales).toContain(word);
+    for (const media of ["niteroi-original.mp4", "niteroi-original-vertical.mp4", "previa-vitoria.mp4", "previa-curitiba.mp4", "canal-mcp.png"]) {
+      expect(sales).toContain(media);
+      expect(upsell).toContain(media);
+    }
+    expect(sales).toContain("Estúdio de vídeo em código");
+    expect(sales).not.toMatch(/data-path|data-only=/);
+    expect(sales.slice(sales.indexOf('id="oferta"'))).toContain("Bônus 1 · Avatar de IA");
+    expect(sales.slice(sales.indexOf('id="oferta"'))).toContain("Bônus 3 · Motion em código");
+    expect(sales).not.toMatch(/monetiza\w* garantid|publica\w* (sozinho|direto) no (YouTube|TikTok)/i);
+  });
+
   it("o upsell ancora no preço normal", () => {
     expect(upsell).toContain("R$ 147");
     expect(upsell).toContain("R$ 97");

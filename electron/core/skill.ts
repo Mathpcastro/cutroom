@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FORMATS } from "./formats";
+import { CHANNEL_SKILL_NAME, channelSkill } from "./channel/channel-skill";
 
 /**
  * The CutRoom video skill for Claude Code (~/.claude/skills) and Codex (~/.codex/skills).
@@ -43,20 +44,24 @@ Reels (alcance) → visita no perfil → clique no link → venda; os carrosséi
 `;
 }
 
-/** Writes the skill for Claude Code and Codex; returns the files written. */
+/** Writes the skills (videos + channel studio) for Claude Code and Codex; returns the files written. */
 export async function installSkill(home: string, version: string) {
-  const content = cutroomSkill(version),
-    written: string[] = [];
-  for (const base of [join(home, ".claude", "skills"), join(home, ".codex", "skills")]) {
-    const dir = join(base, SKILL_NAME),
-      file = join(dir, "SKILL.md");
-    await mkdir(dir, { recursive: true });
-    const current = await readFile(file, "utf8").catch(() => "");
-    if (current !== content) {
-      await writeFile(`${file}.partial`, content, "utf8");
-      await rename(`${file}.partial`, file);
+  const skills: [string, string][] = [
+    [SKILL_NAME, cutroomSkill(version)],
+    [CHANNEL_SKILL_NAME, channelSkill(version)],
+  ];
+  const written: string[] = [];
+  for (const [name, content] of skills)
+    for (const base of [join(home, ".claude", "skills"), join(home, ".codex", "skills")]) {
+      const dir = join(base, name),
+        file = join(dir, "SKILL.md");
+      await mkdir(dir, { recursive: true });
+      const current = await readFile(file, "utf8").catch(() => "");
+      if (current !== content) {
+        await writeFile(`${file}.partial`, content, "utf8");
+        await rename(`${file}.partial`, file);
+      }
+      written.push(file);
     }
-    written.push(file);
-  }
   return written;
 }
