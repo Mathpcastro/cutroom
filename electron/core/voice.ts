@@ -1,6 +1,6 @@
 import type { AudioWord } from "../../src/shared/types";
 
-export const VOICE_PROVIDERS = ["elevenlabs", "openai", "kokoro", "local"] as const;
+export const VOICE_PROVIDERS = ["elevenlabs", "fish", "openai", "kokoro", "local"] as const;
 export type VoiceProvider = (typeof VOICE_PROVIDERS)[number];
 
 export interface VoiceOption {
@@ -241,5 +241,35 @@ export async function openAiSpeech(options: {
     },
     "OpenAI",
   );
+  return { audio: new Uint8Array(await response.arrayBuffer()), extension: "mp3" };
+}
+
+/** Fish Audio voices of the account (own clones first): `GET /model?self=true`. */
+export async function fishVoices(apiKey: string, fetchImpl: typeof fetch = fetch): Promise<VoiceOption[]> {
+  const response = await fetchImpl("https://api.fish.audio/model?self=true&page_size=50", { headers: { authorization: `Bearer ${apiKey}` } });
+  if (response.status === 401) throw new Error("Fish Audio: chave de API recusada. Confira a chave em Vozes.");
+  if (!response.ok) throw new Error(`Fish Audio respondeu ${response.status}.`);
+  const body = (await response.json()) as { items?: { _id: string; title: string; description?: string; languages?: string[] }[] };
+  return (body.items ?? []).map((v) => ({ id: v._id, name: v.title, provider: "fish", language: v.languages?.join(", "), description: v.description }));
+}
+
+/**
+ * Fish Audio text to speech: `POST https://api.fish.audio/v1/tts` with header `model: s2-pro`
+ * and the voice as `reference_id` (a cloned or library voice of the account).
+ */
+export async function fishSpeech(options: { apiKey: string; referenceId: string; text: string; model?: string; speed?: number; signal?: AbortSignal; fetch?: typeof fetch }): Promise<SpeechResult> {
+  if (!options.referenceId) throw new Error("Fish Audio: escolha a voz (reference_id) do canal.");
+  const response = await (options.fetch ?? fetch)("https://api.fish.audio/v1/tts", {
+    method: "POST",
+    signal: options.signal,
+    headers: { authorization: `Bearer ${options.apiKey}`, "content-type": "application/json", model: options.model ?? "s2-pro" },
+    body: JSON.stringify({ text: options.text, reference_id: options.referenceId, format: "mp3", mp3_bitrate: 192, normalize: true, latency: "normal", ...(options.speed && options.speed !== 1 ? { prosody: { speed: options.speed } } : {}) }),
+  });
+  if (response.status === 401) throw new Error("Fish Audio: chave de API recusada. Confira a chave em Vozes.");
+  if (response.status === 402 || response.status === 429) throw new Error("Fish Audio: limite ou créditos da conta esgotados.");
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Fish Audio respondeu ${response.status}${detail ? `: ${detail.slice(0, 200)}` : "."}`);
+  }
   return { audio: new Uint8Array(await response.arrayBuffer()), extension: "mp3" };
 }

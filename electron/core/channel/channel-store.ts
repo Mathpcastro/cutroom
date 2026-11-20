@@ -26,6 +26,7 @@ import {
   type Script,
   type Stage,
 } from "../../../src/shared/channel";
+import { formatOf, resolveFormat, type FormatInput } from "../../../src/shared/channel-formats";
 import type { Series } from "../../../src/shared/story";
 import { KeyedQueue, readJsonOr, shortRandomId, slugify, writeJsonAtomic } from "./fs-json";
 
@@ -45,6 +46,11 @@ export const createChannelArgs = z.object({
   niche: z.string().trim().max(200).default(""),
   language: z.enum(["pt-BR", "en", "es"]).default("pt-BR"),
   bible: bibleSchema.partial().optional(),
+  /** Template id ("cidade", "top10", "e-se") or a whole format written for the niche. Default "cidade". */
+  // Kept raw: resolveFormat validates it and keeps template fields the agent did not send.
+  format: z.union([z.string().max(40), z.record(z.string(), z.unknown())]).optional(),
+  /** Voice of the channel: provider + voice id (ElevenLabs voice, Fish Audio reference_id, OpenAI voice…). */
+  voice: z.object({ provider: z.enum(["elevenlabs", "fish", "openai", "kokoro", "local"]), voiceId: z.string().max(120).default("") }).optional(),
   voiceId: z.string().max(120).default(""),
   voiceSpeed: z.number().min(0.5).max(2).default(1.05),
   longMinMinutes: z.number().min(1).max(60).default(10),
@@ -110,6 +116,13 @@ export class ChannelStore {
       let id = base;
       for (let n = 2; existing.has(id); n++) id = `${base}-${n}`;
       const now = new Date().toISOString();
+      const fmt = resolveFormat((a.format ?? "cidade") as string | FormatInput);
+      // No format given: the "cidade" default keeps the length the caller asked for.
+      if (!a.format) {
+        const min = Math.round(a.longMinMinutes * 60);
+        fmt.format = { ...fmt.format, durationSec: { min, max: Math.max(min, 1200) } };
+      }
+      const voiceId = a.voice ? `${a.voice.provider}:${a.voice.voiceId}` : a.voiceId;
       const channel = channelSchema.parse({
         schemaVersion: CHANNEL_SCHEMA_VERSION,
         id,
@@ -119,9 +132,10 @@ export class ChannelStore {
         niche: a.niche,
         language: a.language,
         platforms: {},
-        bible: { ...defaultBible(a.niche), ...a.bible },
+        bible: { ...defaultBible(a.niche), ...fmt.bible, ...a.bible },
+        format: fmt.format,
         identity: { logo: "", banner: "", palette: [], fonts: { display: "Anton", body: "Inter" }, signature: "" },
-        defaults: { voiceId: a.voiceId, voiceSpeed: a.voiceSpeed, musicMood: [], longMinMinutes: a.longMinMinutes, shortsPerEpisode: a.shortsPerEpisode },
+        defaults: { voiceId, voiceSpeed: a.voiceSpeed, musicMood: [], longMinMinutes: a.format ? Math.max(1, Math.round(fmt.format.durationSec.min / 60)) : a.longMinMinutes, shortsPerEpisode: a.shortsPerEpisode },
         cadence: { longPerWeek: 3, shortPerWeek: 7, publishTimes: [] },
         ...extra,
         createdAt: now,
@@ -139,8 +153,22 @@ export class ChannelStore {
     return this.lock(profileId, channelId, async () => {
       const current = await this.getChannel(profileId, channelId);
       const merged: Record<string, unknown> = { ...current };
+      // A format patch is merged over the current format and validated; its bible parts go to the bible.
+      if (patch.format !== undefined) {
+        const fmt = resolveFormat(patch.format as never, typeof patch.format === "string" ? undefined : formatOf(current));
+        merged.format = fmt.format;
+        merged.bible = { ...current.bible, ...fmt.bible };
+      }
+      if (patch.voice && typeof patch.voice === "object") {
+        const v = patch.voice as { provider?: string; voiceId?: string };
+        merged.defaults = { ...current.defaults, voiceId: `${v.provider ?? "elevenlabs"}:${v.voiceId ?? ""}` };
+      }
       for (const [key, value] of Object.entries(patch)) {
-        if (["id", "profileId", "schemaVersion", "createdAt"].includes(key)) continue;
+        if (["id", "profileId", "schemaVersion", "createdAt", "format", "voice"].includes(key)) continue;
+        if (key === "bible" && patch.format !== undefined) {
+          merged.bible = { ...(merged.bible as object), ...(value as object) };
+          continue;
+        }
         const prev = (current as Record<string, unknown>)[key];
         merged[key] = value && typeof value === "object" && !Array.isArray(value) && prev && typeof prev === "object" ? { ...prev, ...value } : value;
       }
@@ -225,7 +253,7 @@ export class ChannelStore {
         ideaId: a.ideaId,
         format: a.format,
         title: a.title,
-        aspect: a.format === "long" ? "16:9" : "9:16",
+        aspect: a.format === "long" ? formatOf(channel).aspect : "9:16",
         stage: "research",
         stages: freshStages(),
         approvals: {},

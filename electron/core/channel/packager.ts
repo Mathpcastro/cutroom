@@ -2,6 +2,7 @@ import { link, copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/pr
 import { basename, join } from "node:path";
 import { z } from "zod";
 import type { Channel, Fact } from "../../../src/shared/channel";
+import { formatOf } from "../../../src/shared/channel-formats";
 import { withCsp } from "../film";
 import type { ChannelStore } from "./channel-store";
 import { readSceneMetas, sectionSpans } from "./episode-render";
@@ -120,7 +121,7 @@ export function checkTags(tags: string[]) {
 export const THUMB = { w: 1280, h: 720, maxBytes: 2_000_000, maxWords: 6, minFontPx: 88 };
 
 /** Thumb HTML: real photo + short strong phrase (last line in the accent color), dark gradient on the text side, place chip on the opposite corner. */
-export function thumbHtml(o: { photo?: string; lines: string[]; chip?: string; look: ReturnType<typeof lookOf> }) {
+export function thumbHtml(o: { photo?: string; soft?: boolean; character?: string; lines: string[]; chip?: string; look: ReturnType<typeof lookOf> }) {
   const lines = o.lines.map((l) => safeText(l).text.toUpperCase());
   const longest = Math.max(...lines.map((l) => l.length));
   const fs = Math.round(Math.max(THUMB.minFontPx, Math.min(170, 640 / Math.max(1, longest) / 0.48, 560 / lines.length / 1.02)));
@@ -134,14 +135,16 @@ export function thumbHtml(o: { photo?: string; lines: string[]; chip?: string; l
 html, body { width: ${THUMB.w}px; height: ${THUMB.h}px; overflow: hidden; background: ${o.look.bg}; }
 #film { position: relative; width: ${THUMB.w}px; height: ${THUMB.h}px; overflow: hidden; }
 .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photo.soft { filter: blur(22px) brightness(.5) saturate(1.2); transform: scale(1.15); }
 .grad { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.88) 0%, rgba(0,0,0,.6) 45%, rgba(0,0,0,0) 72%); }
 .txt { position: absolute; left: 48px; top: 50%; transform: translateY(-50%); width: 760px; }
 .l { display: table; font: ${fs}px/0.98 "D"; color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; text-shadow: 0 6px 0 #000; }
 .l.last { color: ${o.look.accent}; }
+.char { position: absolute; right: -20px; bottom: 0; height: 100%; max-width: 620px; object-fit: contain; object-position: bottom right; filter: drop-shadow(0 12px 28px rgba(0,0,0,.65)); }
 .chip { position: absolute; right: 34px; top: 34px; padding: 10px 22px; background: ${o.look.accent}; color: #111; font: 44px/1 "D"; border-radius: 8px; }
 </style></head><body>
 <div id="film" data-composition-id="thumb" data-start="0" data-duration="1" data-width="${THUMB.w}" data-height="${THUMB.h}">
-${o.photo ? `<img class="photo" src="${o.photo}" alt="">` : ""}<div class="grad"></div>
+${o.photo ? `<img class="photo${o.soft ? " soft" : ""}" src="${o.photo}" alt="">` : ""}<div class="grad"></div>${o.character ? `<img class="char" src="${o.character}" alt="">` : ""}
 <div class="txt">${lines.map((l, i) => `<span class="l${i === lines.length - 1 ? " last" : ""}">${esc(l)}</span>`).join("")}</div>
 ${o.chip ? `<div class="chip">${esc(safeText(o.chip).text.toUpperCase())}</div>` : ""}
 <script src="kit/gsap.min.js"></script>
@@ -221,6 +224,8 @@ export async function generatePackage(store: ChannelStore, ids: Ids, rawInput: P
 
   // Thumbs.
   const look = lookOf(channel);
+  const fmt = formatOf(channel);
+  const characterFile = fmt.character?.image ? join(store.channelDir(ids.profileId, ids.channelId), fmt.character.image) : undefined;
   const thumbs: PackageResult["thumbs"] = [];
   const outDir = join(epDir, "out", "thumbs");
   await mkdir(outDir, { recursive: true });
@@ -232,15 +237,39 @@ export async function generatePackage(store: ChannelStore, ids: Ids, rawInput: P
     await rm(dir, { recursive: true, force: true });
     await mkdir(join(dir, "fonts"), { recursive: true });
     await mkdir(join(dir, "kit"), { recursive: true });
-    const media = t.media ? items.get(t.media) : script.beats.flatMap((b) => b.scene.media).map((id) => items.get(id)).find((m) => m?.kind === "photo" && m.place);
+    // Image: the chosen media, else a photo of a place, else any photo of the episode.
+    // Images used only to draw the character are not backgrounds (the character goes on the thumb by itself).
+    const photos = script.beats.filter((b) => b.scene.type !== "character" && b.scene.type !== "counter").flatMap((b) => b.scene.media).map((id) => items.get(id)).filter((m) => m?.kind === "photo");
+    const media = t.media ? items.get(t.media) : (photos.find((m) => m?.place) ?? photos[0]);
+    // Formats with a fixed character (or "rosto+frase" thumbs) put the character on the thumb.
+    let character: string | undefined;
+    if (characterFile && (fmt.character || channel.bible.thumbStyle.layout === "rosto+frase")) {
+      character = `assets/${basename(characterFile)}`;
+      await mkdir(join(dir, "assets"), { recursive: true });
+      await linkOrCopy(characterFile, join(dir, character));
+    }
     let photo: string | undefined;
+    // A frame of the episode carries its own text: it goes in blurred, as mood, never competing with the phrase.
+    let soft = false;
     if (media) {
       photo = `assets/${basename(media.file)}`;
       await mkdir(join(dir, "assets"), { recursive: true });
       await linkOrCopy(join(epDir, media.file), join(dir, photo));
+    } else if (!character) {
+      // No photo and no character (custom or text-only formats): a frame of the episode itself,
+      // from the middle of the first non-call scene, so the thumb is never an empty background.
+      const beat = script.beats.find((b) => !b.cta && b.timing);
+      const video = join(epDir, "out", "video.mp4");
+      if (beat?.timing && (await stat(video).then(() => true, () => false))) {
+        photo = "assets/quadro.jpg";
+        soft = true;
+        await mkdir(join(dir, "assets"), { recursive: true });
+        const at = (beat.timing.start + beat.timing.cut) / 2;
+        await ffmpeg(["-y", "-ss", at.toFixed(3), "-i", video, "-frames:v", "1", "-q:v", "3", join(dir, photo)], { signal: options.signal }).catch(() => (photo = undefined));
+      }
     }
     const chip = t.chip ?? media?.place;
-    const h = thumbHtml({ photo, lines: t.lines, chip, look });
+    const h = thumbHtml({ photo, soft, character, lines: t.lines, chip, look });
     await writeFile(join(dir, "index.html"), withCsp(h.html), "utf8");
     await writeFile(join(dir, "kit", "gsap.min.js"), await readFile(options.kit.gsap));
     await linkOrCopy(join(options.kit.fontsDir, look.display.file), join(dir, "fonts", look.display.file));

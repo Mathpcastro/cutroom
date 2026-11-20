@@ -8,6 +8,7 @@ interface Voice { id: string; name: string; language?: string; description?: str
 const PROVIDERS = [
   ["kokoro", "Kokoro (offline, sem créditos)"],
   ["elevenlabs", "ElevenLabs (chave própria)"],
+  ["fish", "Fish Audio (chave própria)"],
   ["openai", "OpenAI (chave própria)"],
   ["local", "Voz do computador"],
 ] as const;
@@ -57,11 +58,11 @@ export function VoiceSettings({ packages, jobs, run }: { packages: AppSnapshot["
           </button>
         </div>
       )}
-      {(provider === "elevenlabs" || provider === "openai") && (
+      {(provider === "elevenlabs" || provider === "fish" || provider === "openai") && (
         <div className="studio-box">
           <p>{voice?.keys[`voice.${provider}`] ? t("Chave cadastrada (guardada cifrada neste computador).") : t("Cole a sua chave de API. Ela fica cifrada no seu computador e nunca vai para o chat.")}</p>
           <div className="field-pair">
-            <input type="password" autoComplete="off" value={keyInput} placeholder={provider === "elevenlabs" ? t("Chave da ElevenLabs") : t("Chave da OpenAI (sk-…)")} onChange={(e) => setKeyInput(e.target.value)} />
+            <input type="password" autoComplete="off" value={keyInput} placeholder={provider === "elevenlabs" ? t("Chave da ElevenLabs") : provider === "fish" ? t("Chave da Fish Audio") : t("Chave da OpenAI (sk-…)")} onChange={(e) => setKeyInput(e.target.value)} />
             <button className="button" disabled={!keyInput.trim()} onClick={() => void guard(async () => { setVoice(await api("setVoiceKey", { provider, key: keyInput })); setKeyInput(""); await loadVoices(provider); }, "Chave salva.")}>{t("Salvar")}</button>
             {voice?.keys[`voice.${provider}`] && <button className="button" onClick={() => void guard(async () => setVoice(await api("setVoiceKey", { provider })), "Chave removida.")}>{t("Remover")}</button>}
           </div>

@@ -8,7 +8,7 @@ import type { AudioWord } from "../../src/shared/types";
 
 export interface DialogueLine {
   text: string;
-  provider?: "elevenlabs" | "openai" | "kokoro" | "local";
+  provider?: "elevenlabs" | "fish" | "openai" | "kokoro" | "local";
   voice?: string;
 }
 

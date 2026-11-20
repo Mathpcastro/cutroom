@@ -16,11 +16,22 @@ export type Transcriber = (file: string, options: { language?: string; signal?: 
 
 export const MATCH_TARGET = 0.97;
 export const MATCH_FAIL = 0.95;
+/**
+ * Short episodes have few tokens, so a handful of transcription slips ("o Zé é" heard as
+ * "os e a") pull the ratio under 95% although the audio is right. Below MATCH_FAIL the
+ * narration still passes when the misses are spread: overall ≥ MATCH_FLOOR and every beat
+ * ≥ BEAT_FLOOR (a missing or extra beat drops that beat far below, and still fails).
+ */
+export const MATCH_FLOOR = 0.9;
+export const BEAT_FLOOR = 0.75;
 export const CUT_GAP = 0.06;
 
 export function normToken(word: string) {
   return word.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/\p{M}/gu, "").replace(/[^\p{L}\p{N}]/gu, "");
 }
+
+/** Spoken contractions written either way ("pro céu" / "para o céu"): both sides use the long form. */
+const CONTRACTIONS: Record<string, string[]> = { pro: ["para", "o"], pra: ["para"], pros: ["para", "os"], pras: ["para", "as"], prum: ["para", "um"], pruma: ["para", "uma"] };
 
 /** Spoken tokens of a text: numbers, money, % and acronyms expanded; connectors kept. */
 export function spokenTokens(text: string) {
@@ -29,7 +40,19 @@ export function spokenTokens(text: string) {
     .replace(/\d+/g, (n) => ` ${integerToWords(Number(n))} `)
     .split(/[\s,;:]+/)
     .map(normToken)
-    .filter(Boolean);
+    .filter(Boolean)
+    .flatMap((t) => CONTRACTIONS[t] ?? [t]);
+}
+
+/** Same word for the alignment: equal, or 1 letter apart in words of 4+ letters ("parece"/"parecem"). */
+export function sameToken(a: string, b: string) {
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4 || Math.abs(a.length - b.length) > 1 || a[0] !== b[0]) return false;
+  // Edit distance ≤ 1 (one substitution, insertion or deletion).
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
 }
 
 /** Transcript words → spoken tokens, each sharing its word's time span. */
@@ -42,6 +65,17 @@ export function expandTranscript(words: TimedWord[]) {
     let end = w.end;
     if (/^(R\$|US\$|€)$/.test(text.trim()) && words[i + 1]) {
       text = `${text}${words[i + 1].text}`;
+      end = words[i + 1].end;
+      i++;
+    }
+    // A number split by the transcript ("92," + "5", "92" + ",5" + "%"): glue it back so it reads
+    // "noventa e dois vírgula cinco por cento", like the script.
+    while (words[i + 1]) {
+      const cur = text.trim();
+      const nx = words[i + 1].text.trim();
+      const glue = (/\d[,.]$/.test(cur) && /^\d/.test(nx)) || (/\d$/.test(cur) && /^[,.]\d/.test(nx)) || (/\d$/.test(cur) && /^%[.,!?;:]?$/.test(nx));
+      if (!glue) break;
+      text = `${cur}${nx}`;
       end = words[i + 1].end;
       i++;
     }
@@ -59,14 +93,15 @@ export function lcsMatch(a: string[], b: string[]) {
   const table = new Uint16Array((a.length + 1) * cols);
   for (let i = a.length - 1; i >= 0; i--)
     for (let j = b.length - 1; j >= 0; j--)
-      table[i * cols + j] = a[i] === b[j] ? table[(i + 1) * cols + j + 1] + 1 : Math.max(table[(i + 1) * cols + j], table[i * cols + j + 1]);
+      table[i * cols + j] = sameToken(a[i], b[j]) ? table[(i + 1) * cols + j + 1] + 1 : Math.max(table[(i + 1) * cols + j], table[i * cols + j + 1]);
   const match = new Array<number>(a.length).fill(-1);
   for (let i = 0, j = 0; i < a.length && j < b.length; ) {
     // On a tie, skip the heard word: a beat matches the latest audio that loses nothing,
     // so a deleted beat's leftover audio does not pull the next beat's start back.
-    if (a[i] === b[j] && table[i * cols + j + 1] < table[i * cols + j]) {
+    const same = sameToken(a[i], b[j]);
+    if (same && table[i * cols + j + 1] < table[i * cols + j]) {
       match[i++] = j++;
-    } else if (a[i] === b[j]) j++;
+    } else if (same) j++;
     else if (table[(i + 1) * cols + j] >= table[i * cols + j + 1]) i++;
     else j++;
   }
@@ -141,7 +176,8 @@ export function alignBeats(beats: Pick<Beat, "id" | "text" | "say">[], transcrip
     };
   });
   const worst = [...perBeat].sort((a, b) => a.ratio - b.ratio)[0];
-  const ok = ratio >= MATCH_FAIL && !outOfOrder.length;
+  const spread = ratio >= MATCH_FLOOR && perBeat.every((p) => p.ratio >= BEAT_FLOOR);
+  const ok = (ratio >= MATCH_FAIL || spread) && !outOfOrder.length;
   return {
     ratio: round(ratio, 4),
     timings,

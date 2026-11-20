@@ -8,7 +8,7 @@ import { createChannelToolDispatcher, isChannelTool } from "./core/channel/chann
 import { scribeTranscriber } from "./core/channel/aligner";
 import { elevenLabsSpeaker } from "./core/channel/narration";
 import { durationOf as channelDuration } from "./core/channel/ffmpeg";
-import { openAiSpeech } from "./core/voice";
+import { fishSpeech, openAiSpeech } from "./core/voice";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
 import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
 import { adaptEffects, cleanShotPlan, shotFilmHtml, type ShotPlan } from "../src/shared/shots";
@@ -1220,6 +1220,11 @@ function setupChannelStudio() {
         const key = await secretStore.get("voice.elevenlabs");
         if (!key) throw Object.assign(new Error("Configure a chave da ElevenLabs em Vozes."), { code: "VOICE_KEY_MISSING" });
         return elevenLabsSpeaker(key, voice);
+      }
+      if (voice.provider === "fish") {
+        const key = await secretStore.get("voice.fish");
+        if (!key) throw Object.assign(new Error("Configure a chave da Fish Audio em Vozes."), { code: "VOICE_KEY_MISSING" });
+        return (text, { signal }) => fishSpeech({ apiKey: key, referenceId: voice.voiceId, text, model: voice.modelId, speed: voice.speed, signal });
       }
       if (voice.provider === "openai") {
         const key = await secretStore.get("voice.openai");

@@ -4,6 +4,8 @@ import { basename, join } from "node:path";
 import { z } from "zod";
 import { COMPILED_SCENES, type Beat, type Channel, type Fact, type MediaItem } from "../../../src/shared/channel";
 import type { SfxKind } from "../../../src/shared/shots";
+import { formatOf } from "../../../src/shared/channel-formats";
+import { BACKDROPS, backdropSvg } from "./backdrops";
 import { withCsp } from "../film";
 import { normToken } from "./aligner";
 import type { ChannelStore } from "./channel-store";
@@ -21,7 +23,7 @@ import { integerToWords } from "./pt-numbers";
  */
 
 export const FPS = 30;
-export const SCENE_KIT_VERSION = "canal-3";
+export const SCENE_KIT_VERSION = "canal-7";
 export const FIRST_ELEMENT_MAX = 10 / FPS;
 export const ENDSCREEN_EXTRA = 12;
 
@@ -38,6 +40,24 @@ export const SCENE_DATA = {
   title: z.object({ lines: z.array(z.object({ text: z.string().min(1).max(80), color: z.enum(["accent", "ink", "red", "green"]).default("ink"), strike: z.boolean().default(false), at })).min(1).max(4), stamp: z.string().max(30).optional() }),
   list: z.object({ title: z.string().max(80).optional(), tone: z.enum(["green", "red"]).default("green"), items: z.array(z.object({ text: z.string().min(1).max(90), mark: z.enum(["ok", "no"]).default("ok"), at })).min(1).max(6) }),
   cta: z.object({ kind: z.enum(["comment", "subscribe", "like", "endscreen"]), text: z.string().max(140).optional(), examples: z.array(z.string().max(40)).max(8).default([]) }),
+  rank: z.object({ n: z.number().int().min(1).max(100), title: z.string().min(1).max(80), subtitle: z.string().max(140).optional(), at }),
+  counter: z.object({
+    backdrop: z.union([z.enum(BACKDROPS), z.object({ media: z.string() })]).optional(),
+    counter: z.string().max(20).optional(),
+    label: z.string().max(30).optional(),
+    value: z.number(),
+    from: z.number().optional(),
+    note: z.string().max(120).optional(),
+    items: z.array(z.object({ text: z.string().min(1).max(60), qty: z.number().optional(), delta: z.enum(["+", "-"]).optional() })).max(6).default([]),
+  }),
+  character: z.object({
+    backdrop: z.union([z.enum(BACKDROPS), z.object({ media: z.string() })]).optional(),
+    pose: z.enum(["talk", "think", "shock", "happy"]).default("talk"),
+    line: z.string().max(140).optional(),
+    counter: z.object({ id: z.string().max(20).optional(), label: z.string().max(30).optional(), value: z.number() }).optional(),
+    twist: z.boolean().optional(),
+  }),
+  custom: z.object({ html: z.string().min(1).max(20000), css: z.string().max(20000).default(""), js: z.string().max(20000).default(""), texts: z.array(z.string().max(200)).max(40).default([]) }),
 } as const;
 export type CompiledType = keyof typeof SCENE_DATA;
 
@@ -118,6 +138,8 @@ export type CompileInput = {
   aspect: "16:9" | "9:16";
   media: Map<string, SceneMedia>;
   facts: Map<string, Fact>;
+  /** The channel's fixed character (format), with the absolute path of its image. */
+  character?: { name: string; image?: string; counters: { id: string; label: string }[] };
 };
 export type CompiledScene = {
   beatId: string;
@@ -150,7 +172,7 @@ export function sceneHash(input: CompileInput) {
     return m ? `${m.id}:${m.file}:${m.place ?? ""}` : id;
   });
   return createHash("sha1")
-    .update(JSON.stringify([SCENE_KIT_VERSION, input.aspect, input.beat.text, input.beat.scene, media, input.frames, input.index % 2, input.words.map((w) => [w.t, Math.round(w.s * FPS)]), input.look]))
+    .update(JSON.stringify([SCENE_KIT_VERSION, input.aspect, input.beat.text, input.beat.scene, media, input.frames, input.index % 2, input.words.map((w) => [w.t, Math.round(w.s * FPS)]), input.look, input.character ?? null]))
     .digest("hex")
     .slice(0, 20);
 }
@@ -192,12 +214,26 @@ export function compileScene(input: CompileInput): CompiledScene {
     case "cta":
       cta(ctx, data as z.infer<typeof SCENE_DATA.cta>);
       break;
+    case "rank":
+      rank(ctx, data as z.infer<typeof SCENE_DATA.rank>);
+      break;
+    case "counter":
+      counter(ctx, data as z.infer<typeof SCENE_DATA.counter>);
+      break;
+    case "character":
+      character(ctx, data as z.infer<typeof SCENE_DATA.character>);
+      break;
+    case "custom":
+      custom(ctx, data as z.infer<typeof SCENE_DATA.custom>);
+      break;
   }
   return ctx.finish();
 }
 
 class Ctx {
   layers: string[] = [];
+  /** Elements outside the slow zoom (credits): the 2.5% zoom would push them off the edge. */
+  overlays: string[] = [];
   /** Video clips are composition children (frame-synced by HyperFrames), outside the zoom wrapper. */
   clips: string[] = [];
   js: string[] = [];
@@ -267,7 +303,7 @@ class Ctx {
   credit(m: { author: string; license: string; source: string }) {
     if (m.license === "user" || m.license === "generated") return;
     const who = m.author && m.author !== "autor desconhecido" ? m.author : m.source;
-    this.layers.push(`<div class="credit">${this.text(`${who.slice(0, 40)} · ${m.license}`)}</div>`);
+    this.overlays.push(`<div class="credit">${this.text(`${who.slice(0, 40)} · ${m.license}`)}</div>`);
   }
   /** A clip repeated in blocks without seams until `end` (never a looping <video>, which stalls the render). */
   videoLoop(m: { src: string; durationSec?: number }, start: number, end: number, cls: string) {
@@ -337,6 +373,7 @@ ${this.css.join("\n")}
   <div id="stage"><div id="zoom">
     ${this.layers.join("\n    ")}
   </div></div>
+  ${this.overlays.join("\n  ")}
   <div class="seal">${esc(look.name)}${look.handle ? `<small>${esc(look.handle)}</small>` : ""}</div>
   <script src="kit/gsap.min.js"></script>
   <script>
@@ -563,6 +600,221 @@ function cta(ctx: Ctx, d: z.infer<typeof SCENE_DATA.cta>) {
 // ---------- episode-level compile & write ----------
 
 type Ids = { profileId: string; channelId: string; episodeId: string };
+
+// ---------- rank, counter, character, custom (formats of any niche) ----------
+
+function rank(ctx: Ctx, d: z.infer<typeof SCENE_DATA.rank>) {
+  const { size, input } = ctx;
+  const v = size.vertical;
+  const photoId = input.beat.scene.media[0];
+  if (photoId && !input.beat.scene.bgVideo) {
+    const m = ctx.media(photoId, "photo");
+    const ph = ctx.id("rp");
+    ctx.layers.push(`<img id="${ph}" class="photo" src="${m.src}" alt="">`, `<div class="veil" style="background:rgba(0,0,0,.55)"></div>`);
+    ctx.js.push(`tl.fromTo("#${ph}", {scale:1.12}, {scale:1, duration:${round(ctx.D)}, ease:"none"}, 0);`);
+    ctx.credit(m);
+  }
+  const id = ctx.id("rk");
+  ctx.css.push(
+    `.rankn { position: absolute; left: ${v ? 64 : 140}px; top: ${v ? 22 : 12}%; font: ${v ? 300 : 340}px/0.8 "D"; color: ${input.look.accent}; text-shadow: 0 10px 40px rgba(0,0,0,.6); }`,
+    // The small "#" is lifted with position (not vertical-align), so the line box stays the number's height.
+    `.rankn small { position: relative; top: -0.9em; font-size: 0.42em; line-height: 0; margin-right: 0.04em; }`,
+    `.rankt { position: absolute; left: ${v ? 64 : 140}px; right: ${v ? 64 : 140}px; top: ${v ? 44 : 54}%; font: ${v ? 96 : 104}px/1.02 "D"; text-transform: uppercase; text-shadow: 0 6px 24px rgba(0,0,0,.7); }`,
+    `.ranks { position: absolute; left: ${v ? 64 : 140}px; right: ${v ? 64 : 140}px; top: ${v ? 62 : 74}%; font: 600 ${v ? 50 : 48}px/1.2 "B"; opacity: .92; text-shadow: 0 3px 12px rgba(0,0,0,.7); }`,
+  );
+  ctx.texts.push(`#${d.n}`, String(d.n));
+  ctx.layers.push(`<div id="${id}n" class="rankn later"><small>#</small>${d.n}</div>`, `<div id="${id}t" class="rankt later">${ctx.text(d.title)}</div>`);
+  if (d.subtitle) ctx.layers.push(`<div id="${id}s" class="ranks later">${ctx.text(d.subtitle)}</div>`);
+  const t = ctx.appear(0.05);
+  const tt = ctx.cue(d.at, t + 0.35);
+  ctx.js.push(
+    `tl.fromTo("#${id}n", {autoAlpha:0, scale:3, rotation:-8}, {autoAlpha:1, scale:1, rotation:0, duration:0.4, ease:"power4.out"}, ${round(t)});`,
+    `tl.fromTo("#${id}t", {autoAlpha:0, x:-120}, {autoAlpha:1, x:0, duration:0.45, ease:"power3.out"}, ${round(tt)});`,
+    d.subtitle ? `tl.fromTo("#${id}s", {autoAlpha:0, y:24}, {autoAlpha:0.92, y:0, duration:0.4, ease:"power2.out"}, ${round(tt + 0.3)});` : "",
+  );
+  ctx.sound(t, "impact", 0.35);
+  ctx.sound(tt, "swish", 0.18);
+}
+
+/** Column where a counter lays out: the whole width, or the right part when the character stands on the left. */
+type Column = { left: number; right: number };
+
+function counterBadge(ctx: Ctx, label: string, value: number, from: number, t: number, big: boolean, col: Column = { left: 0, right: 0 }) {
+  const v = ctx.size.vertical;
+  const id = ctx.id("ct");
+  ctx.css.push(
+    big
+      ? `.ctr { position: absolute; left: ${col.left}px; right: ${col.right}px; top: ${v ? 20 : 12}%; text-align: center; } .ctr .lb { display: block; margin-bottom: 44px; font: ${v ? 86 : 92}px/1 "D"; letter-spacing: .16em; color: ${ctx.input.look.ink}; opacity: .9; } .ctr .vl { display: block; font: ${v ? 300 : 330}px/1 "D"; color: ${ctx.input.look.accent}; text-shadow: 0 14px 50px rgba(0,0,0,.45); }`
+      : `.ctb { position: absolute; left: ${v ? 48 : 64}px; top: ${v ? 190 : 48}px; padding: 14px 30px; border-radius: 16px; background: ${ctx.input.look.accent}; color: #111; font: ${v ? 70 : 64}px/1 "D"; letter-spacing: .04em; box-shadow: 6px 6px 0 #111; }`,
+  );
+  ctx.texts.push(safeText(label).text, String(value), `${safeText(label).text} ${value}`);
+  ctx.layers.push(
+    big
+      ? `<div id="${id}" class="ctr later"><span class="lb">${ctx.text(label)}</span><span id="${id}v" class="vl">${from}</span></div>`
+      : `<div id="${id}" class="ctb later">${ctx.text(label)} <span id="${id}v">${from}</span></div>`,
+  );
+  const dur = from === value ? 0 : Math.min(1.2, Math.max(0.5, ctx.D - t - 0.4));
+  ctx.js.push(`tl.fromTo("#${id}", {autoAlpha:0, scale:${big ? 0.4 : 0.7}}, {autoAlpha:1, scale:1, duration:0.4, ease:"back.out(1.8)"}, ${round(t)});`);
+  if (dur) ctx.js.push(`(function(){ const o={n:${from}}; const el=document.getElementById("${id}v"); tl.to(o, {n:${value}, duration:${round(dur)}, ease:"power1.inOut", onUpdate(){ el.textContent=String(Math.round(o.n)); }}, ${round(t + 0.15)}); })();`);
+  ctx.sound(t, big ? "impact" : "pop", big ? 0.3 : 0.2);
+}
+
+/** Scenery behind the character: a drawn place (quarto, rua…) or a photo; slow push-in for life. */
+function sceneBackdrop(ctx: Ctx, backdrop: string | { media: string } | undefined) {
+  if (!backdrop) return false;
+  const id = ctx.id("bd");
+  ctx.css.push(`.bd { position: absolute; inset: 0; } .bd-svg, .bd img { display: block; width: 100%; height: 100%; object-fit: cover; } .bdveil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.05) 0%, rgba(0,0,0,.22) 100%); }`);
+  if (typeof backdrop === "string") ctx.layers.push(`<div id="${id}" class="bd">${backdropSvg(backdrop)}</div>`);
+  else {
+    const m = ctx.media(backdrop.media, "photo");
+    ctx.layers.push(`<div id="${id}" class="bd"><img src="${m.src}" alt=""></div>`);
+    ctx.credit(m);
+  }
+  ctx.layers.push(`<div class="bdveil"></div>`);
+  ctx.js.push(`tl.fromTo("#${id}", {scale:1.06}, {scale:1, duration:${round(ctx.D)}, ease:"none"}, 0);`);
+  return true;
+}
+
+/** Soft light behind the subject and a floor line: a flat background reads as an empty screen. */
+function stageLight(ctx: Ctx, x: string) {
+  ctx.css.push(
+    `.glow { position: absolute; inset: 0; background: radial-gradient(ellipse 46% 60% at ${x} 52%, ${ctx.input.look.accent}26 0%, transparent 70%), linear-gradient(180deg, transparent 0%, transparent 74%, rgba(0,0,0,.28) 74%, rgba(0,0,0,.42) 100%); }`,
+  );
+  ctx.layers.push(`<div class="glow"></div>`);
+}
+
+/** The channel character standing in a scene (counter beside it, or the character scene itself). */
+function placeCharacter(ctx: Ctx, src: string, o: { centerX: string; heightPct: number; bottom: number; t: number; pose?: string }) {
+  const id = ctx.id("chr");
+  const h = Math.round(ctx.size.h * o.heightPct);
+  ctx.css.push(
+    `.chr { position: absolute; left: ${o.centerX}; bottom: ${o.bottom}px; height: ${h}px; transform: translateX(-50%); transform-origin: 50% 100%; image-rendering: pixelated; filter: drop-shadow(0 22px 34px rgba(0,0,0,.55)); }`,
+    `.shadow { position: absolute; left: ${o.centerX}; bottom: ${o.bottom - 18}px; width: ${Math.round(h * 0.55)}px; height: 36px; transform: translateX(-50%); border-radius: 50%; background: rgba(0,0,0,.35); filter: blur(6px); }`,
+  );
+  ctx.layers.push(`<div class="shadow"></div>`, `<img id="${id}" class="chr later" src="${src}" alt="">`);
+  ctx.js.push(`tl.fromTo("#${id}", {autoAlpha:0, y:120, scaleY:0.8}, {autoAlpha:1, y:0, scaleY:1, duration:0.4, ease:"back.out(1.6)"}, ${round(o.t)});`);
+  // Idle breathing; a small bounce on each spoken word (talking without a rig).
+  ctx.js.push(`tl.to("#${id}", {scaleY:1.015, duration:0.9, ease:"sine.inOut", yoyo:true, repeat:${Math.max(0, Math.floor(ctx.D / 0.9) - 1)}}, ${round(o.t + 0.4)});`);
+  if (o.pose === "talk" || o.pose === "happy")
+    for (const w of ctx.input.words.filter((x) => x.s > o.t + 0.4 && x.s < ctx.D - 0.2).slice(0, 60))
+      ctx.js.push(`tl.to("#${id}", {y:${o.pose === "happy" ? -18 : -7}, duration:0.08, yoyo:true, repeat:1, ease:"power1.out"}, ${round(w.s)});`);
+  if (o.pose === "shock") ctx.js.push(`tl.to("#${id}", {x:"+=14", duration:0.05, yoyo:true, repeat:7, ease:"none"}, ${round(o.t + 0.45)});`);
+  if (o.pose === "think") ctx.js.push(`tl.to("#${id}", {rotation:-4, duration:0.6, ease:"sine.inOut"}, ${round(o.t + 0.45)});`);
+  return id;
+}
+
+function characterSrc(ctx: Ctx, mediaId?: string) {
+  if (mediaId) return ctx.media(mediaId, "photo").src;
+  const image = ctx.input.character?.image;
+  if (!image) return undefined;
+  const src = `assets/${basename(image)}`;
+  ctx.assets.set(src, image);
+  return src;
+}
+
+function counter(ctx: Ctx, d: z.infer<typeof SCENE_DATA.counter>) {
+  const ch = ctx.input.character;
+  const def = ch?.counters.find((c) => c.id === d.counter) ?? ch?.counters[0];
+  const label = d.label ?? def?.label ?? "DIA";
+  const v = ctx.size.vertical;
+  const t = ctx.appear(0.05);
+  // Wide screens: the channel character stands on the left and the counter fills the right.
+  const src = !v ? characterSrc(ctx, ctx.input.beat.scene.media[0]) : undefined;
+  const col: Column = src ? { left: Math.round(ctx.size.w * 0.4), right: 80 } : { left: 80, right: 80 };
+  if (sceneBackdrop(ctx, d.backdrop)) {
+    // The counter sits on a dark card so it reads over any scenery.
+    ctx.css.push(`.ctrcard { position: absolute; left: ${col.left - 30}px; right: ${col.right - 30}px; top: ${v ? 16 : 8}%; bottom: ${v ? 24 : 9}%; border-radius: 40px; background: rgba(12,14,24,.72); }`);
+    ctx.layers.push(`<div class="ctrcard"></div>`);
+  } else stageLight(ctx, src ? "64%" : "50%");
+  if (src) placeCharacter(ctx, src, { centerX: "22%", heightPct: 0.8, bottom: 40, t: t + 0.1 });
+  counterBadge(ctx, label, d.value, d.from ?? d.value, t, true, col);
+  if (d.note) {
+    const id = ctx.id("cn");
+    ctx.css.push(`.ctn { position: absolute; left: ${col.left}px; right: ${col.right}px; top: ${v ? 52 : 60}%; text-align: center; font: 700 ${v ? 60 : 58}px/1.15 "B"; }`);
+    ctx.layers.push(`<div id="${id}" class="ctn later">${ctx.text(d.note)}</div>`);
+    ctx.js.push(`tl.fromTo("#${id}", {autoAlpha:0, y:30}, {autoAlpha:1, y:0, duration:0.4, ease:"power2.out"}, ${round(t + 0.5)});`);
+  }
+  if (d.items.length) {
+    const box = ctx.id("inv");
+    ctx.css.push(
+      `.inv { position: absolute; left: ${col.left}px; right: ${col.right}px; top: ${v ? 62 : 73}%; display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; }`,
+      `.inv .it { padding: 16px 30px; border-radius: 18px; background: rgba(255,255,255,.1); border: 3px solid rgba(255,255,255,.3); font: 700 ${v ? 50 : 48}px/1 "B"; }`,
+      `.inv .it.plus { border-color: ${ctx.input.look.green}; background: ${ctx.input.look.green}22; } .inv .it.minus { border-color: ${ctx.input.look.red}; background: ${ctx.input.look.red}1f; text-decoration: line-through; opacity: .8; }`,
+    );
+    const items = d.items.map((it, i) => {
+      const text = `${it.delta ? `${it.delta} ` : ""}${it.text}${it.qty !== undefined ? ` x${it.qty}` : ""}`;
+      return `<span id="${box}_${i}" class="it later ${it.delta === "+" ? "plus" : it.delta === "-" ? "minus" : ""}">${ctx.text(text)}</span>`;
+    });
+    ctx.layers.push(`<div class="inv">${items.join("")}</div>`);
+    d.items.forEach((_, i) => {
+      ctx.js.push(`tl.fromTo("#${box}_${i}", {autoAlpha:0, y:24, scale:0.8}, {autoAlpha:1, y:0, scale:1, duration:0.3, ease:"back.out(2)"}, ${round(t + 0.8 + i * 0.18)});`);
+      ctx.sound(t + 0.8 + i * 0.18, "tick", 0.12);
+    });
+  }
+}
+
+function character(ctx: Ctx, d: z.infer<typeof SCENE_DATA.character>) {
+  const { input, size } = ctx;
+  const v = size.vertical;
+  const src = characterSrc(ctx, input.beat.scene.media[0]);
+  if (!src) throw new SceneError("Cena de personagem sem imagem: defina a imagem do personagem (channel_character_set) ou passe scene.media.", input.beat.id);
+  const t = ctx.appear(0.03);
+  if (!sceneBackdrop(ctx, d.backdrop)) stageLight(ctx, v ? "50%" : "38%");
+  placeCharacter(ctx, src, { centerX: v ? "50%" : "38%", heightPct: v ? 0.52 : 0.86, bottom: v ? 300 : 30, t, pose: d.pose });
+  if (d.line) {
+    const b = ctx.id("bal");
+    ctx.css.push(
+      `.bal { position: absolute; left: ${v ? 70 : 1010}px; right: ${v ? 70 : 120}px; top: ${v ? 360 : 190}px; padding: 32px 40px; border-radius: 34px; background: #fff; color: #111; font: 800 ${v ? 60 : 62}px/1.12 "B"; box-shadow: 10px 10px 0 #111; }`,
+      `.bal::after { content: ""; position: absolute; left: ${v ? "45%" : "-30px"}; ${v ? "bottom: -30px" : "top: 60%"}; border: 18px solid transparent; ${v ? "border-top-color: #fff" : "border-right-color: #fff"}; }`,
+    );
+    ctx.layers.push(`<div id="${b}" class="bal later">${ctx.text(d.line)}</div>`);
+    ctx.js.push(`tl.fromTo("#${b}", {autoAlpha:0, scale:0.5, transformOrigin:"0% 100%"}, {autoAlpha:1, scale:1, duration:0.35, ease:"back.out(2)"}, ${round(t + 0.35)});`);
+    ctx.sound(t + 0.35, "pop", 0.18);
+  }
+  if (d.counter) {
+    const def = input.character?.counters.find((c) => c.id === d.counter?.id) ?? input.character?.counters[0];
+    counterBadge(ctx, d.counter.label ?? def?.label ?? "DIA", d.counter.value, d.counter.value, t + 0.1, false);
+  }
+}
+
+/** Patterns a custom scene may not contain: it runs offline under the scene CSP, but stays plain. */
+const CUSTOM_FORBIDDEN: [RegExp, string][] = [
+  [/<\s*script/i, "<script> (use data.js)"],
+  [/<\s*(iframe|object|embed|link|meta|base|form)\b/i, "iframe/object/embed/link/meta/base/form"],
+  [/https?:\/\/|\/\/[a-z0-9.-]+\.[a-z]{2,}/i, "URL externa"],
+  [/@import/i, "@import"],
+  [/\bfetch\s*\(|XMLHttpRequest|WebSocket|\bimport\s*\(|navigator\.|document\.cookie|localStorage|location\s*=|window\.open/i, "rede, armazenamento ou navegação"],
+  [/\son[a-z]+\s*=/i, "atributo on…= (eventos)"],
+];
+
+function custom(ctx: Ctx, d: z.infer<typeof SCENE_DATA.custom>) {
+  for (const [part, value] of [["html", d.html], ["css", d.css], ["js", d.js]] as const)
+    for (const [re, what] of CUSTOM_FORBIDDEN) if (re.test(value)) throw new SceneError(`Cena custom: ${part} contém ${what}.`, ctx.input.beat.id);
+  // {{m_id}} → local asset of the episode (photo, icon or video file).
+  const withMedia = (s: string) =>
+    s.replace(/\{\{\s*(m_[a-z0-9]{2,16})\s*\}\}/g, (_, mid: string) => {
+      const m = ctx.input.media.get(mid);
+      if (!m) throw new SceneError(`Cena custom: mídia ${mid} não está no registro de licenças.`, ctx.input.beat.id);
+      const to = `assets/${basename(m.abs)}`;
+      ctx.assets.set(to, m.abs);
+      if (m.license !== "user" && m.license !== "generated") ctx.credit(m);
+      return to;
+    });
+  const html = withMedia(d.html);
+  const css = withMedia(d.css);
+  const id = ctx.id("cus");
+  ctx.css.push(css);
+  ctx.layers.push(`<div id="${id}" class="custom" style="position:absolute;inset:0">${html}</div>`);
+  // Every text of the custom markup (and data.texts for text written by the JS) is beat data for QA.
+  for (const chunk of html.replace(/<style[\s\S]*?<\/style>/gi, " ").split(/<[^>]+>/)) {
+    const t = chunk.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+    if (t) ctx.texts.push(t);
+  }
+  for (const t of d.texts) ctx.texts.push(safeText(t).text);
+  ctx.appear(0);
+  if (d.js.trim()) ctx.js.push(`(function(tl, D, W, H){\n${d.js}\n})(tl, ${round(ctx.D)}, ${ctx.size.w}, ${ctx.size.h});`);
+}
+
 export type Kit = { gsap: string; fontsDir: string };
 
 export type ScenePlan = { beatId: string; startFrame: number; frames: number; isLast: boolean };
@@ -623,6 +875,10 @@ export async function compileEpisodeScenes(store: ChannelStore, ids: Ids, kit: K
   const look = lookOf(channel);
   const media = new Map((licenses?.items ?? []).map((m) => [m.id, { ...m, abs: join(episodeDir, m.file) }]));
   const facts = new Map((research?.facts ?? []).map((f) => [f.id, f]));
+  const fmt = formatOf(channel);
+  const character = fmt.character
+    ? { name: fmt.character.name, counters: fmt.character.counters, image: fmt.character.image ? join(store.channelDir(ids.profileId, ids.channelId), fmt.character.image) : undefined }
+    : undefined;
   const results: { beatId: string; hash?: string; changed: boolean; error?: string; warnings: string[] }[] = [];
   const keep = new Set<string>();
   for (const [i, beat] of script.beats.entries()) {
@@ -632,7 +888,7 @@ export async function compileEpisodeScenes(store: ChannelStore, ids: Ids, kit: K
     const words = (beat.timing?.words ?? []).map((w) => ({ t: w.t, s: w.s - start, e: w.e - start }));
     const dir = join(episodeDir, "scenes", beat.id);
     try {
-      const input: CompileInput = { beat, index: i, startFrame: plan.startFrame, frames: plan.frames, words, look, aspect: episode.aspect, media, facts };
+      const input: CompileInput = { beat, index: i, startFrame: plan.startFrame, frames: plan.frames, words, look, aspect: episode.aspect, media, facts, character };
       const hash = sceneHash(input);
       const old = sceneMetaSchema.safeParse(await readJsonOr(join(dir, "scene.json"), () => ({})));
       if (old.success && old.data.hash === hash && (await statFile(join(dir, "index.html")).then(() => true, () => false))) {

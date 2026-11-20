@@ -1,6 +1,7 @@
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { TEXT_SCENES, type Beat, type Channel, type Licenses, type Research, type Script } from "../../../src/shared/channel";
+import { TEXT_SCENES, type Beat, type Channel, type Format, type Licenses, type Research, type Script } from "../../../src/shared/channel";
+import { formatOf } from "../../../src/shared/channel-formats";
 import { runFilmWorker, type FilmRunner } from "../film";
 import { wordCheck, type Transcriber } from "./aligner";
 import type { ChannelStore } from "./channel-store";
@@ -56,7 +57,9 @@ export function checkSceneFrames(meta: Pick<SceneMeta, "beatId" | "texts">, fram
         issues.push({ level: "erro", code: "TEXT_OVERFLOW", beatId: meta.beatId, t: f.t, message: `Texto estourando ou cortado: "${b.text.slice(0, 60)}".`, fix: "Reduzir o corpo da fonte ou quebrar a linha (texto mais curto na fala)." });
       // Foreign text: every label must be data of this beat (bug: "SERRA / VITÓRIA" in the Niterói episode).
       const t = norm(b.text);
-      const isNumber = /^[\d.,\s%R$€+-]+$/.test(t);
+      // A number counting up ("433 °C" on the way to "464 °C"): accepted when its unit is the beat's.
+      const unit = t.replace(/[\d.,\s]/g, "");
+      const isNumber = /^[\d.,\s%R$€+-]+$/.test(t) || (/\d/.test(t) && unit.length > 0 && allowed.some((a) => /\d/.test(a) && a.replace(/[\d.,\s]/g, "") === unit));
       if (!isNumber && !allowed.some((a) => a.includes(t) || t.includes(a)))
         issues.push({ level: "erro", code: "FOREIGN_TEXT", beatId: meta.beatId, t: f.t, message: `Texto que não está nos dados da fala: "${t.slice(0, 60)}".`, fix: "Erro de compilação: o rótulo tem de vir da fala." });
     }
@@ -92,7 +95,10 @@ function dedupe(issues: QaIssue[]) {
 }
 
 /** Checks that need no browser: script, facts, media, rhythm, order. */
-export function staticChecks(script: Script, ctx: { research?: Research; licenses?: Licenses; metas: SceneMeta[] }): QaIssue[] {
+/** Scenes whose numbers are not data (ranking position, day counter, character badge). */
+const NON_DATA_NUMBERS = ["rank", "counter", "character", "custom"];
+
+export function staticChecks(script: Script, ctx: { research?: Research; licenses?: Licenses; metas: SceneMeta[]; format?: Format }): QaIssue[] {
   const issues: QaIssue[] = [];
   const facts = new Map((ctx.research?.facts ?? []).map((f) => [f.id, f]));
   const media = new Map((ctx.licenses?.items ?? []).map((m) => [m.id, m]));
@@ -103,7 +109,8 @@ export function staticChecks(script: Script, ctx: { research?: Research; license
     const meta = metaOf.get(b.id);
     // A number shown on screen without a usable fact blocks the episode.
     const shown = [JSON.stringify(b.scene.data ?? {}), ...(meta?.texts ?? [])].join(" ");
-    const showsNumber = b.scene.type === "stat" || /\d/.test(meta?.texts.join(" ") ?? "");
+    const needsSource = !ctx.format || ctx.format.checklist.some((c) => c.kind === "fact-per-number" && c.level === "erro");
+    const showsNumber = b.scene.type === "stat" || (needsSource && !NON_DATA_NUMBERS.includes(b.scene.type) && /\d/.test(meta?.texts.join(" ") ?? ""));
     if (showsNumber && !b.cta && !b.facts.some((id) => facts.get(id) && usableFact(facts.get(id)!)) && !(b.scene.type === "stat" && /"source"/.test(shown)))
       issues.push({ level: "erro", code: "NUMBER_WITHOUT_SOURCE", beatId: b.id, message: "Número na tela sem fato com fonte.", fix: "Ligar um fato (research_add_facts) ou tirar o número da tela." });
     // Place tag over media without `place`.
@@ -111,7 +118,7 @@ export function staticChecks(script: Script, ctx: { research?: Research; license
     if (tags.length && !b.scene.media.some((id) => media.get(id)?.place)) issues.push({ level: "aviso", code: "PLACE_TAG", beatId: b.id, message: "Etiqueta de lugar sobre mídia sem lugar.", fix: "Remover a etiqueta." });
     // Rhythm.
     textRun = (TEXT_SCENES as readonly string[]).includes(b.scene.type) && !b.scene.bgVideo ? textRun + 1 : 0;
-    if (textRun === 3) issues.push({ level: "aviso", code: "TEXT_RUN", beatId: b.id, message: "3 cenas seguidas de texto puro.", fix: "Trocar uma por B-roll ou pôr fundo em vídeo." });
+    if (textRun === 3 && (!ctx.format || ctx.format.checklist.some((c) => c.kind === "max-text-run"))) issues.push({ level: "aviso", code: "TEXT_RUN", beatId: b.id, message: "3 cenas seguidas de texto puro.", fix: "Trocar uma por B-roll ou pôr fundo em vídeo." });
     if (meta && meta.frames / FPS > 12 && !["video", "photo"].includes(b.scene.type) && !b.scene.bgVideo && b.cta !== "endscreen")
       issues.push({ level: "aviso", code: "STATIC_SCENE", beatId: b.id, message: `Cena parada por ${Math.round(meta.frames / FPS)} s.`, fix: "Sugerir B-roll ou fundo em vídeo; ou dividir a fala." });
     // Order of beats vs order of audio.
@@ -247,7 +254,7 @@ export async function runQa(store: ChannelStore, ids: Ids, options: { bench: Ben
     for (const e of r.errors) issues.push({ level: "erro", code: "SCENE_ERROR", beatId: m.beatId, message: e, fix: "Refazer a cena (scenes_compile) e conferir a mídia." });
     issues.push(...checkSceneFrames(m, r.frames, size, allowedGlobal));
   });
-  issues.push(...staticChecks(script, { research, licenses, metas }));
+  issues.push(...staticChecks(script, { research, licenses, metas, format: formatOf(channel) }));
   options.onProgress?.(0.7, "Montando as folhas numeradas");
   const sheets: string[] = [];
   const pageW = Math.round(size.w * THUMB_SCALE);

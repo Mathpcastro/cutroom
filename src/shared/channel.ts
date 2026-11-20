@@ -110,6 +110,80 @@ export const GLOBAL_FORBIDDEN = [
   "imagem ilustrativa",
 ] as const;
 
+// ---------- Format (the channel's own rules; any niche) ----------
+
+/** Where a scene's imagery comes from; the format says which ones the channel uses. */
+export const IMAGE_SOURCES = ["foto-real", "b-roll", "avatar", "ia", "grafico", "custom"] as const;
+export type ImageSource = (typeof IMAGE_SOURCES)[number];
+
+/**
+ * Checks the app measures by itself (`script_review`). Each format lists the ones it wants,
+ * with its own level and params; nothing about a niche is hard-coded in the review.
+ */
+export const CHECK_KINDS = [
+  "fact-per-number", // every number in a beat cites a usable fact
+  "facts-min", // { min } facts with source across the episode
+  "image-share", // { sources: [...], min: 0–1 } share of beats with that imagery
+  "max-text-run", // { max } pure text scenes in a row
+  "first-sentence-words", // { max } words in the 1st sentence
+  "hook-numbers", // { min } numbers in the first section
+  "hook-question", // the first section asks the video's question
+  "hook-teaser", // "fica até o final…" and the end pays it
+  "cta-after", // { sec } no call before this second
+  "max-ctas", // { max }
+  "endscreen-last", // end screen is the last beat
+  "sentence-max-words", // { max }
+  "beat-max-seconds", // { max }
+  "section-required", // { section }
+  "counter-continuity", // { counter } counter scenes never go back or repeat
+  "ending-twist", // { section } the last section exists and has a beat with scene.data.twist
+  "ranked-countdown", // { min? } rank scenes count down without gaps and end at 1
+  "place-tag", // place tag only with scene.place
+  "media-query", // imagery scenes carry scene.query or media
+  "vary-backdrop", // character/counter scenes never repeat the scenery of the one before
+] as const;
+export type CheckKind = (typeof CHECK_KINDS)[number];
+export const checkSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]{1,40}$/),
+  kind: z.enum(CHECK_KINDS),
+  level: z.enum(["erro", "aviso"]).default("erro"),
+  params: z.record(z.string(), z.union([z.number(), z.string(), z.boolean(), z.array(z.string().max(40)).max(12)])).default({}),
+  note: text(300).optional(),
+});
+export type Check = z.infer<typeof checkSchema>;
+
+export const formatSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]{1,40}$/),
+  name: text(80).min(1),
+  description: text(600).default(""),
+  /** Aspect of the long episode; shorts are always 9:16. */
+  aspect: z.enum(["16:9", "9:16"]).default("16:9"),
+  /** Length of the long episode in seconds. */
+  durationSec: z.object({ min: z.number().min(15).max(7200), max: z.number().min(15).max(7200) }),
+  /** Scene types the writer may use (the brief shows only these). */
+  scenes: z.array(z.string().max(40)).min(1).max(40),
+  imagery: z.object({ sources: z.array(z.enum(IMAGE_SOURCES)).min(1), notes: text(600).default("") }),
+  /** Fixed character of the channel ("E se…"), with counters shown on screen. */
+  character: z
+    .object({
+      name: text(60).min(1),
+      description: text(400).default(""),
+      /** Image of the character inside the channel folder (set with channel_character_set). */
+      image: z.string().max(200).optional(),
+      counters: z.array(z.object({ id: z.string().regex(/^[a-z0-9-]{1,20}$/), label: text(30).min(1) })).max(4).default([]),
+      inventory: z.boolean().default(false),
+    })
+    .optional(),
+  /** How much sourced research the episode needs: every number, at least one fact, or none. */
+  research: z.enum(["todo-numero", "pelo-menos-1", "livre"]).default("todo-numero"),
+  checklist: z.array(checkSchema).max(40).default([]),
+  /** Items the agent checks by eye on the frame sheets (style, coherence, "parece template?"). */
+  rubric: z.array(text(200)).max(20).default([]),
+  /** Writing rules that go into the brief, in the format's own words. */
+  writingRules: z.array(text(300)).max(24).default([]),
+});
+export type Format = z.infer<typeof formatSchema>;
+
 // ---------- Channel ----------
 
 export const channelSchema = z.object({
@@ -122,6 +196,8 @@ export const channelSchema = z.object({
   language: z.enum(["pt-BR", "en", "es"]),
   platforms: z.object({ youtubeChannelId: z.string().max(64).optional(), instagram: z.string().max(64).optional(), tiktok: z.string().max(64).optional() }),
   bible: bibleSchema,
+  /** The channel's format; missing on channels made before formats (read as "cidade"). */
+  format: formatSchema.optional(),
   identity: z.object({
     logo: z.string().max(400),
     banner: z.string().max(400),
@@ -264,10 +340,11 @@ export const SCENE_TYPES = [
   "title", "quote", "doc", "list", "cards", "flip", "ticket",
   "stick", "flood", "heat", "blackout", "factory", "jam", "bridge", "gauge", "house", "walk", "route",
   "cta", "poll", "next", "placa", "avatar",
+  "counter", "character", "custom",
 ] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
 /** Scene types the compiler renders today (phase 1 starts with these six; the rest of the catalog follows). */
-export const COMPILED_SCENES = ["photo", "video", "stat", "title", "list", "cta"] as const satisfies readonly SceneType[];
+export const COMPILED_SCENES = ["photo", "video", "stat", "title", "list", "cta", "rank", "counter", "character", "custom"] as const satisfies readonly SceneType[];
 /** Scenes that show real imagery (photo, B-roll); `bgVideo` also counts on any scene. */
 export const REAL_IMAGE_SCENES: readonly SceneType[] = ["photo", "video"];
 /** Pure text scenes: the review forbids 3 in a row. */
@@ -285,6 +362,8 @@ export const sceneSchema = z.object({
   place: text(80).optional(),
   bgVideo: mediaId.optional(),
   stickers: z.array(mediaId).max(6).optional(),
+  /** Where the imagery comes from, when the type alone does not say (custom scenes, IA images). */
+  source: z.enum(IMAGE_SOURCES).optional(),
 });
 export type Scene = z.infer<typeof sceneSchema>;
 

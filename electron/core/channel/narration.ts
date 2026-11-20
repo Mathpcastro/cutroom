@@ -22,7 +22,7 @@ export const SECTION_GAP = 0.7;
 export const PARTIAL_GAPS = { sameSection: 0.05, newSection: 0.45, beforeNew: 0.15 };
 export const NARRATION_LUFS = -16;
 
-export type VoiceSettings = { provider: "elevenlabs" | "openai" | "kokoro" | "local"; voiceId: string; speed: number; stability: number; similarity: number; style: number; modelId?: string };
+export type VoiceSettings = { provider: "elevenlabs" | "fish" | "openai" | "kokoro" | "local"; voiceId: string; speed: number; stability: number; similarity: number; style: number; modelId?: string };
 /** Spec default validated with the reference voice. */
 export const DEFAULT_VOICE_SETTINGS: Omit<VoiceSettings, "provider" | "voiceId"> = { speed: 1.05, stability: 0.5, similarity: 0.8, style: 0.25 };
 export type Speaker = (text: string, options: { signal?: AbortSignal }) => Promise<SpeechResult>;

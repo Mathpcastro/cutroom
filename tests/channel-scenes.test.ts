@@ -38,7 +38,40 @@ const SAMPLES: Record<(typeof COMPILED_SCENES)[number], Beat["scene"]> = {
   title: { type: "title", data: { lines: [{ text: "Niterói ≠ Rio" }, { text: "mais cara", color: "accent", strike: true, at: "chegou" }], stamp: "Confirmado" }, media: [] },
   list: { type: "list", data: { title: "Vale para quem", items: [{ text: "trabalha na cidade", mark: "ok" }, { text: "depende da ponte", mark: "no", at: "pessoas" }] }, media: [] },
   cta: { type: "cta", data: { kind: "comment", examples: ["Recife", "Niterói"] }, media: [] },
+  rank: { type: "rank", data: { n: 7, title: "A ponte mais longa", subtitle: "13 km sobre a baía" }, media: ["m_ph0001"] },
+  counter: { type: "counter", data: { counter: "dia", label: "DIA", value: 37, from: 30, note: "A água acabou", items: [{ text: "lanterna", qty: 1 }, { text: "comida", delta: "-" }] }, media: [] },
+  character: { type: "character", data: { pose: "talk", line: "E agora?", counter: { label: "DIA", value: 37 } }, media: ["m_ph0001"] },
+  custom: { type: "custom", data: { html: '<div class="box"><img src="{{m_ph0001}}" alt=""><h1 id="t">Mapa do tesouro</h1></div>', css: ".box h1{font:120px D;color:#fff}", js: 'tl.from("#t", {autoAlpha:0, y:40, duration:0.4}, 0.1);' }, media: [], source: "custom" },
 };
+
+describe("scenes for any format (rank, counter, character, custom)", () => {
+  it("rank shows the position big and the title; counter animates the value and the inventory", () => {
+    const r = compileScene(input(SAMPLES.rank));
+    expect(r.texts).toEqual(expect.arrayContaining(["#7", "A ponte mais longa", "13 km sobre a baía"]));
+    expect(r.html).toContain('class="rankn later"');
+    const c = compileScene(input(SAMPLES.counter));
+    expect(c.texts).toEqual(expect.arrayContaining(["DIA", "37", "A água acabou", "lanterna x1", "- comida"]));
+    expect(c.html).toContain("n:37");
+  });
+
+  it("character uses the channel image when the scene has no media, and fails clearly without one", () => {
+    const scene = { type: "character" as const, data: { pose: "think" as const }, media: [] };
+    expect(() => compileScene(input(scene))).toThrow(/channel_character_set/);
+    const out = compileScene(input(scene, { character: { name: "Zé", image: "/canal/assets/personagem.png", counters: [{ id: "dia", label: "DIA" }] } }));
+    expect(out.assets).toEqual(expect.arrayContaining([{ to: "assets/personagem.png", from: "/canal/assets/personagem.png" }]));
+  });
+
+  it("custom runs the agent's HTML/CSS/GSAP with local media, and refuses scripts, network and URLs", () => {
+    const out = compileScene(input(SAMPLES.custom));
+    expect(out.html).toContain('src="assets/');
+    expect(out.html).toContain("Mapa do tesouro");
+    expect(out.texts).toContain("Mapa do tesouro");
+    expect(out.html).toContain('tl.from("#t"');
+    for (const bad of ['<script>alert(1)</script>', '<img src="https://x.com/a.png">', '<div onclick="x()">a</div>'])
+      expect(() => compileScene(input({ type: "custom", data: { html: bad }, media: [] }))).toThrow(/custom/);
+    expect(() => compileScene(input({ type: "custom", data: { html: "<b>a</b>", js: "fetch('/x')" }, media: [] }))).toThrow(/rede/);
+  });
+});
 
 describe("scene compiler", () => {
   it("compiles every type of the first set into a HyperFrames composition", () => {

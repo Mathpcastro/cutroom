@@ -1,6 +1,9 @@
 import { join } from "node:path";
 import { z } from "zod";
+import { copyFile, mkdir, stat } from "node:fs/promises";
+import { extname } from "node:path";
 import { STAGES, type Stage } from "../../../src/shared/channel";
+import { FORMAT_TEMPLATES, formatOf } from "../../../src/shared/channel-formats";
 import type { Transcriber } from "./aligner";
 import { ChannelStore, createChannelArgs } from "./channel-store";
 import { hyperframesRenderer, renderEpisode, renderProgress, type SceneRenderer } from "./episode-render";
@@ -27,6 +30,9 @@ import { cutShorts } from "./shorts";
  * `channel_` prefix so the old tools keep working.
  */
 
+/** Approximate list price of paid voices, in US$ per 1,000 characters (estimate shown before spending). */
+const PRICE_PER_1K: Record<string, number> = { elevenlabs: 0.22, fish: 0.015, openai: 0.015 };
+
 const obj = (properties: Record<string, unknown> = {}, required: string[] = []) => ({ type: "object", properties, required, additionalProperties: false });
 const str = (description: string, extra: Record<string, unknown> = {}) => ({ type: "string", description, ...extra });
 const num = (description: string, extra: Record<string, unknown> = {}) => ({ type: "number", description, ...extra });
@@ -38,10 +44,12 @@ const E = { ...C, episodeId: str("Episode id, e.g. ep_7k2m.") };
 const req = { P: ["profileId"], C: ["profileId", "channelId"], E: ["profileId", "channelId", "episodeId"] };
 
 export const CHANNEL_TOOLS = [
-  { name: "channel_create", description: "Create a dark channel (name, @, niche, language) with the default bible (8 movements, CTA plan, rules). Immediate.", inputSchema: obj({ ...P, name: str("Channel name."), handle: str("@handle (checked later at creation on YouTube)."), niche: str("Niche in a few words."), language: str("pt-BR, en or es.", { enum: ["pt-BR", "en", "es"] }), voiceId: str("Default voice id."), longMinMinutes: num("Minimum length of long episodes in minutes (default 10).") }, ["profileId", "name"]) },
+  { name: "format_templates", description: "Example formats (cidade, top10, e-se) with every field: structure, scenes, imagery, duration, character, checklist, rubric, writing rules. Videosell does not pick the niche: copy, mix or ignore these and write the format for ANY niche in channel_create. Immediate.", inputSchema: obj({}) },
+  { name: "channel_create", description: "Create a dark channel for ANY niche. `format` is a template id (format_templates) or a whole format you write for the niche (id, name, aspect, durationSec {min,max}, scenes, imagery {sources}, character?, research, checklist [{id, kind, level, params}], rubric, writingRules, structure [{id, title, targetSec, mustHave}], hookRules, ctaPlan, thumbStyle); `extends` fills what you leave out from a template. The checklist drives script_review. `voice` = {provider: elevenlabs|fish|openai|kokoro|local, voiceId} (Fish Audio: reference_id). Immediate.", inputSchema: obj({ ...P, name: str("Channel name."), handle: str("@handle (checked later at creation on YouTube)."), niche: str("Niche in a few words."), language: str("pt-BR, en or es.", { enum: ["pt-BR", "en", "es"] }), format: { description: "Template id (\"cidade\", \"top10\", \"e-se\") or a format object for the niche (see format_templates).", anyOf: [{ type: "string" }, { type: "object", additionalProperties: true }] }, voice: obj({ provider: str("Voice provider.", { enum: ["elevenlabs", "fish", "openai", "kokoro", "local"] }), voiceId: str("Voice id (ElevenLabs voice_id, Fish Audio reference_id, OpenAI voice, Kokoro voice).") }, ["provider"]), voiceId: str("Legacy: 'provider:id'."), longMinMinutes: num("Legacy minimum length (the format's durationSec wins).") }, ["profileId", "name"]) },
+  { name: "channel_character_set", description: "Set the image of the channel's fixed character (format.character): copies a local PNG/JPG/WEBP (avatar render, generated or user art) into the channel; character scenes use it when they have no media. Immediate.", inputSchema: obj({ ...C, path: str("Absolute path of the image on this computer."), name: str("Character name (optional).") }, [...req.C, "path"]) },
   { name: "channel_get", description: "Read a channel: bible, identity, defaults, cadence. Immediate.", inputSchema: obj(C, req.C) },
   { name: "channel_list", description: "List the profile's channels. Immediate.", inputSchema: obj(P, req.P) },
-  { name: "channel_update", description: "Patch a channel (bible, identity, defaults, cadence are merged one level deep). Immediate.", inputSchema: obj({ ...C, patch: anyObj("Fields to change.") }, [...req.C, "patch"]) },
+  { name: "channel_update", description: "Patch a channel (bible, identity, defaults, cadence are merged one level deep). `format` (template id or the format fields to change) is merged over the current format and validated; `voice` = {provider, voiceId}. Immediate.", inputSchema: obj({ ...C, patch: anyObj("Fields to change.") }, [...req.C, "patch"]) },
   { name: "channel_import_series", description: "Turn an existing story series (series_list) into a channel: premise → promise, tone → voice, rules → must-have, ideas → backlog. The series is untouched.", inputSchema: obj({ ...P, seriesId: str("Series id.") }, ["profileId", "seriesId"]) },
   { name: "channel_pronunciations", description: "Read or replace the channel's pronunciation dictionary (word → how the TTS must read it), applied to every episode.", inputSchema: obj({ ...C, set: anyObj("Optional new dictionary { palavra: 'pronúncia' }.") }, req.C) },
   { name: "backlog_get", description: "The channel's backlog (ideas with score 0–100 and status).", inputSchema: obj(C, req.C) },
@@ -59,7 +67,7 @@ export const CHANNEL_TOOLS = [
   { name: "script_save", description: "Save the whole script as beats [{section, text, say?, facts:[factIds], scene:{type, data, media?, query?, place?, bgVideo?}, cta?}] (replaces the previous one). Returns ids and the automatic review (errors must be fixed before approval). Immediate.", inputSchema: obj({ ...E, beats: arr(anyObj("Beat."), "Beats in order.", { maxItems: 600 }), sections: arr(obj({ id: str("id"), title: str("title") }, ["id", "title"]), "Sections (default: the bible's structure)."), wpm: num("Measured words per minute of the voice.") }, [...req.E, "beats"]) },
   { name: "script_get", description: "The script, paged (40 beats per page). Immediate.", inputSchema: obj({ ...E, page: num("Page.") }, req.E) },
   { name: "script_edit_beats", description: "Edit beats BY ID, never by position: {op:'insert', after|before: beatId, beat}, {op:'update', id, patch}, {op:'delete', id}, {op:'move', id, after|before}. Later stages become stale; only new/changed beats are narrated again. Immediate.", inputSchema: obj({ ...E, edits: arr(anyObj("Edit."), "Edits in order.", { maxItems: 100 }) }, [...req.E, "edits"]) },
-  { name: "script_review", description: "Run the automatic script review again (numbers with facts, hook, rhythm, real images ≥ 1/3, forbidden words, order, CTAs, duration). Immediate.", inputSchema: obj(E, req.E) },
+  { name: "script_review", description: "Run the automatic script review again: structure, scene types of the format, forbidden words, length, and every item of the channel format's checklist (each issue says which `check` raised it). Immediate.", inputSchema: obj(E, req.E) },
   { name: "media_search", description: "Search 4–8 licensed candidates for one beat (place photos from Commons/Openverse, generic from Pexels/Pixabay, B-roll ≥ 1080p, never NC/ND). Returns candidates with an index and a contact sheet image path. Look at the sheet before picking: the place tag is sacred. Job.", inputSchema: obj({ ...E, beatId: str("Beat id."), kind: str("photo, video, music or sfx.", { enum: ["photo", "video", "music", "sfx"] }), query: str("Override query: place + object + mood.") }, [...req.E, "beatId"]) },
   { name: "media_pick", description: "Download candidate `index` of a beat's last search, register its license and put it on the scene (role main, bgVideo or sticker). Pass `place` only if the image really is from that place. Job.", inputSchema: obj({ ...E, beatId: str("Beat id."), index: num("Candidate index."), place: str("Place shown (only if true)."), role: str("main, bgVideo or sticker.", { enum: ["main", "bgVideo", "sticker"] }) }, [...req.E, "beatId", "index"]) },
   { name: "media_music", description: "Search music (incompetech, Jamendo; ≥ 90 s) and register the chosen tracks for the episode (up to 3, one per group of sections). Job.", inputSchema: obj({ ...E, query: str("Mood/instruments, e.g. 'tense piano'."), pick: arr(num("index"), "Indexes to register from this search (empty = just list).") }, [...req.E, "query"]) },
@@ -155,7 +163,7 @@ export function createChannelToolDispatcher(deps: ChannelToolDeps) {
         const voice = await voiceOf(i.profileId, i.channelId);
         const speak = await deps.speaker(voice);
         const res = await generateNarration(store, i, speak, voice, { signal: ctx.signal, onProgress: ctx.progress });
-        await store.addCost(i.profileId, i.channelId, i.episodeId, { stage: "narration", provider: voice.provider, units: res.spentChars, unit: "caracteres", usd: voice.provider === "elevenlabs" ? (res.spentChars / 1000) * 0.22 : voice.provider === "openai" ? (res.spentChars / 1000) * 0.015 : 0 });
+        await store.addCost(i.profileId, i.channelId, i.episodeId, { stage: "narration", provider: voice.provider, units: res.spentChars, unit: "caracteres", usd: (res.spentChars / 1000) * (PRICE_PER_1K[voice.provider] ?? 0) });
         await store.setStage(i.profileId, i.channelId, i.episodeId, "narration", { status: "ok", inputHash: res.blocks.map((b) => b.id).join("").slice(0, 60) });
         return { file: "audio/narracao.wav", durationSec: res.durationSec, blocks: res.blocks.length, spentChars: res.spentChars };
       }),
@@ -235,9 +243,26 @@ export function createChannelToolDispatcher(deps: ChannelToolDeps) {
 
   async function dispatch(name: string, a: Record<string, unknown>): Promise<unknown> {
     switch (name as ChannelToolName) {
+      case "format_templates":
+        return Object.entries(FORMAT_TEMPLATES).map(([id, t]) => ({ id, when: t.when, format: { ...t.format, ...t.bible } }));
       case "channel_create": {
         const { profileId, ...rest } = z.object({ profileId: z.string() }).passthrough().parse(a);
-        return store.createChannel(profileId, createChannelArgs.parse(rest));
+        const ch = await store.createChannel(profileId, createChannelArgs.parse(rest));
+        return { ...ch, next: ch.format?.character && !ch.format.character.image ? "O formato tem personagem fixo: defina a imagem com channel_character_set (avatar renderizado, arte gerada ou do usuário)." : "Crie o primeiro episódio com channel_episode_create." };
+      }
+      case "channel_character_set": {
+        const r = cIds.extend({ path: z.string().min(1).max(1000), name: z.string().max(60).optional() }).parse(a);
+        const ext = extname(r.path).toLowerCase();
+        if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) throw Object.assign(new Error("Use uma imagem PNG, JPG ou WEBP (de preferência PNG com fundo transparente)."), { code: "CHARACTER_IMAGE" });
+        if ((await stat(r.path)).size > 15 * 1024 * 1024) throw Object.assign(new Error("Imagem do personagem acima de 15 MB."), { code: "CHARACTER_IMAGE" });
+        const ch = await store.getChannel(r.profileId, r.channelId);
+        const fmt = formatOf(ch);
+        const rel = `assets/personagem${ext}`;
+        await mkdir(join(store.channelDir(r.profileId, r.channelId), "assets"), { recursive: true });
+        await copyFile(r.path, join(store.channelDir(r.profileId, r.channelId), rel));
+        const character = { counters: [], inventory: false, description: "", ...(fmt.character ?? {}), name: r.name ?? fmt.character?.name ?? "Personagem", image: rel };
+        const next = await store.updateChannel(r.profileId, r.channelId, { format: { ...fmt, character } });
+        return { image: rel, character: next.format?.character };
       }
       case "channel_get": {
         const r = cIds.parse(a);
@@ -331,7 +356,7 @@ export function createChannelToolDispatcher(deps: ChannelToolDeps) {
         const r = ids.parse(a);
         const [ch, ep, research] = await Promise.all([store.getChannel(r.profileId, r.channelId), store.getEpisode(r.profileId, r.channelId, r.episodeId), store.readEpisodeFile(r.profileId, r.channelId, r.episodeId, "research")]);
         const brief = scriptBrief(ch, ep, research);
-        if (!brief.facts.length)
+        if (!brief.facts.length && formatOf(ch).research !== "livre")
           return {
             needsResearch: true,
             next: "O episódio ainda não tem fatos com fonte. Pesquise na internet com a sua busca e grave com research_add_facts antes do roteiro. Se você não tem busca na web (IA dentro do Videosell), chame open_mcp_setup { reason: 'search' } e explique ao usuário que ele pode fazer tudo pelo agente local dele (Claude Code ou Codex) conectado por MCP.",
@@ -393,8 +418,8 @@ export function createChannelToolDispatcher(deps: ChannelToolDeps) {
         const script = await store.readEpisodeFile(r.profileId, r.channelId, r.episodeId, "script");
         if (!script) throw Object.assign(new Error("O episódio ainda não tem roteiro."), { code: "NO_SCRIPT" });
         const chars = narrationChars(script.beats);
-        const paid = voice.provider === "elevenlabs" || voice.provider === "openai";
-        if (paid && !r.confirmCost) return { needsConfirmation: true, estimate: { provider: voice.provider, characters: chars, usd: Math.round((chars / 1000) * (voice.provider === "elevenlabs" ? 0.22 : 0.015) * 100) / 100 }, next: "Mostre a estimativa ao usuário e chame de novo com confirmCost: true." };
+        const paid = (PRICE_PER_1K[voice.provider] ?? 0) > 0;
+        if (paid && !r.confirmCost) return { needsConfirmation: true, estimate: { provider: voice.provider, characters: chars, usd: Math.round((chars / 1000) * PRICE_PER_1K[voice.provider] * 100) / 100 }, next: "Mostre a estimativa ao usuário e chame de novo com confirmCost: true." };
         return job("narration", r);
       }
       case "narration_redo_beats": {
