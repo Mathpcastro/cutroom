@@ -1,5 +1,5 @@
 import { t, setStudioLanguage, useStudioLanguage, type StudioLanguage } from "./studioLanguage";
-import { BookOpen, CalendarDays, Clapperboard, Film, Lightbulb, Monitor, Moon, Settings2, Sun } from "lucide-react";
+import { BookOpen, CalendarDays, Clapperboard, Film, Lightbulb, Monitor, Moon, Settings2, Sun, Tv } from "lucide-react";
 import type { StudioTab } from "../../shared/types";
 import type { StudioPage } from "../VideosellStudio";
 import { ProfileSwitcher } from "./ProfileSwitcher";
@@ -24,9 +24,10 @@ interface StudioNavProps {
   onThemePreference?: (preference: StudioThemePreference) => void;
 }
 
-/** Spec 4 E: 5 main places + Ajustes. Every older screen lives inside one of them. */
+/** Spec 4 E: 6 main places + Ajustes. Every older screen lives inside one of them. */
 const items = [
   { id: "home", label: "Criar", icon: Clapperboard, owns: ["home", "create", "onboarding"] },
+  { id: "channels", label: "Canais dark", icon: Tv, owns: ["channels"] },
   { id: "projects", label: "Meus Reels", icon: Film, owns: ["projects", "videos"] },
   { id: "routine", label: "Piloto automático", icon: CalendarDays, owns: ["routine"] },
   { id: "radar", label: "Ideias", icon: Lightbulb, owns: ["radar", "analytics"] },
