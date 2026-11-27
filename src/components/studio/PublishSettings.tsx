@@ -14,6 +14,7 @@ export function PublishSettings({ jobs, connectionOnly = false }: { jobs: AppSna
   const { error, notice, setNotice, guard } = useStudioGuard();
   const [pub, setPub] = useState<{
     hasKey: boolean;
+    secretsNeedReentry?: boolean;
     accounts: Account[];
     defaultAccount?: string;
     history: { permalink: string; username: string; publishedAt: string }[];
@@ -43,6 +44,7 @@ export function PublishSettings({ jobs, connectionOnly = false }: { jobs: AppSna
     <section className="studio-section">
       {error && <p className="studio-error" role="alert">{error}</p>}
       {notice && <p className="studio-notice">{notice}</p>}
+      {pub?.secretsNeedReentry && <p className="studio-error" role="status">Uma ou mais chaves cifradas da instalação anterior não podem ser abertas neste sistema. Cadastre novamente as integrações com chave em Vozes ou Publicar; o Videosell não consegue recuperar a chave anterior.</p>}
       <p className="studio-lead">{t("Publica Reels no Instagram pelo Composio, com a chave do seu projeto. Use a mesma chave do Carrossell: as contas já conectadas lá aparecem aqui.")}</p>
       <div className="studio-box">
         <p>{pub?.hasKey ? t("Chave do Composio cadastrada (cifrada neste computador).") : t("Cole a chave do PROJETO do Composio (composio.dev › Settings › Project Settings › API Keys).")}</p>

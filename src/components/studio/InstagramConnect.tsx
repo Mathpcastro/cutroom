@@ -8,6 +8,7 @@ export interface InstagramAccountInfo { id: string; username?: string; igUserId?
 export interface UnusableAccountInfo { id: string; username?: string; problem: "expired" | "personal" | "inactive"; message: string }
 export interface PublishState {
   hasKey: boolean;
+  secretsNeedReentry?: boolean;
   keyHint?: string;
   accounts: InstagramAccountInfo[];
   unusable?: UnusableAccountInfo[];
@@ -232,6 +233,7 @@ export function InstagramConnect({ initialStep }: { initialStep?: 1 | 2 | 3 }) {
       </Step>
 
       <Step n={2} title="Cole a chave do seu projeto" done={step2Done} open={shown === 2} onToggle={() => setOpen(shown === 2 ? -1 : 2)}>
+        {pub?.secretsNeedReentry && <p className="ig-note" role="status">Uma ou mais chaves cifradas da instalação anterior não podem ser abertas neste sistema. Cadastre novamente as integrações com chave em Vozes ou Publicar; o Videosell não consegue recuperar a chave anterior.</p>}
         <p>{t("No painel do Composio, abra")} <b>Settings › Project Settings › API Keys</b> {t("e copie a chave do projeto.")}</p>
         <figure className="ig-help-figure" aria-label={t("Onde fica a chave do projeto")}>
           <div className="ig-help-nav"><span>Settings</span><span className="on">Project Settings</span><span>Members</span></div>

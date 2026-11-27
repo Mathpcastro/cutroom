@@ -86,6 +86,11 @@ function visibleCutRoomStrings(source: string, fileName: string) {
 }
 
 describe("visible product name", () => {
+  it("sets the packaged app product name to Videosell", async () => {
+    const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+    expect(packageJson.build.productName).toBe("Videosell");
+  });
+
   it("does not expose CutRoom in TSX text or string literals", async () => {
     const files = await listTsxFiles("src");
     const violations = (
