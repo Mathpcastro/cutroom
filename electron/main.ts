@@ -38,7 +38,7 @@ import {
   writeFile,
   rename,
 } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 import { z } from "zod";
@@ -153,6 +153,19 @@ let avatarService: AvatarService;
 let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
 let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
 let dispatchChannelTool: ReturnType<typeof createChannelToolDispatcher>;
+let channelStore: ChannelStore;
+/** What the Canais screen may call directly; everything else stays with the user's agent. */
+const UI_CHANNEL_TOOLS = ["format_templates", "channel_list", "channel_get", "channel_create", "channel_episode_list", "episode_status", "package_get", "backlog_get"] as const;
+const channelIds = z.object({ profileId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), channelId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), episodeId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/) });
+/** A file inside an episode folder (out/video.mp4, thumbs…), never outside it. */
+async function channelFile(params: unknown) {
+  const { file, ...ids } = channelIds.extend({ file: z.string().min(1).max(400).optional() }).parse(params);
+  const dir = await realpath(channelStore.episodeDir(ids.profileId, ids.channelId, ids.episodeId));
+  if (!file) return { dir };
+  const path = await realpath(resolve(dir, file));
+  if (!path.startsWith(dir + sep) || !['.mp4', '.jpg', '.jpeg', '.png', '.webm'].includes(extname(path).toLowerCase())) throw new Error("Arquivo fora do episódio.");
+  return { dir, path };
+}
 /** Host images for scenes: the brand logo as data-asset="logo". */
 async function motionAssets(): Promise<MotionAssets> {
   const brand = await brandStore?.get();
@@ -1190,6 +1203,7 @@ async function executeTool(
 /** Estúdio de Canais Dark: store, jobs (resumed on open) and the MCP tools. */
 function setupChannelStudio() {
   const store = new ChannelStore(userDir);
+  channelStore = store;
   const jobs = new JobRunner(join(userDir, "jobs"));
   dispatchChannelTool = createChannelToolDispatcher({
     store,
@@ -1827,6 +1841,25 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       if (!resolve(path).startsWith(base))
         throw new Error("O vídeo precisa estar em Vídeos/CutRoom.");
       shell.showItemInFolder(resolve(path));
+      return { ok: true };
+    }
+    case "channelTool": {
+      // The Canais screen: read channels and episodes, create a channel from a template.
+      const { name, args } = z.object({ name: z.enum(UI_CHANNEL_TOOLS), args: z.record(z.string(), z.unknown()) }).parse(params);
+      return dispatchChannelTool(name, args);
+    }
+    case "channelMedia": {
+      const { path } = await channelFile(params);
+      if (!path) throw new Error("Informe o arquivo.");
+      allowedFiles.add(path);
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", path);
+      return { url: url.href };
+    }
+    case "channelReveal": {
+      const { dir, path } = await channelFile(params);
+      if (path) shell.showItemInFolder(path);
+      else await shell.openPath(dir);
       return { ok: true };
     }
     case "installAgentSkill":

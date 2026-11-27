@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, BookOpen, ChevronDown, Lightbulb, RefreshCcw, WandSparkles } from "lucide-react";
+import { ArrowRight, BookOpen, ChevronDown, Lightbulb, RefreshCcw, Tv, WandSparkles } from "lucide-react";
 import type { StudioProfile } from "../../shared/profile";
 import { FORMATS } from "../../../electron/core/formats";
 import { ASPECT_LABEL, LOOKS, LOOK_PRESETS, type LookPreset } from "../../shared/shots";
@@ -67,7 +67,7 @@ export function choicesSummary(profile: StudioProfile, choices: QuickChoices) {
 
 export interface Pending { id: string; label: string; run: () => void; blocking?: boolean; text?: string }
 
-export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, estimate, onCreate, onReference, onStory, onRadar }: {
+export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, estimate, onCreate, onReference, onStory, onRadar, onChannel }: {
   profile: StudioProfile;
   suggestion?: string;
   ideas: { title: string; brief: string }[];
@@ -78,6 +78,7 @@ export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, es
   onReference: () => void;
   onStory: () => void;
   onRadar: () => void;
+  onChannel?: () => void;
 }) {
   const [brief, setBrief] = useState(suggestion ?? "");
   const [choices, setChoices] = useState(() => lastChoices(profile));
@@ -173,6 +174,14 @@ export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, es
           </div>
         )}
       </div>
+
+      {onChannel && (
+        <button type="button" className="quick-channel" onClick={onChannel}>
+          <span className="quick-channel-icon"><Tv size={18} /></span>
+          <span><strong>{t("Criar canal dark")}</strong><small>{t("Vídeos longos para o YouTube em qualquer nicho, feitos pelo seu agente de IA.")}</small></span>
+          <ArrowRight size={16} />
+        </button>
+      )}
 
       <div className="quick-shortcuts">
         <button type="button" onClick={() => (ideas.length ? setShowIdeas(!showIdeas) : onRadar())}><Lightbulb size={15} /> {t("Usar uma pauta do Radar")}</button>
