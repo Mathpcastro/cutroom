@@ -1,6 +1,6 @@
 {
   "name": "cutroom",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Avatares de IA para apresentar e vender seu produto.",
   "type": "module",
   "main": "dist-electron/main.js",
