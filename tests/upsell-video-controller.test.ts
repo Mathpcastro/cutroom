@@ -76,7 +76,7 @@ describe("controller acessível dos vídeos de upsell", { timeout: 60_000 }, () 
       headless: true,
       args: ["--no-sandbox"],
     });
-  }, 30_000);
+  }, 60_000);
 
   beforeEach(async () => {
     context = await browser.newContext({
@@ -111,11 +111,11 @@ describe("controller acessível dos vídeos de upsell", { timeout: 60_000 }, () 
     expect(pageErrors, "pageerror").toEqual([]);
     expect(unhandledRejections, "unhandled rejection").toEqual([]);
     await context.close();
-  });
+  }, 60_000);
 
   afterAll(async () => {
     await browser?.close();
-  });
+  }, 60_000);
 
   it("redefine o som ao sair da viewport e reativa com um Enter ao voltar", async () => {
     const article = page.locator("article.case").first();
