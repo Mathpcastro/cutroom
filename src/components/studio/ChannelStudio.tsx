@@ -24,6 +24,19 @@ type EpisodeStatus = {
   render?: { done?: number; total?: number };
 };
 type PackageFile = { titles?: string[]; description?: string };
+type ScriptPage = {
+  page: number;
+  pages: number;
+  total: number;
+  sections: { id: string; title: string }[];
+  beats: { id: string; section: string; text: string; facts: string[]; scene: { type: string }; cta?: string; timing?: { start: number; end: number } }[];
+};
+type ResearchPage = {
+  summary: { facts: number; alta: number; media: number; baixa: number; excluded: number; conflicts: number; premise?: { question: string; verdict: string; note: string } };
+  page: number;
+  pages: number;
+  facts: { id: string; claim: string; value?: string | number; unit?: string; date?: string; source: string; kind?: string; confidence: string; prudent?: string; conflicts: number; excluded?: boolean; usedIn?: string[] }[];
+};
 
 const tool = <T,>(name: string, args: Record<string, unknown>) => studioRequest<T>("channelTool", { name, args });
 
@@ -172,8 +185,8 @@ function NewChannel({ profile, onCreated, onCancel }: { profile: StudioProfile; 
         ))}
         <button type="button" role="radio" aria-checked={custom} className="ch-template ch-template-custom" onClick={() => setTemplate("outro")}>
           <strong>{t("Outro nicho")}</strong>
-          <span>{t("Finanças, história, receita, mistério… O seu agente cria um formato sob medida.")}</span>
-          <small>{t("Feito pelo Claude Code ou Codex")}</small>
+          <span>{t("Finanças, história, receita, mistério… O seu agente pensa um formato sob medida e o Videosell produz.")}</span>
+          <small>{t("Formato pelo agente, vídeo pelo Videosell")}</small>
         </button>
       </div>
       <div className="ch-form">
@@ -202,6 +215,107 @@ function NewChannel({ profile, onCreated, onCancel }: { profile: StudioProfile; 
   );
 }
 
+// ---------- Episode: script and research the agent saved in Videosell ----------
+
+/** Reads every page of a paged tool (script_get / research_get). */
+async function allPages<T extends { page: number; pages: number }>(name: string, ids: Record<string, string>) {
+  const first = await tool<T>(name, ids);
+  const rest = await Promise.all(Array.from({ length: Math.max(0, first.pages - 1) }, (_, i) => tool<T>(name, { ...ids, page: i + 2 })));
+  return [first, ...rest];
+}
+
+const clock = (sec?: number) => (sec === undefined ? "" : `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`);
+
+function ScriptView({ ids }: { ids: Record<string, string> }) {
+  const [pages, setPages] = useState<ScriptPage[] | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    allPages<ScriptPage>("script_get", ids).then(setPages, (e: Error) => setError(e.message));
+  }, [ids]);
+  if (error) return <div className="ch-doc ch-doc-empty"><p>{t("O roteiro aparece aqui quando o seu agente salvar no Videosell.")}</p></div>;
+  if (!pages) return <div className="ch-doc studio-projects-status" role="status"><LoaderCircle size={16} className="spin" /> {t("Carregando o roteiro…")}</div>;
+  const beats = pages.flatMap((p) => p.beats);
+  const known = pages[0].sections;
+  // Beats in a section the format does not have still show (the review flags them).
+  const orphan = beats.some((b) => !known.some((s) => s.id === b.section));
+  const sections = orphan ? [...known, ...[...new Set(beats.map((b) => b.section))].filter((id) => !known.some((s) => s.id === id)).map((id) => ({ id, title: id }))] : known;
+  const number = new Map(beats.map((b, i) => [b.id, i + 1]));
+  return (
+    <div className="ch-doc" aria-label={t("Roteiro")}>
+      {sections.map((section) => {
+        const own = beats.filter((b) => b.section === section.id);
+        if (!own.length) return null;
+        return (
+          <section key={section.id} className="ch-doc-section">
+            <h3>{section.title}</h3>
+            <ol className="ch-beats">
+              {own.map((b) => (
+                <li key={b.id} className={b.cta ? "is-cta" : ""}>
+                  <span className="ch-beat-n">{number.get(b.id)}</span>
+                  <p>{b.text}</p>
+                  <span className="ch-beat-meta">
+                    <span className="ch-tag">{t(SCENE_LABEL[b.scene.type] ?? b.scene.type)}</span>
+                    {b.facts.length > 0 && <span className="ch-tag is-ok">{b.facts.length} {t(b.facts.length === 1 ? "fonte" : "fontes")}</span>}
+                    {b.timing && <small>{clock(b.timing.start)}</small>}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+const CONFIDENCE_LABEL: Record<string, string> = { alta: "confiança alta", "média": "confiança média", baixa: "confiança baixa" };
+
+function ResearchView({ ids }: { ids: Record<string, string> }) {
+  const [pages, setPages] = useState<ResearchPage[] | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    allPages<ResearchPage>("research_get", ids).then(setPages, (e: Error) => setError(e.message));
+  }, [ids]);
+  if (error) return <div className="ch-doc ch-doc-empty"><p>{error}</p></div>;
+  if (!pages) return <div className="ch-doc studio-projects-status" role="status"><LoaderCircle size={16} className="spin" /> {t("Carregando a pesquisa…")}</div>;
+  const facts = pages.flatMap((p) => p.facts);
+  const summary = pages[0].summary;
+  if (!facts.length) return <div className="ch-doc ch-doc-empty"><p>{t("A pesquisa aparece aqui quando o seu agente salvar os fatos com fonte no Videosell.")}</p></div>;
+  return (
+    <div className="ch-doc" aria-label={t("Pesquisa")}>
+      <div className="ch-facts ch-research-summary">
+        <span><b>{summary.facts}</b> {t("fatos com fonte")}</span>
+        <span><b>{summary.alta}</b> {t("de confiança alta")}</span>
+        {summary.conflicts > 0 && <span><b>{summary.conflicts}</b> {t("com fontes que discordam")}</span>}
+        {summary.excluded > 0 && <span><b>{summary.excluded}</b> {t("descartados")}</span>}
+      </div>
+      {summary.premise && <p className="ch-premise"><b>{summary.premise.question}</b> {summary.premise.note}</p>}
+      <ul className="ch-fact-list">
+        {facts.map((f) => {
+          const url = f.source.split(" ").pop() ?? "";
+          const publisher = f.source.slice(0, Math.max(0, f.source.length - url.length)).trim();
+          let host = url;
+          try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* keep it as is */ }
+          return (
+            <li key={f.id} className={f.excluded ? "is-excluded" : ""}>
+              <div className="ch-fact-main">
+                <p>{f.claim}{f.value !== undefined && <b> {String(f.value)}{f.unit ? ` ${f.unit}` : ""}</b>}{f.date && <small> ({f.date})</small>}</p>
+                {f.prudent && <small className="ch-fact-note">{t("Forma prudente")}: {f.prudent}</small>}
+              </div>
+              <div className="ch-fact-source">
+                <strong>{publisher || host}</strong>
+                <small title={url}>{host}</small>
+                <span className={`ch-tag is-${f.confidence === "alta" ? "ok" : f.confidence === "baixa" ? "low" : "mid"}`}>{t(CONFIDENCE_LABEL[f.confidence] ?? f.confidence)}</span>
+                {f.usedIn?.length ? <small>{t("usado em")} {f.usedIn.length} {t(f.usedIn.length === 1 ? "fala" : "falas")}</small> : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 // ---------- Episode ----------
 
 function EpisodeDetail({ profile, channel, episode, onBack }: { profile: StudioProfile; channel: Channel; episode: EpisodeRow; onBack: () => void }) {
@@ -209,6 +323,7 @@ function EpisodeDetail({ profile, channel, episode, onBack }: { profile: StudioP
   const [status, setStatus] = useState<EpisodeStatus | null>(null);
   const [pkg, setPkg] = useState<PackageFile | null>(null);
   const [error, setError] = useState("");
+  const [view, setView] = useState<"video" | "script" | "research">("video");
   const load = useCallback(async () => {
     try {
       setStatus(await tool<EpisodeStatus>("episode_status", ids));
@@ -236,6 +351,11 @@ function EpisodeDetail({ profile, channel, episode, onBack }: { profile: StudioP
       <header className="ch-episode-head">
         <button type="button" className="studio-secondary-button" onClick={onBack}><ArrowLeft size={14} /> {t("Episódios")}</button>
         <h2>{episode.title}</h2>
+        <div className="reels-tabs" role="tablist" aria-label={t("Episódio")}>
+          <button type="button" role="tab" aria-selected={view === "video"} onClick={() => setView("video")}>{t("Vídeo")}</button>
+          <button type="button" role="tab" aria-selected={view === "script"} onClick={() => setView("script")}>{t("Roteiro")}</button>
+          <button type="button" role="tab" aria-selected={view === "research"} onClick={() => setView("research")}>{t("Pesquisa")}</button>
+        </div>
         <button type="button" className="studio-secondary-button" onClick={() => void studioRequest("channelReveal", ids)}><FolderOpen size={14} /> {t("Abrir pasta")}</button>
       </header>
       {error && <p className="ch-error" role="alert">{error}</p>}
@@ -251,7 +371,9 @@ function EpisodeDetail({ profile, channel, episode, onBack }: { profile: StudioP
           );
         })}
       </ol>
-      <div className="ch-episode-body">
+      {view === "script" && <ScriptView ids={ids} />}
+      {view === "research" && <ResearchView ids={ids} />}
+      {view === "video" && <div className="ch-episode-body">
         <div className="ch-player">
           {video ? <video src={video} controls preload="metadata" /> : <div className="ch-video-empty"><Tv size={28} strokeWidth={1.3} /><span>{t(status?.render?.total ? `Renderizando: ${status.render.done ?? 0} de ${status.render.total} cenas` : "O vídeo aparece aqui quando a etapa Vídeo terminar.")}</span></div>}
           {outputs.thumbs.length > 0 && (
@@ -285,7 +407,7 @@ function EpisodeDetail({ profile, channel, episode, onBack }: { profile: StudioP
           )}
           <AgentRequest text={request} label={next ? "Para continuar" : "Próximo passo"} />
         </aside>
-      </div>
+      </div>}
     </section>
   );
 }
@@ -369,7 +491,7 @@ function ChannelView({ profile, channelId }: { profile: StudioProfile; channelId
               <div className="ch-empty">
                 <Tv size={26} strokeWidth={1.4} />
                 <strong>{t("Nenhum episódio ainda")}</strong>
-                <p>{t("O seu agente faz o episódio inteiro: pesquisa, roteiro, narração, vídeo, thumbs e Shorts. Copie o pedido ao lado e cole no chat dele.")}</p>
+                <p>{t("O seu agente pesquisa e escreve o roteiro. O Videosell narra, monta as cenas, revisa e gera o vídeo, as thumbs e os Shorts. Copie o pedido ao lado e cole no chat do agente.")}</p>
               </div>
             )}
             {episodes.map((e) => {

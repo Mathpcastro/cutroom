@@ -2731,3 +2731,30 @@
   .ch-stages { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .ch-format { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Roteiro e Pesquisa do episódio (27/11/2026) */
+.ch-doc { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 12px; }
+.ch-doc-empty { align-items: center; justify-content: center; color: var(--studio-muted); text-align: center; }
+.ch-doc-section h3 { margin: 0 0 8px; font-family: "Sora", sans-serif; font-size: 13px; color: var(--studio-accent-text); text-transform: uppercase; letter-spacing: .04em; }
+.ch-beats { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ch-beats li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 10px; border-radius: 8px; }
+.ch-beats li:nth-child(odd) { background: var(--studio-surface-2); }
+.ch-beats li.is-cta { border-left: 3px solid var(--studio-violet); }
+.ch-beats p { margin: 0; font-size: 13px; line-height: 1.5; }
+.ch-beat-n { color: var(--studio-muted); font-size: 11px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.ch-beat-meta { display: flex; align-items: center; gap: 6px; color: var(--studio-muted); font-size: 11px; white-space: nowrap; }
+.ch-tag { padding: 2px 7px; border-radius: 6px; background: var(--studio-surface-2); border: 1px solid var(--studio-line); font-size: 10.5px; color: var(--studio-muted); }
+.ch-tag.is-ok { color: var(--studio-success); background: var(--studio-success-soft); border-color: var(--studio-success-line); }
+.ch-tag.is-mid { color: var(--studio-accent-text); background: var(--studio-accent-soft); border-color: var(--studio-accent-line); }
+.ch-tag.is-low { color: var(--studio-danger); background: var(--studio-danger-soft); border-color: var(--studio-danger-line); }
+.ch-research-summary { font-size: 12.5px; }
+.ch-premise { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--studio-accent-soft); font-size: 12.5px; line-height: 1.45; }
+.ch-fact-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.ch-fact-list li { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 14px; padding: 10px 12px; border: 1px solid var(--studio-line); border-radius: 10px; }
+.ch-fact-list li.is-excluded { opacity: .5; text-decoration: line-through; }
+.ch-fact-main p { margin: 0; font-size: 13px; line-height: 1.5; }
+.ch-fact-main small { color: var(--studio-muted); }
+.ch-fact-note { display: block; margin-top: 4px; }
+.ch-fact-source { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; font-size: 12px; min-width: 0; }
+.ch-fact-source small { color: var(--studio-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-episode-head .reels-tabs { flex: none; }

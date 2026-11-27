@@ -155,7 +155,7 @@ let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
 let dispatchChannelTool: ReturnType<typeof createChannelToolDispatcher>;
 let channelStore: ChannelStore;
 /** What the Canais screen may call directly; everything else stays with the user's agent. */
-const UI_CHANNEL_TOOLS = ["format_templates", "channel_list", "channel_get", "channel_create", "channel_episode_list", "episode_status", "package_get", "backlog_get"] as const;
+const UI_CHANNEL_TOOLS = ["format_templates", "channel_list", "channel_get", "channel_create", "channel_episode_list", "episode_status", "package_get", "backlog_get", "script_get", "research_get"] as const;
 const channelIds = z.object({ profileId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), channelId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), episodeId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/) });
 /** A file inside an episode folder (out/video.mp4, thumbs…), never outside it. */
 async function channelFile(params: unknown) {

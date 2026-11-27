@@ -178,7 +178,7 @@ export function QuickCreate({ profile, suggestion, ideas, pending, busyLabel, es
       {onChannel && (
         <button type="button" className="quick-channel" onClick={onChannel}>
           <span className="quick-channel-icon"><Tv size={18} /></span>
-          <span><strong>{t("Criar canal dark")}</strong><small>{t("Vídeos longos para o YouTube em qualquer nicho, feitos pelo seu agente de IA.")}</small></span>
+          <span><strong>{t("Criar canal dark")}</strong><small>{t("Vídeos longos para o YouTube em qualquer nicho: a sua IA pesquisa e escreve, o Videosell produz.")}</small></span>
           <ArrowRight size={16} />
         </button>
       )}

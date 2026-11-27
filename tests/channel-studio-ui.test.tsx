@@ -71,6 +71,37 @@ describe("Canais dark screen", () => {
     expect([...window.document.querySelectorAll("button")].some((b) => b.textContent?.trim().endsWith("Criar canal"))).toBe(false);
   });
 
+  it("shows the script and the research the agent saved, inside the episode", async () => {
+    const ep = { id: "ep_1", title: "Niterói vale a pena?", format: "long", stage: "script", outputs: { shorts: [], thumbs: [] }, updatedAt: now };
+    const { window } = await mount(<ChannelStudio profile={profile} />, async (method, params) => {
+      const { name } = (params ?? {}) as { name?: string };
+      if (method !== "channelTool") return { url: "" };
+      switch (name) {
+        case "channel_list": return [{ id: "vale", name: "Vale a Pena Morar?", handle: "", niche: "cidades", language: "pt-BR", updatedAt: now }];
+        case "channel_get": return { id: "vale", name: "Vale a Pena Morar?", handle: "", niche: "cidades", defaults: { voiceId: "" } };
+        case "channel_episode_list": return [ep];
+        case "episode_status": return { title: ep.title, stages: { research: "ok", script: "ok" }, cost: 0, outputs: ep.outputs };
+        case "package_get": throw new Error("sem pacote");
+        case "script_get": return { page: 1, pages: 1, total: 1, sections: [{ id: "gancho", title: "Gancho" }], beats: [{ id: "b_001", section: "gancho", text: "São 481.749 moradores.", facts: ["f_1"], scene: { type: "stat" } }] };
+        case "research_get": return { page: 1, pages: 1, summary: { facts: 1, alta: 1, media: 0, baixa: 0, excluded: 0, conflicts: 0 }, facts: [{ id: "f_1", claim: "População no Censo", value: "481.749", date: "2022", source: "IBGE https://www.ibge.gov.br/cidades", confidence: "alta", conflicts: 0, usedIn: ["b_001"] }] };
+        default: throw new Error(String(name));
+      }
+    });
+    const click = async (label: string) => {
+      const el = [...window.document.querySelectorAll("button")].find((b) => b.textContent?.includes(label))!;
+      await act(async () => el.dispatchEvent(new window.Event("click", { bubbles: true })));
+      await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    };
+    await click("Niterói vale a pena?");
+    await click("Roteiro");
+    expect(window.document.body.textContent).toContain("São 481.749 moradores.");
+    expect(window.document.body.textContent).toContain("1 fonte");
+    await click("Pesquisa");
+    expect(window.document.body.textContent).toContain("População no Censo");
+    expect(window.document.body.textContent).toContain("ibge.gov.br");
+    expect(window.document.body.textContent).toContain("confiança alta");
+  });
+
   it("puts a Criar canal dark shortcut on the home", async () => {
     const onChannel = vi.fn();
     const { window } = await mount(
