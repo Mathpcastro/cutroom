@@ -117,7 +117,7 @@ export class DesktopMcpServer {
                   text:
                     error instanceof Error
                       ? error.message
-                      : "Falha na execução da ferramenta de edição do CutRoom.",
+                      : "Falha na execução da ferramenta de edição do Videosell.",
                 },
               ],
             };
@@ -146,7 +146,7 @@ export class DesktopMcpServer {
 
     const address = server.address();
     if (!address || typeof address === "string")
-      throw new Error("Não foi possível iniciar o servidor MCP do CutRoom.");
+      throw new Error("Não foi possível iniciar o servidor MCP do Videosell.");
 
     const url = `http://127.0.0.1:${address.port}/mcp`;
     this.infoPath = join(this.userDir, "claude-desktop-mcp.json");

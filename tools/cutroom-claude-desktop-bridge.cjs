@@ -63,7 +63,7 @@ async function forwardToCutRoom(rpcRequest, connectionInfo) {
       body: JSON.stringify(rpcRequest),
     });
     if (!res.ok) {
-      throw new Error(`CutRoom MCP retornou HTTP ${res.status}`);
+      throw new Error(`Videosell MCP retornou HTTP ${res.status}`);
     }
     return await res.json();
   } catch (err) {
@@ -75,7 +75,7 @@ async function forwardToCutRoom(rpcRequest, connectionInfo) {
         content: [
           {
             type: "text",
-            text: `Erro ao comunicar com o CutRoom: ${err.message}. Verifique se o CutRoom está aberto e respondendo.`,
+            text: `Erro ao comunicar com o Videosell: ${err.message}. Verifique se o Videosell está aberto e respondendo.`,
           },
         ],
       },
@@ -137,7 +137,7 @@ const EDITOR_TOOLS = [
   {
     name: "transcribe",
     description:
-      "Transcribe imported videos locally using the CutRoom transcription engine. Use for speech-driven edits when words are missing. May take several minutes.",
+      "Transcribe imported videos locally using the Videosell transcription engine. Use for speech-driven edits when words are missing. May take several minutes.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -148,7 +148,7 @@ const EDITOR_TOOLS = [
   {
     name: "export_video",
     description:
-      "Open the native save dialog in CutRoom and export the current timeline as video. Only call when the user asks to export or render.",
+      "Open the native save dialog in Videosell and export the current timeline as video. Only call when the user asks to export or render.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -159,7 +159,7 @@ const EDITOR_TOOLS = [
   {
     name: "inspect_frame",
     description:
-      "Inspect an actual source video frame from CutRoom. Supply an existing mediaId and source time in seconds. Returns the frame image directly so you can see it.",
+      "Inspect an actual source video frame from Videosell. Supply an existing mediaId and source time in seconds. Returns the frame image directly so you can see it.",
     inputSchema: {
       type: "object",
       properties: {
@@ -173,7 +173,7 @@ const EDITOR_TOOLS = [
   {
     name: "create_blank_canvas",
     description:
-      "Create a clean solid background video canvas in CutRoom (e.g. for motion graphics from scratch, title sequences, or animations when no video footage has been imported). Sets up the timeline so motion scenes and animations can be created.",
+      "Create a clean solid background video canvas in Videosell (e.g. for motion graphics from scratch, title sequences, or animations when no video footage has been imported). Sets up the timeline so motion scenes and animations can be created.",
     inputSchema: {
       type: "object",
       properties: {
@@ -199,14 +199,14 @@ const EDITOR_TOOLS = [
   {
     name: "import_media",
     description:
-      "Import one or more local video or media files into CutRoom by their absolute file paths. This adds the media to the project and places clips on the timeline.",
+      "Import one or more local video or media files into Videosell by their absolute file paths. This adds the media to the project and places clips on the timeline.",
     inputSchema: {
       type: "object",
       properties: {
         paths: {
           type: "array",
           items: { type: "string" },
-          description: "Array of absolute file paths to import into CutRoom",
+          description: "Array of absolute file paths to import into Videosell",
         },
       },
       required: ["paths"],
@@ -298,7 +298,7 @@ rl.on("line", async (line) => {
           content: [
             {
               type: "text",
-              text: "O CutRoom não está aberto no momento. Por favor, abra o aplicativo CutRoom no seu computador e adicione o seu vídeo para que eu possa inspecionar a timeline e fazer as edições.",
+              text: "O Videosell não está aberto no momento. Por favor, abra o aplicativo Videosell no seu computador e adicione o seu vídeo para que eu possa inspecionar a timeline e fazer as edições.",
             },
           ],
         },

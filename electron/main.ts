@@ -1040,14 +1040,14 @@ async function executeTool(
         .strict()
         .parse(a);
       if (!window || window.isDestroyed())
-        throw new Error("A janela do CutRoom está fechada.");
+        throw new Error("A janela do Videosell está fechada.");
       window.webContents.send("editor:event", { type: "studio", tab });
       if (window.isMinimized()) window.restore();
       window.focus();
       return {
         opened: tab,
         message:
-          "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar.",
+          "A tela está aberta no Videosell. Peça ao usuário para preencher e avisar quando terminar.",
       };
     },
     publish_reel: async (a) => {
@@ -2034,7 +2034,7 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       if (!path) {
         const result = await dialog.showSaveDialog(window!, {
           defaultPath: `${state.project.name}.cutroom.json`,
-          filters: [{ name: "Projeto CutRoom", extensions: ["cutroom.json"] }],
+          filters: [{ name: "Projeto Videosell", extensions: ["cutroom.json"] }],
         });
         if (result.canceled || !result.filePath) return emit();
         path = result.filePath;
@@ -2050,7 +2050,7 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
     case "openProject": {
       idle();
       const result = await dialog.showOpenDialog(window!, {
-        filters: [{ name: "Projeto CutRoom", extensions: ["json"] }],
+        filters: [{ name: "Projeto Videosell", extensions: ["json"] }],
         properties: ["openFile"],
       });
       if (result.canceled) return emit();
@@ -2363,7 +2363,7 @@ app.whenReady().then(async () => {
       runner: async () => {
         if (!(await motionPackageInfo(packages.root)).installed)
           throw new Error(
-            "Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.",
+            "Instale Efeitos e animações na aba Pacotes do Videosell: os filmes usam esse renderizador.",
           );
         return {
           worker: join(here, "render-motion.js"),
@@ -2394,7 +2394,7 @@ app.whenReady().then(async () => {
       runner: async () => {
         if (!(await motionPackageInfo(packages.root)).installed)
           throw new Error(
-            "Instale Efeitos e animações na aba Pacotes do CutRoom: os avatares usam esse renderizador.",
+            "Instale Efeitos e animações na aba Pacotes do Videosell: os avatares usam esse renderizador.",
           );
         return {
           worker: join(here, "render-motion.js"),
@@ -2486,7 +2486,7 @@ app.whenReady().then(async () => {
     minWidth: 1050,
     minHeight: 700,
     backgroundColor: appearance.background,
-    title: "CutRoom",
+    title: "Videosell",
     icon: join(resources, "branding", "icon-256.png"),
     autoHideMenuBar: true,
     ...(process.platform === "win32"
@@ -2526,7 +2526,7 @@ app.whenReady().then(async () => {
 
   desktopMcp = new DesktopMcpServer(executeDesktopMcpTool, userDir);
   await desktopMcp.start().catch((err) => {
-    console.error("Falha ao iniciar servidor Desktop MCP do CutRoom:", err);
+    console.error("Falha ao iniciar servidor Desktop MCP do Videosell:", err);
   });
 });
 app.on("before-quit", () => {

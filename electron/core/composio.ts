@@ -74,7 +74,7 @@ export class Composio {
     private fetcher: typeof fetch = fetch,
     private base = COMPOSIO_BASE,
   ) {
-    if (!apiKey) throw new ComposioError("Cadastre a chave de API do Composio em Publicar, no CutRoom.", "key");
+    if (!apiKey) throw new ComposioError("Cadastre a chave de API do Composio em Publicar, no Videosell.", "key");
   }
   async call(method: string, path: string, body?: unknown, signal?: AbortSignal) {
     let response: Response;

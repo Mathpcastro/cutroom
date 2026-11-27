@@ -68,6 +68,8 @@
     },
     "nsis": {
       "artifactName": "CutRoom.Setup.${version}.${ext}",
+      "shortcutName": "Videosell",
+      "uninstallDisplayName": "Videosell ${version}",
       "installerIcon": "resources/branding/icon.ico",
       "uninstallerIcon": "resources/branding/icon.ico",
       "oneClick": false,

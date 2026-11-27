@@ -80,14 +80,14 @@ export function PublishSettings({ jobs, connectionOnly = false }: { jobs: AppSna
           <Rocket size={13} /> Publicar Reels
         </button>
         <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="Data e hora do agendamento" />
-        <button className="button" disabled={!confirmed || !video || !account || !when} onClick={() => void guard(async () => { await api("scheduleReel", { video, caption, account: account?.id, at: when.replace("T", " "), confirm: true }); setConfirmed(false); setPub(await api("getPublishSettings")); }, "Reels agendado. O CutRoom abre sozinho no horário e publica.")}>
+        <button className="button" disabled={!confirmed || !video || !account || !when} onClick={() => void guard(async () => { await api("scheduleReel", { video, caption, account: account?.id, at: when.replace("T", " "), confirm: true }); setConfirmed(false); setPub(await api("getPublishSettings")); }, "Reels agendado. O Videosell abre sozinho no horário e publica.")}>
           {t("Agendar")}
         </button>
         {video && <button className="button" onClick={() => void guard(() => api("revealVideo", { path: video }))}>Mostrar o vídeo</button>}
       </div>
       <div className="studio-box">
         <strong>{t("Piloto automático")}</strong>
-        <p>Escolha os vídeos na ordem: o CutRoom publica um por dia no mesmo horário, com a legenda acima. Junto com os carrosséis do Carrossell, o perfil fica ativo todo dia sem tráfego pago.</p>
+        <p>Escolha os vídeos na ordem: o Videosell publica um por dia no mesmo horário, com a legenda acima. Junto com os carrosséis do Carrossell, o perfil fica ativo todo dia sem tráfego pago.</p>
         <div className="studio-picks">
           {videos.slice(0, 12).map((v) => (
             <label key={v.path} className="studio-pick">

@@ -4,7 +4,7 @@ import { FORMATS } from "./formats";
 import { CHANNEL_SKILL_NAME, channelSkill } from "./channel/channel-skill";
 
 /**
- * The CutRoom video skill for Claude Code (~/.claude/skills) and Codex (~/.codex/skills).
+ * The Videosell video skill for Claude Code (~/.claude/skills) and Codex (~/.codex/skills).
  * Generated from the format recipes so it never drifts from what the app ships.
  */
 export const SKILL_NAME = "cutroom-videos";
@@ -13,18 +13,18 @@ export function cutroomSkill(version: string) {
   const formats = FORMATS.map((f) => `- \`${f.id}\` — **${f.name}** (${f.aspect}, ${f.length}). ${f.goodFor}`).join("\n");
   return `---
 name: ${SKILL_NAME}
-description: Produz vídeos curtos (Reels, Shorts, anúncios) feitos em código com o CutRoom — aula com apresentador em pixel art, UI motion do produto, voo 3D pela landing page, histórias em episódios, "e se…", motion UI explicativo sem avatar. Use quando o usuário pedir um vídeo, reel, anúncio animado, explainer ou "vídeo pro meu SaaS" e o CutRoom estiver conectado por MCP (ferramentas create_film, film_voiceover, render_film).
+description: Produz vídeos curtos (Reels, Shorts, anúncios) feitos em código com o Videosell — aula com apresentador em pixel art, UI motion do produto, voo 3D pela landing page, histórias em episódios, "e se…", motion UI explicativo sem avatar. Use quando o usuário pedir um vídeo, reel, anúncio animado, explainer ou "vídeo pro meu SaaS" e o Videosell estiver conectado por MCP (ferramentas create_film, film_voiceover, render_film).
 ---
 
-# Vídeos com o CutRoom (v${version})
+# Vídeos com o Videosell (v${version})
 
-O CutRoom precisa estar aberto e conectado como servidor MCP. Tudo roda no computador do usuário: a narração (ElevenLabs, OpenAI ou Kokoro offline), a checagem, os quadros e o render. Nunca peça chaves de API no chat: o usuário cadastra no CutRoom, em Vozes.
+O Videosell precisa estar aberto e conectado como servidor MCP. Tudo roda no computador do usuário: a narração (ElevenLabs, OpenAI ou Kokoro offline), a checagem, os quadros e o render. Nunca peça chaves de API no chat: o usuário cadastra no Videosell, em Vozes.
 
 ## Formatos
 ${formats}
 
 ## Fluxo
-1. \`get_brand\` → o que a marca vende, para quem, tom, oferta, cores. Se \`configured:false\`, peça ao usuário para preencher a Marca no CutRoom (ou importar do Carrossell).
+1. \`get_brand\` → o que a marca vende, para quem, tom, oferta, cores. Se \`configured:false\`, peça ao usuário para preencher a Marca no Videosell (ou importar do Carrossell).
 2. \`list_formats\` / \`get_format_guide{id}\` → leia o guia escolhido. Use os presets para arte e movimento. O briefing define roteiro, cenas, duração e desfecho.
 3. Escreva o roteiro falado e mostre ao usuário antes de gerar a voz.
 4. \`create_film{name, format}\` → a pasta vem com uma composição inicial, \`CUTROOM.md\` e o kit. Se você tem acesso a arquivos, edite a pasta direto; senão use \`write_film_file\`/\`read_film_file\`.

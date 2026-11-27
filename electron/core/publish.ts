@@ -51,7 +51,7 @@ export class Publisher {
   }
   private async client() {
     const key = await this.host.secrets.get(COMPOSIO_KEY);
-    if (!key) throw new Error("Cadastre a chave do Composio em Estúdio › Publicar, no CutRoom. Não envie a chave pelo chat.");
+    if (!key) throw new Error("Cadastre a chave do Composio em Estúdio › Publicar, no Videosell. Não envie a chave pelo chat.");
     return new Composio(key, this.host.fetcher);
   }
 
@@ -297,7 +297,7 @@ export class Publisher {
       try {
         await this.host.os?.add(entry.id, item.at);
       } catch (error) {
-        warnings.push(`O sistema não aceitou o agendamento automático (${(error as Error).message.split("\n")[0]}): deixe o CutRoom aberto nesse horário.`);
+        warnings.push(`O sistema não aceitou o agendamento automático (${(error as Error).message.split("\n")[0]}): deixe o Videosell aberto nesse horário.`);
       }
       added.push(entry);
     }

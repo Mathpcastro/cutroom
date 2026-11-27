@@ -38,6 +38,7 @@ describe("reel schedule", () => {
     expect(xml).toContain("<StartBoundary>2026-11-07T18:00:00</StartBoundary>");
     expect(xml).toContain("<StartWhenAvailable>true</StartWhenAvailable>");
     expect(xml).toContain("<RunLevel>LeastPrivilege</RunLevel>");
+    expect(xml).toContain("<Description>Videosell: publicar um Reels agendado no Instagram</Description>");
     expect(xml).toContain("<Arguments>--publicar-reels</Arguments>");
   });
 });

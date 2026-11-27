@@ -95,9 +95,9 @@
   cursor: pointer;
 }
 .caption-category-list button[aria-pressed="true"] {
-  color: var(--danger);
-  border-color: var(--danger);
-  background: var(--danger-bg);
+  color: var(--action-text);
+  border-color: var(--action-text);
+  background: var(--action-soft);
 }
 .caption-preset-list {
   display: grid;
@@ -123,8 +123,8 @@
   border-color: var(--line-strong);
 }
 .caption-preset.selected {
-  border-color: var(--danger);
-  background: var(--bg);
+  border-color: var(--action-text);
+  background: var(--action-soft);
 }
 .caption-preset:disabled {
   opacity: 0.45;
@@ -315,7 +315,7 @@
 .caption-studio input:focus-visible,
 .caption-studio select:focus-visible,
 .caption-studio summary:focus-visible {
-  outline: 2px solid var(--danger-line);
+  outline: 2px solid var(--action-text);
   outline-offset: 2px;
 }
 .caption-ass-preview {

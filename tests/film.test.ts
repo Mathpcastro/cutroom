@@ -73,7 +73,7 @@ describe("films", () => {
     await expect(films.writeFile(id, "../fora.html", "x")).rejects.toThrow(/dentro da pasta/);
     await expect(films.writeFile(id, path.resolve(os.tmpdir(), "fora.html"), "x")).rejects.toThrow(/dentro da pasta/);
     await expect(films.writeFile(id, "run.exe", "x")).rejects.toThrow(/Só arquivos de texto/);
-    await expect(films.writeFile(id, "timing.js", "x")).rejects.toThrow(/CutRoom/);
+    await expect(films.writeFile(id, "timing.js", "x")).rejects.toThrow(/Videosell/);
     await expect(films.readFile(id, "../../segredo.json")).rejects.toThrow(/dentro da pasta/);
     expect(await films.writeFile(id, "scenes/demo.js", "window.demo = 1;")).toEqual({ path: "scenes/demo.js", bytes: 16 });
     expect(() => films.dir("../x")).toThrow(/inválido/);

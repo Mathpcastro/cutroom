@@ -56,8 +56,8 @@
   background: var(--bg);
 }
 .motion-scene-row.selected {
-  border-color: var(--line-strong);
-  background: var(--accent-soft);
+  border-color: var(--action-text);
+  background: var(--action-soft);
 }
 .motion-scene-row > button:first-child {
   flex: 1;
@@ -170,7 +170,7 @@
   padding-top: 10px;
 }
 .motion-studio :is(button, input, textarea, select, summary):focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--action-text);
   outline-offset: 2px;
 }
 .motion-preview {
@@ -236,11 +236,11 @@
   font-size: 10px;
 }
 .motion-block:is(:hover, .active) {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-color: var(--action-text);
+  background: var(--action-soft);
 }
 .motion-block:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--action-text);
   outline-offset: 1px;
 }
 .timeline-section.has-motions .track-labels > div:nth-of-type(2) {
@@ -290,7 +290,7 @@
 .audio-voice { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .audio-music { background: color-mix(in srgb, #3fa7d6 22%, transparent); }
 .audio-sfx { background: color-mix(in srgb, #9be59b 25%, transparent); }
-.audio-block:is(:hover, .active) { border-color: var(--accent); }
+.audio-block:is(:hover, .active) { border-color: var(--action-text); background: var(--action-soft); }
 .timeline-section .track-labels > div.audio-track-label { height: 26px; flex-shrink: 0; }
 .timeline-section.has-audio.audio-lanes-1 { height: 271px; }
 .timeline-section.has-audio.audio-lanes-2 { height: 297px; }

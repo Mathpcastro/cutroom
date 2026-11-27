@@ -141,6 +141,10 @@ describe("Videosell brand", () => {
     expect(packageJson.name).toBe("cutroom");
     expect(packageJson.build.appId).toBe("com.matheuscastro.cutroom");
     expect(packageJson.build.productName).toBe("CutRoom");
+    expect(packageJson.build.nsis.artifactName).toBe("CutRoom.Setup.${version}.${ext}");
+    expect(packageJson.build.mac.artifactName).toBe("CutRoom-${version}-mac-${arch}.${ext}");
+    expect(packageJson.build.nsis.shortcutName).toBe("Videosell");
+    expect(packageJson.build.nsis.uninstallDisplayName).toBe("Videosell ${version}");
     expect(packageJson.description).toBe(brandTagline);
   });
 

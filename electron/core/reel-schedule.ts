@@ -144,7 +144,7 @@ const quote = (a: string) => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : 
 export function windowsTaskXml(at: Date, exe: string, args: string[]) {
   return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <RegistrationInfo><Description>CutRoom: publicar um Reels agendado no Instagram</Description></RegistrationInfo>
+  <RegistrationInfo><Description>Videosell: publicar um Reels agendado no Instagram</Description></RegistrationInfo>
   <Triggers><TimeTrigger><StartBoundary>${localStamp(at)}</StartBoundary><Enabled>true</Enabled></TimeTrigger></Triggers>
   <Principals><Principal id="Author"><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
   <Settings>

@@ -176,7 +176,7 @@ export class Studio {
       await this.key("openai");
       voices = OPENAI_VOICES.map((id) => ({ id, name: id, provider: "openai" as const, language: "multilíngue" }));
     } else if (chosen === "kokoro") {
-      if (!(await this.host.kokoroReady?.())) throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom (narração offline, sem créditos).");
+      if (!(await this.host.kokoroReady?.())) throw new Error("Instale a Voz Kokoro na aba Pacotes do Videosell (narração offline, sem créditos).");
       voices = KOKORO_VOICES.map(({ lang: _lang, ...v }) => v);
     } else {
       if (!this.host.localVoices)
@@ -242,7 +242,7 @@ export class Studio {
               : provider === "kokoro"
                 ? await (this.host.kokoroSpeech ??
                     (() => {
-                      throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom.");
+                      throw new Error("Instale a Voz Kokoro na aba Pacotes do Videosell.");
                     }))(a.text, voice, signal)
                 : await (this.host.localSpeech ??
                   (() => {
@@ -350,7 +350,7 @@ export class Studio {
       await stat(file);
     } catch {
       await this.host.job("music", `Baixando ${item.title}…`, async (signal) => {
-        const response = await fetch(item.url, { signal, headers: { "user-agent": "CutRoom (video editor)" } });
+        const response = await fetch(item.url, { signal, headers: { "user-agent": "Videosell (video editor)" } });
         if (!response.ok) throw new Error(`Não foi possível baixar a faixa (${response.status}).`);
         const bytes = new Uint8Array(await response.arrayBuffer());
         if (bytes.length > 60_000_000) throw new Error("Faixa grande demais.");
@@ -400,7 +400,7 @@ export class Studio {
     if (!brand)
       return {
         configured: false,
-        message: "A marca ainda não foi configurada. Peça ao usuário para abrir Marca no CutRoom (importar do Carrossell ou preencher à mão).",
+        message: "A marca ainda não foi configurada. Peça ao usuário para abrir Marca no Videosell (importar do Carrossell ou preencher à mão).",
       };
     return { configured: true, ...brand, logo: brand.logo ? "(disponível: use <img data-asset=\"logo\">)" : undefined };
   }

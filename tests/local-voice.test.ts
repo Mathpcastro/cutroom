@@ -31,14 +31,14 @@ describe("local voice", () => {
       const dir = await fs.mkdtemp(path.join(os.tmpdir(), "cutroom-voice-"));
       try {
         const result = await localSpeech(
-          "O CutRoom edita vídeos conversando com a sua IA.",
+          "O Videosell edita vídeos conversando com a sua IA.",
           pt!.id,
           new AbortController().signal,
           dir,
           probeAudio,
         );
         expect(result.extension).toBe("wav");
-        expect(result.words!.map((w) => w.text)).toEqual(["O", "CutRoom", "edita", "vídeos", "conversando", "com", "a", "sua", "IA"]);
+        expect(result.words!.map((w) => w.text)).toEqual(["O", "Videosell", "edita", "vídeos", "conversando", "com", "a", "sua", "IA"]);
         const file = path.join(dir, "check.wav");
         await fs.writeFile(file, result.audio);
         const duration = await probeAudio(file);
