@@ -233,6 +233,6 @@ describe("Videosell user-data migration", () => {
     expect(result.status).toBe("done");
     for (const cache of ["Cache", "Code Cache", "GPUCache"]) await expect(fs.access(path.join(dirs.newDir, cache))).rejects.toThrow();
     await expect(fs.access(path.join(dirs.newDir, "profiles", "outside.json"))).rejects.toThrow();
-    expect((await marker(dirs.newDir)).skipped).toEqual(expect.arrayContaining(["Cache", "Code Cache", "GPUCache", "profiles/outside.json (atalho simbólico ignorado)"]));
+    expect((await marker(dirs.newDir)).skipped).toEqual(expect.arrayContaining(["Cache", "Code Cache", "GPUCache", `${path.join("profiles", "outside.json")} (atalho simbólico ignorado)`]));
   });
 });
