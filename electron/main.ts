@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import * as nodeFs from "node:fs";
+import * as nodePath from "node:path";
 import { AVATAR_BASES, FACIAL_HAIR, HAIR_STYLES, HATS, OUTFITS, composeAvatar, type FacialHair, type HairStyle, type Hat, type Outfit } from "../src/shared/avatar-compose";
 import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
@@ -90,7 +92,7 @@ import { Films } from "./core/film";
 import { FilmStudio } from "./core/film-studio";
 import { installSkill } from "./core/skill";
 import { Publisher } from "./core/publish";
-import { OsReelScheduler, SCHEDULE_FLAG } from "./core/reel-schedule";
+import { OsReelScheduler, resyncOsSchedule, SCHEDULE_FLAG, type ScheduledReel } from "./core/reel-schedule";
 import { motionBrowser, motionPackageInfo } from "./core/motion-package";
 import { createRequire } from "node:module";
 import { localSpeech, localVoices } from "./core/local-voice";
@@ -104,6 +106,7 @@ import { createAvatarToolDispatcher } from "./core/avatar-mcp";
 import { isAvatarTool } from "./core/avatar-tool-defs";
 import { ProfileService } from "./core/profile-service";
 import { ProfileStore } from "./core/profile-store";
+import { migrateUserData, rollbackMigration, type MigrationFs } from "./core/data-migration";
 import {
   createProfileToolDispatcher,
   DESKTOP_MCP_PROFILE_CALLER,
@@ -111,10 +114,53 @@ import {
 } from "./core/profile-tool-defs";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const migrationFs = nodeFs as unknown as MigrationFs;
+const appDataDir = app.getPath("appData");
+const oldUserDataDir = join(appDataDir, "CutRoom");
+/**
+ * Fixed on purpose: Electron names userData after package.json "name" ("cutroom"), and on Windows
+ * %APPDATA%\cutroom is the same folder as %APPDATA%\CutRoom — the migration saw "same-path" and
+ * did nothing (0.9.6-teste.1). The new home is always <appData>/Videosell.
+ */
+const newUserDataDir = join(appDataDir, "Videosell");
+if (process.argv.includes("--desfazer-migracao") && !process.env.CUTROOM_USER_DATA) {
+  try {
+    const kept = rollbackMigration({
+      fs: migrationFs,
+      path: nodePath,
+      oldDir: oldUserDataDir,
+      newDir: newUserDataDir,
+    });
+    console.info(`Migração desfeita; dados Videosell preservados em ${kept}.`);
+  } catch (error) {
+    console.error("Não foi possível desfazer a migração:", (error as Error).message);
+  }
+  app.exit(0);
+  process.exit(0);
+}
 if (process.env.CUTROOM_USER_DATA) {
   const profile = resolve(process.env.CUTROOM_USER_DATA);
   mkdirSync(profile, { recursive: true });
   app.setPath("userData", profile);
+} else {
+  const migration = migrateUserData({
+    fs: migrationFs,
+    path: nodePath,
+    appDataDir,
+    oldDir: oldUserDataDir,
+    newDir: newUserDataDir,
+    appVersion: app.getVersion(),
+    isPackaged: app.isPackaged,
+    allowDev: process.env.VIDEOSELL_MIGRATION_DEV === "1",
+  });
+  // done / fresh / kept-new use the Videosell folder; in-place / failed fall back to the intact CutRoom one.
+  // Skipped (dev without VIDEOSELL_MIGRATION_DEV) keeps Electron's default.
+  if (migration.userDataPath) app.setPath("userData", migration.userDataPath);
+  else if (migration.status !== "skipped") app.setPath("userData", newUserDataDir);
+  if (migration.status === "lock-busy") {
+    app.exit(0);
+    process.exit(0);
+  }
 }
 const resources = app.isPackaged
   ? join(process.resourcesPath, "resources")
@@ -1053,14 +1099,14 @@ async function executeTool(
         .strict()
         .parse(a);
       if (!window || window.isDestroyed())
-        throw new Error("A janela do CutRoom está fechada.");
+        throw new Error("A janela do Videosell está fechada.");
       window.webContents.send("editor:event", { type: "studio", tab });
       if (window.isMinimized()) window.restore();
       window.focus();
       return {
         opened: tab,
         message:
-          "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar.",
+          "A tela está aberta no Videosell. Peça ao usuário para preencher e avisar quando terminar.",
       };
     },
     publish_reel: async (a) => {
@@ -2067,7 +2113,7 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       if (!path) {
         const result = await dialog.showSaveDialog(window!, {
           defaultPath: `${state.project.name}.cutroom.json`,
-          filters: [{ name: "Projeto CutRoom", extensions: ["cutroom.json"] }],
+          filters: [{ name: "Projeto Videosell", extensions: ["cutroom.json"] }],
         });
         if (result.canceled || !result.filePath) return emit();
         path = result.filePath;
@@ -2083,7 +2129,7 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
     case "openProject": {
       idle();
       const result = await dialog.showOpenDialog(window!, {
-        filters: [{ name: "Projeto CutRoom", extensions: ["json"] }],
+        filters: [{ name: "Projeto Videosell", extensions: ["json"] }],
         properties: ["openFile"],
       });
       if (result.canceled) return emit();
@@ -2351,16 +2397,41 @@ app.whenReady().then(async () => {
         }
       : {}),
   });
+  const osScheduler = new OsReelScheduler(
+    process.execPath,
+    app.isPackaged ? [SCHEDULE_FLAG] : [app.getAppPath(), SCHEDULE_FLAG],
+  );
   publisher = new Publisher({
     secrets: secretStore,
     userDir,
     videosDir: join(app.getPath("videos"), "CutRoom"),
     job: (kind, label, run) => job(kind, label, run),
-    os: new OsReelScheduler(
-      process.execPath,
-      app.isPackaged ? [SCHEDULE_FLAG] : [app.getAppPath(), SCHEDULE_FLAG],
-    ),
+    os: osScheduler,
   });
+  try {
+    const schedulerStateFile = join(userDir, "os-scheduler.json");
+    let lastExe: string | undefined;
+    try {
+      lastExe = JSON.parse(await readFile(schedulerStateFile, "utf8")).exe;
+    } catch {
+      // First run with the persisted executable path.
+    }
+    if (lastExe !== process.execPath) {
+      let entries: Pick<ScheduledReel, "id" | "at" | "status">[] = [];
+      try {
+        entries = JSON.parse(await readFile(join(userDir, "publish.json"), "utf8")).scheduled ?? [];
+      } catch {
+        // A user without scheduled reels has nothing to resync.
+      }
+      const resync = await resyncOsSchedule(entries, osScheduler, lastExe, process.execPath);
+      for (const failure of resync.failures)
+        console.warn(`Não foi possível atualizar a tarefa agendada ${failure.id}: ${failure.error}`);
+      await writeFile(`${schedulerStateFile}.partial`, JSON.stringify({ exe: process.execPath }, null, 2), "utf8");
+      await rename(`${schedulerStateFile}.partial`, schedulerStateFile);
+    }
+  } catch (error) {
+    console.warn("Não foi possível sincronizar as tarefas agendadas com o executável atual:", (error as Error).message);
+  }
   // Reels autopilot: due posts go out every minute while CutRoom is open (and right away when the
   // operating system opened it for a scheduled post).
   setInterval(
@@ -2396,7 +2467,7 @@ app.whenReady().then(async () => {
       runner: async () => {
         if (!(await motionPackageInfo(packages.root)).installed)
           throw new Error(
-            "Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.",
+            "Instale Efeitos e animações na aba Pacotes do Videosell: os filmes usam esse renderizador.",
           );
         return {
           worker: join(here, "render-motion.js"),
@@ -2427,7 +2498,7 @@ app.whenReady().then(async () => {
       runner: async () => {
         if (!(await motionPackageInfo(packages.root)).installed)
           throw new Error(
-            "Instale Efeitos e animações na aba Pacotes do CutRoom: os avatares usam esse renderizador.",
+            "Instale Efeitos e animações na aba Pacotes do Videosell: os avatares usam esse renderizador.",
           );
         return {
           worker: join(here, "render-motion.js"),
@@ -2519,7 +2590,7 @@ app.whenReady().then(async () => {
     minWidth: 1050,
     minHeight: 700,
     backgroundColor: appearance.background,
-    title: "CutRoom",
+    title: "Videosell",
     icon: join(resources, "branding", "icon-256.png"),
     autoHideMenuBar: true,
     ...(process.platform === "win32"
@@ -2559,7 +2630,7 @@ app.whenReady().then(async () => {
 
   desktopMcp = new DesktopMcpServer(executeDesktopMcpTool, userDir);
   await desktopMcp.start().catch((err) => {
-    console.error("Falha ao iniciar servidor Desktop MCP do CutRoom:", err);
+    console.error("Falha ao iniciar servidor Desktop MCP do Videosell:", err);
   });
 });
 app.on("before-quit", () => {

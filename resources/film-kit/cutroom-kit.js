@@ -35,7 +35,7 @@
         target = norm(text);
       for (var i = 0; i < T.words.length; i++)
         if (norm(T.words[i].text) === target && ++k === (nth || 1)) return T.words[i].start;
-      throw new Error('CutRoom kit: word "' + text + '" #' + (nth || 1) + " is not in the narration");
+      throw new Error('Videosell kit: word "' + text + '" #' + (nth || 1) + " is not in the narration");
     },
     /**
      * Like word(), but never throws: returns `fallback` (seconds) when the word is not in the narration.

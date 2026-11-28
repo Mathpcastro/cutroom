@@ -243,7 +243,7 @@ export class ApiAgentClient implements AgentClient {
       headers["anthropic-version"] = path.startsWith("/models")
         ? "2026-10-21"
         : "2023-06-01";
-    if (this.provider === "openrouter") headers["X-Title"] = "CutRoom";
+    if (this.provider === "openrouter") headers["X-Title"] = "Videosell";
     try {
       const response = await fetch(this.base + path, {
         ...init,

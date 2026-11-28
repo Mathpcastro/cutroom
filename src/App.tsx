@@ -76,7 +76,7 @@ export default function App() {
   const projectId = useRef(state.project.id);
   const run = useCallback(async (method: string, params?: unknown) => {
     if (!window.cutroom) {
-      setError("Este recurso precisa do aplicativo CutRoom desktop.");
+      setError("Este recurso precisa do aplicativo Videosell desktop.");
       return;
     }
     if (

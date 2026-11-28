@@ -1,6 +1,6 @@
 {
   "name": "cutroom",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "description": "Avatares de IA para apresentar e vender seu produto.",
   "type": "module",
   "main": "dist-electron/main.js",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.matheuscastro.cutroom",
-    "productName": "CutRoom",
+    "productName": "Videosell",
     "directories": {
       "output": "release"
     },
@@ -68,6 +68,8 @@
     },
     "nsis": {
       "artifactName": "CutRoom.Setup.${version}.${ext}",
+      "uninstallDisplayName": "Videosell ${version}",
+      "include": "build/installer.nsh",
       "installerIcon": "resources/branding/icon.ico",
       "uninstallerIcon": "resources/branding/icon.ico",
       "oneClick": false,

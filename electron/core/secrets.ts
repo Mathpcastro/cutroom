@@ -1,5 +1,5 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 /** Minimal surface of Electron's safeStorage, so tests can supply a fake. */
 export interface Cipher {
@@ -14,6 +14,7 @@ export interface Cipher {
  */
 export class SecretStore {
   private file: string;
+  private unreadableSecrets = false;
   constructor(
     userDir: string,
     private cipher: Cipher,
@@ -36,7 +37,26 @@ export class SecretStore {
     try {
       return this.cipher.decryptString(Buffer.from(value, "base64"));
     } catch {
-      return; // Keychain changed (another user/computer): the key must be entered again.
+      this.unreadableSecrets = true;
+      await this.markNeedsReentry();
+      return; // The OS key store changed: the integration must be entered again.
+    }
+  }
+
+  hasUnreadableSecrets() {
+    return this.unreadableSecrets;
+  }
+
+  private async markNeedsReentry() {
+    try {
+      const markerPath = join(dirname(this.file), ".videosell-migration.json");
+      const marker = JSON.parse(await readFile(markerPath, "utf8"));
+      marker.secretsNeedReentry = true;
+      const partial = `${markerPath}.partial`;
+      await writeFile(partial, JSON.stringify(marker, null, 2), { mode: 0o600 });
+      await rename(partial, markerPath);
+    } catch {
+      // Missing or unwritable migration markers must not block normal app use.
     }
   }
 

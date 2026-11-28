@@ -256,7 +256,7 @@ export function Assistant({
       (!!baseUrl.trim() && !!customModel.trim() && !urlError));
   const providerHelp: Record<AgentProvider, string> = {
     codex:
-      "O CutRoom inclui o motor do Codex e usa sua sessão local. Você não precisa criar uma conta CutRoom.",
+      "O Videosell inclui o motor do Codex e usa sua sessão local. Você não precisa criar uma conta Videosell.",
     "claude-code":
       "Use o CLI oficial do Claude instalado neste computador e a sua sessão. Ele é instalado separadamente.",
     anthropic:
@@ -542,7 +542,7 @@ export function Assistant({
                           </>
                         ) : (
                           <>
-                            <BrandMark size={12} /> CutRoom
+                            <BrandMark size={12} /> Videosell
                           </>
                         )}
                       </div>

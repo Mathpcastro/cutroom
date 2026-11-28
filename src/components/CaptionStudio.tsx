@@ -118,7 +118,7 @@ export function CaptionStudio({
       </p>
       {!project.words.length && (
         <p className="caption-studio-note">
-          Ao aplicar, o CutRoom prepara a transcrição local para sincronizar as
+          Ao aplicar, o Videosell prepara a transcrição local para sincronizar as
           legendas.
         </p>
       )}

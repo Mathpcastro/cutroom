@@ -2,13 +2,47 @@ import { describe, expect, it } from "vitest";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DEFAULT_TIMES, dailySlots, dueReels, parseWhen, planSlots, validateTimes, windowsTaskXml, SCHEDULE_FLAG } from "../electron/core/reel-schedule";
+import { DEFAULT_TIMES, dailySlots, dueReels, parseWhen, planSlots, resyncOsSchedule, validateTimes, windowsTaskXml, SCHEDULE_FLAG } from "../electron/core/reel-schedule";
 import { readCreationPilot, writeCreationPilot } from "../electron/core/creation-pilot";
 import { Publisher } from "../electron/core/publish";
 
 const now = new Date(2026, 10, 6, 20, 0);
 
 describe("reel schedule", () => {
+  it("re-registers scheduled entries when the executable path changes", async () => {
+    const registered: string[] = [];
+    const scheduler = { add: async (id: string, at: Date) => void registered.push(`${id}:${at.toISOString()}`) };
+    const nowMs = now.getTime();
+    const result = await resyncOsSchedule(
+      [
+        { id: "future", at: new Date(nowMs + 60_000).toISOString(), status: "scheduled" },
+        { id: "late", at: new Date(nowMs - 6 * 60 * 60_000).toISOString(), status: "scheduled" },
+        { id: "too-late", at: new Date(nowMs - 7 * 60 * 60_000).toISOString(), status: "scheduled" },
+        { id: "published", at: new Date(nowMs + 60_000).toISOString(), status: "published" },
+      ],
+      scheduler,
+      "C:\\Program Files\\CutRoom\\CutRoom.exe",
+      "C:\\Program Files\\CutRoom\\Videosell.exe",
+      nowMs,
+    );
+
+    expect(result).toMatchObject({ changed: true, registered: 2, failures: [] });
+    expect(registered.map((item) => item.split(":")[0])).toEqual(["future", "late"]);
+  });
+
+  it("does nothing when the executable path has not changed", async () => {
+    const registered: string[] = [];
+    const result = await resyncOsSchedule(
+      [{ id: "scheduled", at: "2026-11-07T18:00:00.000Z", status: "scheduled" }],
+      { add: async (id: string) => void registered.push(id) },
+      "Videosell.exe",
+      "Videosell.exe",
+      now.getTime(),
+    );
+    expect(result).toMatchObject({ changed: false, registered: 0, failures: [] });
+    expect(registered).toEqual([]);
+  });
+
   it("parses local times and refuses past or far dates", () => {
     expect(parseWhen("2026-11-07 18:00", now).getHours()).toBe(18);
     expect(() => parseWhen("2026-11-06 20:01", now)).toThrow(/2 minutos/);
@@ -38,6 +72,7 @@ describe("reel schedule", () => {
     expect(xml).toContain("<StartBoundary>2026-11-07T18:00:00</StartBoundary>");
     expect(xml).toContain("<StartWhenAvailable>true</StartWhenAvailable>");
     expect(xml).toContain("<RunLevel>LeastPrivilege</RunLevel>");
+    expect(xml).toContain("<Description>Videosell: publicar um Reels agendado no Instagram</Description>");
     expect(xml).toContain("<Arguments>--publicar-reels</Arguments>");
   });
 });

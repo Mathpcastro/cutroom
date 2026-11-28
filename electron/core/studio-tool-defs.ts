@@ -48,7 +48,7 @@ export const STUDIO_TOOLS = [
   {
     name: "list_voices",
     description:
-      "List narration voices for a provider: elevenlabs (user's API key, word timing included), openai (user's API key; timing aligned locally, needs Transcrição local), kokoro (package Voz Kokoro: natural offline voices on the user's CPU, free, pt-BR pm_alex default / pf_dora / pm_santa, also English and Spanish; ~2x real time, timing aligned locally) or local (the computer's own voices: Windows SAPI with exact word timing, macOS say; free, offline, robotic). Without a provider, the default is the user's choice, else ElevenLabs if configured, else Kokoro if installed. Reports which providers are configured. Keys are entered by the user in CutRoom; never ask for them in chat.",
+      "List narration voices for a provider: elevenlabs (user's API key, word timing included), openai (user's API key; timing aligned locally, needs Transcrição local), kokoro (package Voz Kokoro: natural offline voices on the user's CPU, free, pt-BR pm_alex default / pf_dora / pm_santa, also English and Spanish; ~2x real time, timing aligned locally) or local (the computer's own voices: Windows SAPI with exact word timing, macOS say; free, offline, robotic). Without a provider, the default is the user's choice, else ElevenLabs if configured, else Kokoro if installed. Reports which providers are configured. Keys are entered by the user in Videosell; never ask for them in chat.",
     inputSchema: objectSchema({
       provider: { type: "string", enum: ["elevenlabs", "openai", "kokoro", "local"] },
     }),
@@ -61,7 +61,7 @@ export const STUDIO_TOOLS = [
       {
         text: string("Script to speak (max 5000 characters).", { maxLength: 5000 }),
         provider: { type: "string", enum: ["elevenlabs", "openai", "kokoro", "local"] },
-        voice: string("Voice id from list_voices. Default: the voice chosen in CutRoom."),
+        voice: string("Voice id from list_voices. Default: the voice chosen in Videosell."),
         model: string("Provider model (optional)."),
         instructions: string("OpenAI only: tone/pace instructions, e.g. 'animado, ritmo rápido'."),
         start: number("Timeline second where the narration starts (default 0).", { minimum: 0 }),
@@ -74,7 +74,7 @@ export const STUDIO_TOOLS = [
   {
     name: "search_music",
     description:
-      "Search free music (Jamendo) and sound effects (Freesound) through Openverse, no key. Only licenses that allow commercial use are returned: CC0, public domain and CC BY. CC BY needs credit: the result's attribution text must go in the post caption (CutRoom stores it with the track and review_video lists it). Returns id, title, creator, license, attribution, duration (s) and a preview URL. Pick by mood, then add_music.",
+      "Search free music (Jamendo) and sound effects (Freesound) through Openverse, no key. Only licenses that allow commercial use are returned: CC0, public domain and CC BY. CC BY needs credit: the result's attribution text must go in the post caption (Videosell stores it with the track and review_video lists it). Returns id, title, creator, license, attribution, duration (s) and a preview URL. Pick by mood, then add_music.",
     inputSchema: objectSchema(
       {
         query: string("Keywords, e.g. 'upbeat electronic', 'lofi', 'cinematic', 'whoosh'."),
@@ -112,7 +112,7 @@ export const STUDIO_TOOLS = [
   {
     name: "list_formats",
     description:
-      "List the video formats CutRoom produces (explainer with a cartoon teacher, UI motion reel, 2D what-if cartoon, animated visual explainer without an avatar...). Each has an id, aspect, length and what it is good for.",
+      "List the video formats Videosell produces (explainer with a cartoon teacher, UI motion reel, 2D what-if cartoon, animated visual explainer without an avatar...). Each has an id, aspect, length and what it is good for.",
     inputSchema: objectSchema(),
   },
   {
@@ -142,11 +142,11 @@ export const STUDIO_TOOLS = [
       frames: number("How many frames (default 6).", { minimum: 1, maximum: 12 }),
     }),
   },
-  // Films in code: full HyperFrames projects (HTML + GSAP) written by the agent, rendered by CutRoom.
+  // Films in code: full HyperFrames projects (HTML + GSAP) written by the agent, rendered by Videosell.
   {
     name: "create_film",
     description:
-      "Start a FILM IN CODE: the highest-quality way to make a reel (explainers, UI motion, product demos, cartoons). Creates a folder in Videos/CutRoom/filmes/<id>/ with index.html (starter), CUTROOM.md (contract, kit, quality rules and the format guide), the motion kit (kit/cutroom-kit.js, GSAP), fonts, brand.js (user's brand) and assets/. You write the film as HTML/CSS/JS with one paused GSAP timeline; CutRoom records the voice with word timings, checks, previews frames and renders the MP4. Edit the folder with your own file tools when you have them, otherwise write_film_file. Prefer this over the timeline scene tools for new videos.",
+      "Start a FILM IN CODE: the highest-quality way to make a reel (explainers, UI motion, product demos, cartoons). Creates a folder in Videos/CutRoom/filmes/<id>/ with index.html (starter), CUTROOM.md (contract, kit, quality rules and the format guide), the motion kit (kit/cutroom-kit.js, GSAP), fonts, brand.js (user's brand) and assets/. You write the film as HTML/CSS/JS with one paused GSAP timeline; Videosell records the voice with word timings, checks, previews frames and renders the MP4. Edit the folder with your own file tools when you have them, otherwise write_film_file. Prefer this over the timeline scene tools for new videos.",
     inputSchema: objectSchema(
       {
         name: string("Film title (also the output file name)."),
@@ -176,7 +176,7 @@ export const STUDIO_TOOLS = [
         film: string("Film id."),
         text: string("Exact script to speak, user's language, short sentences (max 5000 chars).", { maxLength: 5000 }),
         provider: { type: "string", enum: ["elevenlabs", "openai", "kokoro", "local"] },
-        voice: string("Voice id from list_voices. Default: the voice chosen in CutRoom."),
+        voice: string("Voice id from list_voices. Default: the voice chosen in Videosell."),
         model: string("Provider model (optional)."),
         instructions: string("OpenAI only: tone/pace instructions."),
         audio: string("Absolute path of a narration already recorded elsewhere (ElevenLabs, a cloned voice, a microphone). The voice is kept as is and the word timings come from the local transcription aligned to text (the exact script)."),
@@ -230,7 +230,7 @@ export const STUDIO_TOOLS = [
   {
     name: "write_film_file",
     description:
-      "Write a text file inside the film folder (index.html, extra .css/.js/.svg/.json/.md). Paths are relative to the film folder; nothing outside it can be written. film.json and timing.js belong to CutRoom. Max 2 MB. No remote URLs: everything must be in the folder or a data: URL.",
+      "Write a text file inside the film folder (index.html, extra .css/.js/.svg/.json/.md). Paths are relative to the film folder; nothing outside it can be written. film.json and timing.js belong to Videosell. Max 2 MB. No remote URLs: everything must be in the folder or a data: URL.",
     inputSchema: objectSchema(
       {
         film: string("Film id."),
@@ -296,7 +296,7 @@ export const STUDIO_TOOLS = [
   {
     name: "open_studio",
     description:
-      "Open a screen of CutRoom's Estúdio de vídeos for the USER to fill in: brand (marca), voices (API keys, Kokoro install, default voice), publish (Composio key, Instagram account), films or start. Use it instead of asking for keys or long brand details in chat.",
+      "Open a screen of Videosell's Estúdio de vídeos for the USER to fill in: brand (marca), voices (API keys, Kokoro install, default voice), publish (Composio key, Instagram account), films or start. Use it instead of asking for keys or long brand details in chat.",
     inputSchema: objectSchema({ tab: { type: "string", enum: ["start", "brand", "voices", "films", "publish"] } }, ["tab"]),
   },
   {
@@ -307,13 +307,13 @@ export const STUDIO_TOOLS = [
   },
   {
     name: "instagram_accounts",
-    description: "Instagram accounts the user connected for Reels publishing (Composio, set up in CutRoom › Estúdio › Publicar), the default account and recent posts. Never ask for the Composio key in chat.",
+    description: "Instagram accounts the user connected for Reels publishing (Composio, set up in Videosell › Estúdio › Publicar), the default account and recent posts. Never ask for the Composio key in chat.",
     inputSchema: objectSchema(),
   },
   {
     name: "schedule_reel",
     description:
-      "Schedule one MP4 from Videos/CutRoom to be published as a Reel at a local date and time (\"2026-11-08 18:00\"). The operating system opens CutRoom at that time and it posts by itself; if the computer was off it posts when it comes back (up to 6 h late, later it waits for the user). ONLY after the user confirmed video, caption, account and time — then confirm:true. instagram_accounts lists what is scheduled.",
+      "Schedule one MP4 from Videos/CutRoom to be published as a Reel at a local date and time (\"2026-11-08 18:00\"). The operating system opens Videosell at that time and it posts by itself; if the computer was off it posts when it comes back (up to 6 h late, later it waits for the user). ONLY after the user confirmed video, caption, account and time — then confirm:true. instagram_accounts lists what is scheduled.",
     inputSchema: objectSchema(
       {
         video: string("Absolute path of the MP4."),

@@ -135,6 +135,32 @@ export function dueReels(entries: ScheduledReel[], now = Date.now()) {
     .map((e) => ({ id: e.id, late: now - new Date(e.at).getTime() > LATE_LIMIT_MS }));
 }
 
+/** Rebuilds OS wake-ups when an app update changes the executable path. */
+export async function resyncOsSchedule(
+  entries: readonly Pick<ScheduledReel, "id" | "at" | "status">[],
+  scheduler: Pick<OsReelScheduler, "add">,
+  lastExe: string | undefined,
+  currentExe: string,
+  now = Date.now(),
+) {
+  if (lastExe === currentExe) return { changed: false, registered: 0, failures: [] as { id: string; error: string }[] };
+  const failures: { id: string; error: string }[] = [];
+  let registered = 0;
+  for (const entry of entries) {
+    if (entry.status !== "scheduled") continue;
+    const at = new Date(entry.at);
+    const time = at.getTime();
+    if (!Number.isFinite(time) || time < now - LATE_LIMIT_MS) continue;
+    try {
+      await scheduler.add(entry.id, at);
+      registered += 1;
+    } catch (error) {
+      failures.push({ id: entry.id, error: (error as Error).message || String(error) });
+    }
+  }
+  return { changed: true, registered, failures };
+}
+
 const pad = (n: number) => String(n).padStart(2, "0");
 const localStamp = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
 const xml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -144,7 +170,7 @@ const quote = (a: string) => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : 
 export function windowsTaskXml(at: Date, exe: string, args: string[]) {
   return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <RegistrationInfo><Description>CutRoom: publicar um Reels agendado no Instagram</Description></RegistrationInfo>
+  <RegistrationInfo><Description>Videosell: publicar um Reels agendado no Instagram</Description></RegistrationInfo>
   <Triggers><TimeTrigger><StartBoundary>${localStamp(at)}</StartBoundary><Enabled>true</Enabled></TimeTrigger></Triggers>
   <Principals><Principal id="Author"><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
   <Settings>

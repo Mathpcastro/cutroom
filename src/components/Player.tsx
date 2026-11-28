@@ -393,7 +393,7 @@ export function Player({
             <span className="formats">MP4, MOV, MKV, WEBM e mais</span>
             {!desktop && (
               <span className="desktop-note">
-                Abra o CutRoom desktop para acessar seus arquivos.
+                Abra o Videosell desktop para acessar seus arquivos.
               </span>
             )}
           </div>

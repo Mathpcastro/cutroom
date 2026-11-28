@@ -14,6 +14,7 @@ export function PublishSettings({ jobs, connectionOnly = false }: { jobs: AppSna
   const { error, notice, setNotice, guard } = useStudioGuard();
   const [pub, setPub] = useState<{
     hasKey: boolean;
+    secretsNeedReentry?: boolean;
     accounts: Account[];
     defaultAccount?: string;
     history: { permalink: string; username: string; publishedAt: string }[];
@@ -43,6 +44,7 @@ export function PublishSettings({ jobs, connectionOnly = false }: { jobs: AppSna
     <section className="studio-section">
       {error && <p className="studio-error" role="alert">{error}</p>}
       {notice && <p className="studio-notice">{notice}</p>}
+      {pub?.secretsNeedReentry && <p className="studio-error" role="status">Uma ou mais chaves cifradas da instalação anterior não podem ser abertas neste sistema. Cadastre novamente as integrações com chave em Vozes ou Publicar; o Videosell não consegue recuperar a chave anterior.</p>}
       <p className="studio-lead">{t("Publica Reels no Instagram pelo Composio, com a chave do seu projeto. Use a mesma chave do Carrossell: as contas já conectadas lá aparecem aqui.")}</p>
       <div className="studio-box">
         <p>{pub?.hasKey ? t("Chave do Composio cadastrada (cifrada neste computador).") : t("Cole a chave do PROJETO do Composio (composio.dev › Settings › Project Settings › API Keys).")}</p>
@@ -80,14 +82,14 @@ export function PublishSettings({ jobs, connectionOnly = false }: { jobs: AppSna
           <Rocket size={13} /> Publicar Reels
         </button>
         <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="Data e hora do agendamento" />
-        <button className="button" disabled={!confirmed || !video || !account || !when} onClick={() => void guard(async () => { await api("scheduleReel", { video, caption, account: account?.id, at: when.replace("T", " "), confirm: true }); setConfirmed(false); setPub(await api("getPublishSettings")); }, "Reels agendado. O CutRoom abre sozinho no horário e publica.")}>
+        <button className="button" disabled={!confirmed || !video || !account || !when} onClick={() => void guard(async () => { await api("scheduleReel", { video, caption, account: account?.id, at: when.replace("T", " "), confirm: true }); setConfirmed(false); setPub(await api("getPublishSettings")); }, "Reels agendado. O Videosell abre sozinho no horário e publica.")}>
           {t("Agendar")}
         </button>
         {video && <button className="button" onClick={() => void guard(() => api("revealVideo", { path: video }))}>Mostrar o vídeo</button>}
       </div>
       <div className="studio-box">
         <strong>{t("Piloto automático")}</strong>
-        <p>Escolha os vídeos na ordem: o CutRoom publica um por dia no mesmo horário, com a legenda acima. Junto com os carrosséis do Carrossell, o perfil fica ativo todo dia sem tráfego pago.</p>
+        <p>Escolha os vídeos na ordem: o Videosell publica um por dia no mesmo horário, com a legenda acima. Junto com os carrosséis do Carrossell, o perfil fica ativo todo dia sem tráfego pago.</p>
         <div className="studio-picks">
           {videos.slice(0, 12).map((v) => (
             <label key={v.path} className="studio-pick">

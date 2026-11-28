@@ -20,20 +20,20 @@ describe("voice timing", () => {
   it("keeps the script spelling with recognizer timing and fills missed words", () => {
     const recognized = [
       { text: "o", start: 0, end: 0.1 },
-      { text: "cutrum", start: 0.15, end: 0.6 },
+      { text: "videosel", start: 0.15, end: 0.6 },
       { text: "edita", start: 0.7, end: 1 },
       { text: "conversando", start: 1.6, end: 2.2 },
     ];
-    const words = alignScript("O CutRoom edita vídeos conversando.", recognized);
+    const words = alignScript("O Videosell edita vídeos conversando.", recognized);
     expect(words.map((w) => w.text)).toEqual([
       "O",
-      "CutRoom",
+      "Videosell",
       "edita",
       "vídeos",
       "conversando.",
     ]);
     expect(words[2]).toEqual({ text: "edita", start: 0.7, end: 1 });
-    // "CutRoom" was misrecognized and "vídeos" missed: both land inside the right gaps.
+    // "Videosell" was misrecognized and "vídeos" missed: both land inside the right gaps.
     expect(words[1].start).toBeGreaterThanOrEqual(0.1);
     expect(words[1].end).toBeLessThanOrEqual(0.7);
     expect(words[3].start).toBeGreaterThanOrEqual(1);
