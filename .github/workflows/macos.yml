@@ -49,7 +49,8 @@ jobs:
           # electron-builder skips signing on PR builds; without the ad-hoc signature Apple Silicon reports the app as damaged.
           CSC_FOR_PULL_REQUEST: "true"
       - name: Check the app bundle signature
-        run: codesign --verify --deep --strict release/mac*/CutRoom.app
+        # The bundle is named after build.productName ("Videosell" since 0.9.6).
+        run: codesign --verify --deep --strict release/mac*/Videosell.app
       - uses: actions/upload-artifact@v4
         with:
           name: cutroom-macos-${{ matrix.arch }}
