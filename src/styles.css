@@ -43,7 +43,7 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--lime);
+  outline: 2px solid var(--action-text);
   outline-offset: 3px;
 }
 button {
@@ -233,13 +233,14 @@ svg {
   border-color: var(--line-strong);
 }
 .button.primary {
-  background: var(--lime);
-  border-color: var(--lime);
-  color: var(--muted);
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--on-action);
   font-weight: 650;
 }
 .button.primary:hover:not(:disabled) {
-  background: var(--accent);
+  background: var(--action-hover);
+  border-color: var(--action-hover);
 }
 .button.small {
   padding: 5px 9px;
@@ -472,7 +473,7 @@ svg {
   box-shadow: 0 2px 5px #0002;
 }
 .composer:focus-within {
-  border-color: var(--line-strong);
+  border-color: var(--action-text);
 }
 .composer textarea {
   width: 100%;
@@ -512,8 +513,8 @@ svg {
 .send-button {
   width: 27px;
   height: 27px;
-  background: var(--lime);
-  color: var(--muted);
+  background: var(--action);
+  color: var(--on-action);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -525,7 +526,8 @@ svg {
   opacity: 1;
 }
 .send-button.stop {
-  background: var(--accent-soft);
+  background: var(--action);
+  color: var(--on-action);
 }
 .composer-help {
   text-align: center;
@@ -588,7 +590,7 @@ svg {
   width: 11px;
   height: 11px;
   border: 1.5px solid var(--line-strong);
-  border-top-color: var(--lime);
+  border-top-color: var(--action);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   display: inline-block;
@@ -634,7 +636,7 @@ svg {
 }
 .workspace-tabs button.active {
   background: var(--raised);
-  color: var(--text);
+  color: var(--action-text);
 }
 .workspace-tools {
   display: flex;
@@ -946,7 +948,7 @@ svg {
 .overlay-callout {
   top: auto;
   bottom: 23%;
-  background: #d3f875;
+  background: #C8FF5A;
   color: #1b1a17;
   padding: 8px;
   text-shadow: none;
@@ -1057,7 +1059,7 @@ svg {
   border: 0;
   border-radius: 0;
   padding: 0;
-  accent-color: var(--lime);
+  accent-color: var(--action-text);
   flex-shrink: 0;
 }
 .player-seek::-webkit-slider-thumb {
@@ -1065,7 +1067,7 @@ svg {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent-soft);
+  background: var(--action);
 }
 .player-seek:disabled {
   opacity: 0.3;
@@ -1252,7 +1254,7 @@ svg {
   border-color: var(--line-strong);
 }
 .timeline-clip.active {
-  outline: 1px solid var(--lime);
+  outline: 1px solid var(--action-text);
   outline-offset: 1px;
   background-color: var(--hover);
 }
@@ -1262,7 +1264,7 @@ svg {
   top: 10px;
   bottom: 10px;
   width: 2px;
-  background: var(--accent-soft);
+  background: var(--action-text);
 }
 .clip-name {
   font-size: 10px;
@@ -1320,7 +1322,7 @@ svg {
   top: 21px;
   bottom: 0;
   width: 1px;
-  background: var(--lime);
+  background: var(--action-text);
   z-index: 4;
   pointer-events: none;
 }
@@ -1329,13 +1331,13 @@ svg {
   top: 0;
   left: -4px;
   border: 4px solid transparent;
-  border-top: 6px solid var(--lime);
+  border-top: 6px solid var(--action-text);
 }
 .playhead > i {
   position: absolute;
   bottom: 0;
   width: 1px;
-  background: var(--lime);
+  background: var(--action-text);
   height: 100%;
 }
 .clip-inspector {
@@ -1451,7 +1453,7 @@ svg {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--accent-soft);
+  background: var(--lime);
 }
 .status-divider {
   height: 9px;
@@ -1657,12 +1659,12 @@ svg {
   border-radius: 50%;
 }
 .switch.on {
-  background: var(--accent-soft);
-  border-color: var(--line-strong);
+  background: var(--action);
+  border-color: var(--action);
 }
 .switch.on:before {
   left: 13px;
-  background: var(--accent-soft);
+  background: var(--on-action);
 }
 .output-format {
   display: flex;
@@ -1946,7 +1948,7 @@ svg {
 .job-item progress {
   width: 100%;
   height: 4px;
-  accent-color: var(--lime);
+  accent-color: var(--action);
   margin: 12px 0;
   display: block;
 }
@@ -2415,10 +2417,10 @@ svg {
   font-size: 10px;
 }
 .playhead {
-  background: var(--lime);
+  background: var(--action-text);
 }
 .timeline-clip.active {
-  border-color: var(--lime);
+  border-color: var(--action-text);
 }
 .titlebar {
   background: var(--panel);
@@ -2520,7 +2522,7 @@ svg {
   font-size: 12px;
 }
 .workspace.is-dragging {
-  outline: 2px dashed var(--lime);
+  outline: 2px dashed var(--action-text);
   outline-offset: -7px;
 }
 .drop-overlay {
@@ -2841,7 +2843,7 @@ svg {
   border-color: var(--line-strong);
 }
 .choice-option[aria-selected="true"] svg {
-  color: var(--lime);
+  color: var(--action-text);
 }
 .choice-empty {
   padding: 10px;
@@ -2982,7 +2984,7 @@ svg {
   display: block;
   height: 4px;
   margin-top: 8px;
-  accent-color: var(--lime);
+  accent-color: var(--action);
 }
 .activity-row.completed .activity-icon {
   color: var(--lime);
@@ -3057,7 +3059,7 @@ svg {
 }
 .text-link {
   padding: 3px 0;
-  color: var(--lime);
+  color: var(--action-text);
   text-decoration: underline;
   text-underline-offset: 3px;
   font-size: inherit;
@@ -3159,7 +3161,7 @@ svg {
 }
 .app-shell .wordmark > svg,
 .app-shell .brand-icon {
-  color: var(--accent);
+  color: var(--lime);
 }
 .app-shell .button,
 .app-shell .composer,
@@ -3171,9 +3173,14 @@ svg {
 }
 .app-shell .button.primary,
 .app-shell .send-button:not(:disabled) {
-  color: var(--accent-ink);
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--on-action);
+  background: var(--action);
+  border-color: var(--action);
+}
+.app-shell .button.primary:hover:not(:disabled),
+.app-shell .send-button:hover:not(:disabled) {
+  background: var(--action-hover);
+  border-color: var(--action-hover);
 }
 .app-shell .titlebar,
 .app-shell .assistant-panel,
@@ -3184,20 +3191,20 @@ svg {
 }
 .app-shell ::selection {
   color: var(--text);
-  background: var(--accent-soft);
+  background: var(--action-soft);
 }
 
 /* Estúdio de vídeos (formatos, marca, vozes, filmes, publicar) */
 .studio-panel { width: min(760px, calc(100vw - 50px)); }
 .studio-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 16px; border-bottom: 1px solid var(--line); }
 .studio-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
-.studio-tabs button.active { color: var(--text); border-bottom-color: var(--accent, currentColor); }
+.studio-tabs button.active { color: var(--action-text); border-bottom-color: var(--action-text); }
 .studio-section { display: flex; flex-direction: column; gap: 12px; }
 .studio-lead { font-size: 12px; line-height: 1.6; color: var(--text); }
 .studio-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
 .studio-choices, .studio-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .studio-choices .choice { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
-.studio-choices .choice.active, .format-card.active { border-color: var(--line-strong); background: var(--accent-soft); }
+.studio-choices .choice.active, .format-card.active { border-color: var(--action-text); background: var(--action-soft); }
 .studio-formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
 .format-card { display: flex; flex-direction: column; gap: 4px; padding: 12px; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--text); font: inherit; cursor: pointer; }
 .format-card strong { font-size: 13px; font-weight: 600; }

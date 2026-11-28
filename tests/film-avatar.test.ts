@@ -76,7 +76,8 @@ async function setup() {
   return { ...avatar, root, films, studio: new FilmStudio(host, {} as Studio) };
 }
 
-describe("film avatar snapshots", { timeout: 60_000 }, () => {
+// 180 s: on the Intel macOS runner one test alone passed 60 s (0.9.6 release PR).
+describe("film avatar snapshots", { timeout: 180_000 }, () => {
   it("creates films with an optional immutable approved avatar snapshot", async () => {
     const { studio, films, service, selected } = await setup();
     const reference = { avatarId: selected.avatarId, revision: selected.revision, hash: selected.hash };

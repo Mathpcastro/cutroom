@@ -51,7 +51,7 @@ export class Publisher {
   }
   private async client() {
     const key = await this.host.secrets.get(COMPOSIO_KEY);
-    if (!key) throw new Error("Cadastre a chave do Composio em Estúdio › Publicar, no CutRoom. Não envie a chave pelo chat.");
+    if (!key) throw new Error("Cadastre a chave do Composio em Estúdio › Publicar, no Videosell. Não envie a chave pelo chat.");
     return new Composio(key, this.host.fetcher);
   }
 
@@ -60,7 +60,7 @@ export class Publisher {
     const keys = await this.host.secrets.describe([COMPOSIO_KEY]);
     const scheduled = (s.scheduled ?? []).filter((e) => e.status !== "cancelled" && (e.status !== "published" || Date.now() - new Date(e.at).getTime() < 7 * 864e5));
     const pilot = s.pilot ?? { enabled: false, times: DEFAULT_TIMES[1], days: "daily" as PilotDays };
-    return { pilot, hasKey: !!keys[COMPOSIO_KEY], keyHint: keys[COMPOSIO_KEY], unusable: s.unusable ?? [], checkedAt: s.checkedAt, accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), publicationLinks: s.history.slice(-200).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
+    return { pilot, hasKey: !!keys[COMPOSIO_KEY], keyHint: keys[COMPOSIO_KEY], secretsNeedReentry: this.host.secrets.hasUnreadableSecrets?.() ?? false, unusable: s.unusable ?? [], checkedAt: s.checkedAt, accounts: s.accounts, defaultAccount: s.defaultAccount, history: s.history.slice(-10).reverse(), publicationLinks: s.history.slice(-200).reverse(), scheduled: scheduled.sort((a, b) => a.at.localeCompare(b.at)) };
   }
   async analytics(args: unknown) {
     const { account: id } = z.object({ account: z.string().min(1).max(100) }).strict().parse(args);
@@ -297,7 +297,7 @@ export class Publisher {
       try {
         await this.host.os?.add(entry.id, item.at);
       } catch (error) {
-        warnings.push(`O sistema não aceitou o agendamento automático (${(error as Error).message.split("\n")[0]}): deixe o CutRoom aberto nesse horário.`);
+        warnings.push(`O sistema não aceitou o agendamento automático (${(error as Error).message.split("\n")[0]}): deixe o Videosell aberto nesse horário.`);
       }
       added.push(entry);
     }

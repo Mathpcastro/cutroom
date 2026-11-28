@@ -1,5 +1,5 @@
 import { t, setStudioLanguage, useStudioLanguage, type StudioLanguage } from "./studioLanguage";
-import { BookOpen, CalendarDays, Clapperboard, Film, Lightbulb, Monitor, Moon, Settings2, Sun } from "lucide-react";
+import { BookOpen, CalendarDays, Clapperboard, Film, Lightbulb, Monitor, Moon, Settings2, Sun, Tv } from "lucide-react";
 import type { StudioTab } from "../../shared/types";
 import type { StudioPage } from "../VideosellStudio";
 import { ProfileSwitcher } from "./ProfileSwitcher";
@@ -7,6 +7,7 @@ import type { StudioProfile } from "../../shared/profile";
 import type { StudioThemePreference } from "./studioTheme";
 import { ConnectionBadge } from "./InstagramConnect";
 import { AiBadge } from "./AiConnect";
+import { McpButton } from "./McpConnect";
 import type { AppSnapshot } from "../../shared/types";
 
 interface StudioNavProps {
@@ -23,9 +24,10 @@ interface StudioNavProps {
   onThemePreference?: (preference: StudioThemePreference) => void;
 }
 
-/** Spec 4 E: 5 main places + Ajustes. Every older screen lives inside one of them. */
+/** Spec 4 E: 6 main places + Ajustes. Every older screen lives inside one of them. */
 const items = [
   { id: "home", label: "Criar", icon: Clapperboard, owns: ["home", "create", "onboarding"] },
+  { id: "channels", label: "Canais dark", icon: Tv, owns: ["channels"] },
   { id: "projects", label: "Meus Reels", icon: Film, owns: ["projects", "videos"] },
   { id: "routine", label: "Piloto automático", icon: CalendarDays, owns: ["routine"] },
   { id: "radar", label: "Ideias", icon: Lightbulb, owns: ["radar", "analytics"] },
@@ -69,6 +71,7 @@ export function StudioNav({
         })}
       </nav>
       <div className="studio-sidebar-bottom">
+        <McpButton />
         <div className="sidebar-account">
           <ProfileSwitcher onProfileChange={onProfileChange} onProfileCreated={onProfileCreated} avatarSetupRequest={avatarSetupRequest} />
           <ConnectionBadge onOpen={() => onPage("publish")} />

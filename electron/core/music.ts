@@ -62,7 +62,7 @@ export function toMusicResult(raw: Raw): MusicResult | undefined {
 async function get(url: string, signal?: AbortSignal) {
   const response = await fetch(url, {
     signal,
-    headers: { "user-agent": "CutRoom (video editor)" },
+    headers: { "user-agent": "Videosell (video editor)" },
   });
   if (response.status === 429)
     throw new Error("A busca de músicas atingiu o limite. Tente de novo em um minuto.");

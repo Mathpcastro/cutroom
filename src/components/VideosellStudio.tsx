@@ -34,6 +34,8 @@ import { FirstRun, firstRunDone } from "./studio/FirstRun";
 import { generateSalesReel } from "./studio/ReelCreator";
 import { useInstagramConnection } from "./studio/InstagramConnect";
 import { AiConnectDialog, aiPreferences, openAiConnect, useAiPreferences } from "./studio/AiConnect";
+import { McpDialog } from "./studio/McpConnect";
+import { ChannelStudio } from "./studio/ChannelStudio";
 import { useStudioTheme, type StudioThemePreference } from "./studio/studioTheme";
 import "./studio/studio.css";
 
@@ -52,6 +54,7 @@ export type StudioPage =
   | "onboarding"
   | "publish"
   | "stories"
+  | "channels"
   | "settings";
 
 interface VideosellStudioProps {
@@ -63,7 +66,7 @@ interface VideosellStudioProps {
 
 const pageTitles: Partial<Record<StudioPage, string>> = {
   home: "Criar", create: "Criar Reel", analytics: "Ideias", radar: "Ideias",
-  proofs: "Biblioteca da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", avatars: "Seu avatar",
+  proofs: "Biblioteca da marca", videos: "Meus Reels", routine: "Piloto automático", stories: "Histórias", channels: "Canais dark", avatars: "Seu avatar",
   projects: "Meus Reels", voices: "Vozes", brand: "Marca", onboarding: "Marca", publish: "Conexões",
   settings: "Ajustes",
 };
@@ -158,6 +161,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   const needsAttention = (instagram.pub?.scheduled ?? []).filter((e) => e.status === "late" || e.status === "failed").length;
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [page, setPage] = useState<StudioPage>("home");
+  /** Bumped by the home shortcut so the Canais screen opens on "new channel". */
+  const [newChannel, setNewChannel] = useState(0);
   const [avatarSetupRequest, setAvatarSetupRequest] = useState(0);
   const [createMode, setCreateMode] = useState<CreateMode>("without-avatar");
   const [reelSession, setReelSession] = useState<ReelSession | null>(null);
@@ -469,7 +474,8 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
       onCreate={quickCreate}
       onReference={() => create("without-avatar")}
       onStory={() => setPage("stories")}
-      onRadar={() => setPage("radar")} />;
+      onRadar={() => setPage("radar")}
+      onChannel={() => { setNewChannel((n) => n + 1); setPage("channels"); }} />;
   } else if (page === "home") {
     content = (
       <StudioHome
@@ -504,6 +510,9 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
   } else if (page === "projects") {
     content = <MyReels profile={profile} projects={visibleProjects} onOpen={(id) => void openProject(id)}
       onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} onCreate={() => setPage("home")} />;
+  } else if (page === "channels") {
+    content = profile ? <ChannelStudio key={`${profile.id}-${newChannel}`} profile={profile} startNew={newChannel > 0} />
+      : <IntermediatePage title={t("Canais dark")} eyebrow={t("PERFIL NECESSÁRIO")} text={t("Crie um perfil para criar canais.")} onPage={setPage} />;
   } else if (page === "stories") {
     content = profile ? <Stories key={profile.id} profile={profile} onConnect={() => setPage("publish")} onPilot={() => setPage("routine")} />
       : <IntermediatePage title={t("Histórias")} eyebrow={t("PERFIL NECESSÁRIO")} text={t("Crie um perfil para criar séries.")} onPage={setPage} />;
@@ -647,6 +656,7 @@ export function VideosellStudio({ state, run, onOpenAdvanced, visible = true }: 
         onThemePreference={(next: StudioThemePreference) => appearance.setPreference(next)}
       />
       <AiConnectDialog connection={state.connection} run={run} />
+      <McpDialog />
       <main className="studio-main" id="studio-main-content">
         {needsAttention > 0 && page !== "routine" && (
           <button type="button" className="pilot-attention global" onClick={() => setPage("routine")}>

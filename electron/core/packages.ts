@@ -233,7 +233,7 @@ export class PackageManager {
   }
   /** Synthesizes with Kokoro (throws a friendly message when the package is missing). */
   async kokoroSpeak(text: string, voice: string | undefined, tempDir: string, signal?: AbortSignal) {
-    if (!(await this.kokoroInstalled())) throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom.");
+    if (!(await this.kokoroInstalled())) throw new Error("Instale a Voz Kokoro na aba Pacotes do Videosell.");
     await mkdir(tempDir, { recursive: true });
     return kokoroSpeech({ python: this.kokoroPython(), worker: join(this.resources, "workers", "speak_kokoro.py"), models: this.kokoroModels(), text, voice, tempDir, signal });
   }
@@ -341,7 +341,7 @@ export class PackageManager {
     if (id === KOKORO_PACKAGE) return this.installKokoro(onProgress, signal);
     if (id !== TRANSCRIPTION_PACKAGE) throw new Error("Pacote desconhecido.");
     const { uv, env, uvInfo } = await this.bootstrap(onProgress, signal);
-    onProgress(12, "Instalando Python privado do CutRoom…");
+    onProgress(12, "Instalando Python privado do Videosell…");
     try {
       await access(this.python());
     } catch {

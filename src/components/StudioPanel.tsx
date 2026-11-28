@@ -44,7 +44,7 @@ export function StudioPanel({ state, run, onClose, initial }: { state: AppSnapsh
   useEffect(() => void api<{ formats: Format[] }>("listFormats").then((r) => setFormats(r.formats), () => undefined), []);
   const chosen = formats.find((f) => f.id === format);
   const goalText = GOALS.find((g) => g[0] === goal)![2];
-  const prompt = `Use o formato "${chosen?.name ?? format}" do CutRoom (get_format_guide{id:"${format}"}) para criar ${goalText}, com a minha marca (get_brand).${extra.trim() ? ` ${extra.trim()}` : ""} Mostre o roteiro antes de gerar a voz, revise com film_review e renderize com render_film.`;
+  const prompt = `Use o formato "${chosen?.name ?? format}" do Videosell (get_format_guide{id:"${format}"}) para criar ${goalText}, com a minha marca (get_brand).${extra.trim() ? ` ${extra.trim()}` : ""} Mostre o roteiro antes de gerar a voz, revise com film_review e renderize com render_film.`;
 
   // ---- Filmes ----
   const [films, setFilms] = useState<Film[]>([]);
@@ -118,7 +118,7 @@ export function StudioPanel({ state, run, onClose, initial }: { state: AppSnapsh
               >
                 <Send size={13} /> Pedir ao assistente
               </button>
-              <button className="button" onClick={() => void guard(() => navigator.clipboard.writeText(prompt), "Pedido copiado. Cole no Claude Code ou no Codex com o CutRoom conectado.")}>
+              <button className="button" onClick={() => void guard(() => navigator.clipboard.writeText(prompt), "Pedido copiado. Cole no Claude Code ou no Codex com o Videosell conectado.")}>
                 <Copy size={13} /> Copiar para Claude Code/Codex
               </button>
               <button className="button" onClick={() => void guard(async () => { const r = await api<{ files: string[] }>("installAgentSkill"); setNotice(`Skill instalada: ${r.files.join(" · ")}`); })}>

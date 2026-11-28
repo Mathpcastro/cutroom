@@ -13,12 +13,17 @@
   --accent: #dedede;
   --accent-ink: #202020;
   --accent-soft: #303030;
+  --action: #6445d8;
+  --action-hover: #5136bf;
+  --on-action: #ffffff;
+  --action-text: #b8a8ff;
+  --action-soft: #302747;
   --danger: #f0a3a3;
   --danger-bg: #342525;
   --danger-line: #704545;
   --warning: #d8bc83;
   --shadow: #0006;
-  --lime: var(--accent);
+  --lime: #c8ff5a;
   --border: var(--line);
   color: var(--text);
   background: var(--bg);
@@ -36,6 +41,8 @@
   --accent: #333333;
   --accent-ink: #ffffff;
   --accent-soft: #e8e8e8;
+  --action-soft: #eee9f7;
+  --action-text: #6445d8;
   --danger: #ae3030;
   --danger-bg: #fff0f0;
   --danger-line: #d99696;
@@ -55,6 +62,8 @@
   --accent: #3794ff;
   --accent-ink: #10151a;
   --accent-soft: #22364c;
+  --action-soft: #302747;
+  --action-text: #b8a8ff;
 }
 :root[data-theme="light-plus"] {
   --bg: #ffffff;
@@ -68,6 +77,8 @@
   --accent: #0078d4;
   --accent-ink: #ffffff;
   --accent-soft: #e4eff9;
+  --action-soft: #eee9f7;
+  --action-text: #6445d8;
   --danger: #b32929;
   --danger-bg: #fff0f0;
   --danger-line: #d99696;
@@ -87,6 +98,8 @@
   --accent: #88c0d0;
   --accent-ink: #26323e;
   --accent-soft: #3d5262;
+  --action-soft: #3b3654;
+  --action-text: #b8a8ff;
   --danger: #edb1b7;
   --danger-bg: #493943;
   --danger-line: #8a5663;
@@ -103,6 +116,8 @@
   --accent: #7aa2f7;
   --accent-ink: #161c30;
   --accent-soft: #2b3857;
+  --action-soft: #302b4d;
+  --action-text: #b8a8ff;
   --danger: #f7a2bb;
   --danger-bg: #3e2b40;
   --danger-line: #80536f;
@@ -135,7 +150,7 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 summary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--action-text);
   outline-offset: 2px;
 }
 button:disabled {
@@ -153,6 +168,11 @@ button:disabled {
   --accent: #6445d8;
   --accent-ink: #ffffff;
   --accent-soft: #eee9f7;
+  --action: #6445d8;
+  --action-hover: #5136bf;
+  --on-action: #ffffff;
+  --action-text: #6445d8;
+  --action-soft: #eee9f7;
   --lime: #c8ff5a;
   --danger: #ae3030;
   --danger-bg: #fff0f0;
@@ -213,13 +233,13 @@ button:disabled {
   border-color: var(--line-strong);
 }
 .button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--on-action);
 }
 .button.primary:hover:not(:disabled) {
-  background: var(--accent);
-  filter: brightness(1.08);
+  background: var(--action-hover);
+  border-color: var(--action-hover);
 }
 .button.primary:disabled {
   background: var(--raised);
@@ -260,7 +280,7 @@ button:disabled {
 }
 .connection-dot.connected,
 .local-status > span {
-  background: var(--accent);
+  background: var(--lime);
 }
 .connection-dot.connecting {
   background: var(--warning);
@@ -302,8 +322,8 @@ button:disabled {
   border-radius: 6px;
 }
 .composer:focus-within {
-  border-color: var(--line-strong);
-  box-shadow: 0 0 0 1px var(--line-strong);
+  border-color: var(--action-text);
+  box-shadow: 0 0 0 1px var(--action-text);
 }
 .composer textarea {
   background: transparent;
@@ -366,8 +386,8 @@ button:disabled {
   border-color: var(--line-strong);
 }
 .send-button {
-  color: var(--accent-ink);
-  background: var(--accent);
+  color: var(--on-action);
+  background: var(--action);
   border-radius: 4px;
 }
 .send-button:disabled {
@@ -594,7 +614,7 @@ button:disabled {
   background: var(--line);
 }
 .player-seek::-webkit-slider-thumb {
-  background: var(--accent);
+  background: var(--action-text);
 }
 .source-name {
   color: #e8e8e8;
@@ -656,14 +676,14 @@ button:disabled {
   border-radius: 4px;
 }
 .timeline-clip.active {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  border-color: var(--action-text);
+  box-shadow: inset 0 0 0 1px var(--action-text);
 }
 .timeline-clip:not([style*="background-image"]) {
   color: var(--text);
 }
 .timeline-clip:hover {
-  border-color: var(--accent);
+  border-color: var(--action-text);
 }
 .clip-grip {
   background: var(--line-strong);
@@ -687,7 +707,7 @@ button:disabled {
 }
 .playhead > i,
 .playhead > span {
-  background: var(--accent);
+  background: var(--action-text);
 }
 .playhead > span {
   background: transparent;
@@ -765,11 +785,11 @@ button:disabled {
   background: var(--muted);
 }
 .switch.on {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--action);
+  border-color: var(--action);
 }
 .switch.on:before {
-  background: var(--accent-ink);
+  background: var(--on-action);
 }
 .package-item {
   border-color: var(--line);
@@ -844,7 +864,7 @@ button:disabled {
 .drop-overlay {
   color: var(--text);
   background: var(--bg);
-  border-color: var(--accent);
+  border-color: var(--action-text);
 }
 .shortcut-list {
   display: grid;
@@ -922,7 +942,7 @@ button:disabled {
   outline: none;
 }
 .desktop-menu-panel > button:focus-visible {
-  box-shadow: inset 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 1px var(--action-text);
 }
 .desktop-menu-panel > [role="separator"] {
   height: 1px;
@@ -947,7 +967,7 @@ button:disabled {
 }
 .menu-check {
   margin-left: auto;
-  color: var(--accent);
+  color: var(--action-text);
 }
 .theme-swatch {
   width: 14px;
@@ -1019,9 +1039,9 @@ button:disabled {
   border-color: var(--line-strong);
 }
 .caption-category-list button[aria-pressed="true"] {
-  color: var(--text);
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--action-text);
+  border-color: var(--action-text);
+  background: var(--action-soft);
 }
 .caption-preset {
   color: var(--text);
@@ -1032,8 +1052,8 @@ button:disabled {
   border-color: var(--line-strong);
 }
 .caption-preset.selected {
-  background: var(--accent-soft);
-  border-color: var(--accent);
+  background: var(--action-soft);
+  border-color: var(--action-text);
 }
 .caption-customize,
 .caption-saved-row {
@@ -1048,7 +1068,7 @@ button:disabled {
 }
 .caption-controls input[type="range"],
 .caption-weight-row input {
-  accent-color: var(--accent);
+  accent-color: var(--action-text);
 }
 .caption-save-style > button {
   color: var(--text);
@@ -1062,7 +1082,7 @@ button:disabled {
 .caption-studio input:focus-visible,
 .caption-studio select:focus-visible,
 .caption-studio summary:focus-visible {
-  outline-color: var(--accent);
+  outline-color: var(--action-text);
 }
 
 @media (max-width: 1250px) {
@@ -1274,23 +1294,23 @@ button:disabled {
   border-color: transparent;
 }
 .choice-option[aria-selected="true"] svg {
-  color: var(--text);
+  color: var(--action-text);
 }
 .send-button {
   width: 29px;
   height: 29px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--text);
-  color: var(--bg);
+  background: var(--action);
+  color: var(--on-action);
 }
 .send-button:disabled {
   background: var(--raised);
   color: var(--muted);
 }
 .send-button.stop {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--action);
+  color: var(--on-action);
   border-radius: 50%;
 }
 .effort-picker {
@@ -1447,7 +1467,7 @@ button:disabled {
   outline: none;
   box-shadow:
     0 0 0 2px var(--raised),
-    0 0 0 3px var(--effort-blue);
+    0 0 0 3px var(--action-text);
 }
 @media (max-width: 1250px) {
   .choice-popover {

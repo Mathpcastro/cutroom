@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bot, Check, Copy, LoaderCircle, Plug, X } from "lucide-react";
+import { Bot, Check, LoaderCircle, Plug, X } from "lucide-react";
+import { McpSetup, openMcp } from "./McpConnect";
 import { AGENT_PROVIDERS, PROVIDER_LABELS, type AgentConnectConfig, type AgentProvider } from "../../shared/providers";
 import type { AppSnapshot, ReasoningEffort } from "../../shared/types";
 import { t } from "./studioLanguage";
@@ -65,7 +66,7 @@ export function AiBadge({ connection }: { connection: Connection }) {
     ? `${PROVIDER_LABELS[connection.provider ?? "codex"]}${model ? ` · ${model.name}` : ""}`
     : connection.status === "connecting" ? "Conectando a IA…" : viaAgent ? "Pelo seu agente (MCP)" : "Conectar a IA";
   return (
-    <button type="button" className={`studio-connection-badge ${level}`} onClick={() => openAiConnect(viaAgent ? "mcp" : "app")} title={t(label)}>
+    <button type="button" className={`studio-connection-badge ${level}`} onClick={() => (viaAgent ? openMcp() : openAiConnect("app"))} title={t(label)}>
       <span className="dot" aria-hidden="true" />
       {viaAgent ? <Plug size={13} /> : <Bot size={13} />}
       <span className="label">{t(label)}</span>
@@ -200,44 +201,6 @@ export function AiConnectDialog({ connection, run }: { connection: Connection; r
 
         {tab === "mcp" && <McpSetup mode={prefs.mode} />}
       </section>
-    </div>
-  );
-}
-
-/** Use Videosell from Claude or Codex outside the app (MCP), with no AI inside Videosell. */
-function McpSetup({ mode }: { mode: AiPreferences["mode"] }) {
-  const [setup, setSetup] = useState<{ claude: string; codex: string; claudeCode: string } | null>(null);
-  const [copied, setCopied] = useState("");
-  const [note, setNote] = useState("");
-  useEffect(() => {
-    void window.cutroom?.request<{ claude: string; codex: string; claudeCode: string }>("mcpSetup").then(setSetup, () => setSetup(null));
-  }, []);
-  const copy = async (id: string, text: string) => {
-    try { await navigator.clipboard.writeText(text); setCopied(id); } catch { setCopied(""); }
-  };
-  const targets = setup ? [
-    { id: "claude", title: "Claude (aplicativo)", where: "Configurações › Desenvolvedor › Editar configuração; cole dentro de mcpServers e reinicie o Claude.", text: setup.claude },
-    { id: "codex", title: "Codex", where: "Cole no fim de ~/.codex/config.toml e reinicie o Codex.", text: setup.codex },
-    { id: "claude-code", title: "Claude Code (terminal)", where: "Rode este comando uma vez no terminal.", text: setup.claudeCode },
-  ] : [];
-  return (
-    <div className="mcp-setup">
-      <p className="ai-connect-lead">{t("Use o Videosell de dentro do Claude ou do Codex: você pede no chat do seu agente e ele cria os vídeos aqui. Não precisa de IA dentro do Videosell. Deixe o Videosell aberto.")}</p>
-      <label className="mcp-mode">
-        <input type="checkbox" checked={mode === "mcp"} onChange={(e) => saveAiPreferences({ mode: e.target.checked ? "mcp" : "app" })} />
-        {t("Usar só pelo meu agente (não pedir para conectar a IA aqui)")}
-      </label>
-      {targets.map((x) => (
-        <div key={x.id} className="mcp-target">
-          <div><strong>{t(x.title)}</strong><small>{t(x.where)}</small></div>
-          <button type="button" className="studio-secondary-button" onClick={() => void copy(x.id, x.text)}>{copied === x.id ? <Check size={13} /> : <Copy size={13} />} {t(copied === x.id ? "Copiado" : "Copiar")}</button>
-        </div>
-      ))}
-      <button type="button" className="ig-link" onClick={() => void window.cutroom?.request<{ files: string[] }>("installAgentSkill").then(() => setNote("Pronto: o Claude e o Codex já sabem como criar vídeos no Videosell."), () => setNote("Não deu para instalar o guia."))}>
-        {t("Ensinar o meu agente a usar o Videosell (instala o guia nos agentes)")}
-      </button>
-      {note && <p className="pilot-notice">{t(note)}</p>}
-      <p className="ai-connect-help">{t("Exemplo de pedido no seu agente: “Crie um Reels no Videosell sobre o meu produto, com o meu avatar, e agende para amanhã às 18h.” Publicar sempre pede a sua confirmação.")}</p>
     </div>
   );
 }

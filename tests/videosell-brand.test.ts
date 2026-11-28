@@ -136,12 +136,21 @@ describe("Videosell brand", () => {
     ]);
   });
 
-  it("keeps CutRoom packaging identity while presenting Videosell copy", async () => {
+  it("uses Videosell as the app name while preserving updater and installer artifact identities", async () => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8"));
     expect(packageJson.name).toBe("cutroom");
     expect(packageJson.build.appId).toBe("com.matheuscastro.cutroom");
-    expect(packageJson.build.productName).toBe("CutRoom");
+    expect(packageJson.build.productName).toBe("Videosell");
+    expect(packageJson.build.nsis.artifactName).toBe("CutRoom.Setup.${version}.${ext}");
+    expect(packageJson.build.mac.artifactName).toBe("CutRoom-${version}-mac-${arch}.${ext}");
+    expect(packageJson.build.nsis.shortcutName).toBeUndefined();
+    expect(packageJson.build.nsis.include).toBe("build/installer.nsh");
+    expect(packageJson.build.nsis.uninstallDisplayName).toBe("Videosell ${version}");
     expect(packageJson.description).toBe(brandTagline);
+    const installer = await readFile("build/installer.nsh", "utf8");
+    expect(installer).toContain('IfFileExists "$INSTDIR\\CutRoom.exe"');
+    expect(installer).toContain('Delete "$DESKTOP\\CutRoom.lnk"');
+    expect(installer).toContain('Delete "$SMPROGRAMS\\CutRoom.lnk"');
   });
 
   it("bundles Sora and Inter locally with their OFL licenses", async () => {

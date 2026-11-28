@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Videosell · Reels que vendem o seu SaaS, sem gravar nada</title>
-    <meta name="description" content="Um avatar de IA com a sua voz apresenta o seu produto em Reels nos formatos que estão viralizando. Sem câmera, sem editor, postando sozinho. App para Windows, R$ 147 em pagamento único." />
+    <title>Crie seu canal dark com a IA que você já assina | Videosell</title>
+    <meta name="description" content="Use o Claude ou ChatGPT que você já assina para criar vídeos longos e Shorts para seu canal dark. Pagamento único pelo Videosell." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Sora:wght@600;700;800&amp;display=swap" rel="stylesheet" />
@@ -20,6 +20,7 @@
         --lime: #c8ff5a;
         --line: #e3e0ea;
         --hot: #ff5a36;
+        --gold: #ffc83d;
       }
       * { box-sizing: border-box; margin: 0; }
       html { scroll-behavior: smooth; }
@@ -49,7 +50,6 @@
       .wordmark { font-size: 24px; font-weight: 800; }
       .wordmark span { color: var(--violet-deep); }
       .step { font-size: 13px; font-weight: 700; color: var(--muted); }
-
       .top-nav { display: flex; align-items: center; gap: 26px; font-size: 15px; font-weight: 600; }
       .top-nav a { text-decoration: none; color: var(--muted); }
       .top-nav .nav-cta { padding: 10px 18px; border-radius: 12px; background: var(--ink); color: var(--lime); }
@@ -64,22 +64,22 @@
       .no { display: inline-block; margin-top: 16px; font-size: 14px; color: var(--muted); text-underline-offset: 3px; }
 
       /* Hero */
-      .hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 56px; align-items: center; padding-top: 24px; padding-bottom: 96px; }
-      .hero-wrap { background: var(--ink); }
-      h1 { font-size: clamp(42px, 6vw, 78px); line-height: 1; margin-bottom: 24px; }
-      h1 mark { color: var(--violet-deep); background: linear-gradient(transparent 62%, var(--lime) 62%); }
+      .hero { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: 48px; align-items: center; padding-top: 24px; padding-bottom: 120px; }
       .lead { max-width: 600px; margin-bottom: 30px; font-size: 20px; line-height: 1.55; color: #3a3742; }
-      .hero-reel { justify-self: center; width: min(320px, 100%); }
-      .phone { border: 10px solid var(--ink); border-radius: 44px; box-shadow: 0 40px 90px rgba(20, 19, 24, .35); }
-      .caption { margin-top: 14px; font-size: 14px; font-weight: 600; text-align: center; color: var(--muted); }
+      .lead i { font-style: normal; font-weight: 700; color: var(--ink); }
+      .screen16 { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border: 8px solid var(--ink); border-radius: 20px; background: #000; box-shadow: 0 34px 80px rgba(20, 19, 24, .3); }
+      .screen16 video, .screen16 img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .caption { max-width: 58%; margin-top: 18px; font-size: 14px; font-weight: 600; color: var(--muted); }
 
-      /* Reels (shared) */
+      /* Reels (shared, with sound) */
       .case { position: relative; min-width: 0; }
       .case h3 { margin-bottom: 12px; font-size: 18px; }
       .case h3 span { color: var(--violet-deep); }
       .reel { position: relative; aspect-ratio: 9 / 16; overflow: hidden; border-radius: 26px; background: #000; }
       .reel video { display: block; width: 100%; height: 100%; object-fit: cover; }
       .sound { position: absolute; left: 12px; top: 12px; min-width: 44px; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 999px; background: rgba(0,0,0,.72); color: #fff; font: 700 13px "Inter", sans-serif; cursor: pointer; }
+
+      /* Path switch: canal (default) or produto */
 
       /* Problem */
       .problem { background: var(--ink); color: #fff; }
@@ -88,75 +88,79 @@
       .prose b { color: #fff; }
       .pull { margin-top: 32px; padding-left: 22px; border-left: 4px solid var(--hot); font: 700 26px/1.35 "Sora", sans-serif !important; color: #fff !important; }
 
-      /* Thesis + comparison */
-      .pair { display: grid; grid-template-columns: minmax(0, 1.25fr) auto minmax(0, .75fr); gap: 28px; align-items: center; margin-bottom: 56px; }
-      .viral .label { margin-bottom: 12px; font-size: 14px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-      .xplayer { position: relative; overflow: hidden; border-radius: 20px; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
-      .xplayer.wide { aspect-ratio: 16 / 9; }
-      .xplayer.square { aspect-ratio: 1; max-width: 520px; }
-      .xplayer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-      .stat { margin-top: 12px; font-size: 14px; color: var(--muted); }
-      .vs { font: 800 42px/1 "Sora", sans-serif; color: var(--violet); }
-      .ours { width: min(320px, 100%); justify-self: center; }
+      /* Mechanism */
+      .flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; padding: 0; }
+      .flow li { position: relative; list-style: none; padding: 28px 26px; border: 2px solid var(--ink); border-radius: 22px; background: var(--white); }
+      .flow li:nth-child(2) { background: var(--ink); color: #fff; }
+      .flow li:nth-child(2) p { color: rgba(255,255,255,.75); }
+      .flow h3 { margin-bottom: 10px; font-size: 22px; }
+      .flow p { font-size: 16px; color: var(--muted); }
+      .flow li + li::before { content: "→"; position: absolute; left: -20px; top: 50%; transform: translate(-50%, -50%); font: 800 26px "Sora", sans-serif; color: var(--violet); }
+      .gates { margin-top: 26px; padding: 16px 20px; border-radius: 14px; background: #ece8fb; font-size: 16px; }
 
-      /* Why */
-      .why { padding-top: 0; }
-      .prose-lg { font-size: 21px; line-height: 1.65; color: #34313c; }
-      .proof { font-weight: 700; color: var(--ink); }
-      .proof .src { font-weight: 500; font-size: 15px; color: var(--violet-deep); }
+      /* Cases from X */
+      .cases { background: var(--white); }
+      .case-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; list-style: none; padding: 0; }
+      .case-grid > li { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 2px solid var(--ink); border-radius: 20px; background: var(--paper); }
+      .case-grid header, .case-body { padding: 18px 20px; }
+      .case-grid h3 { margin: 4px 0 0; font: 800 clamp(18px, 2.5vw, 25px)/1.15 "Sora", sans-serif; }
+      .case-niche, .case-time, .case-video-title, .case-method { margin: 0; font-size: 14px; color: #34313c; }
+      .case-niche { font-weight: 700; color: var(--violet-deep); }
+      .case-preview, .case-player { position: relative; display: block; aspect-ratio: 16 / 9; width: 100%; overflow: hidden; background: var(--ink); }
+      .case-preview img, .case-player iframe { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; }
+      .case-preview span { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 53px; height: 53px; border: 2px solid currentColor; border-radius: 50%; color: #fff; background: var(--ink); }
+      .case-preview:focus-visible { outline-offset: -4px; }
+      .case-body { display: flex; flex: 1; flex-direction: column; align-items: flex-start; }
+      .case-result { display: block; margin: 6px 0 2px; font: 800 clamp(24px, 3vw, 36px)/1.1 "Sora", sans-serif; color: var(--violet-deep); letter-spacing: -.035em; }
+      .case-links { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 16px; margin-top: auto; font-size: 13px; font-weight: 700; }
+      .case-method { margin-top: 16px; max-width: 75ch; }
+      .case-grid a, .case-method a { text-decoration: underline; }
+      .deliverable { margin: 14px 0 9px; font-size: 14px; color: var(--muted); }
+      .deliverable strong { display: block; color: var(--ink); }
+      .case-evidence { margin: 10px 0 14px; font-size: 15px; }
+      .format-gallery { padding: clamp(40px, 7vw, 75px) 0; }
+      .gallery-goals { display: grid; grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+      .gallery-goal { min-width: 0; padding: 16px; border: 2px solid var(--line); border-radius: 16px; background: var(--white); }
+      .gallery-goal h3 { font: 800 21px/1.2 "Sora", sans-serif; }
+      .gallery-goal p { margin-top: 6px; font-size: 14px; color: var(--muted); }
+      .gallery-goal .gallery-note { margin-top: 10px; font-size: 12px; }
+      .gallery-grid { display: grid; gap: 12px; margin-top: 14px; }
+      .gallery-goal--dark .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .gallery-goal:not(.gallery-goal--dark) figure { width: min(100%, 155px); margin-inline: auto; }
+      .gallery-grid figure { margin: 0; min-width: 0; }
+      .gallery-grid video { display: block; width: 100%; height: auto; background: var(--ink); border: 2px solid var(--ink); border-radius: 10px; }
+      .gallery-goal--dark video { aspect-ratio: 16 / 9; }
+      .gallery-goal:not(.gallery-goal--dark) video { aspect-ratio: 9 / 16; }
+      .gallery-grid figcaption { margin-top: 6px; color: var(--ink); font-size: 13px; font-weight: 700; }
+      .gallery-toggle { margin-top: 14px; padding: 8px 12px; border: 1px solid var(--ink); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+      .format-note { margin: 8px 0 16px; color: var(--muted); font-size: 14px; }
+      @media (max-width: 800px) {
+        .gallery-goals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .gallery-goal--dark { grid-column: 1 / -1; }
+      }
+      .br { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 26px; font-size: 15px; }
+      .br b { margin-right: 4px; }
+      .br a { padding: 8px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 600; text-decoration: none; }
+      .lesson { margin-top: 30px; padding: 22px 24px; border-left: 4px solid var(--violet); border-radius: 0 16px 16px 0; background: #ece8fb; font-size: 18px; }
 
-      /* How */
-      .how { background: var(--white); }
-      .how-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; align-items: center; }
-      .steps { list-style: none; padding: 0; margin-top: 30px; }
-      .steps button { display: flex; gap: 18px; width: 100%; padding: 18px 20px; border: 0; border-radius: 18px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .2s; }
-      .steps button[aria-selected="true"] { background: var(--paper); }
+      /* Modules */
+      .funnel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 36px; padding: 18px 20px; border-radius: 16px; background: var(--ink); color: #fff; font-weight: 700; }
+      .funnel span { padding: 6px 12px; border-radius: 999px; background: var(--ink-2); }
+      .funnel i { font-style: normal; color: var(--lime); }
+
+      /* Connect */
+      .connect-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 56px; align-items: center; }
+      .steps { list-style: none; padding: 0; margin-top: 26px; }
+      .steps li { display: flex; gap: 18px; padding: 16px 0; }
       .steps b { flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--ink); color: var(--lime); font: 800 20px "Sora", sans-serif; }
       .steps span { font-size: 16px; color: var(--muted); }
       .steps strong { display: block; margin-bottom: 2px; font-size: 18px; color: var(--ink); }
-      .screen-frame { position: relative; aspect-ratio: 1440 / 1000; overflow: hidden; border: 10px solid var(--ink); border-radius: 22px; background: var(--ink); box-shadow: 0 30px 80px rgba(20,19,24,.25); }
-      .screen-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transition: opacity .35s; }
-      .screen-frame img.on { opacity: 1; }
+      .dialog-shot { justify-self: center; width: min(420px, 100%); height: auto; border-radius: 20px; box-shadow: 0 30px 80px rgba(20,19,24,.3); }
+
+      /* Platforms */
 
       /* Showcase rail */
-      .showcase { background: var(--ink); color: #fff; overflow: hidden; }
-      .showcase h2 em { color: var(--lime); }
-      .showcase .sub { color: rgba(255,255,255,.65); }
-      .rail { display: flex; gap: 22px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px max(24px, calc((100vw - 1160px) / 2 + 24px)) 24px; scrollbar-width: thin; }
-      .slide { flex: 0 0 260px; scroll-snap-align: start; }
-      /* Auto, infinite rail: the script doubles the slides and the track slides half its width. */
-      .rail.loop { overflow: hidden; padding-left: 0; padding-right: 0; scroll-snap-type: none; }
-      .rail .track { display: flex; gap: 22px; width: max-content; animation: rail 48s linear infinite; }
       .rail:hover .track, .rail:focus-within .track, .rail.paused .track { animation-play-state: paused; }
-      @keyframes rail { to { transform: translateX(calc(-50% - 11px)); } }
-      .slide h3 { color: #fff; font-size: 16px; }
-      .slide h3 span { color: var(--lime); }
-
-      /* Story */
-      .story-grid { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 64px; align-items: center; }
-      .story .case { width: min(330px, 100%); justify-self: center; }
-
-      /* Autopilot */
-      .auto { background: var(--ink); color: #fff; }
-      .auto h2 em { color: var(--lime); }
-      .auto .eyebrow { color: var(--lime); }
-      .auto-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: end; margin-bottom: 44px; }
-      .auto .prose-lg { color: rgba(255,255,255,.78); }
-      .auto .prose-lg b { color: #fff; }
-      .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; list-style: none; padding: 0; margin-bottom: 44px; }
-      .week li { position: relative; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: rgba(255,255,255,.6); }
-      .week b { font: 800 13px "Sora", sans-serif; letter-spacing: .1em; color: rgba(255,255,255,.5); }
-      .week img { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 14px; opacity: .55; }
-      .week span { font-weight: 700; color: #fff; }
-      .week i { font-style: normal; }
-      .week .ok img { opacity: 1; }
-      .week .ok i { color: var(--lime); font-weight: 700; }
-      .week .next img { opacity: 1; outline: 3px solid var(--lime); outline-offset: 3px; }
-      .week .next b, .week .next i { color: var(--lime); font-weight: 800; }
-      .auto-points { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 56px; list-style: none; padding: 0; }
-      .auto-points li { padding: 18px 0; border-top: 1px solid rgba(255,255,255,.14); font-size: 16px; color: rgba(255,255,255,.72); }
-      .auto-points b { color: #fff; }
-      .auto .note { color: rgba(255,255,255,.5); }
 
       /* Offer */
       .offer { background: linear-gradient(180deg, var(--paper), #ece8fb); }
@@ -168,7 +172,7 @@
       .price { display: flex; flex-direction: column; align-items: center; margin-bottom: 22px; text-align: center; }
       .price strong { font: 800 76px/1 "Sora", sans-serif; letter-spacing: -.04em; }
       .price span { font-size: 15px; color: var(--muted); }
-      .price .per { margin-bottom: 6px; font-weight: 700; color: var(--violet-deep); }
+      .price .per { max-width: 520px; margin-bottom: 8px; font-weight: 700; color: var(--violet-deep); }
       .guarantee { margin-top: 20px; padding: 16px 18px; border-radius: 14px; background: var(--paper); font-size: 15px; }
       .offer-box .no { display: block; text-align: center; }
 
@@ -188,16 +192,39 @@
       .final .cta { max-width: 560px; }
       footer { padding: 30px 0 50px; text-align: center; font-size: 13px; color: var(--muted); }
 
+      /* Real episodes made in the app (any niche) */
+      .real { padding: clamp(40px, 7vw, 80px) 0; background: var(--ink); color: #fff; }
+      .real h2 em { color: var(--lime); }
+      .real .eyebrow { color: var(--lime); }
+      .real .sub { color: rgba(255,255,255,.7); }
+      .real-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .5fr); gap: 18px; align-items: start; }
+      .real .case h3 { color: #fff; font-size: 17px; }
+      .real .case h3 span { color: var(--lime); font-weight: 600; }
+      .real .screen16 { border-color: #2a2833; box-shadow: none; }
+      .real-did { margin-top: 12px; padding: 0; list-style: none; font-size: 14px; color: rgba(255,255,255,.78); }
+      .real-did li { position: relative; padding: 4px 0 4px 22px; }
+      .real-did li::before { content: "✓"; position: absolute; left: 0; color: var(--lime); font-weight: 800; }
+      .real-extras { display: grid; grid-template-columns: minmax(0, .5fr) minmax(0, .5fr) minmax(0, 2fr); gap: 18px; margin-top: 26px; align-items: start; }
+      .real-thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+      .real-thumbs figcaption { grid-column: 1 / -1; font: 700 15px/1.3 "Inter", sans-serif; color: #fff; }
+      .real-thumbs img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
+      @media (max-width: 900px) {
+        .real-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+        .real-card--tall { grid-column: 1 / -1; width: min(320px, 100%); justify-self: center; }
+        .real-extras { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+        .real-thumbs { grid-column: 1 / -1; }
+      }
+      @media (max-width: 560px) {
+        .real-grid { grid-template-columns: minmax(0, 1fr); }
+        .real-thumbs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      }
       @media (max-width: 900px) {
         section { padding: 72px 0; }
-        .hero, .how-grid, .story-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
-        .auto-head, .auto-points { grid-template-columns: minmax(0, 1fr); gap: 0; }
-        .auto-head { gap: 16px; }
-        .week { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 6px 12px; }
-        .week li { flex: 0 0 118px; scroll-snap-align: start; }
-        .pair { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-        .vs { justify-self: center; transform: rotate(90deg); }
-        .story-grid > .case { order: 2; }
+        .hero, .connect-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+        .hero { padding-bottom: 72px; }
+        .caption { max-width: 60%; margin-top: 14px; }
+        .flow, .nets, .case-grid { grid-template-columns: minmax(0, 1fr); }
+        .flow li + li::before { left: 50%; top: -12px; transform: translate(-50%, -50%) rotate(90deg); }
         .offer-box { padding: 30px 22px; box-shadow: 8px 8px 0 var(--ink); }
       }
       @media (max-width: 560px) {
@@ -207,17 +234,35 @@
         .ribbon { display: block; font-size: 13px; line-height: 1.45; }
         .ribbon .dot { display: inline-block; margin-right: 6px; vertical-align: 1px; }
         .cta small { flex: 0 0 auto; white-space: nowrap; }
-        .lead, .prose p, .prose-lg { font-size: 18px; }
+        .lead, .prose p { font-size: 18px; }
         .pull { font-size: 21px !important; }
         .cta { width: 100%; padding: 18px; font-size: 17px; }
         .cta.big { font-size: 18px; }
         .price strong { font-size: 60px; }
-        .slide { flex-basis: 220px; }
       }
       @media (prefers-reduced-motion: reduce) {
-        .rail.loop { overflow-x: auto; }
-        .rail .track [aria-hidden="true"] { display: none; }
         *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+      }
+      .hero h1 { line-height: 1.12; margin-bottom: 16px; }
+      @media (max-width: 560px) {
+        .site-header { padding-top: 16px; padding-bottom: 8px; }
+        .top-nav .nav-cta { display: none; }
+        .hero .eyebrow { display: none; }
+        .hero { padding-top: 20px; }
+        .hero h1 { font-size: 34px; line-height: 1.1; margin-bottom: 20px; }
+        .hero .lead { margin-bottom: 32px; }
+        .hero .fine { margin-top: 14px; text-align: center; }
+        .hero-copy .no { display: block; text-align: center; }
+      }
+      .hero h1 mark { color: var(--violet-deep); }
+      .demo-pair { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+      .demo-pair .caption { grid-column: 1 / -1; max-width: none; margin: 0; }
+      .demo-short { max-width: 260px; }
+      .demo-pair .sound { position: static; margin-top: 8px; background: var(--ink); }
+      @media (max-width: 540px) {
+        .demo-pair { gap: 10px; }
+        .demo-pair .case h3 { font-size: 13px; }
+        .demo-pair .screen16, .demo-pair .reel { border: 2px solid var(--ink); border-radius: 12px; }
       }
     </style>
   </head>
@@ -232,280 +277,336 @@
         <span class="wordmark">Video<span>sell</span></span>
       </a>
       <nav class="top-nav" aria-label="Seções">
-        <a href="#comparativo">Exemplos</a>
-        <a href="#produto-por-dentro">Como funciona</a>
-        <a href="#piloto-automatico">Piloto automático</a>
+        <a href="#casos">Casos</a>
+        <a href="#como-funciona">Como funciona</a>
         <a class="nav-cta" href="#oferta">Quero o Videosell</a>
       </nav>
     </header>
 
     <section class="hero wrap" id="inicio" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">Para quem vende SaaS, app ou serviço digital</p>
-        <h1 id="hero-title">Reels que vendem o seu SaaS. <mark>Sem gravar um segundo.</mark></h1>
-        <p class="lead">
-          Um avatar de IA, falando com a <b>sua voz</b>, apresenta o seu
-          produto nos formatos que estão viralizando. Você cola a pauta, revisa
-          e o app publica. <b>Sem câmera, sem editor, sem aparecer.</b>
-        </p>
-        <a class="cta" href="#oferta">
-          Quero o Videosell <small>R$ 147</small>
-        </a>
-        <p class="fine">Pagamento único, sem mensalidade · App para Windows · 7 dias de garantia</p>
-        <a class="no" href="#comparativo">Ver os vídeos feitos no app ↓</a>
+        <p class="eyebrow">Estúdio de vídeo em código</p>
+        <h1 id="hero-title">Crie seu canal dark com IA <mark>usando a assinatura que você já paga.</mark></h1>
+        <p class="lead">O Claude ou o ChatGPT faz roteiro, narração, edição e thumb dentro do Videosell. <i>Você só publica no YouTube.</i></p>
+        <a class="cta" href="#oferta">Quero criar meu canal <small>R$ 147</small></a>
+        <p class="fine">Pagamento único · Windows · 7 dias de garantia</p>
       </div>
-      <article class="case hero-reel">
-        <h3 class="sr-only">Reels do avatar apresentador</h3>
-        <div class="reel phone">
-          <video src="videos/avatar.mp4" poster="videos/avatar.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
-        </div>
-        <p class="caption">↑ Este Reels saiu do Videosell. Ninguém gravou nada. A voz é a minha, clonada.</p>
-      </article>
+      <div class="demo-pair">
+        <article class="case">
+          <h3>Episódio <span>16:9</span></h3>
+          <div class="screen16"><video src="videos/niteroi-original.mp4" poster="videos/niteroi-original.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+        </article>
+        <article class="case demo-short">
+          <h3>Trecho vertical <span>9:16</span></h3>
+          <div class="reel"><video src="videos/niteroi-original-vertical.mp4" poster="videos/niteroi-original-vertical.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+        </article>
+        <p class="caption">Referência de formato do canal Vale a Pena Morar?</p>
+      </div>
     </section>
 
-    <!-- 2. HISTÓRIA / PROBLEMA -->
     <section class="problem" aria-labelledby="problem-title">
       <div class="wrap narrow">
-        <h2 id="problem-title">O seu produto é bom. <em>O problema é que quase ninguém viu.</em></h2>
+        <h2 id="problem-title">O vídeo certo pode atrair <em>um público muito mais disposto a comprar de você.</em></h2>
         <div class="prose">
-          <p>
-            Hoje, quem nunca ouviu falar de você te descobre por um lugar só:
-            <b>vídeo curto</b>. É o Reels que leva o seu produto para fora da
-            bolha de quem já te segue.
-          </p>
-          <p>
-            Só que Reels cobra caro: roteiro, câmera, luz, edição, legenda,
-            música… <b>todo dia</b>. Você tem um produto para construir,
-            clientes para atender e nenhuma vontade de virar editor de vídeo.
-          </p>
-          <p class="pull">
-            Então fica para “semana que vem”. E quem aparece no feed do seu
-            cliente é o concorrente que posta todo dia.
-          </p>
+          <p>Escolha um tema com demanda comprovada e crie seu canal dark no Videosell. A IA que você já assina automatiza a produção em código, sem outra assinatura de vídeo.</p>
+          <p>Com seu agente conectado, o Videosell prepara roteiro, narração natural com IA, edição, título, descrição e thumbnail. Basta você publicar no seu canal!</p>
         </div>
       </div>
     </section>
 
-    <!-- 3. TESE + PROVA: vídeo viral hoje é escrito em código -->
-    <section class="thesis" id="comparativo" aria-labelledby="thesis-title">
+    <section class="cases" id="casos" aria-labelledby="cases-title">
       <div class="wrap">
-        <p class="eyebrow">A virada</p>
-        <h2 id="thesis-title">Os vídeos que estão viralizando <em>não foram gravados.</em> Foram escritos em código.</h2>
-        <p class="sub">
-          Explicações animadas, lançamentos de app, histórias com personagem:
-          esses formatos hoje saem de uma IA escrevendo código, não de uma
-          equipe de animação. Veja dois originais que viralizaram no X e o
-          mesmo formato feito no Videosell para vender um SaaS.
-        </p>
-
-        <div class="pair">
-          <div class="viral">
-            <p class="label">O original · explainer ilustrado</p>
-            <div class="xplayer wide">
-              <iframe src="https://x.com/i/videos/tweet/2114305886420086817" title="Vídeo original de @finnardley no X" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
+        <h2 id="cases-title">O que canais dark feitos com IA e código estão criando e <em>quantas visualizações isso está gerando.</em></h2>
+        <ul class="case-grid">
+          <li>
+            <header>
+              <p class="case-niche">O que aconteceria se… · Em espanhol</p>
+              <h3>Giro Imposible</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=0MHO3czAO60" target="_blank" rel="noopener noreferrer" data-case-video="0MHO3czAO60" aria-label="Assistir ao vídeo de Giro Imposible">
+              <img src="https://i.ytimg.com/vi/0MHO3czAO60/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se você parasse de sentir dor?</p>
+              <strong class="case-result">1 milhão de views</strong>
+              <p class="case-time">Em cerca de um mês</p>
+              <p class="case-evidence">O criador programou o motor de animação. As vozes são sintéticas, e a música e os efeitos são gerados em código.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=0MHO3czAO60" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@giro-imposible" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+                <a href="https://www.youtube.com/@giro-imposible/about" target="_blank" rel="noopener noreferrer" data-case-ai>Ver processo ↗</a>
+              </div>
             </div>
-            <p class="stat">@finnardley · 3,1 mil curtidas · <a class="orig" href="https://x.com/finnardley/status/2114305886420086817" target="_blank" rel="noopener noreferrer">ver post no X</a></p>
-          </div>
-          <span class="vs" aria-hidden="true">→</span>
-          <article class="case ours">
-            <h3>No Videosell: <span>o seu SaaS vira um planeta</span></h3>
-            <div class="reel">
-              <video src="videos/kurzgesagt.mp4" poster="videos/kurzgesagt.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+          </li>
+          <li>
+            <header>
+              <p class="case-niche">Ficção científica · Em inglês</p>
+              <h3>One Small If</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=KzdIyAqm15c" target="_blank" rel="noopener noreferrer" data-case-video="KzdIyAqm15c" aria-label="Assistir ao vídeo de One Small If">
+              <img src="https://i.ytimg.com/vi/KzdIyAqm15c/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se você dobrasse de tamanho a cada hora?</p>
+              <strong class="case-result">315 mil views</strong>
+              <p class="case-time">Em cerca de um mês</p>
+              <p class="case-evidence">O mesmo criador do Giro usa o motor em um segundo canal, com histórias próprias em inglês.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=KzdIyAqm15c" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@onesmallif" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+                <a href="https://www.youtube.com/@onesmallif/about" target="_blank" rel="noopener noreferrer" data-case-ai>Ver processo ↗</a>
+              </div>
             </div>
-          </article>
-        </div>
-
-        <div class="pair">
-          <div class="viral">
-            <p class="label">O original · lançamento de app</p>
-            <div class="xplayer square">
-              <iframe src="https://x.com/i/videos/tweet/2103835273813496100" title="Vídeo original de @twoclipping no X" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
+          </li>
+          <li>
+            <header>
+              <p class="case-niche">Curiosidades narradas</p>
+              <h3>FunNotSoFun</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=ch7RZklvrjk" target="_blank" rel="noopener noreferrer" data-case-video="ch7RZklvrjk" aria-label="Assistir ao vídeo de FunNotSoFun">
+              <img src="https://i.ytimg.com/vi/ch7RZklvrjk/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se o seu dinheiro multiplicasse por dez todo dia?</p>
+              <strong class="case-result">1 milhão de views</strong>
+              <p class="case-time">Em cerca de um mês</p>
+              <p class="case-evidence">O criador usa seu próprio fluxo de animação 3D e usa IA para código, roteiro, voz e música.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=ch7RZklvrjk" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@funnotsofun" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+                <a href="https://www.youtube.com/@funnotsofun/about" target="_blank" rel="noopener noreferrer" data-case-ai>Ver processo ↗</a>
+              </div>
             </div>
-            <p class="stat">@twoclipping · 2,2 mil curtidas · <a class="orig" href="https://x.com/twoclipping/status/2103835273813496100" target="_blank" rel="noopener noreferrer">ver post no X</a></p>
-          </div>
-          <span class="vs" aria-hidden="true">→</span>
-          <article class="case ours">
-            <h3>No Videosell: <span>o app funcionando em 20 s</span></h3>
-            <div class="reel">
-              <video src="videos/ui-motion.mp4" poster="videos/ui-motion.jpg" muted loop playsinline preload="metadata" data-autoplay></video>
+          </li>
+          <li data-case-reference>
+            <header>
+              <p class="case-niche">Referência de formato</p>
+              <h3>Jeremy Bearimy</h3>
+            </header>
+            <a class="case-preview" href="https://www.youtube.com/watch?v=aV7_cA_xVXI" target="_blank" rel="noopener noreferrer" data-case-video="aV7_cA_xVXI" aria-label="Assistir ao vídeo de Jeremy Bearimy">
+              <img src="https://i.ytimg.com/vi/aV7_cA_xVXI/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async">
+              <span aria-hidden="true">▶</span>
+            </a>
+            <div class="case-body">
+              <p class="case-video-title">E se você pudesse ver quem gosta de você?</p>
+              <strong class="case-result">2 milhões de views</strong>
+              <p class="case-time">Em 17 dias</p>
+              <p class="case-evidence">Histórias animadas de ‘E se…?’ com personagens recorrentes. O canal não detalha publicamente o método de produção.</p>
+              <div class="case-links">
+                <a href="https://www.youtube.com/watch?v=aV7_cA_xVXI" target="_blank" rel="noopener noreferrer">Abrir vídeo ↗</a>
+                <a href="https://www.youtube.com/@JeremyBearimyTheory" target="_blank" rel="noopener noreferrer" data-case-channel>Ver canal ↗</a>
+              </div>
             </div>
-          </article>
-        </div>
-
-        <p class="note">
-          Curtidas coletadas no X em 09/11/2026. Os originais pertencem aos
-          autores e aparecem pelo player oficial do X, como referência de
-          formato. Os vídeos à direita foram feitos no Videosell, com roteiro e
-          voz próprios.
-        </p>
+          </li>
+        </ul>
+        <p class="case-method">Visualizações públicas dos vídeos em 19/11/2026.</p>
       </div>
     </section>
 
-    <!-- 3b. Por que vídeo curto: fontes, em uma linha de raciocínio -->
-    <section class="why" id="por-que" aria-labelledby="why-title">
-      <div class="wrap narrow">
-        <h2 id="why-title">Não é moda. <em>É assim que software está sendo vendido.</em></h2>
-        <p class="prose-lg">
-          O Duolingo trocou anúncio por um mascote nos próprios vídeos e
-          <span class="proof">passou de 18 milhões de seguidores no TikTok <a class="src" href="https://creatordb.app/creatorstats/duolingo/" target="_blank" rel="noopener noreferrer">(CreatorDB, set/2026)</a></span>.
-          O Cal AI cresceu com vídeo curto até
-          <span class="proof">mais de US$ 35 milhões por ano em assinaturas, segundo o fundador <a class="src" href="https://getlatka.com/companies/calai.app/interviews/cal-ai-zach-yadegari-2025" target="_blank" rel="noopener noreferrer">(GetLatka, 2025)</a></span>.
-          E um explainer feito em código com IA
-          <span class="proof">passou de 258 mil visualizações no X <a class="src" href="https://x.com/finnardley/status/2114305886420086817" target="_blank" rel="noopener noreferrer">(@finnardley)</a></span>.
-          A diferença é que agora você não precisa de equipe para jogar esse jogo.
-        </p>
+    <section class="format-gallery" id="galeria" aria-labelledby="gallery-title">
+      <div class="wrap">
+        <h2 id="gallery-title">O que você pode criar <em>no Videosell.</em></h2>
+        <div class="gallery-goals">
+          <article class="gallery-goal gallery-goal--dark">
+            <h3>Canais dark no YouTube</h3>
+            <p>Crie conteúdo longo para construir uma audiência e tire Shorts de cada episódio para alcançar mais gente.</p>
+            <div class="gallery-grid">
+              <figure>
+                <video data-src="videos/previa-vitoria.mp4" poster="videos/previa-vitoria.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Vale a pena morar em Vitória?</figcaption>
+              </figure>
+              <figure>
+                <video data-src="videos/previa-curitiba.mp4" poster="videos/previa-curitiba.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Vale a pena morar em Curitiba?</figcaption>
+              </figure>
+              <figure>
+                <video data-src="videos/previa-e-se-wide.mp4" poster="videos/previa-e-se-wide.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Metáfora animada</figcaption>
+              </figure>
+              <figure>
+                <video data-src="videos/previa-historia-wide.mp4" poster="videos/previa-historia-wide.jpg" width="480" height="270" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>História animada</figcaption>
+              </figure>
+            </div>
+            <p class="gallery-note">Vitória e Curitiba são referências do canal Vale a Pena Morar?</p>
+          </article>
+          <article class="gallery-goal gallery-goal--avatar">
+            <h3>Avatar de IA</h3>
+            <p>Venda seu produto no Instagram e no TikTok com um apresentador que fala por você.</p>
+            <div class="gallery-grid">
+              <figure>
+                <video data-src="videos/previa-avatar.mp4" poster="videos/previa-avatar.jpg" width="270" height="480" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Reel com avatar</figcaption>
+              </figure>
+            </div>
+          </article>
+          <article class="gallery-goal gallery-goal--motion">
+            <h3>Motion UI</h3>
+            <p>Venda vídeos de demonstração como serviço para negócios locais ou digitais.</p>
+            <div class="gallery-grid">
+              <figure>
+                <video data-src="videos/previa-ui-motion.mp4" poster="videos/previa-ui-motion.jpg" width="270" height="480" muted loop playsinline preload="none" aria-hidden="true"></video>
+                <figcaption>Demonstração de produto</figcaption>
+              </figure>
+            </div>
+          </article>
+        </div>
+        <button class="gallery-toggle" type="button" aria-controls="galeria" hidden>Pausar prévias</button>
       </div>
     </section>
 
-    <!-- 4. O MECANISMO: o produto -->
-    <section class="how" id="produto-por-dentro" aria-labelledby="how-title">
-      <div class="wrap how-grid">
+    <section class="real" id="exemplos-reais" aria-labelledby="real-title">
+      <div class="wrap">
+        <p class="eyebrow">Feitos do zero no Videosell</p>
+        <h2 id="real-title">Três canais, três nichos. <em>O mesmo app, sem editar nada.</em></h2>
+        <p class="sub">Cada vídeo saiu de um pedido no chat da IA. Ela pesquisou e escreveu o roteiro; o Videosell narrou, montou as cenas em código, revisou quadro a quadro e entregou episódio, Short, thumbs e descrição.</p>
+        <div class="real-grid">
+          <article class="case real-card">
+            <h3>Top Cósmico <span>· ranking de curiosidades</span></h3>
+            <div class="screen16"><video src="videos/canal-top.mp4" poster="videos/canal-top.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+            <ul class="real-did">
+              <li>Dados da NASA com a fonte na tela</li>
+              <li>Fotos reais com crédito automático</li>
+              <li>Contagem do 3º ao 1º lugar</li>
+            </ul>
+          </article>
+          <article class="case real-card">
+            <h3>E Se Fosse Você <span>· personagem fixo</span></h3>
+            <div class="screen16"><video src="videos/canal-ese.mp4" poster="videos/canal-ese.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+            <ul class="real-did">
+              <li>Avatar do Videosell como personagem</li>
+              <li>Contador de dias e inventário</li>
+              <li>Dado do IBGE e final com reviravolta</li>
+            </ul>
+          </article>
+          <article class="case real-card real-card--tall">
+            <h3>Receita de Vó <span>· nicho criado na hora</span></h3>
+            <div class="reel"><video src="videos/canal-receita.mp4" poster="videos/canal-receita.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+            <ul class="real-did">
+              <li>Formato escrito pela IA para o nicho</li>
+              <li>Cartões animados em código</li>
+            </ul>
+          </article>
+        </div>
+        <div class="real-extras">
+          <article class="case real-short">
+            <h3>Short <span>cortado sozinho</span></h3>
+            <div class="reel"><video src="videos/canal-top-short.mp4" poster="videos/canal-top-short.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+          </article>
+          <article class="case real-short">
+            <h3>Short <span>do “E se…”</span></h3>
+            <div class="reel"><video src="videos/canal-ese-short.mp4" poster="videos/canal-ese-short.jpg" muted loop playsinline preload="none" data-autoplay></video></div>
+          </article>
+          <figure class="real-thumbs">
+            <figcaption>3 thumbs por episódio, prontas para subir</figcaption>
+            <img src="videos/canal-top-thumb.jpg" alt="Thumb do Top Cósmico: Parece mentira" width="1280" height="720" loading="lazy" />
+            <img src="videos/canal-ese-thumb.jpg" alt="Thumb do E Se Fosse Você: 30 dias sem internet" width="1280" height="720" loading="lazy" />
+            <img src="videos/canal-receita-thumb.jpg" alt="Thumb da Receita de Vó: bolo em 2 minutos" width="1280" height="720" loading="lazy" />
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="thesis" id="como-funciona" aria-labelledby="thesis-title">
+      <div class="wrap">
+        <h2 id="thesis-title">Conecte sua IA e <em>automatize a produção do seu canal.</em></h2>
+        <p class="sub">A conexão MCP local permite ao Claude Code ou ao Codex, incluso no ChatGPT, operar o Videosell no seu computador.</p>
+        <ol class="flow">
+          <li>
+            <h3>Conecte a IA que você já usa</h3>
+            <p>Abra o botão de MCP do Videosell e siga o guia. Depois de conectado, seu agente pode operar a produção pelo chat.</p>
+          </li>
+          <li>
+            <h3>Escolha o tipo de vídeo</h3>
+            <p>Comece com um documentário de cidade, uma história animada, curiosidades em lista ou um episódio de “E se…?”. Seu agente pesquisa a pauta e adapta o formato ao nicho.</p>
+          </li>
+          <li>
+            <h3>Receba o vídeo pronto para postar</h3>
+            <p>O agente aciona o Videosell para narrar, editar e preparar o episódio, os Shorts, o título, a descrição e a thumbnail.</p>
+          </li>
+        </ol>
+        <p class="gates"><b>Você dirige pelo chat ou seu agente (Claude, ChatGPT, etc) faz tudo por você.</b> Aprove roteiro, quadros e vídeo final no seu ritmo.</p>
+        <p class="format-note">O estúdio já aceita formatos personalizados. Novos estilos de cena estão em desenvolvimento.</p>
+        <a class="no" href="#conectar">Ver como conectar meu agente via MCP ↓</a>
+      </div>
+    </section>
+
+    <!-- Conexão MCP -->
+    <section class="connect" id="conectar" aria-labelledby="connect-title">
+      <div class="wrap connect-grid">
         <div>
-          <p class="eyebrow">Como funciona</p>
-          <h2 id="how-title">Da pauta ao Reels pronto, <em>sem abrir um editor.</em></h2>
-          <ol class="steps" role="tablist" aria-label="Etapas no Videosell">
-            <li><button type="button" role="tab" aria-selected="true" data-screen="0"><b>1</b><span><strong>Crie seu avatar no app.</strong> O Videosell gera o apresentador. Personalize o visual e escolha a voz.</span></button></li>
-            <li><button type="button" role="tab" aria-selected="false" data-screen="1"><b>2</b><span><strong>Escolha o perfil e cole a pauta.</strong> Separe suas marcas em perfis e escolha o formato do Reel.</span></button></li>
-            <li><button type="button" role="tab" aria-selected="false" data-screen="2"><b>3</b><span><strong>Revise quadro a quadro.</strong> A IA monta roteiro, cenas, legendas, música e efeitos. Você só aprova.</span></button></li>
-            <li><button type="button" role="tab" aria-selected="false" data-screen="3"><b>4</b><span><strong>Agende e esqueça.</strong> Conecte o Instagram e deixe um Reels por dia saindo sozinho.</span></button></li>
+          <p class="eyebrow">Sem mexer no app</p>
+          <h2 id="connect-title">Conecte o agente <em>uma vez pelo MCP local.</em></h2>
+          <p class="sub">Conecte o Claude Code ou o Codex ao Videosell. Com o app aberto, você pode acompanhar a produção pelo chat e intervir quando quiser.</p>
+          <ol class="steps">
+            <li><b>1</b><span><strong>Copie a configuração.</strong> Claude Code, Codex ou o app do Claude: o Videosell mostra o que colar e onde.</span></li>
+            <li><b>2</b><span><strong>Ensine o seu agente.</strong> Um botão instala o guia com a ordem do trabalho e as regras do canal.</span></li>
+            <li><b>3</b><span><strong>Deixe o agente produzir.</strong> Envie a pauta e acompanhe até a entrega do vídeo e dos arquivos de publicação.</span></li>
           </ol>
         </div>
-        <div class="screen-frame" aria-live="polite">
-          <img src="videos/studio-avatar.png" alt="Criador de avatar do Videosell" width="1440" height="1000" loading="lazy" data-studio-screen class="on" />
-          <img src="videos/studio-profiles.png" alt="Escolha do perfil e do formato do Reel" width="1440" height="1000" loading="lazy" data-studio-screen />
-          <img src="videos/studio-reel.png" alt="Revisão do Reel quadro a quadro" width="1440" height="1000" loading="lazy" data-studio-screen />
-          <img src="videos/studio-editor.png" alt="Editor do Videosell para ajustes finos" width="1440" height="1000" loading="lazy" data-studio-screen />
-        </div>
+        <img class="dialog-shot" src="videos/canal-mcp.png" alt="Janela Usar pelo seu agente, no Videosell, com a configuração do Claude Code, do Codex e do app do Claude" width="480" height="806" loading="lazy" />
       </div>
     </section>
 
-    <!-- 5. VITRINE: tudo saiu do mesmo app -->
-    <section class="showcase" aria-labelledby="show-title">
-      <div class="wrap">
-        <h2 id="show-title">Um app. <em>Todos esses formatos.</em></h2>
-        <p class="sub">Todos foram feitos no Videosell, com a minha voz. Passe o mouse para pausar e toque em um para ouvir.</p>
-      </div>
-      <div class="rail" tabindex="0" aria-label="Vídeos feitos no Videosell">
-        <article class="case slide"><h3>Aula com <span>avatar</span></h3><div class="reel"><video src="videos/professor.mp4" poster="videos/professor.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-        <article class="case slide"><h3>Reels de <span>mentoria</span></h3><div class="reel"><video src="videos/mentoria.mp4" poster="videos/mentoria.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-        <article class="case slide"><h3>Voo pela <span>landing page</span></h3><div class="reel"><video src="videos/landing-flyover.mp4" poster="videos/landing-flyover.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-        <article class="case slide"><h3>“E se…?”</h3><div class="reel"><video src="videos/e-se.mp4" poster="videos/e-se.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-        <article class="case slide"><h3>Jogo em <span>pixel art</span></h3><div class="reel"><video src="videos/pixel.mp4" poster="videos/pixel.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-        <article class="case slide"><h3>Reels do <span>Carrossell</span></h3><div class="reel"><video src="videos/carrossell.mp4" poster="videos/carrossell.jpg" muted loop playsinline preload="none" data-autoplay></video></div></article>
-      </div>
-    </section>
-
-    <!-- 6. HISTÓRIAS -->
-    <section class="story" id="historias" aria-labelledby="story-title">
-      <div class="wrap story-grid">
-        <article class="case">
-          <h3>Episódio 1: <span>o primeiro cliente</span></h3>
-          <div class="reel"><video src="videos/historia.mp4" poster="videos/historia.jpg" muted loop playsinline preload="metadata" data-autoplay></video></div>
-        </article>
-        <div>
-          <p class="eyebrow">E quando não quiser vender nada?</p>
-          <h2 id="story-title">Conte uma história. <em>Em episódios.</em></h2>
-          <p class="prose-lg">
-            Personagens fixos, cada um com a própria voz, balões de quadrinho e
-            um gancho no final: “continua no próximo episódio”. Quem gostou
-            segue o perfil para ver a parte 2. É o tipo de conteúdo que cria
-            hábito, e hábito vira cliente.
-          </p>
-          <p class="fine">Modo História em prévia: chega nas próximas atualizações do app, sem custo extra.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6b. PILOTO AUTOMÁTICO -->
-    <section class="auto" id="piloto-automatico" aria-labelledby="auto-title">
-      <div class="wrap">
-        <div class="auto-head">
-          <div>
-            <p class="eyebrow">Piloto automático</p>
-            <h2 id="auto-title">Grave zero vídeos. <em>Poste todo dia.</em></h2>
-          </div>
-          <p class="prose-lg">
-            Conecte o Instagram uma vez. Depois é escolher os Reels que você
-            aprovou, marcar o horário e ligar <b>“1 por dia”</b>. Na hora
-            marcada, o Videosell abre sozinho e publica, no Reels e no feed,
-            enquanto você cuida do seu produto.
-          </p>
-        </div>
-        <ol class="week" aria-label="Exemplo de uma semana no piloto automático">
-          <li class="ok"><b>SEG</b><img src="videos/avatar.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Avatar</span><i>Publicado ✓</i></li>
-          <li class="ok"><b>TER</b><img src="videos/ui-motion.jpg" alt="" width="720" height="1280" loading="lazy" /><span>App em ação</span><i>Publicado ✓</i></li>
-          <li class="next"><b>QUA</b><img src="videos/kurzgesagt.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Explicação</span><i>Hoje · 18:00</i></li>
-          <li class=""><b>QUI</b><img src="videos/professor.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Aula</span><i>18:00</i></li>
-          <li class=""><b>SEX</b><img src="videos/e-se.jpg" alt="" width="720" height="1280" loading="lazy" /><span>“E se…?”</span><i>18:00</i></li>
-          <li class=""><b>SÁB</b><img src="videos/historia.jpg" alt="" width="720" height="1280" loading="lazy" /><span>História</span><i>18:00</i></li>
-          <li class=""><b>DOM</b><img src="videos/landing-flyover.jpg" alt="" width="720" height="1280" loading="lazy" /><span>Landing page</span><i>18:00</i></li>
-        </ol>
-        <ul class="auto-points">
-          <li><b>Postar agora, direto do app.</b> Terminou o vídeo? Um clique e ele vai para o Instagram. Sem baixar arquivo, sem passar para o celular.</li>
-          <li><b>Nada sai sem o seu ok.</b> Você confirma vídeo, legenda e horário antes de qualquer publicação.</li>
-          <li><b>Computador desligado na hora?</b> Ele publica assim que você ligar, com até 6 horas de tolerância.</li>
-          <li><b>Uma semana pronta em uma tarde.</b> Monte sete Reels de uma vez e deixe o perfil trabalhando o resto da semana.</li>
-        </ul>
-        <p class="note">Exemplo de semana. Eu testei na minha própria conta: do app ao Instagram, sem tocar no celular.</p>
-      </div>
-    </section>
-
-    <!-- 7. OFERTA -->
+    <!-- 6. OFERTA -->
     <section class="offer" id="oferta" aria-labelledby="offer-title">
       <div class="wrap narrow">
         <div class="offer-box">
-          <p class="eyebrow">Tudo em um app</p>
-          <h2 id="offer-title">Leve o Videosell hoje</h2>
-          <ul class="stack">
-            <li><span>App Videosell para Windows, com todas as atualizações</span></li>
-            <li><span>Avatar gerado no app, com visual personalizável</span></li>
-            <li><span>8 formatos prontos: avatar apresentador, aula, app funcionando, explicação animada, voo pela landing page, “e se”, pixel art e histórias</span></li>
-            <li><span>Três opções de narração: Kokoro local, API (ElevenLabs ou OpenAI) ou sua gravação</span></li>
-            <li><span>Postagem e piloto automático no Instagram: um Reels por dia</span></li>
-            <li><span>Use sua conta do ChatGPT com o Codex, como no Carrossell, ou conecte o Claude via MCP e outros clientes compatíveis</span></li>
+          <p class="eyebrow">Oferta Videosell</p>
+          <h2 id="offer-title">Seu estúdio para criar e publicar canais dark</h2>
+          <p class="sub">Videosell para Windows e curso com 20 aulas. Aprenda a escolher um nicho e publicar seu primeiro episódio com 2 Shorts, capa, título e descrição. Os cinco bônus ajudam a divulgar seu curso, app ou produto.</p>
+          <ul class="stack" aria-label="Bônus incluídos na oferta">
+            <li><span><b>Bônus 1 · Avatar de IA.</b> Crie um apresentador para explicar seu produto sem precisar aparecer.</span></li>
+            <li><span><b>Bônus 2 · Reels e Shorts de divulgação.</b> Crie vídeos curtos com gancho e legenda para YouTube, TikTok e Instagram.</span></li>
+            <li><span><b>Bônus 3 · Motion em código.</b> Transforme a tela do seu app numa demonstração animada.</span></li>
+            <li><span><b>Bônus 4 · Instagram direto do app.</b> Publique e agende seus Reels após conferir conta, legenda e horário.</span></li>
+            <li><span><b>Bônus 5 · Piloto automático de Reels.</b> Organize o calendário de divulgação e revise os vídeos em sequência.</span></li>
           </ul>
           <div class="price">
-            <span class="per">Um editor cobra por vídeo. Aqui você paga uma vez.</span>
+            <span class="per">App + curso com 20 aulas + 5 bônus</span>
             <strong>R$ 147</strong>
-            <span>Pagamento único · sem mensalidade · cerca de R$ 12 por mês no primeiro ano</span>
+            <span>Pagamento único pelo Videosell</span>
           </div>
-          <a class="cta big" href="https://pay.cakto.com.br/d9qbuj2_1251358" data-checkout>Quero o Videosell por R$ 147</a>
-          <p class="guarantee"><b>Garantia de 7 dias.</b> Testou e não fez sentido? Você pede o reembolso dentro de 7 dias e pronto.</p>
+          <a class="cta big" href="https://pay.cakto.com.br/d9qbuj2_1251358" data-checkout target="_blank" rel="noopener noreferrer">Quero o Videosell por R$ 147</a>
+          <p class="guarantee"><b>Garantia de 7 dias.</b> Você tem sete dias para testar e solicitar o reembolso.</p>
         </div>
-        <p class="note">APIs de terceiros podem cobrar à parte. O Kokoro é instalado pelo app e roda offline, sem créditos.</p>
+        <p class="note">Funciona com a assinatura do Claude (Pro ou Max) ou do ChatGPT (Plus ou Pro) que você já tem.</p>
         <p class="cross">
-          Quer o funil completo? O <b>Carrossell</b> cria os carrosséis que convencem quem o Reels trouxe.
-          <a href="https://carrosseisquevendem.com.br/app/">Conhecer o Carrossell →</a>
+          Quer também os carrosséis? O <b>Carrossell</b> cria os carrosséis que convencem quem o vídeo trouxe.
+          <a href="https://carrosseisquevendem.com.br/app/" target="_blank" rel="noopener noreferrer">Conhecer o Carrossell →</a>
         </p>
       </div>
     </section>
 
-    <!-- 8. OBJEÇÕES -->
+    <!-- 7. OBJEÇÕES -->
     <section class="faq" aria-labelledby="faq-title">
       <div class="wrap narrow">
         <h2 id="faq-title">Antes de decidir</h2>
-        <details><summary>Preciso do ElevenLabs ou gravar minha voz?</summary><p>Você pode narrar com as vozes do Kokoro, direto no app. Se quiser usar a sua voz, importe uma gravação ou use uma voz clonada no ElevenLabs. Também dá para narrar pela API da OpenAI.</p></details>
-        <details><summary>Preciso saber editar vídeo?</summary><p>Não. Você escreve (ou cola) a pauta e revisa os quadros. O editor existe para ajustes finos, se quiser.</p></details>
-        <details><summary>Preciso ter o Carrossell?</summary><p>Não. O Videosell funciona sozinho. Os dois juntos fecham o funil: Reels para atrair, carrossel para convencer.</p></details>
-        <details><summary>Serve só para SaaS?</summary><p>Não. Serve para app, mentoria, consultoria, curso ou qualquer produto que você consiga explicar em 30 segundos. Você pode ter vários perfis, cada um com a própria marca e avatar.</p></details>
-        <details><summary>Funciona no Mac?</summary><p>Hoje o app é para Windows.</p></details>
-        <details><summary>Tem mensalidade?</summary><p>Não. São R$ 147 uma vez. Custos de IA de terceiros, quando você escolhe usar, ficam nas suas contas.</p></details>
-        <details><summary>E se eu comprar e não usar?</summary><p>Você tem 7 dias de garantia para pedir o reembolso.</p></details>
+        <details><summary>Como posso ganhar dinheiro com o canal?</summary><p>Use a descrição para direcionar interessados ao seu produto, curso ou link de afiliado. Para receber por anúncios, o canal precisa entrar no programa de parcerias do YouTube.</p></details>
+        <details><summary>Preciso pagar outra IA?</summary><p>Não. Você usa a assinatura que já tem: Claude (Pro ou Max), com o Claude Code, ou ChatGPT (Plus ou Pro), com o Codex. O Videosell não cobra crédito por vídeo.</p></details>
+        <details><summary>Preciso saber programar?</summary><p>Não. “Em código” é como o vídeo é feito por dentro. Você copia uma configuração uma vez, clica em “Ensinar o meu agente” e conversa no chat.</p></details>
+        <details><summary>Que tipo de canal posso criar?</summary><p>Cidades, curiosidades, história e tecnologia são alguns exemplos. Escolha um assunto com boas pautas, fontes verificáveis e espaço para criar uma edição própria.</p></details>
+        <details><summary>E a voz?</summary><p>Você escolhe: Kokoro, que roda no seu computador sem créditos; ElevenLabs ou OpenAI pela sua chave; ou a sua própria gravação.</p></details>
+        <details><summary>Qual computador eu preciso?</summary><p>Use Windows 10 ou 11. O tempo de render depende do computador e da quantidade de cenas.</p></details>
+        <details><summary>Tem mensalidade?</summary><p>Não. São R$ 147 uma vez. A assinatura da sua IA e as vozes por API, se você escolher usar, ficam nas suas contas.</p></details>
       </div>
     </section>
 
-    <!-- 9. FECHAMENTO -->
+    <!-- 8. FECHAMENTO -->
     <section class="final" aria-labelledby="final-title">
       <div class="wrap narrow">
-        <h2 id="final-title">O formato já viralizou.<br />Falta o <mark>seu produto</mark> nele.</h2>
-        <a class="cta big" href="https://pay.cakto.com.br/d9qbuj2_1251358" data-checkout>Quero o Videosell por R$ 147</a>
+        <h2 id="final-title">Escolha uma pauta. <mark>Faça seu primeiro vídeo.</mark></h2>
+        <a class="cta big" href="https://pay.cakto.com.br/d9qbuj2_1251358" data-checkout target="_blank" rel="noopener noreferrer">Quero o Videosell por R$ 147</a>
         <p class="fine">Pagamento único · App para Windows · 7 dias de garantia</p>
       </div>
     </section>
 
-    <footer>Videosell · do mesmo criador do <a href="https://carrosseisquevendem.com.br/app/">Carrossell</a></footer>
+    <footer>Videosell · do mesmo criador do <a href="https://carrosseisquevendem.com.br/app/" target="_blank" rel="noopener noreferrer">Carrossell</a></footer>
     <script>
-      // Pré-visualizações mudas entram em play somente pelo controller.
+      // Pré-visualizações com som: entram em play mudas e só tocam áudio pelo botão.
       const videos = Array.from(document.querySelectorAll("video[data-autoplay]"));
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
       const soundControls = new Map();
@@ -524,9 +625,7 @@
       const safePlay = (video, onFailure = () => {}) => {
         try {
           const playback = video.play();
-          if (playback && typeof playback.catch === "function") {
-            playback.catch(onFailure);
-          }
+          if (playback && typeof playback.catch === "function") playback.catch(onFailure);
         } catch {
           onFailure();
         }
@@ -535,28 +634,22 @@
       videos.forEach((video) => {
         const button = document.createElement("button");
         const title =
-          video
-            .closest("article")
-            ?.querySelector("h3")
-            ?.textContent.replace(/\s+/g, " ")
-            .trim() || video.getAttribute("aria-label") || "demonstração";
+          video.closest("article")?.querySelector("h3")?.textContent.replace(/\s+/g, " ").trim() ||
+          video.getAttribute("aria-label") || "demonstração";
         button.type = "button";
         button.className = "sound";
         soundControls.set(video, { button, title });
         setSoundState(video, false);
-
         button.addEventListener("click", () => {
           if (!video.muted) {
             setSoundState(video, false);
             return;
           }
-
           videos.forEach((other) => {
             if (other === video) return;
             other.pause();
             setSoundState(other, false);
           });
-
           video.currentTime = 0;
           setSoundState(video, true);
           safePlay(video, () => {
@@ -564,7 +657,8 @@
             setSoundState(video, false);
           });
         });
-        video.parentElement.appendChild(button);
+        const mount = video.closest(".demo-pair") ? video.closest("article") : video.parentElement;
+        mount.appendChild(button);
       });
 
       const io = new IntersectionObserver(
@@ -591,86 +685,76 @@
         });
       });
 
-      // Mantém o link original acessível mesmo se a thumbnail remota falhar.
-      document.querySelectorAll("a.orig img").forEach((image) => {
-        const showFallback = () => {
-          const link = image.closest("a.orig");
-          if (!link || link.querySelector(".orig-fallback")) return;
+    </script>
+    <script>
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        document.querySelectorAll("[data-case-video]").forEach((link) => {
+          link.addEventListener("click", (event) => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            const player = document.createElement("div");
+            player.className = "case-player";
+            const frame = document.createElement("iframe");
+            frame.src = `https://www.youtube-nocookie.com/embed/${link.dataset.caseVideo}?autoplay=1`;
+            frame.title = link.getAttribute("aria-label");
+            frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+            frame.referrerPolicy = "strict-origin-when-cross-origin";
+            player.append(frame);
+            link.replaceWith(player);
+            frame.focus();
+          });
+        });
+      }
 
-          image.hidden = true;
-          image.style.display = "none";
+      {
+        const handle = document.querySelector(".gallery-toggle");
+        if ("IntersectionObserver" in window) {
+          const galleryVideos = document.querySelectorAll("#galeria video[data-src]");
+          const inView = new Set();
+          const motion = matchMedia("(prefers-reduced-motion: reduce)");
+          let autoplay = !motion.matches;
 
-          const fallback = document.createElement("span");
-          fallback.className = "orig-fallback";
-          const handle = document.createElement("strong");
-          handle.textContent = image.dataset.handle || "Referência original";
-          const action = document.createElement("span");
-          action.textContent = "Abrir referência no X";
-          fallback.append(handle, action);
-          link.insertBefore(fallback, link.querySelector("span"));
-        };
-        image.addEventListener("error", showFallback, { once: true });
-        if (image.complete && image.naturalWidth === 0) showFallback();
-      });
+          const update = (video) => {
+            if (!autoplay || document.hidden || !inView.has(video)) {
+              video.pause();
+              return;
+            }
+            if (!video.hasAttribute("src")) video.src = video.dataset.src;
+            video.play().catch(() => {});
+          };
+
+          const sync = () => {
+            handle.textContent = autoplay ? "Pausar prévias" : "Reproduzir prévias";
+            galleryVideos.forEach(update);
+          };
+
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(({ target, isIntersecting, intersectionRatio }) => {
+              if (isIntersecting && intersectionRatio >= 0.35) inView.add(target);
+              else inView.delete(target);
+              update(target);
+            });
+          }, { threshold: [0, 0.35] });
+
+          galleryVideos.forEach((video) => observer.observe(video));
+          handle.hidden = false;
+          handle.addEventListener("click", () => {
+            autoplay = !autoplay;
+            sync();
+          });
+          motion.addEventListener("change", (event) => {
+            autoplay = !event.matches;
+            sync();
+          });
+          document.addEventListener("visibilitychange", sync);
+          sync();
+        }
+      }
     </script>
     <script>
       // Link do checkout da Cakto: cole aqui e todos os botões de compra passam a usá-lo.
       var CHECKOUT_URL = "https://pay.cakto.com.br/d9qbuj2_1251358";
       if (CHECKOUT_URL) document.querySelectorAll("a[data-checkout]").forEach(function (a) { a.href = CHECKOUT_URL; });
-    </script>
-    <script>
-      // "Como funciona": each step shows its real screen (hover or click).
-      (function () {
-        var tabs = Array.from(document.querySelectorAll(".steps button"));
-        var screens = Array.from(document.querySelectorAll(".screen-frame img"));
-        function show(i) {
-          tabs.forEach(function (t, k) { t.setAttribute("aria-selected", String(k === i)); });
-          screens.forEach(function (s, k) { s.classList.toggle("on", k === i); });
-        }
-        tabs.forEach(function (t, i) {
-          t.addEventListener("click", function () { show(i); });
-          t.addEventListener("mouseenter", function () { show(i); });
-        });
-      })();
-    </script>
-    <script>
-      // Faixa de formatos: desliza sozinha e sem fim (os slides são duplicados; as cópias tocam mudas).
-      (function () {
-        var rail = document.querySelector(".rail");
-        if (!rail) return;
-        var track = document.createElement("div");
-        track.className = "track";
-        var slides = Array.from(rail.children);
-        slides.forEach(function (s) { track.appendChild(s); });
-        slides.forEach(function (s) {
-          var c = s.cloneNode(true);
-          c.setAttribute("aria-hidden", "true");
-          c.querySelectorAll(".sound").forEach(function (b) { b.remove(); });
-          c.querySelectorAll("video").forEach(function (v) { v.removeAttribute("data-autoplay"); v.muted = true; });
-          track.appendChild(c);
-        });
-        rail.appendChild(track);
-        rail.classList.add("loop");
-        rail.removeAttribute("tabindex");
-        // Copies play only while on screen.
-        var io = new IntersectionObserver(function (entries) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting && !matchMedia("(prefers-reduced-motion: reduce)").matches) { var p = e.target.play(); if (p && p.catch) p.catch(function () {}); }
-            else e.target.pause();
-          });
-        }, { threshold: 0.2 });
-        track.querySelectorAll('[aria-hidden="true"] video').forEach(function (v) { io.observe(v); });
-        // Stop sliding while a video is playing with sound, or while a finger is on the rail.
-        rail.addEventListener("click", function () {
-          setTimeout(function () {
-            rail.classList.toggle("paused", Array.from(rail.querySelectorAll("video")).some(function (v) { return !v.muted; }));
-          }, 60);
-        });
-        rail.addEventListener("touchstart", function () { rail.classList.add("paused"); }, { passive: true });
-        rail.addEventListener("touchend", function () {
-          setTimeout(function () { if (!Array.from(rail.querySelectorAll("video")).some(function (v) { return !v.muted; })) rail.classList.remove("paused"); }, 1500);
-        }, { passive: true });
-      })();
     </script>
   </body>
 </html>

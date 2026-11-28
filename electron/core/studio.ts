@@ -14,6 +14,8 @@ import {
   alignScript,
   elevenLabsSpeech,
   elevenLabsVoices,
+  fishSpeech,
+  fishVoices,
   openAiSpeech,
   type SpeechResult,
   type VoiceOption,
@@ -25,7 +27,7 @@ import { KOKORO_DEFAULT_VOICE, KOKORO_VOICES } from "./kokoro";
 
 export const AUDIO_EXTENSIONS = [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".opus", ".flac"];
 const PREVIEW_WAIT_MS = 40_000;
-export const VOICE_KEYS = { elevenlabs: "voice.elevenlabs", openai: "voice.openai" } as const;
+export const VOICE_KEYS = { elevenlabs: "voice.elevenlabs", fish: "voice.fish", openai: "voice.openai" } as const;
 
 type Progress = (value: number, label?: string) => void;
 export interface StudioHost {
@@ -117,11 +119,11 @@ export class Studio {
     return this.voiceSettings();
   }
 
-  private async key(provider: "elevenlabs" | "openai") {
+  private async key(provider: "elevenlabs" | "fish" | "openai") {
     const key = await this.host.secrets.get(VOICE_KEYS[provider]);
     if (!key)
       throw new Error(
-        `Cadastre a chave da ${provider === "elevenlabs" ? "ElevenLabs" : "OpenAI"} em Vozes, no CutRoom. Não envie a chave pelo chat.`,
+        `Cadastre a chave da ${provider === "elevenlabs" ? "ElevenLabs" : provider === "fish" ? "Fish Audio" : "OpenAI"} em Vozes, no Videosell. Não envie a chave pelo chat.`,
       );
     return key;
   }
@@ -169,11 +171,12 @@ export class Studio {
     const configured = await this.host.secrets.describe(Object.values(VOICE_KEYS));
     let voices: VoiceOption[] = [];
     if (chosen === "elevenlabs") voices = await elevenLabsVoices(await this.key("elevenlabs"));
+    else if (chosen === "fish") voices = await fishVoices(await this.key("fish"));
     else if (chosen === "openai") {
       await this.key("openai");
       voices = OPENAI_VOICES.map((id) => ({ id, name: id, provider: "openai" as const, language: "multilíngue" }));
     } else if (chosen === "kokoro") {
-      if (!(await this.host.kokoroReady?.())) throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom (narração offline, sem créditos).");
+      if (!(await this.host.kokoroReady?.())) throw new Error("Instale a Voz Kokoro na aba Pacotes do Videosell (narração offline, sem créditos).");
       voices = KOKORO_VOICES.map(({ lang: _lang, ...v }) => v);
     } else {
       if (!this.host.localVoices)
@@ -185,6 +188,7 @@ export class Studio {
       defaultVoice: prefs.voices?.[chosen],
       configured: {
         elevenlabs: !!configured[VOICE_KEYS.elevenlabs],
+        fish: !!configured[VOICE_KEYS.fish],
         openai: !!configured[VOICE_KEYS.openai],
         kokoro: (await this.host.kokoroReady?.()) ?? false,
         local: !!this.host.localSpeech,
@@ -208,7 +212,7 @@ export class Studio {
     const prefs = await this.voicePreferences();
     const provider = a.provider ?? prefs.provider ?? (await this.defaultProvider());
     const voice = a.voice ?? prefs.voices?.[provider] ?? (provider === "openai" ? "coral" : provider === "kokoro" ? KOKORO_DEFAULT_VOICE : undefined);
-    if (!voice && provider === "elevenlabs")
+    if (!voice && (provider === "elevenlabs" || provider === "fish"))
       throw new Error("Escolha uma voz: chame list_voices e passe o id em voice, ou defina a voz padrão em Vozes.");
     const key = createHash("sha256")
       .update(JSON.stringify(["voice-2", provider, voice, a.model, a.instructions, a.text]))
@@ -231,12 +235,14 @@ export class Studio {
         const speech =
           provider === "elevenlabs"
             ? await elevenLabsSpeech({ apiKey: await this.key("elevenlabs"), voiceId: voice!, text: a.text, modelId: a.model, signal })
+            : provider === "fish"
+              ? await fishSpeech({ apiKey: await this.key("fish"), referenceId: voice!, text: a.text, model: a.model, signal })
             : provider === "openai"
               ? await openAiSpeech({ apiKey: await this.key("openai"), voice: voice!, text: a.text, model: a.model, instructions: a.instructions, signal })
               : provider === "kokoro"
                 ? await (this.host.kokoroSpeech ??
                     (() => {
-                      throw new Error("Instale a Voz Kokoro na aba Pacotes do CutRoom.");
+                      throw new Error("Instale a Voz Kokoro na aba Pacotes do Videosell.");
                     }))(a.text, voice, signal)
                 : await (this.host.localSpeech ??
                   (() => {
@@ -344,7 +350,7 @@ export class Studio {
       await stat(file);
     } catch {
       await this.host.job("music", `Baixando ${item.title}…`, async (signal) => {
-        const response = await fetch(item.url, { signal, headers: { "user-agent": "CutRoom (video editor)" } });
+        const response = await fetch(item.url, { signal, headers: { "user-agent": "Videosell (video editor)" } });
         if (!response.ok) throw new Error(`Não foi possível baixar a faixa (${response.status}).`);
         const bytes = new Uint8Array(await response.arrayBuffer());
         if (bytes.length > 60_000_000) throw new Error("Faixa grande demais.");
@@ -394,7 +400,7 @@ export class Studio {
     if (!brand)
       return {
         configured: false,
-        message: "A marca ainda não foi configurada. Peça ao usuário para abrir Marca no CutRoom (importar do Carrossell ou preencher à mão).",
+        message: "A marca ainda não foi configurada. Peça ao usuário para abrir Marca no Videosell (importar do Carrossell ou preencher à mão).",
       };
     return { configured: true, ...brand, logo: brand.logo ? "(disponível: use <img data-asset=\"logo\">)" : undefined };
   }

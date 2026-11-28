@@ -1,7 +1,16 @@
 import { createHash } from "node:crypto";
+import * as nodeFs from "node:fs";
+import * as nodePath from "node:path";
 import { AVATAR_BASES, FACIAL_HAIR, HAIR_STYLES, HATS, OUTFITS, composeAvatar, type FacialHair, type HairStyle, type Hat, type Outfit } from "../src/shared/avatar-compose";
 import { BRAND_KINDS, BrandProofStore } from "./core/brand-proofs";
 import { SeriesStore } from "./core/series";
+import { ChannelStore } from "./core/channel/channel-store";
+import { JobRunner } from "./core/channel/jobs";
+import { createChannelToolDispatcher, isChannelTool } from "./core/channel/channel-tools";
+import { scribeTranscriber } from "./core/channel/aligner";
+import { elevenLabsSpeaker } from "./core/channel/narration";
+import { durationOf as channelDuration } from "./core/channel/ffmpeg";
+import { fishSpeech, openAiSpeech } from "./core/voice";
 import { MAX_ON_SCENE, MAX_WORDS, NARRATOR, STORY_MOODS, spokenLines, toEngineText, validateScript, type Episode, type Series } from "../src/shared/story";
 import { BASE_AVATARS, storyFilmHtml, type CastAvatar } from "../src/shared/story-html";
 import { adaptEffects, cleanShotPlan, shotFilmHtml, type ShotPlan } from "../src/shared/shots";
@@ -31,7 +40,7 @@ import {
   writeFile,
   rename,
 } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 import { z } from "zod";
@@ -83,7 +92,7 @@ import { Films } from "./core/film";
 import { FilmStudio } from "./core/film-studio";
 import { installSkill } from "./core/skill";
 import { Publisher } from "./core/publish";
-import { OsReelScheduler, SCHEDULE_FLAG } from "./core/reel-schedule";
+import { OsReelScheduler, resyncOsSchedule, SCHEDULE_FLAG, type ScheduledReel } from "./core/reel-schedule";
 import { motionBrowser, motionPackageInfo } from "./core/motion-package";
 import { createRequire } from "node:module";
 import { localSpeech, localVoices } from "./core/local-voice";
@@ -97,6 +106,7 @@ import { createAvatarToolDispatcher } from "./core/avatar-mcp";
 import { isAvatarTool } from "./core/avatar-tool-defs";
 import { ProfileService } from "./core/profile-service";
 import { ProfileStore } from "./core/profile-store";
+import { migrateUserData, rollbackMigration, type MigrationFs } from "./core/data-migration";
 import {
   createProfileToolDispatcher,
   DESKTOP_MCP_PROFILE_CALLER,
@@ -104,10 +114,53 @@ import {
 } from "./core/profile-tool-defs";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const migrationFs = nodeFs as unknown as MigrationFs;
+const appDataDir = app.getPath("appData");
+const oldUserDataDir = join(appDataDir, "CutRoom");
+/**
+ * Fixed on purpose: Electron names userData after package.json "name" ("cutroom"), and on Windows
+ * %APPDATA%\cutroom is the same folder as %APPDATA%\CutRoom — the migration saw "same-path" and
+ * did nothing (0.9.6-teste.1). The new home is always <appData>/Videosell.
+ */
+const newUserDataDir = join(appDataDir, "Videosell");
+if (process.argv.includes("--desfazer-migracao") && !process.env.CUTROOM_USER_DATA) {
+  try {
+    const kept = rollbackMigration({
+      fs: migrationFs,
+      path: nodePath,
+      oldDir: oldUserDataDir,
+      newDir: newUserDataDir,
+    });
+    console.info(`Migração desfeita; dados Videosell preservados em ${kept}.`);
+  } catch (error) {
+    console.error("Não foi possível desfazer a migração:", (error as Error).message);
+  }
+  app.exit(0);
+  process.exit(0);
+}
 if (process.env.CUTROOM_USER_DATA) {
   const profile = resolve(process.env.CUTROOM_USER_DATA);
   mkdirSync(profile, { recursive: true });
   app.setPath("userData", profile);
+} else {
+  const migration = migrateUserData({
+    fs: migrationFs,
+    path: nodePath,
+    appDataDir,
+    oldDir: oldUserDataDir,
+    newDir: newUserDataDir,
+    appVersion: app.getVersion(),
+    isPackaged: app.isPackaged,
+    allowDev: process.env.VIDEOSELL_MIGRATION_DEV === "1",
+  });
+  // done / fresh / kept-new use the Videosell folder; in-place / failed fall back to the intact CutRoom one.
+  // Skipped (dev without VIDEOSELL_MIGRATION_DEV) keeps Electron's default.
+  if (migration.userDataPath) app.setPath("userData", migration.userDataPath);
+  else if (migration.status !== "skipped") app.setPath("userData", newUserDataDir);
+  if (migration.status === "lock-busy") {
+    app.exit(0);
+    process.exit(0);
+  }
 }
 const resources = app.isPackaged
   ? join(process.resourcesPath, "resources")
@@ -145,6 +198,20 @@ let avatarStore: AvatarStore;
 let avatarService: AvatarService;
 let dispatchAvatarTool: ReturnType<typeof createAvatarToolDispatcher>;
 let dispatchProfileTool: ReturnType<typeof createProfileToolDispatcher>;
+let dispatchChannelTool: ReturnType<typeof createChannelToolDispatcher>;
+let channelStore: ChannelStore;
+/** What the Canais screen may call directly; everything else stays with the user's agent. */
+const UI_CHANNEL_TOOLS = ["format_templates", "channel_list", "channel_get", "channel_create", "channel_episode_list", "episode_status", "package_get", "backlog_get", "script_get", "research_get"] as const;
+const channelIds = z.object({ profileId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), channelId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), episodeId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/) });
+/** A file inside an episode folder (out/video.mp4, thumbs…), never outside it. */
+async function channelFile(params: unknown) {
+  const { file, ...ids } = channelIds.extend({ file: z.string().min(1).max(400).optional() }).parse(params);
+  const dir = await realpath(channelStore.episodeDir(ids.profileId, ids.channelId, ids.episodeId));
+  if (!file) return { dir };
+  const path = await realpath(resolve(dir, file));
+  if (!path.startsWith(dir + sep) || !['.mp4', '.jpg', '.jpeg', '.png', '.webm'].includes(extname(path).toLowerCase())) throw new Error("Arquivo fora do episódio.");
+  return { dir, path };
+}
 /** Host images for scenes: the brand logo as data-asset="logo". */
 async function motionAssets(): Promise<MotionAssets> {
   const brand = await brandStore?.get();
@@ -893,6 +960,7 @@ async function executeTool(
 ): Promise<unknown> {
   if (isProfileTool(name)) return dispatchProfileTool(name, args);
   if (isAvatarTool(name)) return dispatchAvatarTool(name, args);
+  if (isChannelTool(name)) return dispatchChannelTool(name, args);
   if (name === "get_project") return structuredClone(state.project);
   if (name === "edit_project") {
     await executeCommand(args);
@@ -1011,6 +1079,18 @@ async function executeTool(
           .strict()
           .parse(a).id,
       ),
+    open_mcp_setup: (a) => {
+      const { reason } = z.object({ reason: z.enum(["search", "general"]).optional() }).strict().parse(a);
+      if (!window || window.isDestroyed()) throw new Error("A janela do Videosell está fechada.");
+      window.webContents.send("editor:event", { type: "mcp", reason: reason === "search" ? "search" : undefined });
+      if (window.isMinimized()) window.restore();
+      window.focus();
+      return {
+        opened: true,
+        message:
+          "A janela 'Usar pelo seu agente' está aberta no Videosell. Explique ao usuário: o Videosell não busca na internet; conectando o Videosell ao Claude Code ou ao Codex (uma vez), ele pode pedir tudo pelo chat do agente, que pesquisa com fontes e monta o vídeo aqui, sem precisar mexer no app.",
+      };
+    },
     open_studio: (a) => {
       const { tab } = z
         .object({
@@ -1019,14 +1099,14 @@ async function executeTool(
         .strict()
         .parse(a);
       if (!window || window.isDestroyed())
-        throw new Error("A janela do CutRoom está fechada.");
+        throw new Error("A janela do Videosell está fechada.");
       window.webContents.send("editor:event", { type: "studio", tab });
       if (window.isMinimized()) window.restore();
       window.focus();
       return {
         opened: tab,
         message:
-          "A tela está aberta no CutRoom. Peça ao usuário para preencher e avisar quando terminar.",
+          "A tela está aberta no Videosell. Peça ao usuário para preencher e avisar quando terminar.",
       };
     },
     publish_reel: async (a) => {
@@ -1164,6 +1244,64 @@ async function executeTool(
     };
   }
   throw new Error("Ferramenta não autorizada.");
+}
+
+/** Estúdio de Canais Dark: store, jobs (resumed on open) and the MCP tools. */
+function setupChannelStudio() {
+  const store = new ChannelStore(userDir);
+  channelStore = store;
+  const jobs = new JobRunner(join(userDir, "jobs"));
+  dispatchChannelTool = createChannelToolDispatcher({
+    store,
+    jobs,
+    secret: (name) => secretStore.get(name),
+    kit: { gsap: createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js"), fontsDir: join(resources, "film-kit", "fonts") },
+    runner: async () => {
+      if (!(await motionPackageInfo(packages.root)).installed)
+        throw Object.assign(new Error("Instale Efeitos e animações na aba Pacotes: as cenas do canal usam esse renderizador."), { code: "RENDERER_MISSING" });
+      return { worker: join(here, "render-motion.js"), browser: process.env.CHROME_PATH || motionBrowser(packages.root) };
+    },
+    // Whisper local by default; ElevenLabs Scribe when the local package is missing and there is a key.
+    transcriber: async () => {
+      if ((await packages.list())[0]?.installed)
+        return async (file, { signal }) => {
+          const duration = await channelDuration(file, { signal });
+          const info = await stat(file);
+          const media = { id: `canal-${info.size}-${Math.round(info.mtimeMs)}`, name: "Narração", path: file, duration, width: 1, height: 1, fps: 1, hasAudio: true };
+          const words = await packages.transcribe(media as never, cacheDir, () => undefined, signal, true);
+          return words.map((w) => ({ text: w.text, start: w.start, end: w.end }));
+        };
+      const key = await secretStore.get("voice.elevenlabs");
+      if (key) return scribeTranscriber(key);
+      throw Object.assign(new Error("Instale a Transcrição local na aba Pacotes (ou configure a ElevenLabs para usar o Scribe)."), { code: "TRANSCRIBER_MISSING" });
+    },
+    speaker: async (voice) => {
+      if (voice.provider === "elevenlabs") {
+        const key = await secretStore.get("voice.elevenlabs");
+        if (!key) throw Object.assign(new Error("Configure a chave da ElevenLabs em Vozes."), { code: "VOICE_KEY_MISSING" });
+        return elevenLabsSpeaker(key, voice);
+      }
+      if (voice.provider === "fish") {
+        const key = await secretStore.get("voice.fish");
+        if (!key) throw Object.assign(new Error("Configure a chave da Fish Audio em Vozes."), { code: "VOICE_KEY_MISSING" });
+        return (text, { signal }) => fishSpeech({ apiKey: key, referenceId: voice.voiceId, text, model: voice.modelId, speed: voice.speed, signal });
+      }
+      if (voice.provider === "openai") {
+        const key = await secretStore.get("voice.openai");
+        if (!key) throw Object.assign(new Error("Configure a chave da OpenAI em Vozes."), { code: "VOICE_KEY_MISSING" });
+        return (text, { signal }) => openAiSpeech({ apiKey: key, voice: voice.voiceId || "onyx", text, signal });
+      }
+      if (voice.provider === "kokoro") return (text, { signal }) => packages.kokoroSpeak(text, voice.voiceId || undefined, join(cacheDir, "voice"), signal);
+      return async (text, { signal }) => {
+        const dir = join(cacheDir, "voice");
+        await mkdir(dir, { recursive: true });
+        const s = signal ?? new AbortController().signal;
+        return localSpeech(text, voice.voiceId || undefined, s, dir, (path) => probeAudio(path, s));
+      };
+    },
+    series: async (profileId, seriesId) => (await seriesStore.get(profileId, seriesId)).series,
+  });
+  void jobs.resumeInterrupted().catch(() => undefined);
 }
 
 async function executeDesktopMcpTool(
@@ -1751,6 +1889,25 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       shell.showItemInFolder(resolve(path));
       return { ok: true };
     }
+    case "channelTool": {
+      // The Canais screen: read channels and episodes, create a channel from a template.
+      const { name, args } = z.object({ name: z.enum(UI_CHANNEL_TOOLS), args: z.record(z.string(), z.unknown()) }).parse(params);
+      return dispatchChannelTool(name, args);
+    }
+    case "channelMedia": {
+      const { path } = await channelFile(params);
+      if (!path) throw new Error("Informe o arquivo.");
+      allowedFiles.add(path);
+      const url = new URL("cutroom://media");
+      url.searchParams.set("path", path);
+      return { url: url.href };
+    }
+    case "channelReveal": {
+      const { dir, path } = await channelFile(params);
+      if (path) shell.showItemInFolder(path);
+      else await shell.openPath(dir);
+      return { ok: true };
+    }
     case "installAgentSkill":
       return {
         files: await installSkill(app.getPath("home"), app.getVersion()),
@@ -1956,7 +2113,7 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
       if (!path) {
         const result = await dialog.showSaveDialog(window!, {
           defaultPath: `${state.project.name}.cutroom.json`,
-          filters: [{ name: "Projeto CutRoom", extensions: ["cutroom.json"] }],
+          filters: [{ name: "Projeto Videosell", extensions: ["cutroom.json"] }],
         });
         if (result.canceled || !result.filePath) return emit();
         path = result.filePath;
@@ -1972,7 +2129,7 @@ env = { ${Object.entries(env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ")} }
     case "openProject": {
       idle();
       const result = await dialog.showOpenDialog(window!, {
-        filters: [{ name: "Projeto CutRoom", extensions: ["json"] }],
+        filters: [{ name: "Projeto Videosell", extensions: ["json"] }],
         properties: ["openFile"],
       });
       if (result.canceled) return emit();
@@ -2240,16 +2397,41 @@ app.whenReady().then(async () => {
         }
       : {}),
   });
+  const osScheduler = new OsReelScheduler(
+    process.execPath,
+    app.isPackaged ? [SCHEDULE_FLAG] : [app.getAppPath(), SCHEDULE_FLAG],
+  );
   publisher = new Publisher({
     secrets: secretStore,
     userDir,
     videosDir: join(app.getPath("videos"), "CutRoom"),
     job: (kind, label, run) => job(kind, label, run),
-    os: new OsReelScheduler(
-      process.execPath,
-      app.isPackaged ? [SCHEDULE_FLAG] : [app.getAppPath(), SCHEDULE_FLAG],
-    ),
+    os: osScheduler,
   });
+  try {
+    const schedulerStateFile = join(userDir, "os-scheduler.json");
+    let lastExe: string | undefined;
+    try {
+      lastExe = JSON.parse(await readFile(schedulerStateFile, "utf8")).exe;
+    } catch {
+      // First run with the persisted executable path.
+    }
+    if (lastExe !== process.execPath) {
+      let entries: Pick<ScheduledReel, "id" | "at" | "status">[] = [];
+      try {
+        entries = JSON.parse(await readFile(join(userDir, "publish.json"), "utf8")).scheduled ?? [];
+      } catch {
+        // A user without scheduled reels has nothing to resync.
+      }
+      const resync = await resyncOsSchedule(entries, osScheduler, lastExe, process.execPath);
+      for (const failure of resync.failures)
+        console.warn(`Não foi possível atualizar a tarefa agendada ${failure.id}: ${failure.error}`);
+      await writeFile(`${schedulerStateFile}.partial`, JSON.stringify({ exe: process.execPath }, null, 2), "utf8");
+      await rename(`${schedulerStateFile}.partial`, schedulerStateFile);
+    }
+  } catch (error) {
+    console.warn("Não foi possível sincronizar as tarefas agendadas com o executável atual:", (error as Error).message);
+  }
   // Reels autopilot: due posts go out every minute while CutRoom is open (and right away when the
   // operating system opened it for a scheduled post).
   setInterval(
@@ -2269,6 +2451,7 @@ app.whenReady().then(async () => {
     process.argv.includes(SCHEDULE_FLAG) ? 8_000 : 30_000,
   );
   seriesStore = new SeriesStore(userDir);
+  setupChannelStudio();
   avatarStore = new AvatarStore(join(userDir, "avatars"));
   filmStudio = new FilmStudio(
     {
@@ -2284,7 +2467,7 @@ app.whenReady().then(async () => {
       runner: async () => {
         if (!(await motionPackageInfo(packages.root)).installed)
           throw new Error(
-            "Instale Efeitos e animações na aba Pacotes do CutRoom: os filmes usam esse renderizador.",
+            "Instale Efeitos e animações na aba Pacotes do Videosell: os filmes usam esse renderizador.",
           );
         return {
           worker: join(here, "render-motion.js"),
@@ -2315,7 +2498,7 @@ app.whenReady().then(async () => {
       runner: async () => {
         if (!(await motionPackageInfo(packages.root)).installed)
           throw new Error(
-            "Instale Efeitos e animações na aba Pacotes do CutRoom: os avatares usam esse renderizador.",
+            "Instale Efeitos e animações na aba Pacotes do Videosell: os avatares usam esse renderizador.",
           );
         return {
           worker: join(here, "render-motion.js"),
@@ -2407,7 +2590,7 @@ app.whenReady().then(async () => {
     minWidth: 1050,
     minHeight: 700,
     backgroundColor: appearance.background,
-    title: "CutRoom",
+    title: "Videosell",
     icon: join(resources, "branding", "icon-256.png"),
     autoHideMenuBar: true,
     ...(process.platform === "win32"
@@ -2447,7 +2630,7 @@ app.whenReady().then(async () => {
 
   desktopMcp = new DesktopMcpServer(executeDesktopMcpTool, userDir);
   await desktopMcp.start().catch((err) => {
-    console.error("Falha ao iniciar servidor Desktop MCP do CutRoom:", err);
+    console.error("Falha ao iniciar servidor Desktop MCP do Videosell:", err);
   });
 });
 app.on("before-quit", () => {

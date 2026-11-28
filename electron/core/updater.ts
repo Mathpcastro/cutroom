@@ -46,21 +46,21 @@ export class UpdateController {
     client.autoInstallOnAppQuit = true;
     client.on("update-available", (info) => {
       void this.offer(info.version).catch((error) =>
-        this.log("Falha ao oferecer atualização do CutRoom:", error),
+        this.log("Falha ao oferecer atualização do Videosell:", error),
       );
     });
     client.on("update-downloaded", () => {
       void this.ready().catch((error) =>
-        this.log("Falha ao concluir atualização do CutRoom:", error),
+        this.log("Falha ao concluir atualização do Videosell:", error),
       );
     });
     client.on("error", (error) =>
-      this.log("Falha no atualizador do CutRoom:", error),
+      this.log("Falha no atualizador do Videosell:", error),
     );
     void client
       .checkForUpdates()
       .catch((error) =>
-        this.log("Falha ao verificar atualizações do CutRoom:", error),
+        this.log("Falha ao verificar atualizações do Videosell:", error),
       );
   }
 
@@ -82,7 +82,7 @@ export class UpdateController {
       await this.options.client.downloadUpdate();
     } catch (error) {
       this.downloading = false;
-      this.log("Falha ao baixar atualização do CutRoom:", error);
+      this.log("Falha ao baixar atualização do Videosell:", error);
       if (this.options.isWindowAlive()) {
         await this.options.dialogs.downloadFailed(errorMessage(error));
       }
@@ -118,7 +118,7 @@ export function startWindowsAutoUpdate(window: BrowserWindow): void {
         cancelId: 1,
         noLink: true,
         title: "Atualização disponível",
-        message: `O CutRoom ${version} está disponível.`,
+        message: `O Videosell ${version} está disponível.`,
         detail: "Deseja baixar a atualização em segundo plano?",
       });
       return response;
@@ -131,7 +131,7 @@ export function startWindowsAutoUpdate(window: BrowserWindow): void {
         cancelId: 1,
         noLink: true,
         title: "Atualização pronta",
-        message: "A nova versão do CutRoom foi baixada.",
+        message: "A nova versão do Videosell foi baixada.",
         detail: "Reinicie agora para instalar ou instale ao fechar o app.",
       });
       return response;
@@ -143,7 +143,7 @@ export function startWindowsAutoUpdate(window: BrowserWindow): void {
         defaultId: 0,
         noLink: true,
         title: "Falha na atualização",
-        message: "Não foi possível baixar a atualização do CutRoom.",
+        message: "Não foi possível baixar a atualização do Videosell.",
         detail: `${message}\n\nVocê pode continuar usando o editor e tentar novamente na próxima abertura.`,
       });
     },

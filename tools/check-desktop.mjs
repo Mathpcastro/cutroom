@@ -129,12 +129,12 @@ try {
       ? "low"
       : selected?.defaultReasoningEffort;
     state = await request("sendChat", {
-      text: "Consulte o projeto e renomeie-o para Teste real CutRoom. Ative as legendas com a ferramenta do editor; prepare a transcrição se necessário. Não exporte agora. Responda em uma frase curta.",
+      text: "Consulte o projeto e renomeie-o para Teste real Videosell. Ative as legendas com a ferramenta do editor; prepare a transcrição se necessário. Não exporte agora. Responda em uma frase curta.",
       model: account.connection.model,
       reasoningEffort: effort,
     });
     if (
-      state.project.name !== "Teste real CutRoom" ||
+      state.project.name !== "Teste real Videosell" ||
       !state.project.settings.captions
     )
       throw new Error(

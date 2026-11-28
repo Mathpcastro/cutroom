@@ -4,7 +4,8 @@ import { mixSoundtrack, synthAmbience, synthEffect } from "../electron/core/comp
 
 const stats = (a: Float32Array) => { let peak = 0, sum = 0, finite = true; for (const v of a) { if (!Number.isFinite(v)) finite = false; peak = Math.max(peak, Math.abs(v)); sum += v * v; } return { peak, rms: Math.sqrt(sum / a.length), finite }; };
 
-describe("synthesised sound design", () => {
+// Pure CPU synthesis: the Intel Mac runner needs well over the 5 s default.
+describe("synthesised sound design", { timeout: 60_000 }, () => {
   it("every effect is audible, finite, short and deterministic", () => {
     for (const kind of SFX_KINDS) {
       const a = synthEffect(kind, 3), s = stats(a);

@@ -273,7 +273,7 @@ export class Films {
     await this.meta(id);
     if (!TEXT_FILES.includes(extname(path).toLowerCase())) fail(`Só arquivos de texto: ${TEXT_FILES.join(", ")}. Mídia entra por film_voiceover e film_asset.`);
     if (content.length > MAX_FILE) fail("Arquivo grande demais (máx. 2 MB).");
-    if (/^(film\.json|timing\.js)$/i.test(path.replace(/^\.\//, ""))) fail("film.json e timing.js são escritos pelo CutRoom.");
+    if (/^(film\.json|timing\.js)$/i.test(path.replace(/^\.\//, ""))) fail("film.json e timing.js são escritos pelo Videosell.");
     const target = this.inside(id, path);
     await mkdir(resolve(target, ".."), { recursive: true });
     await writeFile(target, content, "utf8");
@@ -569,7 +569,7 @@ export function starterHtml(meta: FilmMeta) {
 export function filmRules(meta: FilmMeta, guide?: string) {
   return `# Filme: ${meta.name}
 
-Pasta de um filme do CutRoom (projeto HyperFrames). Você escreve \`index.html\` (e outros arquivos de texto); o CutRoom grava a narração (\`film_voiceover\` → \`assets/voice.*\` + \`timing.js\`), baixa música e efeitos (\`film_asset\`), checa (\`film_check\`), mostra quadros (\`film_stills\`) e renderiza (\`render_film\`).
+Pasta de um filme do Videosell (projeto HyperFrames). Você escreve \`index.html\` (e outros arquivos de texto); o Videosell grava a narração (\`film_voiceover\` → \`assets/voice.*\` + \`timing.js\`), baixa música e efeitos (\`film_asset\`), checa (\`film_check\`), mostra quadros (\`film_stills\`) e renderiza (\`render_film\`).
 
 ## Contrato
 - Raiz: \`<div id="film" data-composition-id="film" data-start="0" data-duration="D" data-width="${meta.width}" data-height="${meta.height}">\`. D = fim da narração + ~2 s; a timeline termina com \`tl.set({}, {}, D)\`.

@@ -73,7 +73,7 @@ describe("films", () => {
     await expect(films.writeFile(id, "../fora.html", "x")).rejects.toThrow(/dentro da pasta/);
     await expect(films.writeFile(id, path.resolve(os.tmpdir(), "fora.html"), "x")).rejects.toThrow(/dentro da pasta/);
     await expect(films.writeFile(id, "run.exe", "x")).rejects.toThrow(/Só arquivos de texto/);
-    await expect(films.writeFile(id, "timing.js", "x")).rejects.toThrow(/CutRoom/);
+    await expect(films.writeFile(id, "timing.js", "x")).rejects.toThrow(/Videosell/);
     await expect(films.readFile(id, "../../segredo.json")).rejects.toThrow(/dentro da pasta/);
     expect(await films.writeFile(id, "scenes/demo.js", "window.demo = 1;")).toEqual({ path: "scenes/demo.js", bytes: 16 });
     expect(() => films.dir("../x")).toThrow(/inválido/);
@@ -256,7 +256,13 @@ describe("agent skill", () => {
     for (const f of FORMATS) expect(text).toContain(`\`${f.id}\``);
     const home = await fs.mkdtemp(path.join(os.tmpdir(), "cutroom-home-"));
     const files = await installSkill(home, "0.7.0");
-    expect(files.map((f) => path.relative(home, f).replaceAll("\\", "/"))).toEqual([".claude/skills/cutroom-videos/SKILL.md", ".codex/skills/cutroom-videos/SKILL.md"]);
+    expect(files.map((f) => path.relative(home, f).replaceAll("\\", "/"))).toEqual([".claude/skills/cutroom-videos/SKILL.md", ".codex/skills/cutroom-videos/SKILL.md", ".claude/skills/videosell-canal/SKILL.md", ".codex/skills/videosell-canal/SKILL.md"]);
+    const { channelSkill } = await import("../electron/core/channel/channel-skill");
+    const { CHANNEL_TOOLS } = await import("../electron/core/channel/channel-tools");
+    const canal = channelSkill("0.9.1");
+    expect(canal).toMatch(/^---\nname: videosell-canal\ndescription: /);
+    // Every tool the skill names exists.
+    for (const t of canal.match(/\b(channel|backlog|research|script|media|narration|align|scenes|qa|frames|episode|package|shorts|pipeline)_[a-z_]+/g) ?? []) expect(CHANNEL_TOOLS.map((x) => x.name)).toContain(t);
     await fs.rm(home, { recursive: true, force: true });
   });
 });
