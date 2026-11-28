@@ -9,7 +9,7 @@ const path = require("node:path");
 const os = require("node:os");
 const readline = require("node:readline");
 
-/** Electron's userData: "CutRoom" (productName) when packaged, "cutroom" (package name) in dev. */
+/** Videosell's data folder first (0.9.6+), then the CutRoom one (older versions and the in-place fallback). */
 function getCutRoomUserDataDirs() {
   if (process.env.CUTROOM_USER_DATA) return [process.env.CUTROOM_USER_DATA];
   const base =
@@ -18,7 +18,7 @@ function getCutRoomUserDataDirs() {
       : process.platform === "win32"
         ? process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming")
         : process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-  return [path.join(base, "CutRoom"), path.join(base, "cutroom")];
+  return [path.join(base, "Videosell"), path.join(base, "CutRoom"), path.join(base, "cutroom")];
 }
 
 function getCutRoomConnectionInfo() {

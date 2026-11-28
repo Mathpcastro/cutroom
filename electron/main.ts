@@ -117,13 +117,19 @@ const here = dirname(fileURLToPath(import.meta.url));
 const migrationFs = nodeFs as unknown as MigrationFs;
 const appDataDir = app.getPath("appData");
 const oldUserDataDir = join(appDataDir, "CutRoom");
+/**
+ * Fixed on purpose: Electron names userData after package.json "name" ("cutroom"), and on Windows
+ * %APPDATA%\cutroom is the same folder as %APPDATA%\CutRoom — the migration saw "same-path" and
+ * did nothing (0.9.6-teste.1). The new home is always <appData>/Videosell.
+ */
+const newUserDataDir = join(appDataDir, "Videosell");
 if (process.argv.includes("--desfazer-migracao") && !process.env.CUTROOM_USER_DATA) {
   try {
     const kept = rollbackMigration({
       fs: migrationFs,
       path: nodePath,
       oldDir: oldUserDataDir,
-      newDir: app.getPath("userData"),
+      newDir: newUserDataDir,
     });
     console.info(`Migração desfeita; dados Videosell preservados em ${kept}.`);
   } catch (error) {
@@ -142,12 +148,15 @@ if (process.env.CUTROOM_USER_DATA) {
     path: nodePath,
     appDataDir,
     oldDir: oldUserDataDir,
-    newDir: app.getPath("userData"),
+    newDir: newUserDataDir,
     appVersion: app.getVersion(),
     isPackaged: app.isPackaged,
     allowDev: process.env.VIDEOSELL_MIGRATION_DEV === "1",
   });
+  // done / fresh / kept-new use the Videosell folder; in-place / failed fall back to the intact CutRoom one.
+  // Skipped (dev without VIDEOSELL_MIGRATION_DEV) keeps Electron's default.
   if (migration.userDataPath) app.setPath("userData", migration.userDataPath);
+  else if (migration.status !== "skipped") app.setPath("userData", newUserDataDir);
   if (migration.status === "lock-busy") {
     app.exit(0);
     process.exit(0);
